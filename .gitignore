@@ -1,0 +1,29 @@
+# Build artifacts
+target/
+build/
+bin/
+out/
+
+# Maven Wrapper
+!.mvn/wrapper/maven-wrapper.jar
+!mvnw
+!mvnw.cmd
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Altri IDE
+.vscode/
+.project
+.classpath
+.settings/
+nbproject/
+nbbuild/
+dist/
+
+# System files
+.DS_Store
+Thumbs.db
