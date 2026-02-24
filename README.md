@@ -1,7 +1,7 @@
 # Mesos Project
 Progetto prova finale per l'esame di Ingegneria del Software.
 
-## Workflow Git (semplice)
+## Workflow Git 
 In questo repository usiamo 3 tipi di branch:
 
 - `main`: contiene la versione stabile.
@@ -21,7 +21,7 @@ Regole base:
 
 3. Apri una Pull Request da `feature/nome-feature` verso `develop`.
 
-4. Dopo review e merge su `develop`, quando il team decide di rilasciare:
+4. Dopo review e merge su `develop`
 
 
 ## Documentazione tecnica (`docs/`)
