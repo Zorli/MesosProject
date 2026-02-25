@@ -14,10 +14,10 @@ Regole base:
 - Le feature vengono mergeate su `develop` tramite Pull Request.
 - `main` si aggiorna solo quando vogliamo rilasciare una versione stabile.
 
-## Flusso di lavoro consigliato
+## Flusso di lavoro 
 1. Aggiorna `develop` e crea una feature branch
 
-2. Sviluppa, fai commit piccoli e chiari, poi push:
+2. Sviluppa, fai commit piccoli e chiari, poi push
 
 3. Apri una Pull Request da `feature/nome-feature` verso `develop`.
 
