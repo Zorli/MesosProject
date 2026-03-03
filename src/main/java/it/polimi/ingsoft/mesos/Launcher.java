@@ -1,4 +1,4 @@
-package org.example.mesos;
+package it.polimi.ingsoft.mesos;
 
 import javafx.application.Application;
 

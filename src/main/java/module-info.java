@@ -1,9 +1,9 @@
-module org.example.mesos {
+module it.polimi.ingsoft.mesos {
     requires javafx.controls;
     requires javafx.fxml;
 
     requires org.controlsfx.controls;
 
-    opens org.example.mesos to javafx.fxml;
-    exports org.example.mesos;
+    opens it.polimi.ingsoft.mesos to javafx.fxml;
+    exports it.polimi.ingsoft.mesos;
 }
