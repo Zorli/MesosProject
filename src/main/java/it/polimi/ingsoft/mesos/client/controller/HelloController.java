@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.client.controller;
 
-import it.polimi.ingsoft.mesos.client.model.GreetingService;
+import it.polimi.ingsoft.mesos.client.view.GreetingService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 
