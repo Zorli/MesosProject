@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.client.model;
+package it.polimi.ingsoft.mesos.client.view;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.client.model;
+package it.polimi.ingsoft.mesos.client.view;
 
 public class
 GreetingService {
