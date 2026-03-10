@@ -8,4 +8,6 @@ module it.polimi.ingsoft.mesos {
     exports it.polimi.ingsoft.mesos.client;
     exports it.polimi.ingsoft.mesos.client.view;
     exports it.polimi.ingsoft.mesos.server;
+    exports it.polimi.ingsoft.mesos.server.model;
+    exports it.polimi.ingsoft.mesos.server.model.enums;
 }

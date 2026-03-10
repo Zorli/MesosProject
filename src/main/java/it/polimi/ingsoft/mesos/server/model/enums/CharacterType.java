@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.client.model.enums;
+package it.polimi.ingsoft.mesos.server.model.enums;
 
 public enum CharacterType {
     HUNTER,
