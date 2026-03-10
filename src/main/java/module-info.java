@@ -4,6 +4,8 @@ module it.polimi.ingsoft.mesos {
 
     requires org.controlsfx.controls;
 
-    opens it.polimi.ingsoft.mesos to javafx.fxml;
-    exports it.polimi.ingsoft.mesos;
+    opens it.polimi.ingsoft.mesos.client.controller to javafx.fxml;
+    exports it.polimi.ingsoft.mesos.client;
+    exports it.polimi.ingsoft.mesos.client.model;
+    exports it.polimi.ingsoft.mesos.server;
 }

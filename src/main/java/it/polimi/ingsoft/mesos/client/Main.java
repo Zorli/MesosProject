@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos;
+package it.polimi.ingsoft.mesos.client;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -19,13 +19,6 @@ Main extends Application {
     }
 
     public static void main(String[] args) {
-        // launch(args);
-
-        System.out.println("Sistema inizializzato. GUI disabilitata. Avvio CLI...");
-
-        // Modello gioco = new Modello();
-        // Controller controller = new Controller(gioco);
-        // CLI interfacciaTestuale = new CLI(controller);
-        // interfacciaTestuale.start();
+        launch(args);
     }
 }
