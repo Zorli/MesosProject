@@ -1,6 +1,6 @@
-package it.polimi.ingsoft.mesos.client.model.player;
+package it.polimi.ingsoft.mesos.server.model;
 
-import it.polimi.ingsoft.mesos.client.model.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 
 // TODO: add attribute Tribe and the method takeCard(Card card)
 
@@ -25,5 +25,4 @@ public class Player {
     public void payPrestigePoints(int amount) {
         this.prestigePoints -= amount;
     }
-
 }
