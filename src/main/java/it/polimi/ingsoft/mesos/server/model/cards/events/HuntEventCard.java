@@ -5,19 +5,23 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 public class HuntEventCard extends TribeCard {
-    private int foodReward;
-    private int prestigePointsReward;
+    private final int foodReward;
+    private final int prestigePointsReward;
 
     public HuntEventCard(int id, Era era, int foodReward, int prestigePointsReward) {
         super(id, era);
         this.foodReward = foodReward;
         this.prestigePointsReward = prestigePointsReward;
     }
-    
+
+    // TODO: nei param il game perché devo fare foreach sui player in game
+
     public void applyEffect(Player player) {
+
+        //forEach player:
         int hunterCount = player.getTribe().countHunters();
-        player.gainPrestigePoints(prestigePointsReward * hunterCount);
-        player.gainFood(foodReward * hunterCount);
+        player.gainPrestigePoints(this.prestigePointsReward * hunterCount);
+        player.gainFood(this.foodReward * hunterCount);
     }
 
 }

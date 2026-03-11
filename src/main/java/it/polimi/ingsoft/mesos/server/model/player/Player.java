@@ -28,7 +28,13 @@ public class Player {
     }
 
     public void payFood(int amount) {
-        this.food -= amount;
+        if (this.food >= amount) {
+            this.food -= amount;
+        } else {
+            int remaining = amount - this.food;
+            this.food = 0;
+            payPrestigePoints(remaining);
+        }
     }
 
     public void gainPrestigePoints(int amount) {

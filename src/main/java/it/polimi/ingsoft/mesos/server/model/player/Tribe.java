@@ -28,4 +28,26 @@ public class Tribe {
         return count;
     }
 
+    public int countShamans() {
+        return (int) this.characters.stream()
+                .filter(c -> c instanceof it.polimi.ingsoft.mesos.server.model.cards.characters.Shaman)
+                .count();
+    }
+
+    public int countArtists() {
+        return (int) this.characters.stream()
+                .filter(c -> c instanceof it.polimi.ingsoft.mesos.server.model.cards.characters.Artist)
+                .count();
+    }
+
+    public int getCharactersSize(){
+        return this.characters.size();
+    }
+
+    public int countGatherers() {
+        return (int) this.characters.stream()
+                .filter(c -> c instanceof it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer)
+                .count();
+    }
+
 }
