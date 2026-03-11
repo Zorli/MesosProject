@@ -4,10 +4,13 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 
 public class Hunter extends TribeCard {
-    // ha l'icona con il collect cibo?
-    public Hunter(int id, Era era) {
+    private final boolean hasEffect;
+    public Hunter(int id, Era era, boolean hasEffect) {
         super(id, era);
+        this.hasEffect = hasEffect;
     }
-
+    public boolean getHasEffect() {
+        return this.hasEffect;
+    }
 }
 
