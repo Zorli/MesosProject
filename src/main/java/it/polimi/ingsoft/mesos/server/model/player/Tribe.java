@@ -28,10 +28,11 @@ public class Tribe {
         return count;
     }
 
-    public int countShamans() {
-        return (int) this.characters.stream()
+    public int getShamansStars() {
+        return this.characters.stream()
                 .filter(c -> c instanceof it.polimi.ingsoft.mesos.server.model.cards.characters.Shaman)
-                .count();
+                .mapToInt(c -> ((it.polimi.ingsoft.mesos.server.model.cards.characters.Shaman) c).getStars())
+                .sum();
     }
 
     public int countArtists() {
@@ -48,6 +49,11 @@ public class Tribe {
         return (int) this.characters.stream()
                 .filter(c -> c instanceof it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer)
                 .count();
+    }
+
+    // TODO: once the building card is created we can check if the player has the building that has the zero pp rule for the shaman event
+    public boolean hasBuildingForShamanRitual(){
+        return false;
     }
 
 }

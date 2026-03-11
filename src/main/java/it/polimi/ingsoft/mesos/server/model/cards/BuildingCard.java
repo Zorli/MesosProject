@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.cards;
 
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 
-// L'effetto sarà un ENUM?? forse ha senso farlo...
+// L'effetto sarà un ENUM e lo metto come attributo?? forse ha senso farlo e fare uno switch case in questa classe??
 
 public class BuildingCard extends TribeCard{
     private int foodCost;

@@ -8,11 +8,11 @@ import java.util.ArrayList;
 // TODO: the method takeCard(Card card)
 
 public class Player {
-    private String nickname;
+    private final String nickname;
     private int food;
     private int prestigePoints;
-    private TotemColor totem;
-    private Tribe tribe;
+    private final TotemColor totem;
+    private final Tribe tribe;
 
     public Player(String nickname, int food, int prestigePoints, TotemColor totemColor, Tribe tribe) {
         this.nickname = nickname;
