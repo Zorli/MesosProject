@@ -1,16 +1,16 @@
 package it.polimi.ingsoft.mesos.server.model.player;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
-import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.Hunter;
 
 import java.util.ArrayList;
 
 public class Tribe {
-    private ArrayList<TribeCard> characters;
+    private ArrayList<Card> characters;
     private ArrayList<BuildingCard> buildings;
 
-    public void addCharacter(TribeCard c){
+    public void addCharacter(Card c){
         this.characters.add(c);
     }
 
@@ -20,7 +20,7 @@ public class Tribe {
 
     public int countHunters() {
         int count = 0;
-        for (TribeCard character : this.characters) {
+        for (Card character : this.characters) {
             if (character instanceof Hunter) {
                 count++;
             }

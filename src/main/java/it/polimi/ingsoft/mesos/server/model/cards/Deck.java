@@ -7,14 +7,14 @@ import java.util.Collections;
 
 
 public abstract class Deck {
-    private ArrayList<TribeCard> cards;
+    private ArrayList<Card> cards;
 
-    public Deck(ArrayList<TribeCard> cards){
+    public Deck(ArrayList<Card> cards){
         this.cards = cards;
         this.shuffle();
     }
 
-    public TribeCard draw(){
+    public Card draw(){
         return this.cards.remove(0);
     }
     public boolean isEmpty(){
@@ -22,11 +22,11 @@ public abstract class Deck {
     }
 
     public void shuffle(){
-        ArrayList<TribeCard> firstEra = new ArrayList<>();
-        ArrayList<TribeCard> secondEra = new ArrayList<>();
-        ArrayList<TribeCard> thirdEra = new ArrayList<>();
+        ArrayList<Card> firstEra = new ArrayList<>();
+        ArrayList<Card> secondEra = new ArrayList<>();
+        ArrayList<Card> thirdEra = new ArrayList<>();
 
-        for (TribeCard card : this.cards) {
+        for (Card card : this.cards) {
             if (card.getEra() == Era.first) {
                 firstEra.add(card);
             } else if (card.getEra() == Era.second) {

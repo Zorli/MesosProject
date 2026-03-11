@@ -1,11 +1,13 @@
 package it.polimi.ingsoft.mesos.server.model.cards.events;
 
-import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
-public class CavePaintingEventCard extends TribeCard {
+import java.util.ArrayList;
+
+public class CavePaintingEventCard extends Card implements EventAction {
     private final int limitForPositive;
     private final int prestigePointsForPositive;
     private final int prestigePointsForNegative;
@@ -17,9 +19,9 @@ public class CavePaintingEventCard extends TribeCard {
         this.prestigePointsForNegative = prestigePointsForNegative;
     }
 
-
-    public void applyEffect(Game game) {
-        for (Player player : game.getPlayers()) {
+    @Override
+    public void applyEffect(ArrayList<Player> players) {
+        for (Player player : players) {
             int numOfArtists = player.getTribe().countArtists();
             if (numOfArtists < this.limitForPositive) {
                 player.payPrestigePoints(this.prestigePointsForNegative);
@@ -28,4 +30,6 @@ public class CavePaintingEventCard extends TribeCard {
             }
         }
     }
+
+
 }

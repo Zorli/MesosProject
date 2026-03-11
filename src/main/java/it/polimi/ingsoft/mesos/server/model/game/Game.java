@@ -16,7 +16,7 @@ public class Game {
         this.id = id;
         this.players = players;
         this.currentEra = era;
-        this.status = GameStatus.SETUP;
+        this.status = GameStatus.SETUP; // forse??
     }
 
     public void setStatus(GameStatus newstatus){

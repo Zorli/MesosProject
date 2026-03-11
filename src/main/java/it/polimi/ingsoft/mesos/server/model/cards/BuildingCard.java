@@ -4,10 +4,11 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 
 // L'effetto sarà un ENUM e lo metto come attributo?? forse ha senso farlo e fare uno switch case in questa classe??
 
-public class BuildingCard extends TribeCard{
+public class BuildingCard extends Card {
     private int foodCost;
     private int prestigePoints;
     private boolean hasEffectDuringMatch;
+
 
 
     public BuildingCard(int id, Era era, int fc, int pp, boolean hasEffectDuringMatch){

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class TribeDeck extends Deck {
 
-    public TribeDeck(ArrayList<TribeCard> cards) {
+    public TribeDeck(ArrayList<Card> cards) {
         super(cards);
     }
 }

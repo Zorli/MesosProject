@@ -1,9 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.player;
 
-import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-
-import java.util.ArrayList;
 
 // TODO: the method takeCard(Card card)
 
