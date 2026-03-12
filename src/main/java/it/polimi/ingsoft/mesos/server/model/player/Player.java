@@ -42,6 +42,8 @@ public class Player {
         this.prestigePoints -= amount;
     }
 
+    public int getFood() { return this.food; }
+
     public Tribe getTribe() {
         return this.tribe;
     }
