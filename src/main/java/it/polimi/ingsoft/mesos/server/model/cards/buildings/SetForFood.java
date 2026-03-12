@@ -1,20 +1,60 @@
 package it.polimi.ingsoft.mesos.server.model.cards.buildings;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.enums.CharacterType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class SetForFood extends BuildingCard {
-    private int rewardFood;
-    // TODO: map for new entries to track the sets that will be completed during the game
-    public SetForFood(int id, Era era, int fc, int pp, boolean hasEffectDuringMatch) {
+    private final int rewardFood;
+    private final Map<CharacterType, Integer> characterTypeCountMap;
+
+    public SetForFood(int id, Era era, int fc, int pp, int rewardFood, boolean hasEffectDuringMatch) {
         super(id, era, fc, pp, hasEffectDuringMatch);
+        this.rewardFood = rewardFood;
+        this.characterTypeCountMap = new HashMap<>();
+        for (CharacterType type : CharacterType.values()) {
+            this.characterTypeCountMap.put(type, 0);
+        }
     }
 
-    // un metodo per aggiungere un tipo di personaggio
-    // un metodo per capire se il bonus è applicabile: booleanHasBonus()
-    // un metodo per decrementare la quantità dei vari tipi di personaggio
+    
+    public void addCharacterType(CharacterType type) {
+        if (this.characterTypeCountMap.containsKey(type)) {
+            this.characterTypeCountMap.put(type, this.characterTypeCountMap.get(type) + 1);
+        }
+    }
 
-    // NB se un giocatore possiede questa carta ogni volta che pesca bisogna gestire il possibile bonus
-    // e la modifica del tracciamento dei numeri di tipo del personaggio
+    
+    public boolean hasBonus() {
+        return this.characterTypeCountMap.values().stream()
+                .allMatch(count -> count > 0);
+    }
+
+    public void decrementCharacterType(CharacterType type) {
+        if (this.characterTypeCountMap.containsKey(type)) {
+            int currentCount = this.characterTypeCountMap.get(type);
+            if (currentCount > 0) {
+                this.characterTypeCountMap.put(type, currentCount - 1);
+            }
+        }
+    }
+
+    public void decrementAllCharacterTypes() {
+        for (CharacterType type : CharacterType.values()) {
+            decrementCharacterType(type);
+        }
+    }
+
+    public int getCharacterTypeCount(CharacterType type) {
+        return this.characterTypeCountMap.getOrDefault(type, 0);
+    }
+
+    public int getRewardFood() {
+        decrementAllCharacterTypes();
+        return this.rewardFood;
+    }
 
 }
