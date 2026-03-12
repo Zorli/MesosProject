@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
@@ -58,14 +59,28 @@ public class LowerPile {
 
     /**
      * Risolve gli eventi presenti nella riga inferiore.
+     * La SustenanceEventCard viene risolta sempre per ultima.
      */
-    public void resolveLowerRowEvents(List<Player> players, TribeDeck tribeDeck) {
+    public void resolveLowerRowEvents(ArrayList<Player> players) {
+//        SustenanceEventCard sustenanceEvent = null;
+//
+//        // 1. Passiamo in rassegna tutte le carte
 //        for (TribeCard card : this.tribeCards) {
-//            if (card instanceof EventCard) {
+//
+//            if (card instanceof SustenanceEventCard) {
+//                // Se è l'evento di Sostentamento, lo "parcheggiamo" per dopo
+//                sustenanceEvent = (SustenanceEventCard) card;
+//
+//            } else if (card instanceof EventCard) {
+//                // Se è un evento normale, applichiamo subito l'effetto
 //                EventCard event = (EventCard) card;
-//                // Ipotizzando che la carta evento abbia un metodo resolve()
-//                event.resolve(players, tribeDeck);
+//                event.applyEffect(players);
 //            }
+//        }
+//
+//        // 2. Risolviamo l'evento di Sostentamento per ultimo (se presente)
+//        if (sustenanceEvent != null) {
+//            sustenanceEvent.applyEffect(players);
 //        }
     }
 
