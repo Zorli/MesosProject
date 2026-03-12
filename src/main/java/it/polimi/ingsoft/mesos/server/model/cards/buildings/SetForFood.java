@@ -20,14 +20,12 @@ public class SetForFood extends BuildingCard {
         }
     }
 
-    
     public void addCharacterType(CharacterType type) {
         if (this.characterTypeCountMap.containsKey(type)) {
             this.characterTypeCountMap.put(type, this.characterTypeCountMap.get(type) + 1);
         }
     }
 
-    
     public boolean hasBonus() {
         return this.characterTypeCountMap.values().stream()
                 .allMatch(count -> count > 0);
