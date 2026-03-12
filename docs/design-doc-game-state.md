@@ -1,118 +1,48 @@
-# Design Doc - Game State
+# Design Doc - Gestione Stato
 
 ## Contesto
 
 ### Package di riferimento
-`it.polimi.ingsoft.mesos.server.model.game`
+`it.polimi.ingsoft.mesos.server.model.GameState`
 
-### Obiettivo del design doc
-Descrivere il package `game` come contenitore dello stato della partita, chiarendo:
-- quali classi contiene
+### Obiettivo 
+Descrivere il package `game-state` come contenitore dello stato della partita, chiarendo:
+- quali classiFai contiene
 - quali responsabilita' assegna a ciascuna classe
 - con quali componenti si interfaccia
-- quali decisioni di design porta a casa
 
 ## Problema che il package risolve
-
-### Quale parte del dominio modella
-
-### Quale stato della partita deve rappresentare
-
-### Perche' serve un package dedicato
-
-## Responsabilita' del package
-
-### Di cosa si occupa
-
-### Di cosa non si occupa
-
-### Confini del package
-
+- Punto di raccolta delle informazioni generali del game
+- Punto di aggregazione dei servizi di dominio offerti e che possono essere chiamati da game orchestrator.
+- Check di consistenza sulle chiamate fatte da un certo client.
+Gestione dello stato corrente e modifica dello stato corrente.
+ 
 ## Vista d'insieme
 
 ### Classi presenti nel package
 - `Game`
-- Altre classi del package da aggiungere qui
+- 'turnstate'
+- 'turnodertrack'
 
-### Relazioni principali tra le classi
-
-### Collaboratori esterni principali
-- `Player`
-- `Era`
-- `GameStatus`
-- Orchestratori / controller
-- Carte, effetti, building o altri componenti del modello
 
 ## Analisi classe per classe
 
 ### `Game`
+Nota : 
+- GameOrchestrator = application service / adapter socket
+  - Game = aggregate root / facciata del dominio
+  - classi interne di Game = dettagli implementativi del dominio
+Responsabilità principali
+Game si occupa di mantenere le informazioni rilevanti per il match e di fornire un entrypoint su cui fare le chiamate 
+  - per il game orchestrator.
 
-#### Responsabilita' principali
+Stato che possiede
 
-#### Stato che possiede
+Operazioni che espone
+- setup()
+Ipotizzo che il gioco sia già stato creato e pertanto ha già gli attributi fissati, quelli necessari per il setup 
+- del gioco
+sono il numero di player.
+Per la creazione del game chiamo una factory che mi fornisce già il gioco con tutto istanziato e pronto per essere 
+- runnato a seconda del numero di giocatori
 
-#### Operazioni che espone
-
-#### Collaboratori con cui si interfaccia
-
-#### Invarianti o regole che deve mantenere
-
-#### Cosa non dovrebbe fare
-
-### `NomeClasse`
-
-#### Responsabilita' principali
-
-#### Stato che possiede
-
-#### Operazioni che espone
-
-#### Collaboratori con cui si interfaccia
-
-#### Invarianti o regole che deve mantenere
-
-#### Cosa non dovrebbe fare
-
-## Interazioni con il resto del sistema
-
-### Rapporto con game orchestrator / controller
-
-### Rapporto con i player
-
-### Rapporto con carte evento, effetti e building
-
-### Rapporto con enum e value object di supporto
-
-## Responsabilita' distribuite
-
-### Cosa decide il package `game`
-
-### Cosa delega ad altri package
-
-### Perche' questa suddivisione e' utile
-
-## Flussi principali supportati
-
-### Creazione dello stato iniziale della partita
-
-### Aggiornamento dello stato durante il turno
-
-### Lettura dello stato da parte di componenti esterni
-
-### Transizioni di stato rilevanti
-
-## Decisioni di design
-
-### Scelte strutturali adottate
-
-### Trade-off accettati
-
-### Alternative possibili o scartate
-
-## Dubbi aperti
-
-### Classi mancanti o da spostare
-
-### Responsabilita' ancora poco chiare
-
-### Evoluzioni future del package

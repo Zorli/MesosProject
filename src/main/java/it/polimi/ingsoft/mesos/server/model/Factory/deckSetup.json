@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "cardIdPolicy": "global-unique-per-physical-card",
+    "eraValues": ["first", "second", "third"],
+    "supportedPlayerCounts": [2, 3, 4, 5],
+    "notes": [
+      "tribeDeck contains both character cards and event cards, because current model represents events as TribeCard subclasses",
+      "buildingDeck is separated by era because buildings are already modeled with era-specific setup"
+    ]
+  },
+  "deckSetups": {
+    "2": {
+      "tribeDeck": {
+        "first": [
+          {
+            "id": 1001,
+            "kind": "character",
+            "type": "HUNTER",
+            "era": "first",
+            "constructorArgs": {
+              "hasEffect": false
+            }
+          },
+          {
+            "id": 1002,
+            "kind": "character",
+            "type": "GATHERER",
+            "era": "first",
+            "constructorArgs": {
+              "hasEffect": false
+            }
+          },
+          {
+            "id": 1101,
+            "kind": "event",
+            "type": "HUNT_EVENT",
+            "era": "first",
+            "constructorArgs": {
+              "foodReward": 1,
+              "prestigePointsReward": 1
+            }
+          },
+          {
+            "id": 1102,
+            "kind": "event",
+            "type": "SUSTENANCE_EVENT",
+            "era": "first",
+            "constructorArgs": {}
+          }
+        ],
+        "second": [],
+        "third": []
+      },
+      "buildingDeck": {
+        "first": [
+          {
+            "id": 2001,
+            "kind": "building",
+            "type": "SET_FOR_FOOD",
+            "era": "first",
+            "constructorArgs": {
+              "foodCost": 2,
+              "prestigePoints": 3,
+              "hasEffectDuringMatch": true
+            }
+          }
+        ],
+        "second": [],
+        "third": []
+      }
+    },
+    "3": {
+      "tribeDeck": {
+        "first": [],
+        "second": [],
+        "third": []
+      },
+      "buildingDeck": {
+        "first": [],
+        "second": [],
+        "third": []
+      }
+    },
+    "4": {
+      "tribeDeck": {
+        "first": [],
+        "second": [],
+        "third": []
+      },
+      "buildingDeck": {
+        "first": [],
+        "second": [],
+        "third": []
+      }
+    },
+    "5": {
+      "tribeDeck": {
+        "first": [],
+        "second": [],
+        "third": []
+      },
+      "buildingDeck": {
+        "first": [],
+        "second": [],
+        "third": []
+      }
+    }
+  }
+}
