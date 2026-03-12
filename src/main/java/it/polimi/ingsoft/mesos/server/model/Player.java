@@ -10,6 +10,10 @@ public class Player {
     private int prestigePoints;
     private TotemColor totem;
 
+    public String getNickname() {
+        return this.nickname;
+    }
+
     public void gainFood(int amount) {
         this.food += amount;
     }

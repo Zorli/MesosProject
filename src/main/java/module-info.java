@@ -1,4 +1,5 @@
 module it.polimi.ingsoft.mesos {
+    requires java.sql;
     requires javafx.controls;
     requires javafx.fxml;
 
@@ -10,4 +11,5 @@ module it.polimi.ingsoft.mesos {
     exports it.polimi.ingsoft.mesos.server;
     exports it.polimi.ingsoft.mesos.server.model;
     exports it.polimi.ingsoft.mesos.server.model.enums;
+    exports it.polimi.ingsoft.mesos.server.model.ranking;
 }
