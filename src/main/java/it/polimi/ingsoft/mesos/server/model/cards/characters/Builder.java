@@ -1,9 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.cards.characters;
 
-import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 
-public class Builder extends Card {
+public class Builder extends TribeCard {
     private final int priceDiscount;
     private final int prestigePoints;
 

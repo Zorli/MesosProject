@@ -1,9 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.cards.characters;
 
-import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 
-public class Shaman extends Card {
+public class Shaman extends TribeCard {
     private final int stars;
     public Shaman(int id, Era era, int stars) {
         super(id, era);
