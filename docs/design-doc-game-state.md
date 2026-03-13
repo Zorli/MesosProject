@@ -23,18 +23,27 @@ Gestione dello stato corrente e modifica dello stato corrente.
 - `Game`
 - 'turnstate'
 - 'turnodertrack'
+## Rapporto con game orchestrator
+1. GameController valida che la partita possa partire su richiesta dell'host.
+2. GameController crea GameOrchestrator.
+3. GameOrchestrator chiama factory.createGame(players).
+4. GameOrchestrator chiama game.setup()(scelta iniziale delle pedine e primi malus/Bonus)
+5. Il Game passa a stato attivo 
+- GameOrchestrator = application service / adapter socket una volta iniziata la partita
+- Game = aggregate root / facciata del dominio, dove game orchestrator si rivolge per effettuare le chiamate
+- classi interne di Game = dettagli implementativi del dominio
+Faccio predispozione per fare in modo che possa essere parallelizato l'avvio di due game, usando stesso metodo 
+factory
 
 
 ## Analisi classe per classe
 
 ### `Game`
-Nota : 
-- GameOrchestrator = application service / adapter socket
-  - Game = aggregate root / facciata del dominio
-  - classi interne di Game = dettagli implementativi del dominio
 Responsabilità principali
 Game si occupa di mantenere le informazioni rilevanti per il match e di fornire un entrypoint su cui fare le chiamate 
-  - per il game orchestrator.
+per il game orchestrator.
+A ogni chiamata principale di game orchestrator verso game potrei ritornare un oggetto che incapsula il risultato 
+dell'azione cosi che il game orchestrator possa essere notificato di questo evento.
 
 Stato che possiede
 

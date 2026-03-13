@@ -49,6 +49,8 @@ public class Game {
         return this.status;
     }
 
+    //I need to expose all the methods that a client could ask for advancing in the game
+
     /*
     This method is offered from the Game to the GameOrchestrator.
     I think that during this phase we should ask the players what totem they want and where to place
@@ -57,5 +59,28 @@ public class Game {
     public void setup(){
 
     }
+
+    //The gameorchestrator redirect to me the move from the player in a specific location
+    public void moveTotem(Player player, int offerSpaceIndex){
+
+
+
+    }
+
+    //Which card on the board the player choose to pick
+    public void chooseCard(Player player){
+    }
+
+
+    //When the game is ended, I need to calculate the score in terms of PP for every player, I have to return
+    //something that can be used both for showing the result and also to save in the leaderboard
+    public void calculateFinalScore(){
+
+    }
+
+
+
+
+
 
 }
