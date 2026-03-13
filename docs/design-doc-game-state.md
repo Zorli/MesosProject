@@ -44,6 +44,8 @@ Game si occupa di mantenere le informazioni rilevanti per il match e di fornire 
 per il game orchestrator.
 A ogni chiamata principale di game orchestrator verso game potrei ritornare un oggetto che incapsula il risultato 
 dell'azione cosi che il game orchestrator possa essere notificato di questo evento.
+TurnState FSM del singolo turno del giocatore
+TurnOderTrack tiene conto dell'ordine del round
 
 Stato che possiede
 
