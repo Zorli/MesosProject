@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.cards;
-
-
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 // Visto che i mazzi sono costanti una volta determinato il num di giocatori non ha troppo senso inserire IsPlayable...
 
@@ -11,4 +10,5 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 
 public interface CardAction {
     Era getEra();
+    boolean isDrawable(Player player);
 }

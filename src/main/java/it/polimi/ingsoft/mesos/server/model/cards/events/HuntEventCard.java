@@ -2,11 +2,10 @@ package it.polimi.ingsoft.mesos.server.model.cards.events;
 
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 
 import java.util.ArrayList;
 
-public class HuntEventCard extends TribeCard implements EventAction {
+public class HuntEventCard extends EventCard {
     private final int foodReward;
     private final int prestigePointsReward;
 

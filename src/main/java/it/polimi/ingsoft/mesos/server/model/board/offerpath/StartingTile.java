@@ -26,17 +26,11 @@ public class StartingTile {
      * e li posiziona fisicamente nei blocchi corrispondenti.
      */
     public void placePlayers(List<Player> orderedPlayers) {
-        // 1. Assicuriamoci che tutti i blocchi siano vuoti prima di iniziare
         this.startingBlocks.forEach(StartingBlock::clear);
-
-        // 2. Iteriamo sui giocatori e li piazziamo nei blocchi in ordine sequenziale
         for (int i = 0; i < orderedPlayers.size(); i++) {
-            // Controllo di sicurezza: verifichiamo che esista un blocco per il giocatore
             if (i < this.startingBlocks.size()) {
                 StartingBlock currentBlock = this.startingBlocks.get(i);
                 Player currentPlayer = orderedPlayers.get(i);
-
-                // Il giocatore occupa il blocco
                 currentBlock.occupy(currentPlayer);
             }
         }
