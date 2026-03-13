@@ -7,8 +7,11 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import java.util.ArrayList;
 
 public class SustenanceEventCard extends TribeCard implements EventAction {
-    public SustenanceEventCard(int id, Era era) {
+    public final int prestigePointsToRemovePerCharacter;
+
+    public SustenanceEventCard(int id, Era era, int prestigePointsToRemovePerCharacter) {
         super(id, era);
+        this.prestigePointsToRemovePerCharacter = prestigePointsToRemovePerCharacter;
     }
 
     @Override
@@ -20,7 +23,16 @@ public class SustenanceEventCard extends TribeCard implements EventAction {
             if (totalToRemove < 0) {
                 totalToRemove = 0;
             }
+            // TODO: sconto ulteriore dall'edificio che fa pagare meno cibo per il sostentamento
+
+            int multiplierForNotEnoughFood = totalToRemove - player.getFood();
+            if (multiplierForNotEnoughFood <= 0) {
+                multiplierForNotEnoughFood = 0;
+            } else {
+                totalToRemove -= multiplierForNotEnoughFood;
+            }
             player.payFood(totalToRemove);
+            player.payPrestigePoints(multiplierForNotEnoughFood * this.prestigePointsToRemovePerCharacter);
         }
 
     }

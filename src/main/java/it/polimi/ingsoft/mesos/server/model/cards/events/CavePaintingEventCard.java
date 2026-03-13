@@ -27,6 +27,9 @@ public class CavePaintingEventCard extends TribeCard implements EventAction {
             } else {
                 player.gainPrestigePoints(this.prestigePointsForPositive * numOfArtists);
             }
+
+            //TODO: bonus di cibo se si ha l'edificio che fa guadagnare cibo per ogni artista durante l'evento
+
         }
     }
 

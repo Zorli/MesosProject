@@ -22,6 +22,8 @@ public class HuntEventCard extends TribeCard implements EventAction {
             int hunterCount = player.getTribe().countHunters();
             player.gainPrestigePoints(this.prestigePointsReward * hunterCount);
             player.gainFood(this.foodReward * hunterCount);
+
+            // TODO: bonus di cibo(1) e pp(1) se si ha l'edificio per l'evento in questione
         }
 
     }
