@@ -4,10 +4,9 @@ import it.polimi.ingsoft.mesos.server.model.Player;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,22 +83,20 @@ class LobbyTest {
         lobby.addPlayer(bob);
         lobby.addPlayer(carol);
         lobby.removePlayer(playerWithNickname("Alice"));
-        lobby.transferHostToSecondPlayer();
 
         assertEquals("Bob", lobby.getHostNickname());
     }
 
+    @Test
+    void removeLastPlayerClearsHostNickname() {
+        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
+
+        lobby.removePlayer(playerWithNickname("Alice"));
+
+        assertNull(lobby.getHostNickname());
+    }
+
     private static Player playerWithNickname(String nickname) {
-        Player player = new Player();
-
-        try {
-            Field nicknameField = Player.class.getDeclaredField("nickname");
-            nicknameField.setAccessible(true);
-            nicknameField.set(player, nickname);
-        } catch (NoSuchFieldException | IllegalAccessException exception) {
-            throw new RuntimeException(exception);
-        }
-
-        return player;
+        return new Player(nickname);
     }
 }

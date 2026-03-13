@@ -10,6 +10,13 @@ public class Player {
     private int prestigePoints;
     private TotemColor totem;
 
+    public Player() {
+    }
+
+    public Player(String nickname) {
+        this.nickname = nickname;
+    }
+
     public String getNickname() {
         return this.nickname;
     }
