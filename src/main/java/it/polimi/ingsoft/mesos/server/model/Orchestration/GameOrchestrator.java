@@ -19,6 +19,7 @@ public class GameOrchestrator {
     // we need to perform basics checks on the correctnes of the request and moreover if the player is
     // for real in the match.
     //5)Call the requested method from the client in the game class
+
     public GameOrchestrator(GameFactory gameFactory, ArrayList<Player> players) {
         this.game = gameFactory.createGame(players);
     }

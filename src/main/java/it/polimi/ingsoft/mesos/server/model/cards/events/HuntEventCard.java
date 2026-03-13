@@ -22,7 +22,5 @@ public class HuntEventCard extends EventCard {
             player.gainPrestigePoints(this.prestigePointsReward * hunterCount);
             player.gainFood(this.foodReward * hunterCount);
         }
-
     }
-
 }
