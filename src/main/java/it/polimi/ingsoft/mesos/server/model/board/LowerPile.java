@@ -20,11 +20,21 @@ public class LowerPile {
         this.tribeCards = new ArrayList<>();
         this.buildingCards = new ArrayList<>();
     }
-
+    // getter for setup and refill
+    public int getTribeCardsSize() {
+        return this.tribeCards.size();
+    }
     public void addTribeCards(List<TribeCard> cards) {
         this.tribeCards.addAll(cards);
     }
-
+    // Da usare durante il setup o i refill (una carta alla volta)
+    public void addCard(Card card) {
+        if (card instanceof TribeCard) {
+            this.tribeCards.add((TribeCard) card);
+        } else if (card instanceof BuildingCard) {
+            this.buildingCards.add((BuildingCard) card);
+        }
+    }
     public void addBuildingCards(List<BuildingCard> cards) {
         this.buildingCards.addAll(cards);
     }

@@ -14,11 +14,22 @@ public class UpperPile {
         this.tribeCards = new ArrayList<>();
         this.buildingCards = new ArrayList<>();
     }
-
+    // getter for setup and refill
+    public int getTribeCardsSize() {
+        return this.tribeCards.size();
+    }
     // --- METODI PER IL REFILL (Usati dalla Board quando pesca dai mazzi) ---
     // in caso di fine round o fine era
     public void addTribeCards(List<TribeCard> cards) {
         this.tribeCards.addAll(cards);
+    }
+    // Da usare durante il setup o i refill (una carta alla volta)
+    public void addCard(Card card) {
+        if (card instanceof TribeCard) {
+            this.tribeCards.add((TribeCard) card);
+        } else if (card instanceof BuildingCard) {
+            this.buildingCards.add((BuildingCard) card);
+        }
     }
 
     public void addBuildingCards(List<BuildingCard> cards) {
