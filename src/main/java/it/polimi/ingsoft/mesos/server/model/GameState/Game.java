@@ -60,7 +60,7 @@ public class Game {
 
     }
 
-    //The gameorchestrator redirect to me the move from the player in a specific location
+    //The game orchestrator redirect to me the move from the player in a specific location
     public void moveTotem(Player player, int offerSpaceIndex){
 
 
@@ -69,6 +69,8 @@ public class Game {
 
     //Which card on the board the player choose to pick
     public void chooseCard(Player player){
+
+
     }
 
 
@@ -77,10 +79,5 @@ public class Game {
     public void calculateFinalScore(){
 
     }
-
-
-
-
-
 
 }

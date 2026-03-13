@@ -23,7 +23,5 @@ public class HuntEventCard extends TribeCard implements EventAction {
             player.gainPrestigePoints(this.prestigePointsReward * hunterCount);
             player.gainFood(this.foodReward * hunterCount);
         }
-
     }
-
 }
