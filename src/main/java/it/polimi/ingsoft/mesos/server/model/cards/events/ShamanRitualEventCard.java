@@ -2,12 +2,11 @@ package it.polimi.ingsoft.mesos.server.model.cards.events;
 
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 
 import java.util.ArrayList;
 
 
-public class ShamanRitualEventCard extends TribeCard implements EventAction {
+public class ShamanRitualEventCard extends EventCard {
     private final int prestigePointsForHigher;
     private final int prestigePointsForLower;
 

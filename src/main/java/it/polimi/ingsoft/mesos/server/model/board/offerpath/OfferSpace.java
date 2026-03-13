@@ -18,7 +18,7 @@ public class OfferSpace {
     public OfferSpace(int positionIndex, String code, int minPlayers, int foodBonus,
                       int topRowCardsToTake, int bottomRowCardsToTake) {
         this.positionIndex = positionIndex;
-        this.code = code;
+        this.code = code; // che serve (?)
         this.minPlayers = minPlayers;
         this.foodBonus = foodBonus;
         this.topRowCardsToTake = topRowCardsToTake;
@@ -42,7 +42,7 @@ public class OfferSpace {
     // --- METODI SPECIFICI DI OFFER SPACE  ---
 
     /**
-     * Determina se questo spazio esiste/è giocabile in base al numero di giocatori.
+     * Determina se questo spazio esiste/è giocabile in base al numero di giocatori. (serve nel build offerpath)
      */
     public boolean isEnabledFor(int playerCount) {
         return playerCount >= this.minPlayers;
@@ -64,7 +64,7 @@ public class OfferSpace {
             player.gainFood(this.foodBonus);
         }
 
-        // 2. Pesca dalla riga superiore manca il draftcard da game
+        // 2. Pesca dalla riga superiore manca il draftcard da game (o da altre parti)
 //        for (int i = 0; i < this.topRowCardsToTake; i++) {
 //            // game.draftCard restituisce 'true' se il giocatore ha pescato con successo,
 //            // o 'false' se non c'erano carte valide o accessibili.

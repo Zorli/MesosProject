@@ -39,15 +39,11 @@ public class Board {
     public void shiftUpperToLower() {
         //elimiamo da sotto (dopo risoluzione eventi)
         this.lowerPile.discardLowerRow();
-        // 1. Chiediamo alla riga superiore di darci tutte le sue carte Tribù.
-        // (L'UpperPile si occuperà da sola di svuotare la sua lista interna di TribeCard)
         List<TribeCard> tribeCardsToMove = this.upperPile.removeAndReturnAllTribeCards();
 
-        // 2. Passiamo queste carte direttamente alla riga inferiore.
         if (tribeCardsToMove != null && !tribeCardsToMove.isEmpty()) {
             this.lowerPile.addTribeCards(tribeCardsToMove);
         }
-        // attenzione va fatto (gestito dal controller) a passetti precisi (prima svuota lower e poi shift)
     }
 
     public void refillUpperTribeCards(TribeDeck tribeDeck, int playerCount) {
@@ -55,10 +51,7 @@ public class Board {
     }
 
     public void moveUpperBuildingCardsToLowerRow() {
-        // Pulizia automatica prima dello spostamento
         this.lowerPile.discardLowerBuildings();
-
-        // Trasferimento atomico
         List<BuildingCard> buildingsToMove = this.upperPile.removeAndReturnAllBuildingCards();
         if (buildingsToMove != null) {
             this.lowerPile.addBuildingCards(buildingsToMove);
@@ -73,7 +66,7 @@ public class Board {
     /**
      * Restituisce solo le carte della riga superiore che il giocatore può effettivamente prendere.
      */
-    //manca il canbedrafted sulla carta
+    //manca il canBeDrafted sulla carta
 //    public List<Card> getDraftableUpperCards(Player player) {
 //        return this.upperPile.getAllCards().stream()
 //                .filter(card -> card.canBeDraftedBy(player))
