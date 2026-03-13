@@ -7,7 +7,7 @@
 1) Lista bonus type
 2) Gestione eventi in base ai building
 3) Costruzione building con apply effect per fase finale del gioco
-4) Get Nickname player
+
 
 ## Tom Vaccari
 Nota : Game controller solo in fase di setup poi verso game orchestrator
@@ -20,3 +20,6 @@ Nota : Game controller solo in fase di setup poi verso game orchestrator
 1) Board da finire con costruttore
 2) Finire metodi board
 3) Attributi deck
+4) Get Nickname player aggiunta metodo
+5) Isdrawable risoluzione problema
+
