@@ -12,6 +12,7 @@ I can initialize the object.
 Then I can use it to track who needs to play.
 After the round I have to re-insert the new order provided from the offer path.
 This operation is going to be completed in Game.
+This class has to be instantied by the factory.
  */
 
 public class TurnOrderTrack {

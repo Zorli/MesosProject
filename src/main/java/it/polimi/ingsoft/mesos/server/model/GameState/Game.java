@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 
 import java.util.ArrayList;
 
@@ -24,7 +25,9 @@ public class Game {
     private TurnOrderTrack turnOrderTrack;
     private TurnState turnState;
     //Need only the id and the number of players, the era it's clearly the first one
-    public Game(int id, ArrayList<Player> players) {
+    public Game(int id, ArrayList<Player> players, TurnState turnState, TurnOrderTrack turnOrderTrack, Board board,
+                TribeDeck  tribeDeck, BuildingDeck buildingDeck)
+    {
         this.id = id;
         this.players = players;
         this.currentEra = Era.first;
@@ -62,6 +65,7 @@ public class Game {
      */
     public void setup(){
         //We ask in turn as they are ordered in the list to the player where they want to place the totem.
+
 
     }
 
