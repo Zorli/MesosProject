@@ -27,8 +27,11 @@ public class DefaultGameFactory implements GameFactory {
         I need to create :
         1) TurnState
         2) Turn Oder Track
-        3) BoardPackage
-        4) Card Package
+        3) Card Package
+        4) BoardPackage Creo oggetto board, poi mi espone già il costruttore
+
+
+
 
 
 

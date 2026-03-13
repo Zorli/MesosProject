@@ -6,7 +6,7 @@ In questo repository usiamo 3 tipi di branch:
 
 - `main`: contiene la versione stabile.
 - `develop`: branch di integrazione, dove finiscono le feature completate.
-- `feature/<nome-feature>`: branch temporanei per sviluppo di una singola funzionalita (anche per bug-fix).
+- `feat/<nome-feature>`: branch temporanei per sviluppo di una singola funzionalita (anche per bug-fix).
 
 Regole base:
 

@@ -17,6 +17,5 @@ public class ActionResult {
         this.roundEnded = false;
         this.gameEnded = false;
     }
-
 }
 
