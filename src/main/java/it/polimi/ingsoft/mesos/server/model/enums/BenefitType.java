@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.enums;
 public enum BenefitType {
     POST_DRAW_SET_FOR_FOOD,
     POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION,
+    END_ROUND_EXTRA_CARD,
     END_ROUND_TOTEM_POSITION,
 
     EVENT_BONUS_SUSTENANCE_DISCOUNT_FOR_TYPE,

@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.cards.buildings;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.enums.CharacterType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,8 +12,8 @@ public class SetForFood extends BuildingCard {
     private final int rewardFood;
     private final Map<CharacterType, Integer> characterTypeCountMap;
 
-    public SetForFood(int id, Era era, int fc, int pp, int rewardFood, boolean hasEffectDuringMatch) {
-        super(id, era, fc, pp, hasEffectDuringMatch);
+    public SetForFood(int id, Era era, int fc, int pp, int rewardFood) {
+        super(id, era, fc, pp);
         this.rewardFood = rewardFood;
         this.characterTypeCountMap = new HashMap<>();
         for (CharacterType type : CharacterType.values()) {
@@ -20,9 +21,13 @@ public class SetForFood extends BuildingCard {
         }
     }
 
-    public void addCharacterType(CharacterType type) {
+    public void addCharacterTypeAndApplyEffect(CharacterType type, Player player) {
         if (this.characterTypeCountMap.containsKey(type)) {
             this.characterTypeCountMap.put(type, this.characterTypeCountMap.get(type) + 1);
+        }
+        if(hasBonus()) {
+            decrementAllCharacterTypes();
+            player.gainFood(this.rewardFood);
         }
     }
 
