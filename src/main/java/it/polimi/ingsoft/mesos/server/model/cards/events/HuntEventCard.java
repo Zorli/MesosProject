@@ -25,7 +25,5 @@ public class HuntEventCard extends TribeCard implements EventAction {
 
             // TODO: bonus di cibo(1) e pp(1) se si ha l'edificio per l'evento in questione
         }
-
     }
-
 }

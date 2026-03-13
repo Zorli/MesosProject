@@ -19,6 +19,10 @@ public class Player {
         this.tribe = tribe;
     }
 
+    public String getNickname() {
+        return this.nickname;
+    }
+
 
     public void gainFood(int amount) {
         this.food += amount;
