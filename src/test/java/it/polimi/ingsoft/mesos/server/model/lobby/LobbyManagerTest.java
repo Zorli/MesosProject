@@ -1,13 +1,16 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.Player;
+import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static it.polimi.ingsoft.mesos.server.model.lobby.LobbyTestPlayers.playerWithNickname;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -97,6 +100,18 @@ class LobbyManagerTest {
     }
 
     @Test
+    void createGameFromLobbyReturnsGameOrchestratorAndStartsLobby() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createLobby(playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+
+        GameOrchestrator gameOrchestrator = manager.createGameFromLobby(lobby.getId());
+
+        assertInstanceOf(GameOrchestrator.class, gameOrchestrator);
+        assertEquals(LobbyStatus.STARTED, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
     void listOpenLobbiesExcludesStartedAndClosedLobbies() {
         LobbyManager manager = new LobbyManager();
 
@@ -118,9 +133,5 @@ class LobbyManagerTest {
         LobbyManager manager = new LobbyManager();
 
         assertFalse(manager.getLobby(999).isPresent());
-    }
-
-    private static Player playerWithNickname(String nickname) {
-        return new Player(nickname);
     }
 }

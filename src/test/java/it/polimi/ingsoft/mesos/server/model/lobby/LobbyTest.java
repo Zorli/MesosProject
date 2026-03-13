@@ -1,9 +1,10 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.Player;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;
 
+import static it.polimi.ingsoft.mesos.server.model.lobby.LobbyTestPlayers.playerWithNickname;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -94,9 +95,5 @@ class LobbyTest {
         lobby.removePlayer(playerWithNickname("Alice"));
 
         assertNull(lobby.getHostNickname());
-    }
-
-    private static Player playerWithNickname(String nickname) {
-        return new Player(nickname);
     }
 }

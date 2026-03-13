@@ -1,10 +1,11 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.Player;
+import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -20,13 +21,28 @@ import java.util.Optional;
 public class LobbyManager {
     private int nextLobbyId;
     private final Map<Integer, Lobby> lobbies;
+    private final GameFactory gameFactory;
 
     /**
      * Creates an empty lobby manager with progressive lobby identifiers.
      */
     public LobbyManager() {
+        this(new DefaultGameFactory());
+    }
+
+    /**
+     * Creates an empty lobby manager with the provided game factory.
+     *
+     * @param gameFactory factory used to bootstrap new games
+     */
+    public LobbyManager(GameFactory gameFactory) {
+        if (gameFactory == null) {
+            throw new IllegalArgumentException("Game factory cannot be null");
+        }
+
         this.nextLobbyId = 1;
         this.lobbies = new HashMap<>();
+        this.gameFactory = gameFactory;
     }
 
     /**
@@ -135,15 +151,13 @@ public class LobbyManager {
         return Optional.ofNullable(this.lobbies.get(lobbyId));
     }
 
-    // TODO: usare il tipo di ritorno `Game` e rimuovere la reflection quando la classe Game sarà disponibile in questo branch.
     /**
-     * Creates a game instance from a ready lobby and marks the lobby as started.
-     * Reflection is used temporarily because the concrete {@code Game} type is not yet available in this branch.
+     * Creates a game orchestrator from a ready lobby and marks the lobby as started.
      *
      * @param lobbyId lobby identifier
-     * @return created game instance
+     * @return created game orchestrator
      */
-    public Object createGameFromLobby(int lobbyId) {
+    public GameOrchestrator createGameFromLobby(int lobbyId) {
         Lobby lobby = this.resolveLobby(lobbyId);
 
         if (lobby.getStatus() != LobbyStatus.READY) {
@@ -154,20 +168,12 @@ public class LobbyManager {
             throw new IllegalStateException("Cannot create game from lobby that cannot start");
         }
 
-        try {
-            Class<?> gameClass = Class.forName("it.polimi.ingsoft.mesos.server.model.GameState.Game");
-            Constructor<?> gameConstructor = gameClass.getConstructor(int.class, ArrayList.class);
-
-            Object game = gameConstructor.newInstance(lobby.getId(), new ArrayList<>(lobby.getPlayers()));
-            lobby.setStatus(LobbyStatus.STARTED);
-            return game;
-        } catch (ClassNotFoundException exception) {
-            throw new IllegalStateException("Game class is not available in this module yet", exception);
-        } catch (NoSuchMethodException exception) {
-            throw new IllegalStateException("Expected Game constructor (int, ArrayList<Player>) not found", exception);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException exception) {
-            throw new IllegalStateException("Cannot instantiate Game from lobby", exception);
-        }
+        GameOrchestrator gameOrchestrator = new GameOrchestrator(
+                this.gameFactory,
+                new ArrayList<>(lobby.getPlayers())
+        );
+        lobby.setStatus(LobbyStatus.STARTED);
+        return gameOrchestrator;
     }
 
     /**
