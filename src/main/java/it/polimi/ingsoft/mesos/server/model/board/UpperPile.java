@@ -31,9 +31,6 @@ public class UpperPile {
      */
     public List<Card> getAllCards() {
         List<Card> allCards = new ArrayList<>();
-
-        // Grazie al polimorfismo e ai Generics di Java,
-        // possiamo aggiungere tranquillamente entrambe le liste figlie!
         allCards.addAll(this.tribeCards);
         allCards.addAll(this.buildingCards);
 
@@ -47,11 +44,8 @@ public class UpperPile {
      * e le restituisce in blocco per farle scorrere giù.
      */
     public List<TribeCard> removeAndReturnAllTribeCards() {
-        // Creiamo una copia della lista attuale da restituire
         List<TribeCard> cardsToMove = new ArrayList<>(this.tribeCards);
-        // Svuotiamo la lista interna della riga superiore
         this.tribeCards.clear();
-
         return cardsToMove;
     }
 
@@ -62,7 +56,6 @@ public class UpperPile {
     public List<BuildingCard> removeAndReturnAllBuildingCards() {
         List<BuildingCard> cardsToMove = new ArrayList<>(this.buildingCards);
         this.buildingCards.clear();
-
         return cardsToMove;
     }
 
