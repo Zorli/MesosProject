@@ -1,0 +1,24 @@
+package it.polimi.ingsoft.mesos.server.model.cards.characters;
+
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
+
+public class Builder extends TribeCard {
+    private final int priceDiscount;
+    private final int prestigePoints;
+
+    public Builder(int id, Era era, int pd, int pp){
+        super(id, era);
+        this.priceDiscount = pd;
+        this.prestigePoints = pp;
+    }
+
+    public int getPriceDiscount(){
+        return this.priceDiscount;
+    }
+
+    public int getPrestigePoints(){
+        return this.prestigePoints;
+    }
+
+}
