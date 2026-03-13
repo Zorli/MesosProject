@@ -66,21 +66,20 @@ public class Board {
     /**
      * Restituisce solo le carte della riga superiore che il giocatore può effettivamente prendere.
      */
-    //manca il canBeDrafted sulla carta
-//    public List<Card> getDraftableUpperCards(Player player) {
-//        return this.upperPile.getAllCards().stream()
-//                .filter(card -> card.canBeDraftedBy(player))
-//                .collect(Collectors.toList());
-//    }
+    public List<Card> getDraftableUpperCards(Player player) {
+        return this.upperPile.getAllCards().stream()
+                .filter(card -> card.isDrawable(player))
+                .collect(Collectors.toList());
+    }
 
     /**
      * Restituisce solo le carte della riga inferiore che il giocatore può effettivamente prendere.
      */
-//    public List<Card> getDraftableLowerCards(Player player) {
-//        return this.lowerPile.getAllCards().stream()
-//                .filter(card -> card.canBeDraftedBy(player))
-//                .collect(Collectors.toList());
-//    }
+    public List<Card> getDraftableLowerCards(Player player) {
+        return this.lowerPile.getAllCards().stream()
+                .filter(card -> card.isDrawable(player))
+                .collect(Collectors.toList());
+    }
 
     // Metodi per permettere al Game di rimuovere la carta una volta acquistata/pescata
     public void removeUpperCard(Card card) {
