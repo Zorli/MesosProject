@@ -1,5 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.cards.events;
 
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.CavePaintingBonus;
+import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
@@ -28,10 +31,12 @@ public class CavePaintingEventCard extends EventCard {
                 player.gainPrestigePoints(this.prestigePointsForPositive * numOfArtists);
             }
 
-            //TODO: bonus di cibo se si ha l'edificio che fa guadagnare cibo per ogni artista durante l'evento
+            for(BuildingCard b: player.getTribe().getBuildings()){
+                if(b.getBenefitType() == BenefitType.EVENT_BONUS_CAVE_PAINTING){
+                    ((CavePaintingBonus) b).applyBonusCavePaintingEvent(player);
+                }
+            }
 
         }
     }
-
-
 }
