@@ -1,8 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.board;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
-import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,13 +11,32 @@ public class UpperPile {
     private List<TribeCard> tribeCards;
     private List<BuildingCard> buildingCards;
 
+    // ==========================================
+    // CONSTRUCTOR
+    // ==========================================
+
     public UpperPile() {
         this.tribeCards = new ArrayList<>();
         this.buildingCards = new ArrayList<>();
     }
 
-    // --- METODI PER IL REFILL (Usati dalla Board quando pesca dai mazzi) ---
-    // in caso di fine round o fine era
+
+    // ==========================================
+    // ADDING CARDS & REFILL
+    // ==========================================
+
+    /**
+     * Smart addition: automatically routes the card to the correct internal list.
+     * Used during setup and single-card refills.
+     */
+    public void addCard(Card card) {
+        if (card instanceof TribeCard) {
+            this.tribeCards.add((TribeCard) card);
+        } else if (card instanceof BuildingCard) {
+            this.buildingCards.add((BuildingCard) card);
+        }
+    }
+
     public void addTribeCards(List<TribeCard> cards) {
         this.tribeCards.addAll(cards);
     }
@@ -25,23 +45,14 @@ public class UpperPile {
         this.buildingCards.addAll(cards);
     }
 
-    /**
-     * Restituisce una lista unificata di tutte le carte presenti nella pila
-     * (sia Tribù che Edifici). Utile per la Board durante le fasi di pesca.
-     */
-    public List<Card> getAllCards() {
-        List<Card> allCards = new ArrayList<>();
-        allCards.addAll(this.tribeCards);
-        allCards.addAll(this.buildingCards);
 
-        return allCards;
-    }
-
-    // --- METODI PER LO SHIFT (Usati dalla Board a fine round) ---
+    // ==========================================
+    // SHIFTING LOGIC (END OF ROUND/ERA)
+    // ==========================================
 
     /**
-     * Estrae tutte le carte Tribù dalla riga superiore, svuotandola,
-     * e le restituisce in blocco per farle scorrere giù.
+     * Extracts all Tribe cards from the upper row, clears it,
+     * and returns them as a block to shift them down.
      */
     public List<TribeCard> removeAndReturnAllTribeCards() {
         List<TribeCard> cardsToMove = new ArrayList<>(this.tribeCards);
@@ -50,8 +61,8 @@ public class UpperPile {
     }
 
     /**
-     * Estrae tutti gli Edifici dalla riga superiore, svuotandola,
-     * e li restituisce in blocco per farli scorrere giù.
+     * Extracts all Building cards from the upper row, clears it,
+     * and returns them as a block to shift them down.
      */
     public List<BuildingCard> removeAndReturnAllBuildingCards() {
         List<BuildingCard> cardsToMove = new ArrayList<>(this.buildingCards);
@@ -59,13 +70,39 @@ public class UpperPile {
         return cardsToMove;
     }
 
-    // --- METODO PER IL DRAFTING (Usato quando un giocatore pesca una carta) ---
 
+    // ==========================================
+    // REMOVING CARDS (DRAFTING)
+    // ==========================================
+
+    /**
+     * Removes a specific card after it has been drafted/purchased by a player.
+     */
     public void removeCard(Card card) {
         if (card instanceof TribeCard) {
             this.tribeCards.remove(card);
         } else if (card instanceof BuildingCard) {
             this.buildingCards.remove(card);
         }
+    }
+
+
+    // ==========================================
+    // GETTERS & QUERIES
+    // ==========================================
+
+    public int getTribeCardsSize() {
+        return this.tribeCards.size();
+    }
+
+    /**
+     * Returns a unified list of all cards present in the pile
+     * (both Tribe and Buildings). Useful for drafting phases.
+     */
+    public List<Card> getAllCards() {
+        List<Card> allCards = new ArrayList<>();
+        allCards.addAll(this.tribeCards);
+        allCards.addAll(this.buildingCards);
+        return allCards;
     }
 }

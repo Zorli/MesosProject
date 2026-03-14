@@ -12,13 +12,14 @@ public class OfferSpace {
     private int bottomRowCardsToTake;
     private Player occupiedBy;
 
-    /**
-     * Costruttore con tutti i parametri necessari per il setup.
-     */
+    // ==========================================
+    // CONSTRUCTOR
+    // ==========================================
+
     public OfferSpace(int positionIndex, String code, int minPlayers, int foodBonus,
                       int topRowCardsToTake, int bottomRowCardsToTake) {
         this.positionIndex = positionIndex;
-        this.code = code; // che serve (?)
+        this.code = code; // Useful for UI rendering, network messages, or JSON mapping
         this.minPlayers = minPlayers;
         this.foodBonus = foodBonus;
         this.topRowCardsToTake = topRowCardsToTake;
@@ -26,45 +27,55 @@ public class OfferSpace {
         this.occupiedBy = null;
     }
 
-    // --- METODI DUPLICATI DA STARTING BLOCK ---
-    public void occupy(Player player) {
-        this.occupiedBy = player;
-    }
 
-    public void clear() {
-        this.occupiedBy = null;
-    }
-
-    public Player getOccupiedBy() {
-        return this.occupiedBy;
-    }
-
-    // --- METODI SPECIFICI DI OFFER SPACE  ---
+    // ==========================================
+    // STATE & STATUS CHECKS
+    // ==========================================
 
     /**
-     * Determina se questo spazio esiste/è giocabile in base al numero di giocatori. (serve nel build offerpath)
+     * Determines if this space exists/is playable based on the current player count.
      */
     public boolean isEnabledFor(int playerCount) {
         return playerCount >= this.minPlayers;
     }
 
     /**
-     * Controlla se lo spazio è libero per essere occupato durante il turno.
+     * Checks if the space is currently free to be occupied.
      */
     public boolean isAvailable() {
         return this.occupiedBy == null;
     }
 
+
+    // ==========================================
+    // PLAYER INTERACTION
+    // ==========================================
+
     /**
-     * Risolve l'azione quando un giocatore si piazza qui e preleva le carte.
+     * Places a player's totem on this space.
+     */
+    public void occupy(Player player) {
+        this.occupiedBy = player;
+    }
+
+    /**
+     * Clears the space, removing the player's totem (used at the end of the round).
+     */
+    public void clear() {
+        this.occupiedBy = null;
+    }
+
+    /**
+     * Resolves the action when a player is placed here.
+     * Contains the immediate food bonus and placeholders for the drafting logic.
      */
     public void resolveAction(Game game, Player player) {
         // 1. Assegna il bonus cibo immediato dello spazio
         if (this.foodBonus > 0) {
-            player.gainFood(this.foodBonus);
+            player.gainFood(this.foodBonus); // Assicurati che Player abbia questo metodo!
         }
 
-        // 2. Pesca dalla riga superiore manca il draftcard da game (o da altre parti)
+        // 2. Pesca dalla riga superiore (manca il draftcard da game o da altre parti)
 //        for (int i = 0; i < this.topRowCardsToTake; i++) {
 //            // game.draftCard restituisce 'true' se il giocatore ha pescato con successo,
 //            // o 'false' se non c'erano carte valide o accessibili.
@@ -77,9 +88,9 @@ public class OfferSpace {
 //            }
 //        }
 
-//        // 3. Pesca dalla riga inferiore
+        // 3. Pesca dalla riga inferiore
 //        for (int i = 0; i < this.bottomRowCardsToTake; i++) {
-//            // dopo che il giocatore ha scelta la cart
+//            // dopo che il giocatore ha scelta la carta
 //            boolean success = game.draftCard(player, "LOWER");
 //
 //            if (!success) {
@@ -88,7 +99,32 @@ public class OfferSpace {
 //        }
     }
 
-    // --- GETTERS (Per accedere ai valori se necessario) ---
-    public int getPositionIndex() { return positionIndex; }
-    public String getCode() { return code; }
+
+    // ==========================================
+    // GETTERS
+    // ==========================================
+
+    public Player getOccupiedBy() {
+        return this.occupiedBy;
+    }
+
+    public int getPositionIndex() {
+        return this.positionIndex;
+    }
+
+    public String getCode() {
+        return this.code;
+    }
+
+    public int getMinPlayers() {
+        return this.minPlayers;
+    }
+
+    public int getTopRowCardsToTake() {
+        return this.topRowCardsToTake;
+    }
+
+    public int getBottomRowCardsToTake() {
+        return this.bottomRowCardsToTake;
+    }
 }
