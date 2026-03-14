@@ -1,17 +1,23 @@
 package it.polimi.ingsoft.mesos.server.model.Factory;
 
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
+import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
+import it.polimi.ingsoft.mesos.server.model.board.Board;
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 //This class is meant to be used by the game orchestrator, in order to decouple the phase in which all the model is
 //created based on the number of players, from the phase in which the model is used to apply the game logic.
 //This is an application of the FactoryMethod
 
-
+//Here I only give life to the game, then in another step the totem are going to be chosen and placed on the starting tile.
 public class DefaultGameFactory implements GameFactory {
-    private int nextGameId = 0;
+    private AtomicInteger nextGameId = new AtomicInteger(0);
 
     @Override
     public Game createGame(ArrayList<Player> players) {
@@ -29,16 +35,16 @@ public class DefaultGameFactory implements GameFactory {
         2) Turn Oder Track
         3) Card Package
         4) BoardPackage Creo oggetto board, poi mi espone già il costruttore
-
-
-
-
-
-
          */
+        //TODO : Parser + Constructor firm adjustement once done
+//        TribeDeck tribeDeck = new TribeDeck(); //Need the json and the parser before doing that
+//        BuildingDeck buildingDeck = new BuildingDeck();//Need the json and the parser
+//        Board board = new Board(); //Here the board it's already initiliazed
 
-        return new Game(nextGameId++, players);
+        TurnState turnState = new TurnState();
+        TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
 
-
+        //return new Game(nextGameId.getAndIncrement(), players, turnState,turnOrderTrack)//, board,tribeDeck, buildingDeck);
+        return null;
     }
 }

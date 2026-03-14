@@ -4,6 +4,8 @@ import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.events.EventAction;
+import it.polimi.ingsoft.mesos.server.model.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
@@ -33,12 +35,8 @@ public class LowerPile {
      */
     public List<Card> getAllCards() {
         List<Card> allCards = new ArrayList<>();
-
-        // Grazie al polimorfismo e ai Generics di Java,
-        // possiamo aggiungere tranquillamente entrambe le liste figlie!
         allCards.addAll(this.tribeCards);
         allCards.addAll(this.buildingCards);
-
         return allCards;
     }
 
@@ -62,26 +60,22 @@ public class LowerPile {
      * La SustenanceEventCard viene risolta sempre per ultima.
      */
     public void resolveLowerRowEvents(ArrayList<Player> players) {
-//        SustenanceEventCard sustenanceEvent = null;
-//
-//        // 1. Passiamo in rassegna tutte le carte
-//        for (TribeCard card : this.tribeCards) {
-//
-//            if (card instanceof SustenanceEventCard) {
-//                // Se è l'evento di Sostentamento, lo "parcheggiamo" per dopo
-//                sustenanceEvent = (SustenanceEventCard) card;
-//
-//            } else if (card instanceof EventCard) {
-//                // Se è un evento normale, applichiamo subito l'effetto
-//                EventCard event = (EventCard) card;
-//                event.applyEffect(players);
-//            }
-//        }
-//
-//        // 2. Risolviamo l'evento di Sostentamento per ultimo (se presente)
-//        if (sustenanceEvent != null) {
-//            sustenanceEvent.applyEffect(players);
-//        }
+        SustenanceEventCard sustenanceEvent = null;
+        for (TribeCard card : this.tribeCards) {
+
+            if (card instanceof SustenanceEventCard) {
+                sustenanceEvent = (SustenanceEventCard) card;
+
+            } else if (card instanceof EventCard) {
+                EventCard event = (EventCard) card; //not actually necessary
+                event.applyEffect(players);
+            }
+        }
+
+        // 2. Risolviamo l'evento di Sostentamento per ultimo (se presente)
+        if (sustenanceEvent != null) {
+            sustenanceEvent.applyEffect(players);
+        }
     }
 
     public void removeCard(Card card) {
