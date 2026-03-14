@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.cards.events;
 
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
@@ -10,13 +11,12 @@ public class ShamanRitualEventCard extends EventCard {
     private final int prestigePointsForHigher;
     private final int prestigePointsForLower;
 
-    public ShamanRitualEventCard(int id, Era era, int prestigePointsForHigher, int prestigePointsForLower) {
-        super(id, era);
+    public ShamanRitualEventCard(int id, Era era, TribeCardType type, int prestigePointsForHigher, int prestigePointsForLower) {
+        super(id, era, type);
         this.prestigePointsForHigher = prestigePointsForHigher;
         this.prestigePointsForLower = prestigePointsForLower;
     }
 
-    // TODO: control if the player has the building that has the zero pp rule for the shaman event
     @Override
     public void applyEffect(ArrayList<Player> players) {
 
@@ -34,14 +34,25 @@ public class ShamanRitualEventCard extends EventCard {
             int playerStars = shamanStars.get(i);
 
             if (allEqual) {
-                players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
-                players.get(i).payPrestigePoints(this.prestigePointsForLower);
+                if (players.get(i).getTribe().hasWinMultiplier()) {
+                    players.get(i).gainPrestigePoints(this.prestigePointsForHigher * 2);
+                } else {
+                    players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
+                }
+                if (players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
+                    continue;
+                } else {
+                    players.get(i).payPrestigePoints(this.prestigePointsForLower);
+                }
             } else {
                 if (playerStars == maxStars) {
-                    // controllo per edificio che fa guadagnare
-                    players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
+                    if (players.get(i).getTribe().hasWinMultiplier()) {
+                        players.get(i).gainPrestigePoints(this.prestigePointsForHigher * 2);
+                    } else {
+                        players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
+                    }
                 } else if (playerStars == minStars) {
-                    if (players.get(i).getTribe().hasBuildingForShamanRitual()) {
+                    if (players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
                         continue;
                     } else {
                         players.get(i).payPrestigePoints(this.prestigePointsForLower);

@@ -1,16 +1,20 @@
 package it.polimi.ingsoft.mesos.server.model.cards.events;
 
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.SustenanceDiscount;
+import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 
 import java.util.ArrayList;
 
-public class SustenanceEventCard extends TribeCard implements EventAction {
+public class SustenanceEventCard extends EventCard {
     public final int prestigePointsToRemovePerCharacter;
 
-    public SustenanceEventCard(int id, Era era, int prestigePointsToRemovePerCharacter) {
-        super(id, era);
+    public SustenanceEventCard(int id, Era era, TribeCardType type, int prestigePointsToRemovePerCharacter) {
+        super(id, era,type);
         this.prestigePointsToRemovePerCharacter = prestigePointsToRemovePerCharacter;
     }
 
@@ -22,8 +26,13 @@ public class SustenanceEventCard extends TribeCard implements EventAction {
             int totalToRemove = numOfCharacters - numOfGatherers * 3;
             if (totalToRemove < 0) {
                 totalToRemove = 0;
+            } else {
+                for (BuildingCard b : player.getTribe().getBuildings()) {
+                    if (b.getBenefitType() == BenefitType.EVENT_BONUS_SUSTENANCE_DISCOUNT_FOR_TYPE) {
+                        totalToRemove -= ((SustenanceDiscount) b).getDiscountAmount(player.getTribe().getCharacters());
+                    }
+                }
             }
-            // TODO: sconto ulteriore dall'edificio che fa pagare meno cibo per il sostentamento
 
             int multiplierForNotEnoughFood = totalToRemove - player.getFood();
             if (multiplierForNotEnoughFood <= 0) {
