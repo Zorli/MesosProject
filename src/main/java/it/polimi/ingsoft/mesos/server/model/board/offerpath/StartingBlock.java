@@ -8,26 +8,41 @@ public class StartingBlock {
     private int prestigeModifier;
     private Player occupiedBy;
 
-    public StartingBlock(int position, int foodModifier, int prestigeModifier) {
+    // ==========================================
+    // CONSTRUCTOR
+    // ==========================================
+
+    public StartingBlock(int position, int foodModifier, int prestigeModifier, Player occupiedBy) {
         this.position = position;
         this.foodModifier = foodModifier;
         this.prestigeModifier = prestigeModifier;
-        this.occupiedBy = null; // Esplicito per chiarezza
+        this.occupiedBy = occupiedBy;
     }
 
+
+    // ==========================================
+    // PLAYER INTERACTION
+    // ==========================================
+
     /**
-     * Piazzamento di un giocatore sul blocco.
+     * Places a player's totem on this starting block.
      */
     public void occupy(Player player) {
         this.occupiedBy = player;
     }
 
     /**
-     * Libera il blocco alla fine del round o quando il giocatore si muove.
+     * Clears the block at the end of the round or when the player moves.
      */
     public void clear() {
         this.occupiedBy = null;
     }
+
+
+    // ==========================================
+    // GETTERS
+    // ==========================================
+
     public Player getOccupiedBy() {
         return this.occupiedBy;
     }
