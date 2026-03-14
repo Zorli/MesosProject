@@ -51,5 +51,6 @@ public class Player {
     public Tribe getTribe() {
         return this.tribe;
     }
+    public String getNickName () { return this.nickname; }
 
 }
