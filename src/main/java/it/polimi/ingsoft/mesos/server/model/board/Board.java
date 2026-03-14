@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferPath;
 import it.polimi.ingsoft.mesos.server.model.cards.*;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.EventCard;
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.List;
@@ -16,24 +17,27 @@ public class Board {
 
     private TribeDeck tribeDeck;
     private BuildingDeck buildingDeck;
+    private List<Player> players;
+    private int numPlayer;
 
-    public Board(UpperPile upperPile, LowerPile lowerPile, OfferPath offerPath, TribeDeck tribeDeck, BuildingDeck buildingDeck) {
-        this.upperPile = upperPile;
-        this.lowerPile = lowerPile;
-        this.offerPath = offerPath;
+    // ==========================================
+    // CONSTRUCTOR & INITIAL SETUP
+    // ==========================================
+
+    public Board(TribeDeck tribeDeck, BuildingDeck buildingDeck, List<Player> players) {
+        this.upperPile = new UpperPile();
+        this.lowerPile = new LowerPile();
+        this.offerPath = new OfferPath();
         this.tribeDeck = tribeDeck;
         this.buildingDeck = buildingDeck;
+        this.players = players;
+        this.numPlayer = players.size();
     }
 
-    public void buildOfferPath() {
-        // TODO: Implementare la logica per costruire il percorso delle offerte
-    }
-
-    public void setupInitialRows(int playerCount) {
-        int n = playerCount;
-        int targetLowerCharacters = n + 1;
+    public void setupInitialRows() {
+        int targetLowerCharacters = numPlayer + 1;
         while (this.lowerPile.getTribeCardsSize() < targetLowerCharacters) {
-            if (this.tribeDeck.isEmpty()) break; // Sicurezza per non far crashare il gioco
+            if (this.tribeDeck.isEmpty()) break;
 
             TribeCard drawnCard = (TribeCard) this.tribeDeck.draw();
             if (drawnCard instanceof EventCard) {
@@ -43,8 +47,7 @@ public class Board {
             }
         }
 
-        // 2. SETUP UPPER PILE - TRIBE CARDS (Obiettivo: n + 4 TribeCards in totale)
-        int targetUpperTribeCards = n + 4;
+        int targetUpperTribeCards = numPlayer + 4;
         int currentUpperTribeCards = this.upperPile.getTribeCardsSize();
         int cardsStillToDraw = targetUpperTribeCards - currentUpperTribeCards;
 
@@ -54,9 +57,8 @@ public class Board {
                 this.upperPile.addCard(drawnCard);
             }
         }
-        // metodo poco elegante forse da modificare
-        int era1BuildingsToDraw = (playerCount == 2) ? 1 : 2;
 
+        int era1BuildingsToDraw = (numPlayer == 2) ? 1 : 2;
         for (int i = 0; i < era1BuildingsToDraw; i++) {
             if (!this.buildingDeck.isEmpty()) {
                 BuildingCard drawnBuilding = (BuildingCard) this.buildingDeck.draw();
@@ -65,13 +67,16 @@ public class Board {
         }
     }
 
+    public void buildOfferPath() {
+        this.offerPath.setup(this.players);
+    }
 
-    /**
-     * Fa scorrere tutte le carte Tribù (Personaggi ed Eventi) dalla riga superiore
-     * a quella inferiore. Gli edifici presenti nella riga superiore non vengono toccati.
-     */
+
+    // ==========================================
+    // SHIFTING LOGIC (END OF ROUND/ERA)
+    // ==========================================
+
     public void shiftUpperToLower() {
-        //elimiamo da sotto (dopo risoluzione eventi)
         this.lowerPile.discardLowerRow();
         List<TribeCard> tribeCardsToMove = this.upperPile.removeAndReturnAllTribeCards();
 
@@ -79,43 +84,85 @@ public class Board {
             this.lowerPile.addTribeCards(tribeCardsToMove);
         }
     }
-    //ripartire da qua
-    public void refillUpperTribeCards(int playerCount) {
-        // TODO: Implementare la logica per riempire le carte tribù nella riga superiore
-    }
 
     public void moveUpperBuildingCardsToLowerRow() {
         this.lowerPile.discardLowerBuildings();
         List<BuildingCard> buildingsToMove = this.upperPile.removeAndReturnAllBuildingCards();
-        if (buildingsToMove != null) {
+
+        if (buildingsToMove != null && !buildingsToMove.isEmpty()) {
             this.lowerPile.addBuildingCards(buildingsToMove);
         }
     }
-
-    public void refillUpperBuildingCards() {
-        // TODO: Implementare la logica per riempire le carte edificio nella riga superiore
+    // FOR TURNORDERTRACK //
+    public List<Player> rebuildOrderFromOfferPath() {
+        return this.offerPath.resetAndGetNewOrder();
     }
-    // --- METODI DOVUTI AL PESCAGGIO CHE PARTE DA GAME ---
 
-    /**
-     * Restituisce solo le carte della riga superiore che il giocatore può effettivamente prendere.
-     */
+
+    // ==========================================
+    // REFILLING LOGIC
+    // ==========================================
+
+    public boolean refillUpperTribeCards(Era currentEra) {
+        int cardsNeeded = (numPlayer + 4) - this.upperPile.getTribeCardsSize();
+        boolean newEraTriggered = false;
+
+        for (int i = 0; i < cardsNeeded; i++) {
+            if (this.tribeDeck.isEmpty()) break;
+
+            TribeCard drawnCard = (TribeCard) this.tribeDeck.draw();
+
+            if (drawnCard.getEra() != currentEra && !newEraTriggered) {
+                newEraTriggered = true;
+                this.moveUpperBuildingCardsToLowerRow();
+                this.refillUpperBuildingCards(drawnCard.getEra());
+            }
+
+            this.upperPile.addCard(drawnCard);
+        }
+
+        return newEraTriggered;
+    }
+
+    public void refillUpperBuildingCards(Era newEra) {
+        int buildingsToDraw = getBuildingCountForEra(newEra);
+
+        for (int i = 0; i < buildingsToDraw; i++) {
+            if (!this.buildingDeck.isEmpty()) {
+                BuildingCard drawnBuilding = (BuildingCard) this.buildingDeck.draw();
+                this.upperPile.addCard(drawnBuilding);
+            }
+        }
+    }
+
+    private int getBuildingCountForEra(Era era) {
+        if (era == Era.second) {
+            return (numPlayer <= 3) ? 2 : 3;
+        } else if (era == Era.third) {
+            if (numPlayer == 2) return 3;
+            if (numPlayer == 3 || numPlayer == 4) return 4;
+            if (numPlayer == 5) return 5;
+        }
+        return 0;
+    }
+
+
+    // ==========================================
+    // DRAFTING & PLAYER INTERACTION
+    // ==========================================
+
     public List<Card> getDraftableUpperCards(Player player) {
         return this.upperPile.getAllCards().stream()
                 .filter(card -> card.isDrawable(player))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Restituisce solo le carte della riga inferiore che il giocatore può effettivamente prendere.
-     */
     public List<Card> getDraftableLowerCards(Player player) {
         return this.lowerPile.getAllCards().stream()
                 .filter(card -> card.isDrawable(player))
                 .collect(Collectors.toList());
     }
 
-    // Metodi per permettere al Game di rimuovere la carta una volta acquistata/pescata
     public void removeUpperCard(Card card) {
         this.upperPile.removeCard(card);
     }
