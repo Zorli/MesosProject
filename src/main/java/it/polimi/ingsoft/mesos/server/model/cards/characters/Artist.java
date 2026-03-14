@@ -1,9 +1,10 @@
 package it.polimi.ingsoft.mesos.server.model.cards.characters;
 
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 
 public class Artist extends CharacterCard {
-    public Artist (int id, Era era) {
-        super(id, era);
+    public Artist (int id, Era era, TribeCardType type) {
+        super(id, era, type);
     }
 }

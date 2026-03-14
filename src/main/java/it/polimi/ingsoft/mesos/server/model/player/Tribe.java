@@ -1,7 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.player;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.ShamanStarsBonus;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.*;
+import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 
 import java.util.ArrayList;
 
@@ -39,7 +41,13 @@ public class Tribe {
     }
 
     public int getShamansStars() {
-        return this.characters.stream()
+        int bonusStars = 0;
+        for(BuildingCard b: buildings){
+            if(b.getBenefitType() == BenefitType.EVENT_BONUS_STARS_SHAMAN){
+                bonusStars += ((ShamanStarsBonus) b).getStarsBonus();
+            }
+        }
+        return bonusStars + this.characters.stream()
                 .filter(c -> c instanceof Shaman)
                 .mapToInt(c -> ((Shaman) c).getStars())
                 .sum();
@@ -47,8 +55,30 @@ public class Tribe {
     public int getCharactersSize(){
         return this.characters.size();
     }
-    // TODO: once the building card is created we can check if the player has the building that has the zero pp rule for the shaman event
-    public boolean hasBuildingForShamanRitual(){
+
+    public boolean hasBuildingForShamanRitualProtection(){
+        for (BuildingCard b: buildings){
+            if(b.getBenefitType() == BenefitType.EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public ArrayList<BuildingCard> getBuildings(){
+        return this.buildings;
+    }
+
+    public ArrayList<CharacterCard> getCharacters(){
+        return this.characters;
+    }
+
+    public boolean hasWinMultiplier(){
+        for(BuildingCard b: buildings){
+            if(b.getBenefitType() == BenefitType.EVENT_BONUS_SHAMAN_WIN_MULTIPLIER){
+                return true;
+            }
+        }
         return false;
     }
 
