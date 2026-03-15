@@ -1,12 +1,14 @@
 package it.polimi.ingsoft.mesos.server.model.board;
 
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferPath;
+import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.cards.*;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -93,6 +95,11 @@ public class Board {
             this.lowerPile.addBuildingCards(buildingsToMove);
         }
     }
+
+    public void resolveLowerEvents() {
+        ArrayList<Player> arrayListPlayers = new ArrayList<>(this.players);
+        this.lowerPile.resolveLowerRowEvents(arrayListPlayers);
+    }
     // FOR TURNORDERTRACK //
     public List<Player> rebuildOrderFromOfferPath() {
         return this.offerPath.resetAndGetNewOrder();
@@ -150,6 +157,13 @@ public class Board {
     // ==========================================
     // DRAFTING & PLAYER INTERACTION
     // ==========================================
+    public boolean isSpaceAvailable(String targetCode) {
+        return this.offerPath.checkOfferSpace(targetCode);
+    }
+
+    public int[] placePlayerOnOfferSpace(Player player, String targetCode) {
+        return this.offerPath.placePlayer(player, targetCode);
+    }
 
     public List<Card> getDraftableUpperCards(Player player) {
         return this.upperPile.getAllCards().stream()
@@ -166,8 +180,24 @@ public class Board {
     public void removeUpperCard(Card card) {
         this.upperPile.removeCard(card);
     }
-
     public void removeLowerCard(Card card) {
         this.lowerPile.removeCard(card);
+    }
+
+    // ==========================================
+    // GETTERS FOR VIEWS OR GAME (READ ONLY)
+    // ==========================================
+
+    public List<Card> getUpperRowCards() {
+        return this.upperPile.getAllCards();
+    }
+
+    public List<Card> getLowerRowCards() {
+        return this.lowerPile.getAllCards();
+    }
+
+
+    public List<OfferSpace> getAvailableOfferSpaces() {
+        return this.offerPath.getAvailableOfferSpaces();
     }
 }
