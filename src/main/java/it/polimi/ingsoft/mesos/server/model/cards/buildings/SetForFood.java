@@ -89,25 +89,4 @@ public class SetForFood extends BuildingCard {
         }
     }
 
-    /**
-     * Returns the number of tracked characters currently counted for the given type.
-     *
-     * @param type character type to inspect
-     * @return tracked count for that type
-     */
-    public int getCharacterTypeCount(TribeCardType type) {
-        return this.characterTypeCountMap.getOrDefault(type, 0);
-    }
-
-    /**
-     * Returns the static food reward configured on the building.
-     * <p>
-     * This getter is intentionally side-effect free.
-     *
-     * @return reward food granted when the set is completed
-     */
-    public int getRewardFood() {
-        return this.rewardFood;
-    }
-
 }
