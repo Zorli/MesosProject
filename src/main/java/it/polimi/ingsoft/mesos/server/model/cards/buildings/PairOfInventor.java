@@ -10,10 +10,24 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Building that rewards food whenever the owner completes a pair of inventors
+ * with the same invention type.
+ */
 public class PairOfInventor extends BuildingCard {
     private final int rewardFood;
     private final Map<InventionType, Integer> inventionTypeIntegerMap;
 
+    /**
+     * Creates the building and initializes the counters for each invention type.
+     *
+     * @param id card identifier
+     * @param era card era
+     * @param fc food cost
+     * @param pp prestige points printed on the building
+     * @param typeOfBenefit effect represented by the building
+     * @param rewardFood food granted when a pair is completed
+     */
     public PairOfInventor(int id, Era era, int fc, int pp, BenefitType typeOfBenefit, int rewardFood) {
         super(id, era, fc, pp, typeOfBenefit);
         this.rewardFood = rewardFood;
@@ -23,6 +37,13 @@ public class PairOfInventor extends BuildingCard {
         }
     }
 
+    /**
+     * Registers a newly acquired inventor and applies the building reward when a
+     * pair of equal inventions is completed.
+     *
+     * @param type invention type of the inventor just acquired
+     * @param player player owning the building
+     */
     public void addInventionTypeAndApplyEffect(InventionType type, Player player) {
         if (this.inventionTypeIntegerMap.containsKey(type)) {
             this.inventionTypeIntegerMap.put(type, this.inventionTypeIntegerMap.get(type) + 1);
@@ -31,5 +52,14 @@ public class PairOfInventor extends BuildingCard {
                 player.gainFood(this.rewardFood);
             }
         }
+    }
+
+    /**
+     * Returns the food granted for each completed pair.
+     *
+     * @return reward food
+     */
+    public int getRewardFood() {
+        return this.rewardFood;
     }
 }

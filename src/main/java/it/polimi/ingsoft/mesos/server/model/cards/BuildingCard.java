@@ -4,30 +4,76 @@ import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
-// L'effetto sarà un ENUM e lo metto come attributo?? forse ha senso farlo e fare uno switch case in questa classe??
-
+/**
+ * Base abstraction for every building card.
+ * <p>
+ * A building card has a purchase cost, grants prestige points at the end of the
+ * game, and identifies its gameplay effect through a {@link BenefitType}.
+ */
 public class BuildingCard extends Card {
     private int foodCost;
     private int prestigePoints;
     private BenefitType benefitType;
 
-
-
+    /**
+     * Creates a building card with the given static attributes.
+     *
+     * @param id card identifier
+     * @param era card era
+     * @param fc food cost required to draw the building
+     * @param pp prestige points granted by the building itself
+     * @param benefitType effect associated with the building
+     */
     public BuildingCard(int id, Era era, int fc, int pp, BenefitType benefitType){
         super(id, era);
         this.foodCost = fc;
         this.prestigePoints = pp;
         this.benefitType = benefitType;
     }
+
+    /**
+     * Checks whether the player can currently draw the building.
+     *
+     * @param player player attempting to draw the card
+     * @return {@code true} if the player has enough food to pay the cost
+     */
     @Override
     public boolean isDrawable(Player player) {
         return player.getFood() >= this.foodCost;
     }
 
+    /**
+     * Returns the effect identifier of the building.
+     *
+     * @return the building benefit type
+     */
     public BenefitType getBenefitType() {
         return this.benefitType;
     }
 
+    /**
+     * Returns the food cost required to obtain the building.
+     *
+     * @return building food cost
+     */
+    public int getFoodCost() {
+        return this.foodCost;
+    }
+
+    /**
+     * Returns the prestige points printed on the building.
+     *
+     * @return intrinsic prestige points of the building
+     */
+    public int getPrestigePoints() {
+        return this.prestigePoints;
+    }
+
+    /**
+     * Grants the building prestige points to the owning player.
+     *
+     * @param player player receiving the building prestige points
+     */
     public void increaseFinalPrestigePoints(Player player){
         player.gainPrestigePoints(this.prestigePoints);
     }

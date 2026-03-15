@@ -32,7 +32,6 @@ public class OfferPath {
     }
 
     private void setupOfferSpaces(int numPlayer) {
-        // Dati di configurazione hardcodati (ideale spostarli in futuro su un JSON)
         List<OfferSpace> allPossibleSpaces = List.of(
                 // Position, Code, MinPlayers, FoodBonus, TopRow, BottomRow
                 new OfferSpace(1, "A", 5, 3, 0, 0),
@@ -44,7 +43,7 @@ public class OfferPath {
                 new OfferSpace(7, "G", 4, 0, 2, 1)
         );
 
-        // Filtra e aggiunge solo gli spazi validi per il numero di giocatori
+        // filter and add
         for (OfferSpace space : allPossibleSpaces) {
             if (space.getMinPlayers() <= numPlayer) {
                 this.offerSpaces.add(space);
@@ -63,16 +62,12 @@ public class OfferPath {
      * * @return The list of players in their new turn order.
      */
     public List<Player> resetAndGetNewOrder() {
-        // 1. Extract the new order based on current totem positions
         List<Player> newOrder = this.getPlayersInOrder();
 
-        // 2. Clear all offer spaces (set occupiedBy to null)
         this.clearOfferSpaces();
 
-        // 3. Pass the new order to the Starting Tile for placement and effect resolution
         this.startingTile.placePlayersAndResolveEffects(newOrder);
 
-        // 4. Return the new order to the Board (and consequently to TurnOrderTrack)
         return newOrder;
     }
 
@@ -99,4 +94,28 @@ public class OfferPath {
     public void clearOfferSpaces() {
         this.offerSpaces.forEach(OfferSpace::clear);
     }
+
+    /**
+     * on players placing.
+     */
+    public boolean checkOfferSpace(String targetCode) {
+        return this.offerSpaces.stream()
+                .anyMatch(space -> targetCode.equals(space.getCode()) && space.isAvailable());
+    }
+    public int[] placePlayer(Player player, String targetCode) {
+        for (OfferSpace space : this.offerSpaces) {
+
+            if (targetCode.equals(space.getCode())) {
+                space.occupy(player);
+
+                space.resolveImmediateAction(player);
+                return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
+            }
+        }
+
+        // Security Fallback
+        return new int[]{0, 0};
+    }
+    // on READ
+    public List<OfferSpace> getAvailableOfferSpaces() { return new ArrayList<>(this.offerSpaces); }
 }
