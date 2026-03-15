@@ -33,13 +33,6 @@ public class OfferSpace {
     // ==========================================
 
     /**
-     * Determines if this space exists/is playable based on the current player count.
-     */
-    public boolean isEnabledFor(int playerCount) {
-        return playerCount >= this.minPlayers;
-    }
-
-    /**
      * Checks if the space is currently free to be occupied.
      */
     public boolean isAvailable() {
@@ -69,35 +62,13 @@ public class OfferSpace {
      * Resolves the action when a player is placed here.
      * Contains the immediate food bonus and placeholders for the drafting logic.
      */
-    public void resolveAction(Game game, Player player) {
-        // 1. Assegna il bonus cibo immediato dello spazio
+    public void resolveImmediateAction(Player player)
+    {
         if (this.foodBonus > 0) {
-            player.gainFood(this.foodBonus); // Assicurati che Player abbia questo metodo!
+            player.gainFood(this.foodBonus);
         }
-
-        // 2. Pesca dalla riga superiore (manca il draftcard da game o da altre parti)
-//        for (int i = 0; i < this.topRowCardsToTake; i++) {
-//            // game.draftCard restituisce 'true' se il giocatore ha pescato con successo,
-//            // o 'false' se non c'erano carte valide o accessibili.
-//            boolean success = game.draftCard(player, "UPPER");
-//
-//            // Se non ha potuto pescare (es. riga vuota o solo carte non acquistabili),
-//            // interrompiamo le pescate successive per questa riga.
-//            if (!success) {
-//                break;
-//            }
-//        }
-
-        // 3. Pesca dalla riga inferiore
-//        for (int i = 0; i < this.bottomRowCardsToTake; i++) {
-//            // dopo che il giocatore ha scelta la carta
-//            boolean success = game.draftCard(player, "LOWER");
-//
-//            if (!success) {
-//                break;
-//            }
-//        }
     }
+
 
 
     // ==========================================

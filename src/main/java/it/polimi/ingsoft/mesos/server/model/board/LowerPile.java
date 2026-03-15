@@ -23,7 +23,6 @@ public class LowerPile {
         this.buildingCards = new ArrayList<>();
     }
 
-
     // ==========================================
     // ADDING CARDS
     // ==========================================
@@ -53,9 +52,6 @@ public class LowerPile {
     // REMOVING & DISCARDING CARDS
     // ==========================================
 
-    /**
-     * Removes a specific card after it has been drafted/purchased by a player.
-     */
     public void removeCard(Card card) {
         if (card instanceof TribeCard) {
             this.tribeCards.remove(card);
@@ -64,17 +60,10 @@ public class LowerPile {
         }
     }
 
-    /**
-     * Discards ONLY the Tribe cards (Characters and Events) from the lower row.
-     * Buildings remain intact in their position.
-     */
     public void discardLowerRow() {
         this.tribeCards.clear();
     }
 
-    /**
-     * Discards ONLY the Building cards from the lower row.
-     */
     public void discardLowerBuildings() {
         this.buildingCards.clear();
     }
@@ -104,7 +93,6 @@ public class LowerPile {
         }
     }
 
-
     // ==========================================
     // GETTERS & QUERIES
     // ==========================================
@@ -113,10 +101,6 @@ public class LowerPile {
         return this.tribeCards.size();
     }
 
-    /**
-     * Returns a unified list of all cards present in the pile (both Tribe and Buildings).
-     * Useful for the Board during the drafting phases.
-     */
     public List<Card> getAllCards() {
         List<Card> allCards = new ArrayList<>();
         allCards.addAll(this.tribeCards);
