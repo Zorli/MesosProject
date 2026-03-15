@@ -83,7 +83,7 @@ public class Game {
     }
 
     //The game orchestrator redirect to me the move from the player in a specific location
-    public void moveTotem(Player player, ){
+    public void moveTotem(Player player, int offerSpaceIndex){
         //Firstly I need to check if the player can make that request
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new IllegalStateException("It's not the turn of this player");
@@ -100,7 +100,7 @@ public class Game {
 
         //Once the totem has been moved I can update the turnstate
         //I should pass the player because he has a tribe and maybe that tribe has a perk on the drawnable cards
-        turnState.onTotemMoved(player);
+        turnState.onTotemMoved(0, 0);
     }
 
     //Return the board state
@@ -110,7 +110,7 @@ public class Game {
     }
     //Ricevo player, valido se la mossa è accettabile,
     //Chiamo mostrami carte pescabili sulla board passando il player
-    public showDrawableCard(){
+    public void showDrawableCard(){
         //Mi passi due liste e le salvo
     }
 
@@ -136,13 +136,11 @@ public class Game {
 
     }
 
-    private endRound(){
+    private void endRound(){
         //Risoluzione eventi
         //Ritorno al posto
         //Eventuale pescaggio post ritorno al posto
     }
-
-    private
 
     //Se sono arrivato al round 10 e ho tuti hanno mosso faccio la sola risoluzione degli eventi,
     //Notifico e posso chiamare il conteggio dei punti

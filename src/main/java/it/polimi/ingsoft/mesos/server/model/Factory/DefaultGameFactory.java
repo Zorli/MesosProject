@@ -50,8 +50,8 @@ public class DefaultGameFactory implements GameFactory {
          */
 
 
-        TribeDeck tribeDeck = parserJson.; //Need the json and the parser before doing that
-        BuildingDeck buildingDeck = new BuildingDeck();//Need the json and the parser
+        TribeDeck tribeDeck = ParserJson.parseTribeDeck(); //Need the json and the parser before doing that
+        BuildingDeck buildingDeck = ParserJson.parseBuildingDeck();//Need the json and the parser
 
         Board board = new Board(tribeDeck, buildingDeck, players); //Here the board it's already initiliazed
         TurnState turnState = new TurnState();
