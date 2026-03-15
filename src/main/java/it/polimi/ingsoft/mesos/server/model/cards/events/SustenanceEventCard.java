@@ -32,6 +32,9 @@ public class SustenanceEventCard extends EventCard {
                         totalToRemove -= ((SustenanceDiscount) b).getDiscountAmount(player.getTribe().getCharacters());
                     }
                 }
+                if(totalToRemove<0){
+                    totalToRemove = 0;
+                }
             }
 
             int multiplierForNotEnoughFood = totalToRemove - player.getFood();
