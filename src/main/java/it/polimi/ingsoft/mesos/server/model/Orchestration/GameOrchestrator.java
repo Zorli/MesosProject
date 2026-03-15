@@ -11,6 +11,7 @@ import java.util.ArrayList;
 //Need to instantiate a game using the factory and to move the players from the lobby to the game
 public class GameOrchestrator {
     Game game;
+    t
     //   For whoever is going to code this:
     //1) Use the factory passing the number of players as shown
     //2) Make sure the game is correctly initialized

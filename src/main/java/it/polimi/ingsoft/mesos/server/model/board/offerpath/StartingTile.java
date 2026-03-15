@@ -35,7 +35,7 @@ public class StartingTile {
         // Hardcoded balancing values. Can be moved to a JSON configuration later.
         if (n == 2) {
             foodModifiers = new int[]{ 1, -1 };
-            prestigeModifiers = new int[]{ 0, 2 };
+            prestigeModifiers = new int[]{ 0, -2 };
         } else if (n == 3) {
             foodModifiers = new int[]{ 2, 0, -1 };
             prestigeModifiers = new int[]{ 0, 0, -2 };
