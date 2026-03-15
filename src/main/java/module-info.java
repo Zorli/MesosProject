@@ -4,6 +4,7 @@
       requires javafx.fxml;
 
       requires org.controlsfx.controls;
+      requires com.fasterxml.jackson.databind;
       //requires it.polimi.ingsoft.mesos;
 
       opens it.polimi.ingsoft.mesos.client.controller to javafx.fxml;

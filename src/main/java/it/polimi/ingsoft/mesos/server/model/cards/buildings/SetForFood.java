@@ -9,10 +9,24 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Building that rewards food when the owner completes a set containing all
+ * distinct tribe character types.
+ */
 public class SetForFood extends BuildingCard {
     private final int rewardFood;
     private final Map<TribeCardType, Integer> characterTypeCountMap;
 
+    /**
+     * Creates the building and initializes one counter for each non-event tribe type.
+     *
+     * @param id card identifier
+     * @param era card era
+     * @param fc food cost
+     * @param pp prestige points printed on the building
+     * @param typeOfBenefit effect represented by the building
+     * @param rewardFood food granted when a full set is completed
+     */
     public SetForFood(int id, Era era, int fc, int pp, BenefitType typeOfBenefit, int rewardFood) {
         super(id, era, fc, pp, typeOfBenefit);
         this.rewardFood = rewardFood;
@@ -25,6 +39,13 @@ public class SetForFood extends BuildingCard {
         }
     }
 
+    /**
+     * Registers a newly acquired character type and applies the reward when the
+     * set contains every character type at least once.
+     *
+     * @param type type of the character just acquired
+     * @param player player owning the building
+     */
     public void addCharacterTypeAndApplyEffect(TribeCardType type, Player player) {
         if (this.characterTypeCountMap.containsKey(type)) {
             this.characterTypeCountMap.put(type, this.characterTypeCountMap.get(type) + 1);
@@ -35,11 +56,21 @@ public class SetForFood extends BuildingCard {
         }
     }
 
+    /**
+     * Checks whether the tracked set currently contains all character types.
+     *
+     * @return {@code true} if every non-event tribe type has count greater than zero
+     */
     public boolean hasBonus() {
         return this.characterTypeCountMap.values().stream()
                 .allMatch(count -> count > 0);
     }
 
+    /**
+     * Decrements the counter associated with a single character type.
+     *
+     * @param type character type to decrement
+     */
     public void decrementCharacterType(TribeCardType type) {
         if (this.characterTypeCountMap.containsKey(type)) {
             int currentCount = this.characterTypeCountMap.get(type);
@@ -49,18 +80,33 @@ public class SetForFood extends BuildingCard {
         }
     }
 
+    /**
+     * Decrements every tracked character type by one when possible.
+     */
     public void decrementAllCharacterTypes() {
         for (TribeCardType type : TribeCardType.values()) {
             decrementCharacterType(type);
         }
     }
 
+    /**
+     * Returns the number of tracked characters currently counted for the given type.
+     *
+     * @param type character type to inspect
+     * @return tracked count for that type
+     */
     public int getCharacterTypeCount(TribeCardType type) {
         return this.characterTypeCountMap.getOrDefault(type, 0);
     }
 
+    /**
+     * Returns the static food reward configured on the building.
+     * <p>
+     * This getter is intentionally side-effect free.
+     *
+     * @return reward food granted when the set is completed
+     */
     public int getRewardFood() {
-        decrementAllCharacterTypes();
         return this.rewardFood;
     }
 

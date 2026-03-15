@@ -7,16 +7,34 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import java.util.ArrayList;
 
 
+/**
+ * Event card that compares shaman stars across players and assigns the
+ * configured reward or penalty, taking into account building modifiers.
+ */
 public class ShamanRitualEventCard extends EventCard {
     private final int prestigePointsForHigher;
     private final int prestigePointsForLower;
 
+    /**
+     * Creates the event card.
+     *
+     * @param id card identifier
+     * @param era card era
+     * @param type tribe card type, expected to be {@code EVENT}
+     * @param prestigePointsForHigher prestige points awarded to the highest star total
+     * @param prestigePointsForLower prestige points lost by the lowest star total
+     */
     public ShamanRitualEventCard(int id, Era era, TribeCardType type, int prestigePointsForHigher, int prestigePointsForLower) {
         super(id, era, type);
         this.prestigePointsForHigher = prestigePointsForHigher;
         this.prestigePointsForLower = prestigePointsForLower;
     }
 
+    /**
+     * Applies the event to all players in the match.
+     *
+     * @param players players affected by the event
+     */
     @Override
     public void applyEffect(ArrayList<Player> players) {
 
@@ -60,5 +78,23 @@ public class ShamanRitualEventCard extends EventCard {
                 }
             }
         }
+    }
+
+    /**
+     * Returns the prestige point reward assigned to the highest shaman total.
+     *
+     * @return positive reward
+     */
+    public int getPrestigePointsForHigher() {
+        return this.prestigePointsForHigher;
+    }
+
+    /**
+     * Returns the prestige point penalty assigned to the lowest shaman total.
+     *
+     * @return negative prestige point value
+     */
+    public int getPrestigePointsForLower() {
+        return this.prestigePointsForLower;
     }
 }
