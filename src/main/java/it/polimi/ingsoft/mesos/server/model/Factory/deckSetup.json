@@ -6,6 +6,7 @@
     "notes": [
       "Only the first 84 front/back pairs are included.",
       "We still need to add building card and to validate the one inserted here"
+      //TODO : Remove page index
     ]
   },
   "cards": [

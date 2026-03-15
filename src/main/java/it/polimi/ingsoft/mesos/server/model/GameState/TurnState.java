@@ -11,7 +11,7 @@ This class is meant to be the FSM that check every step in the single player tur
 public class TurnState {
     TurnPhase phase;
     //If this player has the building that gives the perk to take another card, how we handle it?
-    //At this point is the offer path that prescribes how much card he can take
+    //At this point is the offer path that prescribes how much card the player can take
     private int remainingUpperChoices;
     private int remainingLowerChoices;
 
@@ -47,7 +47,7 @@ public class TurnState {
         if (upperChoices < 0 || lowerChoices < 0) {
             throw new IllegalArgumentException("Must Be positive numbers");
         }
-
+        this.phase = TurnPhase.WAITING_FOR_CARD_SELECTION;
         this.remainingUpperChoices = upperChoices;
         this.remainingLowerChoices = lowerChoices;
 
@@ -76,6 +76,7 @@ public class TurnState {
     }
 
     public void resetForNextPlayer() {
+        if(!(this.phase == TurnPhase.TURN_COMPLETED)){throw  new IllegalStateException("Cannot reset for next player untile the current one hase finished");}
         this.phase = TurnPhase.WAITING_FOR_TOTEM_MOVE;
         this.remainingUpperChoices = 0;
         this.remainingLowerChoices = 0;
