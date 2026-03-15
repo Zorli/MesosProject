@@ -10,14 +10,31 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 
 import java.util.ArrayList;
 
+/**
+ * Event card that forces players to pay food for sustenance and converts any
+ * remaining shortage into prestige point loss.
+ */
 public class SustenanceEventCard extends EventCard {
     public final int prestigePointsToRemovePerCharacter;
 
+    /**
+     * Creates the event card.
+     *
+     * @param id card identifier
+     * @param era card era
+     * @param type tribe card type, expected to be {@code EVENT}
+     * @param prestigePointsToRemovePerCharacter prestige point penalty applied to each unpaid sustenance unit
+     */
     public SustenanceEventCard(int id, Era era, TribeCardType type, int prestigePointsToRemovePerCharacter) {
         super(id, era,type);
         this.prestigePointsToRemovePerCharacter = prestigePointsToRemovePerCharacter;
     }
 
+    /**
+     * Applies the event to all players in the match.
+     *
+     * @param players players affected by the event
+     */
     @Override
     public void applyEffect(ArrayList<Player> players) {
         for (Player player : players) {
@@ -47,5 +64,14 @@ public class SustenanceEventCard extends EventCard {
             player.payPrestigePoints(multiplierForNotEnoughFood * this.prestigePointsToRemovePerCharacter);
         }
 
+    }
+
+    /**
+     * Returns the prestige point penalty applied to each unpaid sustenance unit.
+     *
+     * @return prestige point penalty multiplier
+     */
+    public int getPrestigePointsToRemovePerCharacter() {
+        return this.prestigePointsToRemovePerCharacter;
     }
 }

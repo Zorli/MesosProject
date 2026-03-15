@@ -183,21 +183,4 @@ public class Board {
     public void removeLowerCard(Card card) {
         this.lowerPile.removeCard(card);
     }
-
-    // ==========================================
-    // GETTERS FOR VIEWS OR GAME (READ ONLY)
-    // ==========================================
-
-    public List<Card> getUpperRowCards() {
-        return this.upperPile.getAllCards();
-    }
-
-    public List<Card> getLowerRowCards() {
-        return this.lowerPile.getAllCards();
-    }
-
-
-    public List<OfferSpace> getAvailableOfferSpaces() {
-        return this.offerPath.getAvailableOfferSpaces();
-    }
 }
