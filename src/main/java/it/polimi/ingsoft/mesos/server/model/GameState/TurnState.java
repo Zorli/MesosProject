@@ -4,8 +4,8 @@ import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 
 
 /*
-This class is meant to be the FSM that check every step in the single player turn.
- */
+    This class is meant to be the FSM that check every step in the single player turn.
+*/
 //TODO la posizione sulle pedine è quella di iscrizione in lobby
 
 public class TurnState {
@@ -50,7 +50,6 @@ public class TurnState {
         this.phase = TurnPhase.WAITING_FOR_CARD_SELECTION;
         this.remainingUpperChoices = upperChoices;
         this.remainingLowerChoices = lowerChoices;
-
     }
 
     public void onUpperCardChosen() {

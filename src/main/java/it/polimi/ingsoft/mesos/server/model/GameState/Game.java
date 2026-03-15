@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
@@ -82,7 +83,7 @@ public class Game {
     }
 
     //The game orchestrator redirect to me the move from the player in a specific location
-    public void moveTotem(Player player, int offerSpaceIndex){
+    public void moveTotem(Player player, ){
         //Firstly I need to check if the player can make that request
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new IllegalStateException("It's not the turn of this player");
@@ -93,20 +94,36 @@ public class Game {
         //I can as the board to move a specific totem
         //Here I need the api to ask to the board to make the specific
 
+        //Chiamato checck metti in posizione totem su casellax booelan
+
+        //Se può faccio place , mi vengono ritornare quante carte da sopra e da sotto.
+
         //Once the totem has been moved I can update the turnstate
         //I should pass the player because he has a tribe and maybe that tribe has a perk on the drawnable cards
         turnState.onTotemMoved(player);
     }
 
-    //Return to the frontend the drawable card from the upper pile and the lower pile
-    public void showDrawableBoardCard(){
+    //Return the board state
+    public void showBoardCard(){
 
 
     }
+    //Ricevo player, valido se la mossa è accettabile,
+    //Chiamo mostrami carte pescabili sulla board passando il player
+    public showDrawableCard(){
+        //Mi passi due liste e le salvo
+    }
+
+    //TODO:
+    //Vedere metodo di pescaggio aggiuntivo dopo gli eventi, avviene pescaggio dopo essere tornato in posizione
+    //fa scelta solo da sopra
+
+
 
     //Which card on the board the player choose to pick
-    public void chooseCard(Player player){
-
+    public void chooseCard(Player player, Card card){
+        //COntrollo se è sopra o sotto e faccio la richiesta alla board.
+        //Faccio i check
 
     }
 
@@ -118,6 +135,14 @@ public class Game {
 
 
     }
+
+    private endRound(){
+        //Risoluzione eventi
+        //Ritorno al posto
+        //Eventuale pescaggio post ritorno al posto
+    }
+
+    private
 
     //Se sono arrivato al round 10 e ho tuti hanno mosso faccio la sola risoluzione degli eventi,
     //Notifico e posso chiamare il conteggio dei punti
