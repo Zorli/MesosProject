@@ -54,8 +54,4 @@ public class StartingBlock {
     public int getPrestigeModifier() {
         return this.prestigeModifier;
     }
-
-    public int getPosition() {
-        return this.position;
-    }
 }
