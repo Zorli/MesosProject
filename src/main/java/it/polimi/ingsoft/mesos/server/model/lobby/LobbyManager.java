@@ -27,7 +27,7 @@ public class LobbyManager {
      * Creates an empty lobby manager with progressive lobby identifiers.
      */
     public LobbyManager() {
-        this(new DefaultGameFactory());
+        this(DefaultGameFactory.getInstance());
     }
 
     /**
