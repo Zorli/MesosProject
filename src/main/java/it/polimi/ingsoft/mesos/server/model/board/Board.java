@@ -92,7 +92,7 @@ public class Board {
      * Discards all cards currently in the lower row and shifts all tribe cards
      * from the upper row down to the lower row.
      */
-    public void shiftUpperToLower() {
+    private void shiftUpperToLower() {
         this.lowerPile.discardLowerRow();
         List<TribeCard> tribeCardsToMove = this.upperPile.removeAndReturnAllTribeCards();
 
@@ -105,7 +105,7 @@ public class Board {
      * Discards all building cards currently in the lower row and shifts all building cards
      * from the upper row down to the lower row.
      */
-    public void moveUpperBuildingCardsToLowerRow() {
+    private void moveUpperBuildingCardsToLowerRow() {
         this.lowerPile.discardLowerBuildings();
         List<BuildingCard> buildingsToMove = this.upperPile.removeAndReturnAllBuildingCards();
 
@@ -134,13 +134,25 @@ public class Board {
     }
 
     /**
+     * Resets the visible rows after the round has ended and returns whether the refill triggered an
+     * era change.
+     *
+     * @param currentEra era active before resetting the board
+     * @return {@code true} when the refill moved the game into a new era
+     */
+    public boolean resetBoardAfterRound(Era currentEra) {
+        this.shiftUpperToLower();
+        return this.refillUpperTribeCards(currentEra);
+    }
+
+    /**
      * Refills the upper row with new tribe cards up to the required amount.
      * If a card from a new era is drawn, it triggers the era change logic.
      *
      * @param currentEra The era currently being played before the refill.
      * @return True if a card from a new era was drawn, false otherwise.
      */
-    public boolean refillUpperTribeCards(Era currentEra) {
+    private boolean refillUpperTribeCards(Era currentEra) {
         int cardsNeeded = (numPlayer + 4) - this.upperPile.getTribeCardsSize();
         boolean newEraTriggered = false;
 
@@ -166,7 +178,7 @@ public class Board {
      *
      * @param newEra The era defining how many building cards should be drawn.
      */
-    public void refillUpperBuildingCards(Era newEra) {
+    private void refillUpperBuildingCards(Era newEra) {
         int buildingsToDraw = getBuildingCountForEra(newEra);
 
         for (int i = 0; i < buildingsToDraw; i++) {

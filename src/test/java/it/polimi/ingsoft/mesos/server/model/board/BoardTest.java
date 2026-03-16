@@ -62,6 +62,47 @@ class BoardTest {
         assertTrue(board.getDraftableUpperCards(discountedPlayer).contains(discountedBuilding));
     }
 
+    @Test
+    void resetBoardAfterRoundShiftsCardsAndReturnsEraChangeFlag() {
+        Gatherer discardedLowerOne = new Gatherer(1, Era.first, TribeCardType.GATHERER);
+        Gatherer discardedLowerTwo = new Gatherer(2, Era.first, TribeCardType.GATHERER);
+        Gatherer discardedLowerThree = new Gatherer(3, Era.first, TribeCardType.GATHERER);
+
+        Gatherer shiftedUpperOne = new Gatherer(4, Era.first, TribeCardType.GATHERER);
+        HuntEventCard shiftedUpperTwo = new HuntEventCard(5, Era.first, TribeCardType.EVENT, 1, 1);
+        Gatherer shiftedUpperThree = new Gatherer(6, Era.first, TribeCardType.GATHERER);
+        Gatherer shiftedUpperFour = new Gatherer(7, Era.first, TribeCardType.GATHERER);
+        HuntEventCard shiftedUpperFive = new HuntEventCard(8, Era.first, TribeCardType.EVENT, 1, 1);
+        Gatherer shiftedUpperSix = new Gatherer(9, Era.first, TribeCardType.GATHERER);
+        Gatherer refilledUpperCard = new Gatherer(10, Era.second, TribeCardType.GATHERER);
+
+        Board board = new Board(
+                new TribeDeck(new ArrayList<>(List.of(
+                        discardedLowerOne,
+                        discardedLowerTwo,
+                        discardedLowerThree,
+                        shiftedUpperOne,
+                        shiftedUpperTwo,
+                        shiftedUpperThree,
+                        shiftedUpperFour,
+                        shiftedUpperFive,
+                        shiftedUpperSix,
+                        refilledUpperCard
+                ))),
+                new BuildingDeck(new ArrayList<>()),
+                players("Alice", "Bob")
+        );
+        board.setupInitialRows();
+
+        boolean eraChanged = board.resetBoardAfterRound(Era.first);
+
+        assertTrue(eraChanged);
+        assertEquals(6, board.getLowerRowCards().size());
+        assertTrue(board.getLowerRowCards().contains(shiftedUpperTwo));
+        assertTrue(board.getLowerRowCards().contains(shiftedUpperFive));
+        assertEquals(List.of(refilledUpperCard), board.getUpperRowCards());
+    }
+
     private static List<Player> players(String... nicknames) {
         ArrayList<Player> players = new ArrayList<>();
         TotemColor[] colors = TotemColor.values();

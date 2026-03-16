@@ -32,6 +32,8 @@ public class Game {
     private final ArrayList<Player> players;
     private Era currentEra; //Mutable
     private GameStatus status;  //Mutable
+    private RoundPhase currentRoundPhase;
+    private Card currentCard;
     private TribeDeck tribeDeck; //Should I keep the reference to the deck directly, or I only need the board?
     private BuildingDeck buildingDeck;
     private Board board;
@@ -141,6 +143,9 @@ public class Game {
      * @return an action result describing the freshly initialized match state
      */
     public ActionResult setup(){
+        if (this.status != GameStatus.SETUP) {
+            throw new InvalidGameStatusException("setup", this.status);
+        }
         //Operation to perform here:
         //Place people on the map and build the offer path
         this.board.buildOfferPath();
@@ -156,7 +161,7 @@ public class Game {
 
         //I can update the game status
         this.status = GameStatus.IN_PROGRESS;
-
+        this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
         return buildActionResult(false, false, false);
     }
 
@@ -174,8 +179,12 @@ public class Game {
      * @return an action result describing the updated state after the move
      */
     public ActionResult moveTotem(Player player, String tilecode){
-        //Firstly I need to check if the player can make that request
 
+        if(this.status !=  GameStatus.IN_PROGRESS) {throw new InvalidGameStatusException("moveTotem", this.status);}
+
+        if(this.currentRoundPhase !=  RoundPhase.PLAYER_TURNS) {throw  new InvalidGamePhaseException("moveTotem", this.currentRoundPhase);}
+
+        //Firstly I need to check if the player can make that request
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
@@ -235,6 +244,11 @@ public class Game {
      * @param card card chosen from the board
      */
     public ActionResult chooseCard(Player player, Card card){
+
+        if(this.status !=  GameStatus.IN_PROGRESS) {throw new InvalidGameStatusException("chooseCard", this.status);}
+
+        if(this.currentRoundPhase !=  RoundPhase.PLAYER_TURNS) {throw  new InvalidGamePhaseException("chooseCard",this.currentRoundPhase);}
+
         //Check if the player is correct
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
@@ -284,14 +298,15 @@ public class Game {
 
         if (turnState.isTurnCompleted()) {
             if(turnOrderTrack.isLastPlayer()){
-                //i need to go in a state in which only eventresolution in possible
+                //I need to go in a state in which only event resolution in possible
+                this.currentRoundPhase = RoundPhase.RESOLVING_EVENTS;
+                turnState.resetForNextPlayer();
             }else {
                 turnOrderTrack.advanceToNextPlayer();
                 turnState.resetForNextPlayer();
             }
 
         }
-
 
         return buildActionResult(false, false, false);
     }
@@ -300,30 +315,101 @@ public class Game {
     //When the game is ended, I need to calculate the score in terms of PP for every player, I have to return
     //something that can be used both for showing the result and also to save in the leaderboard
 
-    /**
-     * Placeholder for the final scoring routine executed when the match ends.
-     */
-    public void calculateFinalScore(){
 
-
-
-    }
 
     /**
      * Placeholder for the end-of-round resolution, including events and player repositioning.
      */
-    private void endRound(){
+    public void resolveEvents(){
         //Risoluzione eventi
-        //Ritorno al posto
-        //Eventuale pescaggio post ritorno al posto
+        if(this.status !=  GameStatus.IN_PROGRESS) {throw new InvalidGameStatusException("ResolveEvents", this.status);}
+
+        if(this.currentRoundPhase !=  RoundPhase.RESOLVING_EVENTS ){throw  new InvalidGamePhaseException("resolveEvents", this.currentRoundPhase);}
+
+        board.resolveLowerEvents();
+
+        if (this.turnOrderTrack.getRoundNumber() == 10) {
+            this.currentRoundPhase = RoundPhase.FINAL_SCORING;
+        } else {
+            this.currentRoundPhase = RoundPhase.RETURNING_TO_START;
+        }
     }
 
-    //Se sono arrivato al round 10 e ho tuti hanno mosso faccio la sola risoluzione degli eventi,
-    //Notifico e posso chiamare il conteggio dei punti
-    private void checkGameFinished(){
+    public void returnToStart() {
+        if (this.status != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("returnToStart", this.status);
+        }
+
+        if (this.currentRoundPhase != RoundPhase.RETURNING_TO_START) {
+            throw new InvalidGamePhaseException("returnToStart", this.currentRoundPhase);
+        }
+
+        List<Player> newOrder = this.board.rebuildOrderFromOfferPath();
+        this.turnOrderTrack.setNewOrder(newOrder);
+        this.currentRoundPhase = RoundPhase.RESETTING_BOARD;
+    }
+
+
+
+    public void resetBoard() {
+        if (this.status != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("resetBoard", this.status);
+        }
+
+        if (this.currentRoundPhase != RoundPhase.RESETTING_BOARD) {
+            throw new InvalidGamePhaseException("resetBoard", this.currentRoundPhase);
+        }
+
+        //Shifting cards + Refilling card + if needed shifting building and refilling building
+        boolean eraChanged = board.resetBoardAfterRound(this.currentEra);
+        if (eraChanged) {
+            this.currentEra = this.currentEra.next();
+        }
+
+        this.currentRoundPhase = RoundPhase.POST_REFILL_DRAW;
+    }
+
+    public void postRefillDrawn(){
+        if (this.status != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("postRefillDrawn", this.status);
+        }
+
+        if (this.currentRoundPhase != RoundPhase.POST_REFILL_DRAW) {
+            throw new InvalidGamePhaseException("postRefillDrawn", this.currentRoundPhase);
+        }
+
+        //Se un player ha il building con il perk può fare una pescata (magari è solo una riscriuttra del choosecard
+        //Con check iniziali diversi
+
+        this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
+
+    }
+
+
+    /**
+     * Placeholder for the final scoring routine executed when the match ends.
+     */
+    public void calculateFinalScore(){
+        if (this.status != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("calculateFinalScore", this.status);
+        }
+
+        if (this.currentRoundPhase != RoundPhase.FINAL_SCORING) {
+            throw new InvalidGamePhaseException("calculateFinalScore", this.currentRoundPhase);
+        }
+
 
 
     }
+
+
+
+
+    /*
+
+    -----HELPER------
+
+     */
 
     /**
      * Builds a complete action snapshot including board rows and the current player's drawable
