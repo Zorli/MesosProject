@@ -242,6 +242,24 @@ public class Board {
     }
 
     /**
+     * Returns the row currently containing the requested card.
+     *
+     * @param card The card to locate on the board.
+     * @return {@link CardRow#UPPER} if the card is in the upper row,
+     * {@link CardRow#LOWER} if it is in the lower row,
+     * or {@link CardRow#NOT_PRESENT} if the card is not on the board.
+     */
+    public CardRow getCardRow(Card card) {
+        if (this.getUpperRowCards().contains(card)) {
+            return CardRow.UPPER;
+        }
+        if (this.getLowerRowCards().contains(card)) {
+            return CardRow.LOWER;
+        }
+        return CardRow.NOT_PRESENT;
+    }
+
+    /**
      * Removes a specific drafted card from the upper row.
      *
      * @param card The card to remove.

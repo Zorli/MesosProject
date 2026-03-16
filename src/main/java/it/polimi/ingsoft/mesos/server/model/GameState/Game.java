@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
+import it.polimi.ingsoft.mesos.server.model.board.CardRow;
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferPath;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
@@ -222,8 +223,6 @@ public class Game {
     //Vedere metodo di pescaggio aggiuntivo dopo gli eventi, avviene pescaggio dopo essere tornato in posizione
     //fa scelta solo da sopra
 
-
-
     //Which card on the board the player choose to pick
 
     /**
@@ -232,9 +231,30 @@ public class Game {
      * @param player player selecting the card
      * @param card card chosen from the board
      */
-    public void chooseCard(Player player, Card card){
-        //COntrollo se è sopra o sotto e faccio la richiesta alla board.
-        //Faccio i check
+    public ActionResult chooseCard(Player player, Card card){
+        //Check if the player is correct
+
+        //Check if the player is in the correct phase
+
+
+        //Check if he can draw
+        CardRow cardRow = board.getCardRow(card);
+        if(cardRow == CardRow.NOT_PRESENT){
+            throw  new CardNotPresentException(card);
+        } else if (cardRow == CardRow.UPPER) {
+            if(!turnState.canChooseFromUpperRow()){
+                throw new CardRowSelectionNotAllowedException(cardRow);
+            }
+            board.removeUpperCard(card);
+            if card
+        }else (cardRow == CardRow.LOWER){
+            if(!turnState.canChooseFromLowerRow()){
+                throw new CardRowSelectionNotAllowedException(cardRow);
+            }
+        }
+
+        //Now the player can get the card
+        board.
 
     }
 
