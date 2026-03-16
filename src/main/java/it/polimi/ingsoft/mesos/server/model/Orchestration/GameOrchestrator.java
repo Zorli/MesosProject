@@ -2,15 +2,19 @@ package it.polimi.ingsoft.mesos.server.model.Orchestration;
 
 
 import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.model.GameState.ActionResult;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 //Need to instantiate a game using the factory and to move the players from the lobby to the game
 public class GameOrchestrator {
     Game game;
+    List<Player> players;
+    ActionResult actionResult;
     //   For whoever is going to code this:
     //1) Use the factory passing the number of players as shown
     //2) Make sure the game is correctly initialized
@@ -22,6 +26,16 @@ public class GameOrchestrator {
 
     public GameOrchestrator(GameFactory gameFactory, ArrayList<Player> players) {
         this.game = gameFactory.createGame(players);
+        this.players = players;
     }
+
+
+
+    //RMI Protocols istances here. All the communication between the client in a specific match and the match should
+    //Pass through this controller. The gameOrchestrator(aka the game controller for a specific match, should maintain
+    // and keep updated a sort of high level overview of the game status, so we use the action result data object
+    //to update the state
+
+
 
 }

@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
+import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferPath;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
@@ -10,6 +11,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 
 import java.util.ArrayList;
+import java.util.List;
 
 //References : docs/design-doc-game-state.md
 
@@ -25,10 +27,14 @@ public class Game {
     private TurnState turnState;
     //Need only the id and the number of players, the era it's clearly the first one
     public Game(int id, ArrayList<Player> players, TurnState turnState, TurnOrderTrack turnOrderTrack, Board board,
-                TribeDeck  tribeDeck, BuildingDeck buildingDeck)
-    {
+                TribeDeck  tribeDeck, BuildingDeck buildingDeck) {
         this.id = id;
         this.players = players;
+        this.turnState = turnState;
+        this.turnOrderTrack = turnOrderTrack;
+        this.board = board;
+        this.tribeDeck = tribeDeck;
+        this.buildingDeck = buildingDeck;
         this.currentEra = Era.first;
         this.status = GameStatus.SETUP;
     }
@@ -64,7 +70,7 @@ public class Game {
     I think that during this phase we should ask the players what totem they want and where to place
     the totem on the starting tile.
      */
-    public void setup(){
+    public ActionResult setup(){
         //Operation to perform here:
         //Place people on the map and build the offer path
         this.board.buildOfferPath();
@@ -80,38 +86,45 @@ public class Game {
 
         //I can update the game status
         this.status = GameStatus.IN_PROGRESS;
+
+        return buildActionResult(false, false, false);
     }
 
     //The game orchestrator redirect to me the move from the player in a specific location
-    public void moveTotem(Player player, int offerSpaceIndex){
+    public ActionResult moveTotem(Player player, String tilecode){
         //Firstly I need to check if the player can make that request
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
-            throw new IllegalStateException("It's not the turn of this player");
+            throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
         //Then I check if he can move the totem
-        if(!turnState.canMoveTotem()){throw new IllegalArgumentException("The player has already moved the totem");}
+        if(!turnState.canMoveTotem()){
+            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
+        }
 
-        //I can as the board to move a specific totem
-        //Here I need the api to ask to the board to make the specific
+        //I ask the board if a specific tile is free
+        if(tilecode == null || !board.isSpaceAvailable(tilecode)){throw new TileNotAvailableException(tilecode);}
 
-        //Chiamato checck metti in posizione totem su casellax booelan
+        //Place the totem on the specific tile, i get the card he can get from the upper row and the lower row
+        int [] choices = board.placePlayerOnOfferSpace(player, tilecode);
 
-        //Se può faccio place , mi vengono ritornare quante carte da sopra e da sotto.
+        //Update the turnfsmle
+        turnState.onTotemMoved(choices[0], choices[1]);
 
         //Once the totem has been moved I can update the turnstate
         //I should pass the player because he has a tribe and maybe that tribe has a perk on the drawnable cards
-        turnState.onTotemMoved(0, 0);
+
+
+        return buildActionResult(false, false, false);
     }
 
     //Return the board state
-    public void showBoardCard(){
-
-
+    public ActionResult showBoardCard(){
+        return buildBoardSnapshotActionResult(false, false, false);
     }
     //Ricevo player, valido se la mossa è accettabile,
     //Chiamo mostrami carte pescabili sulla board passando il player
-    public void showDrawableCard(){
-        //Mi passi due liste e le salvo
+    public ActionResult showDrawableCard(){
+        return buildDrawableCardsActionResult(false, false, false);
     }
 
     //TODO:
@@ -147,6 +160,67 @@ public class Game {
     private void checkGameFinished(){
 
 
+    }
+
+    private ActionResult buildActionResult(boolean turnEnded, boolean roundEnded, boolean gameEnded) {
+        return new ActionResult(
+                this.turnState.getPhase(),
+                this.turnOrderTrack.getCurrentPlayer(),
+                this.status,
+                this.currentEra,
+                this.turnOrderTrack.getRoundNumber(),
+                turnEnded,
+                roundEnded,
+                gameEnded,
+                this.board.getUpperRowCards(),
+                this.board.getLowerRowCards(),
+                getDrawableUpperCardsForCurrentPlayer(),
+                getDrawableLowerCardsForCurrentPlayer()
+        );
+    }
+
+    private ActionResult buildBoardSnapshotActionResult(boolean turnEnded, boolean roundEnded, boolean gameEnded) {
+        return new ActionResult(
+                this.turnState.getPhase(),
+                this.turnOrderTrack.getCurrentPlayer(),
+                this.status,
+                this.currentEra,
+                this.turnOrderTrack.getRoundNumber(),
+                turnEnded,
+                roundEnded,
+                gameEnded,
+                this.board.getUpperRowCards(),
+                this.board.getLowerRowCards(),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private ActionResult buildDrawableCardsActionResult(boolean turnEnded, boolean roundEnded, boolean gameEnded) {
+        return new ActionResult(
+                this.turnState.getPhase(),
+                this.turnOrderTrack.getCurrentPlayer(),
+                this.status,
+                this.currentEra,
+                this.turnOrderTrack.getRoundNumber(),
+                turnEnded,
+                roundEnded,
+                gameEnded,
+                List.of(),
+                List.of(),
+                getDrawableUpperCardsForCurrentPlayer(),
+                getDrawableLowerCardsForCurrentPlayer()
+        );
+    }
+
+    private List<Card> getDrawableUpperCardsForCurrentPlayer() {
+        Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
+        return this.board.getDraftableUpperCards(currentPlayer);
+    }
+
+    private List<Card> getDrawableLowerCardsForCurrentPlayer() {
+        Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
+        return this.board.getDraftableLowerCards(currentPlayer);
     }
 
 }

@@ -9,7 +9,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 //TODO la posizione sulle pedine è quella di iscrizione in lobby
 
 public class TurnState {
-    TurnPhase phase;
+    private TurnPhase phase;
     //If this player has the building that gives the perk to take another card, how we handle it?
     //At this point is the offer path that prescribes how much card the player can take
     private int remainingUpperChoices;
@@ -41,7 +41,7 @@ public class TurnState {
 
     public void onTotemMoved(int upperChoices, int lowerChoices) {
         if (!canMoveTotem()) {
-            throw new IllegalStateException("Totem move is not allowed in thisphase ");
+            throw new IllegalStateException("Totem move is not allowed in this phase ");
         }
 
         if (upperChoices < 0 || lowerChoices < 0) {

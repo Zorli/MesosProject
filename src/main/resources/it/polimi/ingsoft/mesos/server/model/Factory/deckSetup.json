@@ -2802,7 +2802,7 @@
           }
         }
       ],
-      "FINAL_BUILDER_TOTAL_PP_MULTIPLIER": [
+      "BUILDER_TOTAL_PP_MULTIPLIER": [
         {
           "id": 107,
           "era": "second",

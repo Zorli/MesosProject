@@ -47,6 +47,7 @@ dell'azione cosi che il game orchestrator possa essere notificato di questo even
 TurnState FSM del singolo turno del giocatore
 TurnOderTrack tiene conto dell'ordine del round
 
+
 Stato che possiede
 
 Operazioni che espone
