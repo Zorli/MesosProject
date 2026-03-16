@@ -14,8 +14,24 @@ public enum BenefitType {
     EVENT_BONUS_HUNTER,                                 // <-- done
     EVENT_BONUS_CAVE_PAINTING,                          // <-- done
 
-    FINAL_PRESTIGE_POINTS_FOR_SET,                      // TODO
-    FINAL_BUILDER_TOTAL_PP_MULTIPLIER,                  // TODO
-    FINAL_BONUS_MULTIPLIER_FOR_TYPE,                    // TODO
-    FINAL_BONUS_BIG_PP_REWARD,                          // TODO
+    FINAL_PRESTIGE_POINTS_FOR_SET,                      // <-- done
+    BUILDER_TOTAL_PP_MULTIPLIER,                        // <-- done in tribe
+    FINAL_BONUS_MULTIPLIER_FOR_TYPE,                    // <-- done
+    FINAL_BONUS_BIG_PP_REWARD,                          // <-- done
+
+    /**
+     *
+     * All the increment for the final Phase of a Match:
+     *
+     * -- Bonus of the Buildings with FINAL EFFECT
+     * idea: in the final phase of the match we check that if the player has a building with a FINAL...
+     * we just call the applyEffect giving the player as parameter
+     *
+     * -- PrestigePoints of the buildings
+     * In the final phase we also have to increase the pp of the Players just going through the players buildings calling BuildingCard.getPrestigePoints()
+     *
+     * -- Bonus of the Builders for final phase
+     * Also in the final phase for each Player we have to call Player.gainPrestigePoints(Player.getTribe().getPrestigePointsForBuilderInFinalPhase())
+     *
+     */
 }

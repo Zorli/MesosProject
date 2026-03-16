@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.ShamanStarsBonus;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.*;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
+import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 
 import java.util.ArrayList;
 
@@ -80,6 +81,21 @@ public class Tribe {
             }
         }
         return false;
+    }
+
+    public int getPrestigePointsForBuilderInFinalPhase(){
+        int reward = 0;
+        for (CharacterCard card : this.characters){
+            if(card.getType() == TribeCardType.BUILDER){
+                reward += ((Builder) card).getPrestigePoints();
+            }
+        }
+        for (BuildingCard build: this.buildings){
+            if(build.getBenefitType() == BenefitType.BUILDER_TOTAL_PP_MULTIPLIER){
+                reward *= 2;
+            }
+        }
+        return reward;
     }
 
 }
