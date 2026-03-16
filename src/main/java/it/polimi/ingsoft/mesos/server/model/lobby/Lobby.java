@@ -195,6 +195,12 @@ public class Lobby {
         return List.copyOf(this.players);
     }
 
+    /**
+     * Extracts and validates the nickname of a player used in lobby membership checks.
+     *
+     * @param player player whose nickname must be resolved
+     * @return validated non-blank nickname
+     */
     private String resolveNickname(Player player) {
         if (player == null) {
             throw new IllegalArgumentException("Player cannot be null");
@@ -209,6 +215,11 @@ public class Lobby {
         return nickname;
     }
 
+    /**
+     * Returns a debug-friendly textual representation of the lobby.
+     *
+     * @return string containing the main lobby fields and player nicknames
+     */
     @Override
     public String toString() {
         List<String> playerNicknames = this.players.stream()
