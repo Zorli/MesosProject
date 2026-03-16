@@ -3,6 +3,11 @@ package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
+/**
+ * Represents a single space on the offer path where a player can place their totem.
+ * Each space dictates the drafting rules for the player occupying it and may grant
+ * immediate bonuses upon placement.
+ */
 public class OfferSpace {
     private int positionIndex;
     private String code;
@@ -12,14 +17,20 @@ public class OfferSpace {
     private int bottomRowCardsToTake;
     private Player occupiedBy;
 
-    // ==========================================
-    // CONSTRUCTOR
-    // ==========================================
-
+    /**
+     * Constructs a new offer space with its specific rules and rewards.
+     *
+     * @param positionIndex The absolute physical position of the space from left to right (e.g., 1, 2, 3).
+     * @param code The unique string identifier for the space (e.g., "A", "B").
+     * @param minPlayers The minimum number of players required in the game for this space to be active.
+     * @param foodBonus The immediate food bonus granted to a player when they occupy this space.
+     * @param topRowCardsToTake The number of cards the occupying player can draft from the upper row.
+     * @param bottomRowCardsToTake The number of cards the occupying player can draft from the lower row.
+     */
     public OfferSpace(int positionIndex, String code, int minPlayers, int foodBonus,
                       int topRowCardsToTake, int bottomRowCardsToTake) {
         this.positionIndex = positionIndex;
-        this.code = code; // Useful for UI rendering, network messages, or JSON mapping
+        this.code = code;
         this.minPlayers = minPlayers;
         this.foodBonus = foodBonus;
         this.topRowCardsToTake = topRowCardsToTake;
@@ -27,74 +38,98 @@ public class OfferSpace {
         this.occupiedBy = null;
     }
 
-
-    // ==========================================
-    // STATE & STATUS CHECKS
-    // ==========================================
-
     /**
-     * Checks if the space is currently free to be occupied.
+     * Checks if the space is currently unoccupied and available for a player's totem.
+     *
+     * @return True if the space is free, false if it is already occupied.
      */
     public boolean isAvailable() {
         return this.occupiedBy == null;
     }
 
-
-    // ==========================================
-    // PLAYER INTERACTION
-    // ==========================================
-
     /**
-     * Places a player's totem on this space.
+     * Assigns a player to this space, marking it as occupied.
+     *
+     * @param player The player placing their totem on the space.
      */
     public void occupy(Player player) {
         this.occupiedBy = player;
     }
 
     /**
-     * Clears the space, removing the player's totem (used at the end of the round).
+     * Clears the space by removing the occupying player.
+     * Typically called at the end of the round during the board reset phase.
      */
     public void clear() {
         this.occupiedBy = null;
     }
 
     /**
-     * Resolves the action when a player is placed here.
-     * Contains the immediate food bonus and placeholders for the drafting logic.
+     * Resolves the immediate effects triggered by placing a totem on this space.
+     * Currently grants the intrinsic food bonus of the space to the player.
+     *
+     * @param player The player who occupied the space and receives the effects.
      */
-    public void resolveImmediateAction(Player player)
-    {
+    public void resolveImmediateAction(Player player) {
         if (this.foodBonus > 0) {
             player.gainFood(this.foodBonus);
         }
     }
 
-
-
-    // ==========================================
-    // GETTERS
-    // ==========================================
-
+    /**
+     * Retrieves the player currently occupying this space.
+     *
+     * @return The occupying player, or null if the space is empty.
+     */
     public Player getOccupiedBy() {
         return this.occupiedBy;
     }
 
+    /**
+     * Retrieves the physical position index of this space on the board.
+     * Crucial for determining the new turn order at the end of the round.
+     *
+     * @return The integer position index.
+     */
     public int getPositionIndex() {
         return this.positionIndex;
     }
 
+    /**
+     * Retrieves the unique string code identifying this space.
+     * Useful for UI rendering, network messages, or API mapping.
+     *
+     * @return The string code of the space.
+     */
     public String getCode() {
         return this.code;
     }
 
+    /**
+     * Retrieves the minimum number of players required for this space to exist in the game.
+     *
+     * @return The minimum player count requirement.
+     */
     public int getMinPlayers() {
         return this.minPlayers;
     }
 
+    /**
+     * Retrieves the exact number of cards the occupying player is allowed to draft
+     * from the upper row.
+     *
+     * @return The draft amount for the upper row.
+     */
     public int getTopRowCardsToTake() {
         return this.topRowCardsToTake;
     }
 
+    /**
+     * Retrieves the exact number of cards the occupying player is allowed to draft
+     * from the lower row.
+     *
+     * @return The draft amount for the lower row.
+     */
     public int getBottomRowCardsToTake() {
         return this.bottomRowCardsToTake;
     }

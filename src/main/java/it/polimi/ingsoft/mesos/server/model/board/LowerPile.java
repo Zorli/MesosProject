@@ -10,26 +10,28 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Represents the lower row of cards on the game board.
+ * Manages the storage and lifecycle of tribe cards and building cards
+ * that have shifted down from the upper row, as well as the resolution of events.
+ */
 public class LowerPile {
     private List<TribeCard> tribeCards;
     private List<BuildingCard> buildingCards;
 
-    // ==========================================
-    // CONSTRUCTOR
-    // ==========================================
-
+    /**
+     * Initializes an empty lower pile, ready to receive tribe and building cards.
+     */
     public LowerPile() {
         this.tribeCards = new ArrayList<>();
         this.buildingCards = new ArrayList<>();
     }
 
-    // ==========================================
-    // ADDING CARDS
-    // ==========================================
-
     /**
-     * Smart addition: automatically routes the card to the correct internal list.
-     * Used during setup and single-card refills.
+     * Smartly adds a single card to the pile, automatically routing it
+     * to the correct internal list based on its specific type.
+     *
+     * @param card The card to be added (TribeCard or BuildingCard).
      */
     public void addCard(Card card) {
         if (card instanceof TribeCard) {
@@ -39,19 +41,30 @@ public class LowerPile {
         }
     }
 
+    /**
+     * Adds a collection of tribe cards to the lower row.
+     *
+     * @param cards The list of tribe cards to add.
+     */
     public void addTribeCards(List<TribeCard> cards) {
         this.tribeCards.addAll(cards);
     }
 
+    /**
+     * Adds a collection of building cards to the lower row.
+     *
+     * @param cards The list of building cards to add.
+     */
     public void addBuildingCards(List<BuildingCard> cards) {
         this.buildingCards.addAll(cards);
     }
 
-
-    // ==========================================
-    // REMOVING & DISCARDING CARDS
-    // ==========================================
-
+    /**
+     * Removes a specific card from the lower row, determining its type
+     * to remove it from the correct internal list.
+     *
+     * @param card The card to remove (typically drafted by a player).
+     */
     public void removeCard(Card card) {
         if (card instanceof TribeCard) {
             this.tribeCards.remove(card);
@@ -60,22 +73,28 @@ public class LowerPile {
         }
     }
 
+    /**
+     * Clears all tribe cards currently present in the lower row.
+     * Used during the end-of-round shifting phase.
+     */
     public void discardLowerRow() {
         this.tribeCards.clear();
     }
 
+    /**
+     * Clears all building cards currently present in the lower row.
+     * Used during the end-of-era shifting phase.
+     */
     public void discardLowerBuildings() {
         this.buildingCards.clear();
     }
 
-
-    // ==========================================
-    // EVENT RESOLUTION
-    // ==========================================
-
     /**
-     * Resolves all events present in the lower row.
-     * The Sustenance Event is always resolved last according to game rules.
+     * Resolves all event cards currently present in the lower row.
+     * Ensures that the Sustenance Event is always resolved last,
+     * as strictly dictated by the game rules.
+     *
+     * @param players The list of players affected by the events.
      */
     public void resolveLowerRowEvents(ArrayList<Player> players) {
         SustenanceEventCard sustenanceEvent = null;
@@ -93,14 +112,20 @@ public class LowerPile {
         }
     }
 
-    // ==========================================
-    // GETTERS & QUERIES
-    // ==========================================
-
+    /**
+     * Retrieves the current number of tribe cards in the lower row.
+     *
+     * @return The size of the tribe cards list.
+     */
     public int getTribeCardsSize() {
         return this.tribeCards.size();
     }
 
+    /**
+     * Retrieves all cards (both tribe and building cards) currently present in the lower pile.
+     *
+     * @return A combined list containing all cards in the lower row.
+     */
     public List<Card> getAllCards() {
         List<Card> allCards = new ArrayList<>();
         allCards.addAll(this.tribeCards);
