@@ -39,7 +39,7 @@ public class BuildingCard extends Card {
      */
     @Override
     public boolean isDrawable(Player player) {
-        return player.getFood() >= this.foodCost;
+        return player.getFood() >= this.getEffectiveFoodCost(player);
     }
 
     /**
@@ -58,6 +58,25 @@ public class BuildingCard extends Card {
      */
     public int getFoodCost() {
         return this.foodCost;
+    }
+
+    /**
+     * Returns the actual food cost the provided player has to pay after applying builder discounts.
+     *
+     * @param player player attempting to acquire the building
+     * @return discounted cost, never below zero
+     */
+    public int getEffectiveFoodCost(Player player) {
+        return Math.max(0, this.foodCost - player.getBuildingFoodDiscount());
+    }
+
+    /**
+     * Charges the effective discounted food cost of this building to the provided player.
+     *
+     * @param player player acquiring the building
+     */
+    public void payEffectiveCost(Player player) {
+        player.payFood(this.getEffectiveFoodCost(player));
     }
 
     /**

@@ -16,7 +16,7 @@ public class Player {
     private int food;
     private int prestigePoints;
     private final TotemColor totem;
-    private final Tribe tribe;
+    private Tribe tribe;
 
     /**
      * Creates a player with the provided identity, resources, and tribe.
@@ -100,6 +100,26 @@ public class Player {
      */
     public Tribe getTribe() {
         return this.tribe;
+    }
+
+    /**
+     * Initializes the player attributes required to participate in a match.
+     *
+     * <p>The method is idempotent so factories can safely call it before creating the game model.
+     */
+    public void initializeGameAttributes() {
+        if (this.tribe == null) {
+            this.tribe = new Tribe();
+        }
+    }
+
+    /**
+     * Returns the total building-cost discount currently granted by the player's builder cards.
+     *
+     * @return total food discount applied when buying buildings
+     */
+    public int getBuildingFoodDiscount() {
+        return this.tribe == null ? 0 : this.tribe.getTotalFoodDiscountFromBuilders();
     }
 
     /**

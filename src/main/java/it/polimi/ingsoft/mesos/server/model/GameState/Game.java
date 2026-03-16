@@ -1,12 +1,16 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
+import it.polimi.ingsoft.mesos.server.model.board.CardRow;
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferPath;
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
+import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 
@@ -222,8 +226,6 @@ public class Game {
     //Vedere metodo di pescaggio aggiuntivo dopo gli eventi, avviene pescaggio dopo essere tornato in posizione
     //fa scelta solo da sopra
 
-
-
     //Which card on the board the player choose to pick
 
     /**
@@ -232,10 +234,66 @@ public class Game {
      * @param player player selecting the card
      * @param card card chosen from the board
      */
-    public void chooseCard(Player player, Card card){
-        //COntrollo se è sopra o sotto e faccio la richiesta alla board.
-        //Faccio i check
+    public ActionResult chooseCard(Player player, Card card){
+        //Check if the player is correct
+        if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
+            throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
+        }
+        //Then I check if he can drawn card
+        if (!turnState.isWaitingForCardSelection()) {
+            throw new InvalidTurnPhaseException("chooseCard", turnState.getPhase());
+        }
 
+        //Check if he can draw
+        CardRow cardRow = board.getCardRow(card);
+        if(cardRow == CardRow.NOT_PRESENT){
+            throw  new CardNotPresentException(card);
+        }
+        if (!board.canPlayerDrawCard(player, card)) {
+            throw new CardNotDrawableException(player, card);
+        }
+
+        if (cardRow == CardRow.UPPER) {
+            if(!turnState.canChooseFromUpperRow()){
+                throw new CardRowSelectionNotAllowedException(cardRow);
+            }
+            board.removeUpperCard(card);
+            if (card instanceof BuildingCard){
+                ((BuildingCard) card).payEffectiveCost(player);
+                player.getTribe().addBuilding((BuildingCard) card);
+            }else{
+                player.getTribe().addCharacter((CharacterCard) card);
+            }
+            turnState.onUpperCardChosen();
+        }else{
+            if(!turnState.canChooseFromLowerRow()){
+                throw new CardRowSelectionNotAllowedException(cardRow);
+            }
+            board.removeLowerCard(card);
+            if (card instanceof BuildingCard){
+                ((BuildingCard) card).payEffectiveCost(player);
+                player.getTribe().addBuilding((BuildingCard) card);
+            }else{
+                player.getTribe().addCharacter((CharacterCard) card);
+            }
+            turnState.onLowerCardChosen();
+
+        }
+
+        //Now I have to check If I have to advance to another player
+
+        if (turnState.isTurnCompleted()) {
+            if(turnOrderTrack.isLastPlayer()){
+                //i need to go in a state in which only eventresolution in possible
+            }else {
+                turnOrderTrack.advanceToNextPlayer();
+                turnState.resetForNextPlayer();
+            }
+
+        }
+
+
+        return buildActionResult(false, false, false);
     }
 
 

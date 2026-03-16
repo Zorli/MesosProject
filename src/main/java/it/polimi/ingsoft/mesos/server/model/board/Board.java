@@ -225,7 +225,7 @@ public class Board {
      */
     public List<Card> getDraftableUpperCards(Player player) {
         return this.upperPile.getAllCards().stream()
-                .filter(card -> card.isDrawable(player))
+                .filter(card -> this.isCardDraftableForPlayer(card, player))
                 .collect(Collectors.toList());
     }
 
@@ -237,8 +237,38 @@ public class Board {
      */
     public List<Card> getDraftableLowerCards(Player player) {
         return this.lowerPile.getAllCards().stream()
-                .filter(card -> card.isDrawable(player))
+                .filter(card -> this.isCardDraftableForPlayer(card, player))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the row currently containing the requested card.
+     *
+     * @param card The card to locate on the board.
+     * @return {@link CardRow#UPPER} if the card is in the upper row,
+     * {@link CardRow#LOWER} if it is in the lower row,
+     * or {@link CardRow#NOT_PRESENT} if the card is not on the board.
+     */
+    public CardRow getCardRow(Card card) {
+        if (this.getUpperRowCards().contains(card)) {
+            return CardRow.UPPER;
+        }
+        if (this.getLowerRowCards().contains(card)) {
+            return CardRow.LOWER;
+        }
+        return CardRow.NOT_PRESENT;
+    }
+
+    /**
+     * Returns whether the provided player may currently draw the requested card from the board.
+     *
+     * @param player player attempting to draw the card
+     * @param card requested card
+     * @return {@code true} when the card is present on the board and drawable by the player
+     */
+    public boolean canPlayerDrawCard(Player player, Card card) {
+        return this.getCardRow(card) != CardRow.NOT_PRESENT
+                && this.isCardDraftableForPlayer(card, player);
     }
 
     /**
@@ -284,5 +314,14 @@ public class Board {
      */
     public List<OfferSpace> getAvailableOfferSpaces() {
         return this.offerPath.getAvailableOfferSpaces();
+    }
+
+    private boolean isCardDraftableForPlayer(Card card, Player player) {
+        if (card instanceof BuildingCard) {
+            BuildingCard buildingCard = (BuildingCard) card;
+            return player.getFood() >= buildingCard.getEffectiveFoodCost(player);
+        }
+        //it's always true
+        return card.isDrawable(player);
     }
 }
