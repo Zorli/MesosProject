@@ -70,6 +70,15 @@ public class TurnState {
     }
 
     /**
+     * Returns whether the active player is currently in the card-selection phase.
+     *
+     * @return {@code true} when the FSM expects a card choice
+     */
+    public boolean isWaitingForCardSelection() {
+        return this.phase == TurnPhase.WAITING_FOR_CARD_SELECTION;
+    }
+
+    /**
      * Records the result of a valid totem move and enters the card-selection phase.
      *
      * @param upperChoices number of upper-row cards that may be chosen

@@ -51,6 +51,7 @@ public class DefaultGameFactory implements GameFactory {
      */
     @Override
     public Game createGame(ArrayList<Player> players) {
+        players.forEach(Player::initializeGameAttributes);
         TribeDeck tribeDeck = deckTemplate.createTribeDeck(players.size());
         BuildingDeck buildingDeck = deckTemplate.createBuildingDeck();
         Board board = new Board(tribeDeck, buildingDeck, players);
