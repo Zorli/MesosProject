@@ -15,6 +15,14 @@ import java.util.List;
 
 //References : docs/design-doc-game-state.md
 
+/**
+ * Aggregate root that stores the full mutable state of one Mesos match.
+ *
+ * <p>The class owns the players, decks, board, current era, turn-state machine, and round-order
+ * tracker. It exposes the high-level actions invoked by the orchestrator and translates them into
+ * board updates plus immutable {@link ActionResult} snapshots that describe the new public state
+ * of the match.
+ */
 public class Game {
     private final int id;   //Immutable, provided by the game orchestrator
     private final ArrayList<Player> players;
@@ -26,6 +34,18 @@ public class Game {
     private TurnOrderTrack turnOrderTrack;
     private TurnState turnState;
     //Need only the id and the number of players, the era it's clearly the first one
+
+    /**
+     * Creates a new game aggregate with all runtime collaborators already prepared by the factory.
+     *
+     * @param id unique game identifier
+     * @param players players participating in the match
+     * @param turnState finite-state machine controlling the current player's turn
+     * @param turnOrderTrack tracker for the order of play inside each round
+     * @param board board that exposes rows, offer path, and available spaces
+     * @param tribeDeck tribe deck used by the board and by later game phases
+     * @param buildingDeck building deck used by the board and by later game phases
+     */
     public Game(int id, ArrayList<Player> players, TurnState turnState, TurnOrderTrack turnOrderTrack, Board board,
                 TribeDeck  tribeDeck, BuildingDeck buildingDeck) {
         this.id = id;
@@ -40,23 +60,59 @@ public class Game {
     }
 
     //Setter
+
+    /**
+     * Updates the current era tracked by the match.
+     *
+     * @param currentEra new era reached by the game
+     */
     public void setCurrentEra(Era currentEra) {
         this.currentEra = currentEra;
     }
+
+    /**
+     * Updates the lifecycle status of the game.
+     *
+     * @param newstatus new status value for the match
+     */
     public void setStatus(GameStatus newstatus){
         this.status = newstatus;
     }
 
     //Getters
+
+    /**
+     * Returns the players that belong to this game.
+     *
+     * @return mutable list of players tracked by the game
+     */
     public ArrayList<Player> getPlayers(){
         return this.players;
     }
+
+    /**
+     * Returns the unique identifier of this match.
+     *
+     * @return game identifier
+     */
     public int  getId(){
         return this.id;
     }
+
+    /**
+     * Returns the era currently being played.
+     *
+     * @return current game era
+     */
     public Era getCurrentEra(){
         return this.currentEra;
     }
+
+    /**
+     * Returns the current lifecycle status of the match.
+     *
+     * @return game status
+     */
     public GameStatus getStatus(){
         return this.status;
     }
@@ -69,6 +125,16 @@ public class Game {
     This method is offered from the Game to the GameOrchestrator.
     I think that during this phase we should ask the players what totem they want and where to place
     the totem on the starting tile.
+     */
+
+    /**
+     * Performs the initial game setup and produces the first public state snapshot.
+     *
+     * <p>The setup builds the offer path on the board, fills the visible card rows, initializes the
+     * round order from the player list, and transitions the game from {@code SETUP} to
+     * {@code IN_PROGRESS}.
+     *
+     * @return an action result describing the freshly initialized match state
      */
     public ActionResult setup(){
         //Operation to perform here:
@@ -91,8 +157,21 @@ public class Game {
     }
 
     //The game orchestrator redirect to me the move from the player in a specific location
+
+    /**
+     * Applies the current player's totem move to the requested offer-space tile.
+     *
+     * <p>The method validates turn ownership, checks that the turn phase allows moving the totem,
+     * verifies that the destination space is available, places the player on the board, and updates
+     * the turn-state machine with the number of cards the player is allowed to draw from each row.
+     *
+     * @param player player attempting the move
+     * @param tilecode code of the destination tile on the offer path
+     * @return an action result describing the updated state after the move
+     */
     public ActionResult moveTotem(Player player, String tilecode){
         //Firstly I need to check if the player can make that request
+
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
@@ -118,11 +197,23 @@ public class Game {
     }
 
     //Return the board state
+
+    /**
+     * Returns a snapshot of the current board rows without exposing draftable-card suggestions.
+     *
+     * @return an action result that includes only the visible board cards
+     */
     public ActionResult showBoardCard(){
         return buildBoardSnapshotActionResult(false, false, false);
     }
     //Ricevo player, valido se la mossa è accettabile,
     //Chiamo mostrami carte pescabili sulla board passando il player
+
+    /**
+     * Returns the list of cards the current player is currently allowed to draft.
+     *
+     * @return an action result that includes only the drawable upper and lower cards
+     */
     public ActionResult showDrawableCard(){
         return buildDrawableCardsActionResult(false, false, false);
     }
@@ -134,6 +225,13 @@ public class Game {
 
 
     //Which card on the board the player choose to pick
+
+    /**
+     * Placeholder for the future action that will let a player choose one of the available cards.
+     *
+     * @param player player selecting the card
+     * @param card card chosen from the board
+     */
     public void chooseCard(Player player, Card card){
         //COntrollo se è sopra o sotto e faccio la richiesta alla board.
         //Faccio i check
@@ -143,12 +241,19 @@ public class Game {
 
     //When the game is ended, I need to calculate the score in terms of PP for every player, I have to return
     //something that can be used both for showing the result and also to save in the leaderboard
+
+    /**
+     * Placeholder for the final scoring routine executed when the match ends.
+     */
     public void calculateFinalScore(){
 
 
 
     }
 
+    /**
+     * Placeholder for the end-of-round resolution, including events and player repositioning.
+     */
     private void endRound(){
         //Risoluzione eventi
         //Ritorno al posto
@@ -162,6 +267,15 @@ public class Game {
 
     }
 
+    /**
+     * Builds a complete action snapshot including board rows and the current player's drawable
+     * cards.
+     *
+     * @param turnEnded whether the triggering action ended the current turn
+     * @param roundEnded whether the triggering action ended the current round
+     * @param gameEnded whether the triggering action ended the game
+     * @return full action snapshot for the orchestrator
+     */
     private ActionResult buildActionResult(boolean turnEnded, boolean roundEnded, boolean gameEnded) {
         return new ActionResult(
                 this.turnState.getPhase(),
@@ -179,6 +293,14 @@ public class Game {
         );
     }
 
+    /**
+     * Builds an action snapshot focused on the visible board rows only.
+     *
+     * @param turnEnded whether the triggering action ended the current turn
+     * @param roundEnded whether the triggering action ended the current round
+     * @param gameEnded whether the triggering action ended the game
+     * @return board-only snapshot for the orchestrator
+     */
     private ActionResult buildBoardSnapshotActionResult(boolean turnEnded, boolean roundEnded, boolean gameEnded) {
         return new ActionResult(
                 this.turnState.getPhase(),
@@ -196,6 +318,14 @@ public class Game {
         );
     }
 
+    /**
+     * Builds an action snapshot focused on the cards drawable by the current player.
+     *
+     * @param turnEnded whether the triggering action ended the current turn
+     * @param roundEnded whether the triggering action ended the current round
+     * @param gameEnded whether the triggering action ended the game
+     * @return drawable-card snapshot for the orchestrator
+     */
     private ActionResult buildDrawableCardsActionResult(boolean turnEnded, boolean roundEnded, boolean gameEnded) {
         return new ActionResult(
                 this.turnState.getPhase(),
@@ -213,11 +343,21 @@ public class Game {
         );
     }
 
+    /**
+     * Computes the upper-row cards currently drawable by the active player.
+     *
+     * @return list of upper-row cards the current player may draft
+     */
     private List<Card> getDrawableUpperCardsForCurrentPlayer() {
         Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
         return this.board.getDraftableUpperCards(currentPlayer);
     }
 
+    /**
+     * Computes the lower-row cards currently drawable by the active player.
+     *
+     * @return list of lower-row cards the current player may draft
+     */
     private List<Card> getDrawableLowerCardsForCurrentPlayer() {
         Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
         return this.board.getDraftableLowerCards(currentPlayer);

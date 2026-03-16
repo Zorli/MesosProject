@@ -13,6 +13,12 @@ final class RankingInputValidator {
     private final int minPlayers;
     private final int maxPlayers;
 
+    /**
+     * Creates a validator configured with the supported player-count bounds.
+     *
+     * @param minPlayers minimum allowed players per match
+     * @param maxPlayers maximum allowed players per match
+     */
     RankingInputValidator(int minPlayers, int maxPlayers) {
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;

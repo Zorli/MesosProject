@@ -203,6 +203,11 @@ public class LobbyManager {
         }
     }
 
+    /**
+     * Returns a debug-friendly textual representation of the manager and its tracked lobbies.
+     *
+     * @return string containing the main manager fields and ordered lobby list
+     */
     @Override
     public String toString() {
         List<Lobby> orderedLobbies = this.lobbies.values().stream()
