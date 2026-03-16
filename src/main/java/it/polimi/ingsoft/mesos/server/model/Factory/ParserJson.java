@@ -50,10 +50,16 @@ public final class ParserJson {
     private static final class DeckTemplateHolder {
         private static final DeckTemplate TEMPLATE = loadDeckTemplate();
 
+        /**
+         * Prevents instantiation of the holder used for lazy initialization.
+         */
         private DeckTemplateHolder() {
         }
     }
 
+    /**
+     * Prevents instantiation of this static utility class.
+     */
     private ParserJson() {
     }
 
@@ -94,6 +100,11 @@ public final class ParserJson {
         return getDeckTemplate().createBuildingDeck();
     }
 
+    /**
+     * Reads the JSON resource and converts it into the immutable deck template used by the server.
+     *
+     * @return the parsed deck template
+     */
     private static DeckTemplate loadDeckTemplate() {
         JsonNode cardsRoot = required(readDeckSetupRoot(), "cards");
         ArrayList<DeckTemplate.TribeCardBlueprint> tribeCardBlueprints = new ArrayList<>();
@@ -106,6 +117,11 @@ public final class ParserJson {
         return new DeckTemplate(tribeCardBlueprints, buildingCardBlueprints);
     }
 
+    /**
+     * Opens and parses the raw JSON file that describes all deck contents.
+     *
+     * @return the root JSON node read from the classpath resource
+     */
     private static JsonNode readDeckSetupRoot() {
         try (InputStream inputStream = ParserJson.class.getResourceAsStream(DECK_SETUP_RESOURCE_PATH)) {
             if (inputStream == null) {
@@ -117,6 +133,13 @@ public final class ParserJson {
         }
     }
 
+    /**
+     * Extracts all character definitions from the JSON and stores them as lazy tribe-card
+     * blueprints.
+     *
+     * @param tribeCardBlueprints destination list that will receive the generated blueprints
+     * @param characterGroups JSON node containing character cards grouped by type
+     */
     private static void appendCharacterBlueprints(
             ArrayList<DeckTemplate.TribeCardBlueprint> tribeCardBlueprints,
             JsonNode characterGroups
@@ -131,6 +154,13 @@ public final class ParserJson {
         });
     }
 
+    /**
+     * Extracts all event card definitions from the JSON and stores them as lazy tribe-card
+     * blueprints.
+     *
+     * @param tribeCardBlueprints destination list that will receive the generated blueprints
+     * @param eventGroups JSON node containing event cards grouped by family
+     */
     private static void appendEventBlueprints(
             ArrayList<DeckTemplate.TribeCardBlueprint> tribeCardBlueprints,
             JsonNode eventGroups
@@ -143,6 +173,13 @@ public final class ParserJson {
         });
     }
 
+    /**
+     * Extracts all building card definitions from the JSON and stores them as lazy building-card
+     * blueprints.
+     *
+     * @param buildingCardBlueprints destination list that will receive the generated blueprints
+     * @param buildingGroups JSON node containing building cards grouped by benefit type
+     */
     private static void appendBuildingBlueprints(
             ArrayList<DeckTemplate.BuildingCardBlueprint> buildingCardBlueprints,
             JsonNode buildingGroups
@@ -155,6 +192,13 @@ public final class ParserJson {
         });
     }
 
+    /**
+     * Builds the supplier that recreates one character card as defined in JSON.
+     *
+     * @param type logical tribe-card type associated with the card definition
+     * @param cardNode JSON node containing the card data
+     * @return a supplier that creates the corresponding character card
+     */
     private static java.util.function.Supplier<? extends TribeCard> buildCharacterFactory(
             TribeCardType type,
             JsonNode cardNode
@@ -190,6 +234,13 @@ public final class ParserJson {
         };
     }
 
+    /**
+     * Builds the supplier that recreates one event card as defined in JSON.
+     *
+     * @param family event family name from the JSON file
+     * @param eventNode JSON node containing the event definition
+     * @return a supplier that creates the corresponding event card
+     */
     private static java.util.function.Supplier<? extends TribeCard> buildEventFactory(String family, JsonNode eventNode) {
         int id = requiredInt(eventNode, "id");
         Era era = Era.valueOf(requiredText(eventNode, "era"));
@@ -238,6 +289,13 @@ public final class ParserJson {
         };
     }
 
+    /**
+     * Builds the supplier that recreates one building card as defined in JSON.
+     *
+     * @param benefitType benefit category encoded in the JSON file
+     * @param buildingNode JSON node containing the building definition
+     * @return a supplier that creates the corresponding building card
+     */
     private static java.util.function.Supplier<? extends BuildingCard> buildBuildingFactory(
             BenefitType benefitType,
             JsonNode buildingNode
@@ -309,6 +367,14 @@ public final class ParserJson {
         };
     }
 
+    /**
+     * Iterates over a JSON object that groups records by key and passes every entry to the
+     * provided consumer.
+     *
+     * @param groupedRecordsNode parent node that contains the grouped object
+     * @param groupName logical name used only to build validation messages
+     * @param entryConsumer consumer invoked for each group entry
+     */
     private static void appendGroupedRecords(
             JsonNode groupedRecordsNode,
             String groupName,
@@ -321,6 +387,13 @@ public final class ParserJson {
         }
     }
 
+    /**
+     * Returns a required child node and fails fast when the field is missing.
+     *
+     * @param node parent node
+     * @param fieldName required child field name
+     * @return the required child node
+     */
     private static JsonNode required(JsonNode node, String fieldName) {
         JsonNode child = node.get(fieldName);
         if (child == null || child.isNull()) {
@@ -329,18 +402,46 @@ public final class ParserJson {
         return child;
     }
 
+    /**
+     * Reads a required integer field from the provided node.
+     *
+     * @param node parent node
+     * @param fieldName required integer field name
+     * @return the integer value stored in the field
+     */
     private static int requiredInt(JsonNode node, String fieldName) {
         return required(node, fieldName).asInt();
     }
 
+    /**
+     * Reads a required boolean field from the provided node.
+     *
+     * @param node parent node
+     * @param fieldName required boolean field name
+     * @return the boolean value stored in the field
+     */
     private static boolean requiredBoolean(JsonNode node, String fieldName) {
         return required(node, fieldName).asBoolean();
     }
 
+    /**
+     * Reads a required text field from the provided node.
+     *
+     * @param node parent node
+     * @param fieldName required text field name
+     * @return the text value stored in the field
+     */
     private static String requiredText(JsonNode node, String fieldName) {
         return required(node, fieldName).asText();
     }
 
+    /**
+     * Ensures that the provided node exists and is a JSON object.
+     *
+     * @param node node to validate
+     * @param fieldName logical field name used in validation errors
+     * @return the same node when it is a valid object
+     */
     private static JsonNode requireObject(JsonNode node, String fieldName) {
         if (node == null || node.isNull()) {
             throw new IllegalArgumentException("Missing required object '" + fieldName + "'");
@@ -351,6 +452,13 @@ public final class ParserJson {
         return node;
     }
 
+    /**
+     * Ensures that the provided node is a JSON array.
+     *
+     * @param node node to validate
+     * @param fieldName logical field name used in validation errors
+     * @return the same node when it is a valid array
+     */
     private static JsonNode requiredArray(JsonNode node, String fieldName) {
         if (!node.isArray()) {
             throw new IllegalArgumentException("Expected array for '" + fieldName + "'");
@@ -358,6 +466,13 @@ public final class ParserJson {
         return node;
     }
 
+    /**
+     * Reads an optional child object, returning {@code null} when the field is absent.
+     *
+     * @param node parent node
+     * @param fieldName optional object field name
+     * @return the child object or {@code null} when not present
+     */
     private static JsonNode optionalObject(JsonNode node, String fieldName) {
         JsonNode child = node.get(fieldName);
         if (child == null || child.isNull()) {

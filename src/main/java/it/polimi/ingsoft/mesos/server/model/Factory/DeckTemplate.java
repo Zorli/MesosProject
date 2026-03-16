@@ -116,37 +116,75 @@ public final class DeckTemplate {
         return this.buildingCardBlueprints.size();
     }
 
+    /**
+     * Rejects unsupported player counts before filtering tribe card blueprints.
+     *
+     * @param playerCount number of players requested for the match
+     */
     private static void validatePlayerCount(int playerCount) {
         if (playerCount < 2 || playerCount > 5) {
             throw new IllegalArgumentException("Player count must be between 2 and 5");
         }
     }
 
+    /**
+     * Stores the minimum player requirement and the supplier for a tribe card blueprint.
+     */
     static final class TribeCardBlueprint {
         private final Integer minPlayers;
         private final Supplier<? extends TribeCard> factory;
 
+        /**
+         * Creates a blueprint for a tribe card that can later be instantiated on demand.
+         *
+         * @param minPlayers minimum supported player count, or {@code null} when always available
+         * @param factory supplier that creates the concrete card instance
+         */
         private TribeCardBlueprint(Integer minPlayers, Supplier<? extends TribeCard> factory) {
             this.minPlayers = minPlayers;
             this.factory = factory;
         }
 
+        /**
+         * Checks whether this card should appear in a match with the given player count.
+         *
+         * @param playerCount number of players in the match
+         * @return {@code true} when the card is enabled for that player count
+         */
         private boolean isAvailableFor(int playerCount) {
             return this.minPlayers == null || this.minPlayers <= playerCount;
         }
 
+        /**
+         * Produces a fresh tribe card instance from the stored supplier.
+         *
+         * @return a new tribe card
+         */
         private TribeCard instantiate() {
             return this.factory.get();
         }
     }
 
+    /**
+     * Stores the supplier used to instantiate a building card on demand.
+     */
     static final class BuildingCardBlueprint {
         private final Supplier<? extends BuildingCard> factory;
 
+        /**
+         * Creates a blueprint for a building card.
+         *
+         * @param factory supplier that creates the concrete card instance
+         */
         private BuildingCardBlueprint(Supplier<? extends BuildingCard> factory) {
             this.factory = factory;
         }
 
+        /**
+         * Produces a fresh building card instance from the stored supplier.
+         *
+         * @return a new building card
+         */
         private BuildingCard instantiate() {
             return this.factory.get();
         }
