@@ -9,5 +9,18 @@ public enum Era {
     /** Second era of the match. */
     second,
     /** Third and final era of the match. */
-    third
+    third;
+
+    /**
+     * Returns the following era in the game progression.
+     *
+     * @return next era, or {@code third} when already at the final era
+     */
+    public Era next() {
+        return switch (this) {
+            case first -> second;
+            case second -> third;
+            case third -> third;
+        };
+    }
 }
