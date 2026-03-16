@@ -7,33 +7,44 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Manages the offer path where players place their totems to draft cards.
+ * Also controls the starting tile, orchestrating the transition of players
+ * between the starting blocks and the offer spaces, and determining the new turn order.
+ */
 public class OfferPath {
     private StartingTile startingTile;
     private List<OfferSpace> offerSpaces;
 
-    // ==========================================
-    // CONSTRUCTOR
-    // ==========================================
-
+    /**
+     * Initializes an empty offer path, automatically instantiating its internal
+     * starting tile and the list to hold the offer spaces.
+     */
     public OfferPath() {
         this.startingTile = new StartingTile();
         this.offerSpaces = new ArrayList<>();
     }
 
-
-    // ==========================================
-    // INITIAL SETUP
-    // ==========================================
-
+    /**
+     * Configures the offer path and the starting tile for the beginning of the game,
+     * tailoring the available spaces and blocks to the exact number of players.
+     *
+     * @param players The list of players in the game.
+     */
     public void setup(List<Player> players) {
         int n = players.size();
         this.setupOfferSpaces(n);
         this.startingTile.setup(players);
     }
 
+    /**
+     * Populates the offer spaces list by filtering all possible hardcoded spaces
+     * based on the minimum player requirement for the current game.
+     *
+     * @param numPlayer The total number of players in the game.
+     */
     private void setupOfferSpaces(int numPlayer) {
         List<OfferSpace> allPossibleSpaces = List.of(
-                // Position, Code, MinPlayers, FoodBonus, TopRow, BottomRow
                 new OfferSpace(1, "A", 5, 3, 0, 0),
                 new OfferSpace(2, "B", 2, 0, 0, 1),
                 new OfferSpace(3, "C", 2, 0, 1, 0),
@@ -43,7 +54,6 @@ public class OfferPath {
                 new OfferSpace(7, "G", 4, 0, 2, 1)
         );
 
-        // filter and add
         for (OfferSpace space : allPossibleSpaces) {
             if (space.getMinPlayers() <= numPlayer) {
                 this.offerSpaces.add(space);
@@ -51,15 +61,12 @@ public class OfferPath {
         }
     }
 
-
-    // ==========================================
-    // END OF ROUND LOGIC
-    // ==========================================
-
     /**
-     * Called at the end of the round. Extracts the new turn order,
-     * clears the offer spaces, and resets the players on the starting tile.
-     * * @return The list of players in their new turn order.
+     * Executes the end-of-round logic for the path. It extracts the new turn order
+     * based on totem placements, clears the offer spaces, and relocates players
+     * back to the starting tile to resolve end-of-round prestige and food effects.
+     *
+     * @return The list of players sorted in their new turn order for the upcoming round.
      */
     public List<Player> resetAndGetNewOrder() {
         List<Player> newOrder = this.getPlayersInOrder();
@@ -71,14 +78,11 @@ public class OfferPath {
         return newOrder;
     }
 
-
-    // ==========================================
-    // HELPER METHODS
-    // ==========================================
-
     /**
-     * Extracts players from occupied spaces, sorting them by the space's position index.
-     * This determines the new turn order for the next round.
+     * Determines the new turn order by extracting players from currently occupied spaces,
+     * sorted from left to right (by the space's position index).
+     *
+     * @return A sorted list of players representing the turn order for the next round.
      */
     public List<Player> getPlayersInOrder() {
         return this.offerSpaces.stream()
@@ -89,33 +93,50 @@ public class OfferPath {
     }
 
     /**
-     * Clears all offer spaces by removing the assigned players.
+     * Removes all players from the offer spaces, making them available for the next round.
      */
     public void clearOfferSpaces() {
         this.offerSpaces.forEach(OfferSpace::clear);
     }
 
     /**
-     * on players placing.
+     * Checks if a specific offer space exists in the current game and is not already occupied.
+     *
+     * @param targetCode The unique string code of the target offer space (e.g., "A", "B").
+     * @return True if the space is valid and currently available, false otherwise.
      */
     public boolean checkOfferSpace(String targetCode) {
         return this.offerSpaces.stream()
                 .anyMatch(space -> targetCode.equals(space.getCode()) && space.isAvailable());
     }
+
+    /**
+     * Places a player's totem on the specified offer space, resolves any immediate
+     * space effects (such as food bonuses), and retrieves the drafting values.
+     *
+     * @param player The player taking the space.
+     * @param targetCode The unique string code of the target offer space.
+     * @return An integer array containing the drafting constraints:
+     * [0] = cards to draw from the upper row, [1] = cards to draw from the lower row.
+     */
     public int[] placePlayer(Player player, String targetCode) {
         for (OfferSpace space : this.offerSpaces) {
-
             if (targetCode.equals(space.getCode())) {
                 space.occupy(player);
-
                 space.resolveImmediateAction(player);
                 return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
             }
         }
-
-        // Security Fallback
         return new int[]{0, 0};
     }
-    // on READ
-    public List<OfferSpace> getAvailableOfferSpaces() { return new ArrayList<>(this.offerSpaces); }
+
+    /**
+     * Provides a read-only list of all offer spaces valid for the current game setup.
+     * Useful for broadcasting the board state to clients or the game controller.
+     *
+     * @return A list of the current offer spaces.
+     */
+    public List<OfferSpace> getAvailableOfferSpaces() {
+        return new ArrayList<>(this.offerSpaces);
+    }
 }
