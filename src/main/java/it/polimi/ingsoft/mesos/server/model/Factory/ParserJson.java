@@ -303,7 +303,7 @@ public final class ParserJson {
                  END_ROUND_EXTRA_CARD,
                  END_ROUND_TOTEM_POSITION,
                  FINAL_PRESTIGE_POINTS_FOR_SET,
-                 FINAL_BUILDER_TOTAL_PP_MULTIPLIER,
+                 BUILDER_TOTAL_PP_MULTIPLIER,
                  FINAL_BONUS_MULTIPLIER_FOR_TYPE,
                  FINAL_BONUS_BIG_PP_REWARD -> () -> new BuildingCard(id, era, foodCost, prestigePoints, benefitType);
         };
