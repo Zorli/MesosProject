@@ -201,6 +201,8 @@ public class Game {
 
         //Place the totem on the specific tile, i get the card he can get from the upper row and the lower row
         board.placePlayerOnOfferSpace(player, tilecode);
+        int [] drawablecard = this.board.returnNumberDrawableCard(player);
+
 
         //Update the turnfsmle
         //turnState.onTotemMoved(choices[0], choices[1]);
@@ -211,9 +213,9 @@ public class Game {
             //If it's the last player pass in the phase in which once for turn it drawn card
             this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
             this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
-            boolean skipFirstPlayer = this.board.resolveEventA();
-            if(skipFirstPlyaer){
-                turnOrderTrack.advanceToNextPlayer();
+            boolean skipFirstPlayer = this.board.resolveEventA(); //Risolvi il solo evento cibo della tile A
+            if(skipFirstPlayer){
+                turnOrderTrack.advanceToNextPlayer(); //Next
             }
         }else{
             this.turnOrderTrack.advanceToNextPlayer();
