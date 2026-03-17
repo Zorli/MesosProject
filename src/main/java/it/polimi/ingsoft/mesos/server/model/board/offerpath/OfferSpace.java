@@ -1,6 +1,5 @@
 package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 /**
@@ -58,7 +57,8 @@ public class OfferSpace {
 
     /**
      * Clears the space by removing the occupying player.
-     * Typically called at the end of the round during the board reset phase.
+     * This is triggered the moment a player finishes their active turn
+     * and moves their totem back to the starting tile.
      */
     public void clear() {
         this.occupiedBy = null;
