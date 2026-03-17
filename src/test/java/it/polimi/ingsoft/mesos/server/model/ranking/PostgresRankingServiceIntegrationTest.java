@@ -1,25 +1,21 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
+import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-class SqliteRankingServiceIntegrationTest {
-
-    @TempDir
-    Path tempDir;
+class PostgresRankingServiceIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Test
-    void persistsStateAcrossServiceInstancesUsingSameDatabaseFile() {
-        Path dbFile = this.tempDir.resolve("ranking-int.db");
+    void persistsStateAcrossServiceInstancesUsingSameDatabase() {
+        PostgresConnectionConfig connectionConfig = this.createIsolatedConnectionConfig("ranking_integration");
 
-        RankingService firstInstance = new SqliteRankingService(dbFile);
+        RankingService firstInstance = new PostgresRankingService(connectionConfig);
         firstInstance.recordMatchAndGetRanking(
                 "game-int-1",
                 2,
@@ -28,7 +24,7 @@ class SqliteRankingServiceIntegrationTest {
                 List.of(new MatchScore("Alice", 12), new MatchScore("Bob", 8))
         );
 
-        RankingService secondInstance = new SqliteRankingService(dbFile);
+        RankingService secondInstance = new PostgresRankingService(connectionConfig);
         List<LeaderboardEntry> leaderboard = secondInstance.getLeaderboard();
 
         assertFalse(leaderboard.isEmpty());

@@ -1,57 +1,62 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * SQLite implementation of {@link RankingService}.
+ * PostgreSQL implementation of {@link RankingService}.
  *
  * <p>Responsibilities:
  * validate input, persist completed matches atomically, compute Elo updates,
  * and expose leaderboard and match history queries.
  */
-public class SqliteRankingService implements RankingService {
+public class PostgresRankingService implements RankingService {
     private final RankingConfig config;
-    private final SqliteDatabaseSupport database;
+    private final PostgresDatabaseSupport database;
     private final RankingInputValidator validator;
     private final EloRatingCalculator eloCalculator;
 
     /**
      * Creates the service with default ranking configuration.
      *
-     * @param databasePath path of SQLite database file
+     * @param connectionConfig PostgreSQL connection settings
      */
-    public SqliteRankingService(Path databasePath) {
-        this(databasePath, RankingConfig.defaultConfig());
+    public PostgresRankingService(PostgresConnectionConfig connectionConfig) {
+        this(connectionConfig, RankingConfig.defaultConfig());
     }
 
     /**
      * Creates the service with default ranking settings and a custom retry limit.
      *
-     * @param databasePath path of SQLite database file
-     * @param maxBusyRetries maximum retries for busy database operations
+     * @param connectionConfig PostgreSQL connection settings
+     * @param maxBusyRetries maximum retries for transient database operations
      */
-    public SqliteRankingService(Path databasePath, int maxBusyRetries) {
-        this(databasePath, defaultConfigWithRetries(maxBusyRetries));
+    public PostgresRankingService(PostgresConnectionConfig connectionConfig, int maxBusyRetries) {
+        this(connectionConfig, defaultConfigWithRetries(maxBusyRetries));
     }
 
     /**
      * Creates the service with a fully custom ranking configuration.
      *
-     * @param databasePath path of SQLite database file
+     * @param connectionConfig PostgreSQL connection settings
      * @param config ranking configuration
      */
-    public SqliteRankingService(Path databasePath, RankingConfig config) {
+    public PostgresRankingService(PostgresConnectionConfig connectionConfig, RankingConfig config) {
         this.config = config;
-        this.database = new SqliteDatabaseSupport(databasePath, config.maxBusyRetries());
+        this.database = new PostgresDatabaseSupport(
+                connectionConfig,
+                config.maxBusyRetries(),
+                List.of(PostgresRankingSchemaModule.getInstance())
+        );
         this.validator = new RankingInputValidator(config.minPlayers(), config.maxPlayers());
         this.eloCalculator = new EloRatingCalculator(
                 config.minPlayers(),
@@ -92,9 +97,9 @@ public class SqliteRankingService implements RankingService {
             try (Connection connection = this.database.openConnection()) {
                 boolean inserted;
 
-                try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.INSERT_USER_IF_MISSING)) {
+                try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.INSERT_USER_IF_MISSING)) {
                     statement.setString(1, normalizedNickname);
-                    statement.setString(2, Instant.now().toString());
+                    statement.setObject(2, this.currentTimestampUtc());
                     inserted = statement.executeUpdate() > 0;
                 }
 
@@ -111,7 +116,7 @@ public class SqliteRankingService implements RankingService {
 
         return this.database.executeWithRetry(() -> {
             try (Connection connection = this.database.openConnection();
-                 PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.CHECK_USER_EXISTS)) {
+                 PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.CHECK_USER_EXISTS)) {
                 statement.setString(1, normalizedNickname);
 
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -233,7 +238,7 @@ public class SqliteRankingService implements RankingService {
 
     /** Returns whether the given game id already exists in persisted match rows. */
     private boolean gameAlreadyRecorded(Connection connection, String gameId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.CHECK_GAME_EXISTS)) {
+        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.CHECK_GAME_EXISTS)) {
             statement.setString(1, gameId);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -244,18 +249,18 @@ public class SqliteRankingService implements RankingService {
 
     /** Ensures that both user and rating rows exist for all final score nicknames. */
     private void ensureUsersAndRatingsExist(Connection connection, List<MatchScore> finalScores) throws SQLException {
-        try (PreparedStatement userStatement = connection.prepareStatement(SqliteRankingQueries.INSERT_USER_IF_MISSING);
-             PreparedStatement ratingStatement = connection.prepareStatement(SqliteRankingQueries.INSERT_RATING_IF_MISSING)) {
-            String now = Instant.now().toString();
+        try (PreparedStatement userStatement = connection.prepareStatement(PostgresRankingQueries.INSERT_USER_IF_MISSING);
+             PreparedStatement ratingStatement = connection.prepareStatement(PostgresRankingQueries.INSERT_RATING_IF_MISSING)) {
+            OffsetDateTime now = this.currentTimestampUtc();
 
             for (MatchScore score : finalScores) {
                 userStatement.setString(1, score.nickname());
-                userStatement.setString(2, now);
+                userStatement.setObject(2, now);
                 userStatement.addBatch();
 
                 ratingStatement.setString(1, score.nickname());
                 ratingStatement.setInt(2, this.config.initialElo());
-                ratingStatement.setString(3, now);
+                ratingStatement.setObject(3, now);
                 ratingStatement.addBatch();
             }
 
@@ -268,7 +273,7 @@ public class SqliteRankingService implements RankingService {
     private Map<String, RatingSnapshot> loadRatingSnapshots(Connection connection,
                                                             List<MatchScore> finalScores) throws SQLException {
         String placeholders = String.join(",", java.util.Collections.nCopies(finalScores.size(), "?"));
-        String query = SqliteRankingQueries.SELECT_RATINGS_BY_NICKNAMES_PREFIX + placeholders + ")";
+        String query = PostgresRankingQueries.SELECT_RATINGS_BY_NICKNAMES_PREFIX + placeholders + ")";
 
         Map<String, RatingSnapshot> snapshotsByNickname = new LinkedHashMap<>();
 
@@ -310,14 +315,16 @@ public class SqliteRankingService implements RankingService {
                                                Instant playedAtUtc,
                                                int playerCount,
                                                List<PlayerMatchUpdate> updates) throws SQLException {
-        try (PreparedStatement updateRating = connection.prepareStatement(SqliteRankingQueries.UPDATE_RATING);
-             PreparedStatement insertMatch = connection.prepareStatement(SqliteRankingQueries.INSERT_MATCH_RESULT)) {
+        try (PreparedStatement updateRating = connection.prepareStatement(PostgresRankingQueries.UPDATE_RATING);
+             PreparedStatement insertMatch = connection.prepareStatement(PostgresRankingQueries.INSERT_MATCH_RESULT)) {
+            OffsetDateTime playedAt = this.toOffsetDateTime(playedAtUtc);
+
             for (PlayerMatchUpdate update : updates) {
                 updateRating.setInt(1, update.eloAfter());
                 updateRating.setInt(2, update.gamesAfter());
                 updateRating.setInt(3, update.winsAfter());
                 updateRating.setInt(4, update.winStreakAfter());
-                updateRating.setString(5, playedAtUtc.toString());
+                updateRating.setObject(5, playedAt);
                 updateRating.setString(6, update.nickname());
                 updateRating.addBatch();
 
@@ -325,7 +332,7 @@ public class SqliteRankingService implements RankingService {
                 insertMatch.setString(2, update.nickname());
                 insertMatch.setInt(3, update.finalScore());
                 insertMatch.setInt(4, update.placement());
-                insertMatch.setString(5, playedAtUtc.toString());
+                insertMatch.setObject(5, playedAt);
                 insertMatch.setInt(6, playerCount);
                 insertMatch.setInt(7, update.eloBefore());
                 insertMatch.setInt(8, update.eloDelta());
@@ -341,7 +348,7 @@ public class SqliteRankingService implements RankingService {
 
     /** Loads the complete global leaderboard ordered by rank. */
     private List<LeaderboardEntry> loadGlobalLeaderboard(Connection connection) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.SELECT_GLOBAL_LEADERBOARD);
+        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_GLOBAL_LEADERBOARD);
              ResultSet resultSet = statement.executeQuery()) {
             List<LeaderboardEntry> leaderboard = new ArrayList<>();
 
@@ -361,7 +368,7 @@ public class SqliteRankingService implements RankingService {
 
     /** Loads global rank for one nickname and fails if player is missing. */
     private int loadGlobalRankForNickname(Connection connection, String nickname) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.SELECT_PLAYER_GLOBAL_RANK)) {
+        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_PLAYER_GLOBAL_RANK)) {
             statement.setString(1, nickname);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -376,17 +383,17 @@ public class SqliteRankingService implements RankingService {
 
     /** Ensures a rating aggregate row exists for a nickname. */
     private void ensureRatingExists(Connection connection, String nickname) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.INSERT_RATING_IF_MISSING)) {
+        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.INSERT_RATING_IF_MISSING)) {
             statement.setString(1, nickname);
             statement.setInt(2, this.config.initialElo());
-            statement.setString(3, Instant.now().toString());
+            statement.setObject(3, this.currentTimestampUtc());
             statement.executeUpdate();
         }
     }
 
     /** Loads full match history without player count filter. */
     private List<MatchHistory> loadMatchHistory(Connection connection) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.SELECT_MATCH_HISTORY_ALL);
+        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_MATCH_HISTORY_ALL);
              ResultSet resultSet = statement.executeQuery()) {
             return this.mapMatchHistoryRows(resultSet);
         }
@@ -394,7 +401,7 @@ public class SqliteRankingService implements RankingService {
 
     /** Loads match history filtered by the requested player count. */
     private List<MatchHistory> loadMatchHistory(Connection connection, int playerCount) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SqliteRankingQueries.SELECT_MATCH_HISTORY_BY_PLAYER_COUNT)) {
+        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_MATCH_HISTORY_BY_PLAYER_COUNT)) {
             statement.setInt(1, playerCount);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -412,7 +419,7 @@ public class SqliteRankingService implements RankingService {
 
         while (resultSet.next()) {
             String gameId = resultSet.getString("game_id");
-            Instant playedAtUtc = Instant.parse(resultSet.getString("played_at"));
+            Instant playedAtUtc = this.readInstant(resultSet, "played_at");
             int playerCount = resultSet.getInt("player_count");
 
             MatchRankingEntry rankingEntry = new MatchRankingEntry(
@@ -445,6 +452,21 @@ public class SqliteRankingService implements RankingService {
         }
 
         return history;
+    }
+
+    /** Returns current UTC timestamp in PostgreSQL-friendly form. */
+    private OffsetDateTime currentTimestampUtc() {
+        return OffsetDateTime.now(ZoneOffset.UTC);
+    }
+
+    /** Converts an instant to a UTC offset date time for JDBC writes. */
+    private OffsetDateTime toOffsetDateTime(Instant instant) {
+        return instant.atOffset(ZoneOffset.UTC);
+    }
+
+    /** Reads a PostgreSQL timestamptz column as an instant. */
+    private Instant readInstant(ResultSet resultSet, String columnLabel) throws SQLException {
+        return resultSet.getObject(columnLabel, OffsetDateTime.class).toInstant();
     }
 
     // TODO(controller): a fine partita invocare recordMatchAndGetRanking(...) e inviare al client rank globale Elo + leaderboard globale.

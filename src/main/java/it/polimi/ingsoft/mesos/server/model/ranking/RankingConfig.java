@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
- * Immutable configuration for ranking validation, Elo update and SQLite retry policy.
+ * Immutable configuration for ranking validation, Elo update and database retry policy.
  *
  * @param minPlayers minimum supported players per match
  * @param maxPlayers maximum supported players per match
@@ -11,7 +11,7 @@ package it.polimi.ingsoft.mesos.server.model.ranking;
  * @param kStepPerExtraPlayer K-factor increment per extra player above minPlayers
  * @param streakBonusStep bonus points per extra consecutive win
  * @param streakBonusCap maximum streak bonus that can be applied
- * @param maxBusyRetries maximum SQLite busy retries
+ * @param maxBusyRetries maximum retries for transient database failures
  */
 public record RankingConfig(int minPlayers,
                             int maxPlayers,
