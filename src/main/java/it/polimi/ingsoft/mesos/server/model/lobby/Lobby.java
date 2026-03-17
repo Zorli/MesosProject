@@ -15,6 +15,8 @@ public class Lobby {
     private static final int MAX_PLAYERS = 5;
 
     private final int id;
+    private final String resumableGameId;
+    private final List<String> reservedPlayerNicknames;
     private String hostNickname;
     private final List<Player> players;
     private LobbyStatus status;
@@ -26,15 +28,63 @@ public class Lobby {
      * @param host player creating the lobby
      */
     public Lobby(int id, Player host) {
-        if (host == null) {
+        this(id, host, null, List.of(), LobbyStatus.WAITING);
+    }
+
+    /**
+     * Creates a resumable lobby for a suspended match. No player is connected yet.
+     *
+     * @param id unique lobby identifier
+     * @param resumableGameId persisted match identifier
+     * @param reservedPlayerNicknames nicknames allowed to rejoin this suspended match
+     * @return lobby waiting for the original players to reconnect
+     */
+    public static Lobby resumable(int id, String resumableGameId, List<String> reservedPlayerNicknames) {
+        if (resumableGameId == null || resumableGameId.isBlank()) {
+            throw new IllegalArgumentException("Resumable game id cannot be null or blank");
+        }
+
+        if (reservedPlayerNicknames == null || reservedPlayerNicknames.size() < MIN_PLAYERS) {
+            throw new IllegalArgumentException("Reserved player nicknames must contain at least two players");
+        }
+
+        List<String> normalizedNicknames = reservedPlayerNicknames.stream()
+                .map(Lobby::validateNickname)
+                .toList();
+
+        if (normalizedNicknames.stream().distinct().count() != normalizedNicknames.size()) {
+            throw new IllegalArgumentException("Reserved player nicknames must be unique");
+        }
+
+        if (normalizedNicknames.size() > MAX_PLAYERS) {
+            throw new IllegalArgumentException("Reserved player nicknames exceed maximum lobby size");
+        }
+
+        return new Lobby(id, null, resumableGameId, normalizedNicknames, LobbyStatus.RESUMABLE);
+    }
+
+    /**
+     * Internal constructor used by both standard and resumable lobbies.
+     */
+    private Lobby(int id,
+                  Player host,
+                  String resumableGameId,
+                  List<String> reservedPlayerNicknames,
+                  LobbyStatus status) {
+        if (host == null && status != LobbyStatus.RESUMABLE) {
             throw new IllegalArgumentException("Host player cannot be null");
         }
 
         this.id = id;
-        this.hostNickname = this.resolveNickname(host);
+        this.resumableGameId = resumableGameId;
+        this.reservedPlayerNicknames = List.copyOf(reservedPlayerNicknames);
+        this.hostNickname = host == null ? null : this.resolveNickname(host);
         this.players = new ArrayList<>();
-        this.status = LobbyStatus.WAITING;
-        this.addPlayer(host);
+        this.status = status;
+
+        if (host != null) {
+            this.addPlayer(host);
+        }
     }
 
     /**
@@ -53,6 +103,33 @@ public class Lobby {
      */
     public String getHostNickname() {
         return this.hostNickname;
+    }
+
+    /**
+     * Returns whether this lobby represents a suspended match to be resumed.
+     *
+     * @return {@code true} for resumable lobbies
+     */
+    public boolean isResumable() {
+        return this.resumableGameId != null;
+    }
+
+    /**
+     * Returns the persisted match id associated with a resumable lobby.
+     *
+     * @return resumable game id or {@code null} for standard lobbies
+     */
+    public String getResumableGameId() {
+        return this.resumableGameId;
+    }
+
+    /**
+     * Returns the original player roster reserved for this resumable lobby.
+     *
+     * @return immutable list of reserved nicknames
+     */
+    public List<String> getReservedPlayerNicknames() {
+        return this.reservedPlayerNicknames;
     }
 
     /**
@@ -103,6 +180,10 @@ public class Lobby {
     public void addPlayer(Player player) {
         String nickname = this.resolveNickname(player);
 
+        if (this.isResumable() && !this.reservedPlayerNicknames.contains(nickname)) {
+            throw new IllegalStateException("Player cannot join resumable lobby: " + nickname);
+        }
+
         if (this.isFull()) {
             throw new IllegalStateException("Lobby is full");
         }
@@ -116,6 +197,10 @@ public class Lobby {
         }
 
         this.players.add(player);
+
+        if (this.hostNickname == null) {
+            this.hostNickname = nickname;
+        }
     }
 
     /**
@@ -174,6 +259,10 @@ public class Lobby {
      * @return {@code true} if the lobby can start, {@code false} otherwise
      */
     public boolean canStart() {
+        if (this.isResumable()) {
+            return this.players.size() == this.reservedPlayerNicknames.size();
+        }
+
         return this.players.size() >= MIN_PLAYERS;
     }
 
@@ -183,6 +272,10 @@ public class Lobby {
      * @return {@code true} if the lobby is full, {@code false} otherwise
      */
     public boolean isFull() {
+        if (this.isResumable()) {
+            return this.players.size() >= this.reservedPlayerNicknames.size();
+        }
+
         return this.players.size() >= MAX_PLAYERS;
     }
 
@@ -206,8 +299,13 @@ public class Lobby {
             throw new IllegalArgumentException("Player cannot be null");
         }
 
-        String nickname = player.getNickname();
+        return validateNickname(player.getNickname());
+    }
 
+    /**
+     * Validates and returns one nickname string.
+     */
+    private static String validateNickname(String nickname) {
         if (nickname == null || nickname.isBlank()) {
             throw new IllegalArgumentException("Player nickname cannot be null or blank");
         }
@@ -228,10 +326,12 @@ public class Lobby {
 
         return "Lobby{" +
                 "id=" + this.id +
+                ", resumableGameId='" + this.resumableGameId + '\'' +
                 ", hostNickname='" + this.hostNickname + '\'' +
                 ", status=" + this.status +
                 ", playersCount=" + this.players.size() +
                 ", maxPlayers=" + MAX_PLAYERS +
+                ", reservedPlayerNicknames=" + this.reservedPlayerNicknames +
                 ", playerNicknames=" + playerNicknames +
                 '}';
     }

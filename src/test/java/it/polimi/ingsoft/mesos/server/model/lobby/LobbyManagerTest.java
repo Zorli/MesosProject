@@ -3,8 +3,19 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
+import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
+import it.polimi.ingsoft.mesos.server.model.board.Board;
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchCheckpointType;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -202,6 +213,92 @@ class LobbyManagerTest {
     }
 
     @Test
+    void createResumeLobbyStoresResumableLobby() {
+        LobbyManager manager = new LobbyManager();
+
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+
+        assertTrue(lobby.isResumable());
+        assertEquals(LobbyStatus.RESUMABLE, lobby.getStatus());
+        assertEquals("game-77", lobby.getResumableGameId());
+        assertTrue(manager.getLobby(lobby.getId()).isPresent());
+    }
+
+    @Test
+    void joinLobbySetsResumableLobbyToReadyWhenAllOriginalPlayersReconnect() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        assertEquals(LobbyStatus.RESUMABLE, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+        assertEquals(LobbyStatus.READY, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void removingLastPlayerFromResumableLobbyKeepsLobbyOpen() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+
+        manager.removePlayer(lobby.getId(), playerWithNickname("Alice"));
+
+        Lobby updatedLobby = manager.getLobby(lobby.getId()).orElseThrow();
+        assertEquals(LobbyStatus.RESUMABLE, updatedLobby.getStatus());
+        assertTrue(updatedLobby.getPlayers().isEmpty());
+    }
+
+    @Test
+    void createGameFromLobbyRejectsResumableLobbyBecauseRestoreFlowIsSeparate() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> manager.createGameFromLobby(lobby.getId())
+        );
+
+        assertEquals("Resumable lobbies must restore a saved match instead of creating a new one", exception.getMessage());
+    }
+
+    @Test
+    void resumeGameFromLobbyRestoresReadyResumableLobbyAndStartsIt() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+        RecordingRestoreService restoreService = new RecordingRestoreService(restoredGame("Alice", "Bob"));
+
+        GameOrchestrator gameOrchestrator = manager.resumeGameFromLobby(lobby.getId(), restoreService);
+
+        assertEquals("game-77", restoreService.capturedGameId);
+        assertEquals(LobbyStatus.STARTED, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+        assertEquals(List.of("Alice", "Bob"), gameOrchestrator.getPlayers().stream().map(Player::getNickname).toList());
+    }
+
+    @Test
+    void resumeGameFromLobbyRejectsRestoredRosterMismatch() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> manager.resumeGameFromLobby(
+                        lobby.getId(),
+                        new RecordingRestoreService(restoredGame("Alice", "Carol"))
+                )
+        );
+
+        assertEquals("Restored match roster does not match resumable lobby roster", exception.getMessage());
+        assertEquals(LobbyStatus.READY, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
     void getLobbyReturnsEmptyWhenLobbyDoesNotExist() {
         LobbyManager manager = new LobbyManager();
 
@@ -224,5 +321,84 @@ class LobbyManagerTest {
 
             return null;
         }
+    }
+
+    private static final class RecordingRestoreService implements SavedMatchService {
+        private final Game gameToReturn;
+        private String capturedGameId;
+
+        private RecordingRestoreService(Game gameToReturn) {
+            this.gameToReturn = gameToReturn;
+        }
+
+        @Override
+        public boolean isPersistenceEnabled() {
+            return true;
+        }
+
+        @Override
+        public void initializeMatch(Game game, String hostNickname) {
+        }
+
+        @Override
+        public void saveTurnStarted(Game game, String hostNickname) {
+        }
+
+        @Override
+        public void saveEraChanged(Game game, String hostNickname) {
+        }
+
+        @Override
+        public void saveTurnFinished(Game game, String hostNickname) {
+        }
+
+        @Override
+        public void completeMatch(Game game, String hostNickname) {
+        }
+
+        @Override
+        public void saveMatch(Game game, String hostNickname, SavedMatchCheckpointType checkpointType) {
+        }
+
+        @Override
+        public Game restoreGame(String gameId) {
+            this.capturedGameId = gameId;
+            return this.gameToReturn;
+        }
+
+        @Override
+        public void markPlayerOnline(String gameId, String nickname, String sessionToken) {
+        }
+
+        @Override
+        public void markPlayerOffline(String gameId, String nickname) {
+        }
+
+        @Override
+        public int deleteExpiredInProgressMatches() {
+            return 0;
+        }
+    }
+
+    private static Game restoredGame(String... nicknames) {
+        ArrayList<Player> players = new ArrayList<>();
+        TotemColor[] totemColors = TotemColor.values();
+        for (int index = 0; index < nicknames.length; index++) {
+            players.add(new Player(nicknames[index], 0, 0, totemColors[index], new Tribe()));
+        }
+
+        return new Game(
+                77,
+                players,
+                new TurnState(),
+                new TurnOrderTrack(List.of(players.get(0), players.get(1)), 0, 1, it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase.PLACING_TOTEMS),
+                new Board(
+                        TribeDeck.fromOrderedCards(new ArrayList<>()),
+                        BuildingDeck.fromOrderedCards(new ArrayList<>()),
+                        players
+                ),
+                Era.first,
+                GameStatus.IN_PROGRESS
+        );
     }
 }
