@@ -1,6 +1,10 @@
 package it.polimi.ingsoft.mesos.server.model.player;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.PairOfInventor;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.SetForFood;
+import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
+import it.polimi.ingsoft.mesos.server.model.cards.characters.Inventor;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.ShamanStarsBonus;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.*;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
@@ -37,12 +41,35 @@ public class Tribe {
     }
 
     /**
+     * Adds a character card to the tribe and notifies owned post-draw buildings that accumulate
+     * rewards from newly acquired characters.
+     *
+     * @param c character card to add
+     * @param player owner of the tribe receiving the character
+     */
+    public void addCharacter(CharacterCard c, Player player){
+        this.characters.add(c); //Notify the set for food and pair of inventors about the card. If needed apply effect
+        notifyPostDrawBuildings(c, player);
+    }
+
+    /**
      * Adds a building card to the tribe.
      *
      * @param b building card to add
      */
     public void addBuilding(BuildingCard b){
         this.buildings.add(b);
+    }
+
+    private void notifyPostDrawBuildings(CharacterCard character, Player player) {
+        for (BuildingCard building : this.buildings) {
+            if (building instanceof SetForFood setForFood) {
+                setForFood.addCharacterTypeAndApplyEffect(character.getType(), player);
+            }
+            if (building instanceof PairOfInventor pairOfInventor && character instanceof Inventor inventor) {
+                pairOfInventor.addInventionTypeAndApplyEffect(inventor.getInventionType(), player);
+            }
+        }
     }
 
     /**
