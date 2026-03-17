@@ -149,14 +149,11 @@ public class Board {
     }
 
     /**
-     * Extracts the new turn order based on the current totem positions on the offer path,
-     * clears the offer spaces, and places players on the starting blocks to resolve end-of-round effects.
+     * Moves a player from their current offer space back to the starting tile.
+     * Clears the occupied offer space and automatically places the player on the first available starting block.
      *
-     * @return The list of players sorted in the new turn order for the next round.
+     * @param player The player who has just completed their active turn.
      */
-    public List<Player> rebuildOrderFromOfferPath() {
-        return this.offerPath.resetAndGetNewOrder();
-    }
     public void returnPlayerToStartingTile(Player player) {
         this.offerPath.returnPlayerToStartingTile(player);
     }
@@ -219,7 +216,7 @@ public class Board {
 
     /**
      * Calculates the required amount of building cards to draw based on the era and player count.
-     *
+     * it's based and harcoded form the game rules
      * @param era The current era.
      * @return The number of building cards to draw.
      */
@@ -245,36 +242,60 @@ public class Board {
     }
 
     /**
-     * Places a player's totem on the specified offer space, resolves immediate space effects (e.g., food),
-     * and returns the drafting constraints.
+     * Places a player's totem on the specified offer space,
      *
      * @param player     The player taking the action.
      * @param targetCode The unique string code of the target offer space.
-     * @return An integer array where index 0 is the number of upper row cards to draft,
-     * and index 1 is the number of lower row cards to draft.
      */
-    // questa rimane ma senza risoluzione, la risoluzione avviene dopo (diventa un void)
     public void placePlayerOnOfferSpace(Player player, String targetCode) {
         this.offerPath.placePlayer(player, targetCode);
     }
 
-    //ordine per game
+    /**
+     * Retrieves the list of players currently placed on the offer path,
+     * ordered strictly ascending by their space's position index (from left to right).
+     * This method is used by the game controller to determine the exact
+     * resolution order of the active turns.
+     *
+     * @return A list of players sorted by their position on the offer path.
+     */
     public List<Player> getResolutionOrder() {
         return this.offerPath.getPlayersInOrder();
     }
+
+    /**
+     * Retrieves the exact turn order for the next round.
+     * This is determined by the order in which players returned to the starting blocks.
+     *
+     * @return A list of players sorted by their turn order for the upcoming round.
+     */
+    public List<Player> getNextRoundTurnOrder() {
+        return this.offerPath.getNextRoundTurnOrder();
+    }
+
+    /**
+     * Checks if the offer space 'A' is currently occupied by a player.
+     * If occupied, it immediately resolves the space's specific effect for that player
+     * and returns true. If the space is empty or unavailable, it does nothing and returns false.
+     *
+     * @return true if a player was on space 'A' and the effect was resolved; false otherwise.
+     */
     public boolean resolveEventA()
     {
         return this.offerPath.resolveEventA();
     }
 
-    // per ogni giocatore in ordine dettato dal game si fa il resolve
-    public int[] resolveActionForPlayer(Player player) {
-        return this.offerPath.resolveActionForPlayer(player);
-    }
 
-    // compat alias kept while Game/Board callers converge on the same naming
+    /**
+     * Resolves the immediate action for the specified player based on their current
+     * offer space and retrieves their specific drafting constraints.
+     *
+     * @param player The player whose turn action is being resolved.
+     * @return An integer array representing the number of cards to draw, where
+     * index 0 is the amount from the upper row, and index 1 is from the lower row.
+     */
     public int[] returnNumberDrawableCard(Player player) {
-        return this.resolveActionForPlayer(player);
+        return this.offerPath.resolveActionForPlayer(player);
     }
 
 

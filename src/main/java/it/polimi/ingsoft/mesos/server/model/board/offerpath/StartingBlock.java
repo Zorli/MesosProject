@@ -3,10 +3,9 @@ package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 /**
- * Represents a single block on the starting tile where players are placed
- * at the beginning of a round. Each block determines the player's position
- * in the turn order and may apply specific modifiers (food or prestige)
- * at the end of the round.
+ * Represents a single block on the starting tile where players are placed.
+ * Each block determines the player's position in the turn order for the upcoming round
+ * and applies specific modifiers (food or prestige) immediately upon placement.
  */
 public class StartingBlock {
     private int position;
@@ -18,10 +17,9 @@ public class StartingBlock {
      * Initializes a new starting block with its designated position and modifiers.
      *
      * @param position The turn order position of this block (e.g., 1 for first player).
-     * @param foodModifier The amount of food gained (positive) or lost (negative)
-     * by the player occupying this block at the end of the round.
-     * @param prestigeModifier The amount of prestige gained (positive) or lost (negative)
-     * by the player occupying this block at the end of the round.
+     * @param foodModifier The amount of food gained (positive) or required to be paid (negative)
+     * immediately upon occupying this block.
+     * @param prestigeModifier The prestige penalty applied if the player cannot pay a negative food modifier.
      * @param occupiedBy The player initially assigned to this block (usually null at creation).
      */
     public StartingBlock(int position, int foodModifier, int prestigeModifier, Player occupiedBy) {
@@ -43,8 +41,7 @@ public class StartingBlock {
 
     /**
      * Clears the block by removing the occupying player.
-     * This is typically called when the player moves their totem to an offer space
-     * or during the board reset phase.
+     * This is typically called when the player moves their totem to an offer space.
      */
     public void clear() {
         this.occupiedBy = null;
@@ -85,6 +82,12 @@ public class StartingBlock {
     public int getPosition() {
         return this.position;
     }
+    
+    /**
+     * Resolves the immediate effect of occupying this starting block.
+     * Depending on the block's modifiers, the player either gains food, pays a food cost,
+     * or suffers a prestige penalty if they cannot afford the required food cost.
+     */
     public void resolveEffect() {
         if (this.occupiedBy != null) {
             if (this.foodModifier > 0) {
