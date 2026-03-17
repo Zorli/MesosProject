@@ -238,10 +238,24 @@ public class Game {
     //Which card on the board the player choose to pick
 
     /**
-     * Placeholder for the future action that will let a player choose one of the available cards.
+     * Resolves a card draft performed by the current player.
+     *
+     * <p>The method enforces game/round/turn preconditions, verifies that the selected card is
+     * present on the board and currently drawable by the player, removes it from the proper row,
+     * and applies card effects to the player's tribe (including building cost payment when
+     * required). It then updates the turn finite-state machine and, when the turn ends, advances
+     * the turn order or transitions the round to {@link RoundPhase#RESOLVING_EVENTS}.
      *
      * @param player player selecting the card
      * @param card card chosen from the board
+     * @return an action result describing the state after the card choice is applied
+     * @throws InvalidGameStatusException if the game is not in {@code IN_PROGRESS}
+     * @throws InvalidGamePhaseException if the round is not in {@code PLAYER_TURNS}
+     * @throws NotPlayersTurnException if {@code player} is not the active player
+     * @throws InvalidTurnPhaseException if the turn state is not waiting for a card selection
+     * @throws CardNotPresentException if the selected card is not currently on the board
+     * @throws CardNotDrawableException if the selected card cannot be drafted by {@code player}
+     * @throws CardRowSelectionNotAllowedException if the selected row is not currently selectable
      */
     public ActionResult chooseCard(Player player, Card card){
 
@@ -318,7 +332,15 @@ public class Game {
 
 
     /**
-     * Placeholder for the end-of-round resolution, including events and player repositioning.
+     * Resolves end-of-round events and advances the round flow.
+     *
+     * <p>This action is available only after all players have completed their turn choices. It
+     * delegates event resolution to the board and then transitions the round either to
+     * {@link RoundPhase#FINAL_SCORING} (after round 10) or to
+     * {@link RoundPhase#RETURNING_TO_START}.
+     *
+     * @throws InvalidGameStatusException if the game is not in {@code IN_PROGRESS}
+     * @throws InvalidGamePhaseException if the round is not in {@code RESOLVING_EVENTS}
      */
     public void resolveEvents(){
         //Risoluzione eventi
@@ -335,6 +357,15 @@ public class Game {
         }
     }
 
+    /**
+     * Rebuilds player order from totem positions and prepares board reset.
+     *
+     * <p>The board computes the new order from the offer path, and the turn-order tracker is
+     * updated accordingly. The round then advances to {@link RoundPhase#RESETTING_BOARD}.
+     *
+     * @throws InvalidGameStatusException if the game is not in {@code IN_PROGRESS}
+     * @throws InvalidGamePhaseException if the round is not in {@code RETURNING_TO_START}
+     */
     public void returnToStart() {
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("returnToStart", this.status);
@@ -349,8 +380,16 @@ public class Game {
         this.currentRoundPhase = RoundPhase.RESETTING_BOARD;
     }
 
-
-
+    /**
+     * Resets board rows at the end of a round and handles era progression.
+     *
+     * <p>The board performs the round reset (card shifts/refills). If the reset reports an era
+     * transition, the current era is advanced. The round phase is then moved to
+     * {@link RoundPhase#POST_REFILL_DRAW}.
+     *
+     * @throws InvalidGameStatusException if the game is not in {@code IN_PROGRESS}
+     * @throws InvalidGamePhaseException if the round is not in {@code RESETTING_BOARD}
+     */
     public void resetBoard() {
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("resetBoard", this.status);
@@ -369,6 +408,16 @@ public class Game {
         this.currentRoundPhase = RoundPhase.POST_REFILL_DRAW;
     }
 
+    /**
+     * Completes the post-refill draw window and reopens normal player turns.
+     *
+     * <p>The current implementation only validates state/phase and advances the round phase to
+     * {@link RoundPhase#PLAYER_TURNS}. Additional post-refill draw logic can be introduced here
+     * later without changing the external transition contract.
+     *
+     * @throws InvalidGameStatusException if the game is not in {@code IN_PROGRESS}
+     * @throws InvalidGamePhaseException if the round is not in {@code POST_REFILL_DRAW}
+     */
     public void postRefillDrawn(){
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("postRefillDrawn", this.status);
@@ -387,7 +436,14 @@ public class Game {
 
 
     /**
-     * Placeholder for the final scoring routine executed when the match ends.
+     * Entry point for final scoring after the last round.
+     *
+     * <p>The method currently validates that the game is in progress and that the round phase is
+     * {@link RoundPhase#FINAL_SCORING}. Scoring side effects are intentionally not implemented
+     * yet.
+     *
+     * @throws InvalidGameStatusException if the game is not in {@code IN_PROGRESS}
+     * @throws InvalidGamePhaseException if the round is not in {@code FINAL_SCORING}
      */
     public void calculateFinalScore(){
         if (this.status != GameStatus.IN_PROGRESS) {
