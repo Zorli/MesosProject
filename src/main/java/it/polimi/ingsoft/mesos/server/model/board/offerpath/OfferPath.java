@@ -61,22 +61,22 @@ public class OfferPath {
         }
     }
 
-//    /**
-//     * Executes the end-of-round logic for the path. It extracts the new turn order
-//     * based on totem placements, clears the offer spaces, and relocates players
-//     * back to the starting tile to resolve end-of-round prestige and food effects.
-//     *
-//     * @return The list of players sorted in their new turn order for the upcoming round.
-//     */
-//    public List<Player> resetAndGetNewOrder() {
-//        List<Player> newOrder = this.getPlayersInOrder();
-//
-//        this.clearOfferSpaces();
-//
-//        this.startingTile.placePlayersAndResolveEffects(newOrder);
-//
-//        return newOrder;
-//    }
+    /**
+     * Executes the end-of-round logic for the path. It extracts the new turn order
+     * based on totem placements, clears the offer spaces, and relocates players
+     * back to the starting tile to resolve end-of-round prestige and food effects.
+     *
+     * @return The list of players sorted in their new turn order for the upcoming round.
+     */
+    public List<Player> resetAndGetNewOrder() {
+        List<Player> newOrder = this.getPlayersInOrder();
+
+        this.clearOfferSpaces();
+
+        this.startingTile.placePlayersAndResolveEffects(newOrder);
+
+        return newOrder;
+    }
     /**
      * Sposta un giocatore dallo spazio offerta in cui si trova alla tessera di partenza.
      * Libera lo spazio offerta e occupa il primo blocco di partenza disponibile.
@@ -107,7 +107,19 @@ public class OfferPath {
                 .map(OfferSpace::getOccupiedBy)
                 .collect(Collectors.toList());
     }
-
+    public boolean resolveEventA()
+    {
+        String targetCode = "A";
+        return this.offerSpaces.stream()
+                .filter(space -> targetCode.equals(space.getCode()) && !space.isAvailable())
+                .findFirst()
+                .map(space -> {
+                    Player currentPlayer = space.getOccupiedBy();
+                    space.resolveImmediateAction(currentPlayer);
+                    return true;
+                })
+                .orElse(false);
+    }
     /**
      * Removes all players from the offer spaces, making them available for the next round.
      */
@@ -156,7 +168,6 @@ public class OfferPath {
                 .filter(space -> player.equals(space.getOccupiedBy()))
                 .findFirst()
                 .map(space -> {
-                    space.resolveImmediateAction(player);
                     return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
                 })
                 .orElse(new int[]{0, 0}); // Fallback di sicurezza

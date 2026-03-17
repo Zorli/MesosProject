@@ -7,6 +7,7 @@ package it.polimi.ingsoft.mesos.server.model.GameState;
  * player turns through end-of-round transitions and final scoring.
  */
 public enum RoundPhase {
+    PLACING_TOTEMS,
     PLAYER_TURNS,
     RESOLVING_EVENTS,
     RETURNING_TO_START,

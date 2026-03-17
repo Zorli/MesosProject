@@ -62,9 +62,7 @@ public class DefaultGameFactory implements GameFactory {
                 players,
                 turnState,
                 turnOrderTrack,
-                board,
-                tribeDeck,
-                buildingDeck
+                board
         );
     }
 }

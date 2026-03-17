@@ -123,15 +123,15 @@ public class Board {
         this.lowerPile.resolveLowerRowEvents(arrayListPlayers);
     }
 
-//    /**
-//     * Extracts the new turn order based on the current totem positions on the offer path,
-//     * clears the offer spaces, and places players on the starting blocks to resolve end-of-round effects.
-//     *
-//     * @return The list of players sorted in the new turn order for the next round.
-//     */
-//    public List<Player> rebuildOrderFromOfferPath() {
-//        return this.offerPath.resetAndGetNewOrder();
-//    }
+    /**
+     * Extracts the new turn order based on the current totem positions on the offer path,
+     * clears the offer spaces, and places players on the starting blocks to resolve end-of-round effects.
+     *
+     * @return The list of players sorted in the new turn order for the next round.
+     */
+    public List<Player> rebuildOrderFromOfferPath() {
+        return this.offerPath.resetAndGetNewOrder();
+    }
     public void returnPlayerToStartingTile(Player player) {
         this.offerPath.returnPlayerToStartingTile(player);
     }
@@ -237,10 +237,19 @@ public class Board {
     public List<Player> getResolutionOrder() {
         return this.offerPath.getPlayersInOrder();
     }
+    public boolean resolveEventA()
+    {
+        return this.offerPath.resolveEventA();
+    }
 
     // per ogni giocatore in ordine dettato dal game si fa il resolve
     public int[] resolveActionForPlayer(Player player) {
         return this.offerPath.resolveActionForPlayer(player);
+    }
+
+    // compat alias kept while Game/Board callers converge on the same naming
+    public int[] returnNumberDrawableCard(Player player) {
+        return this.resolveActionForPlayer(player);
     }
 
 
@@ -284,6 +293,17 @@ public class Board {
             return CardRow.LOWER;
         }
         return CardRow.NOT_PRESENT;
+    }
+
+    /**
+     * Returns whether the provided player may currently draw the requested card from the board.
+     *
+     * @param player player attempting to draw the card
+     * @param card requested card
+     * @return {@code true} when the card is present on the board and drawable by the player
+     */
+    public boolean canPlayerDrawCard(Player player, Card card) {
+        return this.getCardRow(card) != CardRow.NOT_PRESENT && card.isDrawable(player);
     }
 
     /**
