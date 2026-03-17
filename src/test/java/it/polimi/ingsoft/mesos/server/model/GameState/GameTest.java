@@ -4,7 +4,6 @@ import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;
 
@@ -14,36 +13,24 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GameTest {
 
     @Test
-    void setupInitializesBoardTurnOrderAndActionResult() {
+    void setupInitializesBoardTurnOrderAndGameState() {
         ArrayList<Player> players = players("Alice", "Bob");
         RecordingBoard board = new RecordingBoard(players);
         TurnState turnState = new TurnState();
         TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
         Game game = new Game(42, players, turnState, turnOrderTrack, board, null, null);
 
-        ActionResult actionResult = game.setup();
+        game.setup();
 
         assertEquals(List.of("buildOfferPath", "setupInitialRows"), board.calls);
         assertEquals(GameStatus.IN_PROGRESS, game.getStatus());
-        assertEquals(TurnPhase.WAITING_FOR_TOTEM_MOVE, actionResult.getTurnPhase());
-        assertEquals("Alice", actionResult.getExpectedPlayer());
-        assertEquals(GameStatus.IN_PROGRESS, actionResult.getGameStatus());
-        assertEquals(Era.first, actionResult.getCurrentEra());
-        assertEquals(1, actionResult.getRoundNumber());
-        assertFalse(actionResult.isTurnEnded());
-        assertFalse(actionResult.isRoundEnded());
-        assertFalse(actionResult.isGameEnded());
-        assertTrue(actionResult.getUpperRowCards().isEmpty());
-        assertTrue(actionResult.getLowerRowCards().isEmpty());
-        assertTrue(actionResult.getDrawableUpperCards().isEmpty());
-        assertTrue(actionResult.getDrawableLowerCards().isEmpty());
+        assertEquals(Era.first, game.getCurrentEra());
     }
 
     @Test
@@ -53,10 +40,9 @@ class GameTest {
         Game game = new Game(42, players, new TurnState(), new TurnOrderTrack(), board, null, null);
         game.setCurrentEra(Era.second);
 
-        ActionResult actionResult = game.setup();
+        game.setup();
 
         assertEquals(Era.second, game.getCurrentEra());
-        assertEquals(Era.second, actionResult.getCurrentEra());
     }
 
     @Test
@@ -144,12 +130,9 @@ class GameTest {
         game.setup();
 
         game.moveTotem(players.get(0), "A");
-        ActionResult actionResult = game.moveTotem(players.get(1), "B");
+        game.moveTotem(players.get(1), "B");
 
         assertTrue(board.resolveEventACalled);
-        assertEquals(TurnPhase.WAITING_FOR_CARD_SELECTION, actionResult.getTurnPhase());
-        assertEquals("Bob", actionResult.getExpectedPlayer());
-        assertEquals(2, actionResult.getRoundNumber());
     }
 
     private static ArrayList<Player> players(String... nicknames) {

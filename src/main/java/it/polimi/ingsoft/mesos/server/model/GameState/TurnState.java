@@ -169,7 +169,7 @@ public class TurnState {
     }
 
     /**
-     * Resets the FSM so that the next player starts from the totem-move phase.
+     * Clears the completed player's stored choices and prepares card selection for the next player.
      */
     public void resetForNextPlayer() {
         if (this.phase != TurnPhase.TURN_COMPLETED) {
@@ -247,4 +247,5 @@ public class TurnState {
             this.phase = TurnPhase.TURN_COMPLETED;
         }
     }
+
 }
