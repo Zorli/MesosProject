@@ -97,4 +97,8 @@ public class BuildingCard extends Card {
         player.gainPrestigePoints(this.prestigePoints);
     }
 
+    public void applyEffect(Player player) {
+        // Default implementation does nothing, as some buildings only have intrinsic prestige points.
+    }
+
 }

@@ -38,6 +38,7 @@ public class PrestigePointsForSet extends BuildingCard {
      *
      * @param player player receiving the prestige-point reward
      */
+    @Override
     public void applyEffect(Player player) {
         Map<TribeCardType, Integer> characterTypeCountMap;
         characterTypeCountMap = new HashMap<>();

@@ -454,6 +454,13 @@ public class Game {
             throw new InvalidGamePhaseException("calculateFinalScore", this.currentRoundPhase);
         }
 
+        for(Player p: this.players){
+            for (BuildingCard b: p.getTribe().getBuildings()){
+                b.increaseFinalPrestigePoints(p);   // All pp of the building
+                b.applyEffect(p);                   // All the final effect of the building
+                p.gainPrestigePoints(p.getTribe().getPrestigePointsForBuilderInFinalPhase());  // Bonus for builder cards
+            }
+        }
 
 
     }

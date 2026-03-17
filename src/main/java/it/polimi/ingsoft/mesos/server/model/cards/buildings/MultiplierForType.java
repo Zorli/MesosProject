@@ -37,6 +37,7 @@ public class MultiplierForType extends BuildingCard {
      *
      * @param player player receiving the prestige-point reward
      */
+    @Override
     public void applyEffect(Player player){
         int count = 0;
         for (CharacterCard card : player.getTribe().getCharacters()) {
