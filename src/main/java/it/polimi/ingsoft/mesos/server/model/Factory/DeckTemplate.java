@@ -99,6 +99,30 @@ public final class DeckTemplate {
     }
 
     /**
+     * Instantiates a fresh card matching the provided identifier from the immutable template.
+     *
+     * @param cardId identifier of the card to instantiate
+     * @return fresh card instance
+     */
+    public Card createCardById(int cardId) {
+        for (TribeCardBlueprint blueprint : this.tribeCardBlueprints) {
+            TribeCard tribeCard = blueprint.instantiate();
+            if (tribeCard.getId() == cardId) {
+                return tribeCard;
+            }
+        }
+
+        for (BuildingCardBlueprint blueprint : this.buildingCardBlueprints) {
+            BuildingCard buildingCard = blueprint.instantiate();
+            if (buildingCard.getId() == cardId) {
+                return buildingCard;
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown card id: " + cardId);
+    }
+
+    /**
      * Returns how many tribe card blueprints are stored in the template.
      *
      * @return tribe card template count

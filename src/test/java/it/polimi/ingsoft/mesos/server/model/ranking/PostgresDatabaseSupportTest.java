@@ -1,13 +1,13 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
+import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,36 +15,50 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SqliteDatabaseSupportTest {
-
-    @TempDir
-    Path tempDir;
+class PostgresDatabaseSupportTest extends PostgresIntegrationTestSupport {
 
     @Test
     void constructorRejectsInvalidArguments() {
         NullPointerException nullPointerException = assertThrows(
                 NullPointerException.class,
-                () -> new SqliteDatabaseSupport(null, 0)
+                () -> new PostgresDatabaseSupport(null, 0, List.of(PostgresRankingSchemaModule.getInstance()))
         );
-        assertEquals("Database path cannot be null", nullPointerException.getMessage());
+        assertEquals("Connection config cannot be null", nullPointerException.getMessage());
 
         IllegalArgumentException illegalArgumentException = assertThrows(
                 IllegalArgumentException.class,
-                () -> new SqliteDatabaseSupport(this.tempDir.resolve("ranking.db"), -1)
+                () -> new PostgresDatabaseSupport(
+                        this.createIsolatedConnectionConfig("invalid"),
+                        -1,
+                        List.of(PostgresRankingSchemaModule.getInstance())
+                )
         );
         assertEquals("Max busy retries cannot be negative", illegalArgumentException.getMessage());
+
+        IllegalArgumentException modulesException = assertThrows(
+                IllegalArgumentException.class,
+                () -> new PostgresDatabaseSupport(this.createIsolatedConnectionConfig("missing_modules"), 0, List.of())
+        );
+        assertEquals("Schema modules cannot be null or empty", modulesException.getMessage());
     }
 
     @Test
     void initializeSchemaCreatesTables() throws SQLException {
-        SqliteDatabaseSupport support = new SqliteDatabaseSupport(this.tempDir.resolve("ranking.db"), 0);
+        PostgresDatabaseSupport support = new PostgresDatabaseSupport(
+                this.createIsolatedConnectionConfig("database_support"),
+                0,
+                List.of(PostgresRankingSchemaModule.getInstance())
+        );
 
         support.initializeSchema();
 
         try (Connection connection = support.openConnection();
              Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(
-                     "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('users', 'user_ratings', 'match_results')"
+                     "SELECT COUNT(*) " +
+                             "FROM information_schema.tables " +
+                             "WHERE table_schema = current_schema() " +
+                             "AND table_name IN ('users', 'user_ratings', 'match_results')"
              )) {
             assertTrue(resultSet.next());
             assertEquals(3, resultSet.getInt(1));
@@ -53,12 +67,16 @@ class SqliteDatabaseSupportTest {
 
     @Test
     void executeWithRetryRetriesBusyErrorsBeforeSuccess() {
-        SqliteDatabaseSupport support = new SqliteDatabaseSupport(this.tempDir.resolve("ranking.db"), 3);
+        PostgresDatabaseSupport support = new PostgresDatabaseSupport(
+                this.createIsolatedConnectionConfig("retry_success"),
+                3,
+                List.of(PostgresRankingSchemaModule.getInstance())
+        );
         AtomicInteger attempts = new AtomicInteger();
 
         String result = support.executeWithRetry(() -> {
             if (attempts.getAndIncrement() < 2) {
-                throw new SQLException("database is locked", "SQLITE_BUSY", 5);
+                throw new SQLException("serialization failure", "40001");
             }
 
             return "ok";
@@ -70,11 +88,15 @@ class SqliteDatabaseSupportTest {
 
     @Test
     void executeWithRetryThrowsWhenBusyRetriesAreExhausted() {
-        SqliteDatabaseSupport support = new SqliteDatabaseSupport(this.tempDir.resolve("ranking.db"), 1);
+        PostgresDatabaseSupport support = new PostgresDatabaseSupport(
+                this.createIsolatedConnectionConfig("retry_exhausted"),
+                1,
+                List.of(PostgresRankingSchemaModule.getInstance())
+        );
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
                 support.executeWithRetry(() -> {
-                    throw new SQLException("database is locked", "SQLITE_BUSY", 5);
+                    throw new SQLException("serialization failure", "40001");
                 })
         );
 
@@ -84,7 +106,11 @@ class SqliteDatabaseSupportTest {
 
     @Test
     void executeWithRetryPropagatesIllegalStateExceptionAsIs() {
-        SqliteDatabaseSupport support = new SqliteDatabaseSupport(this.tempDir.resolve("ranking.db"), 0);
+        PostgresDatabaseSupport support = new PostgresDatabaseSupport(
+                this.createIsolatedConnectionConfig("retry_illegal_state"),
+                0,
+                List.of(PostgresRankingSchemaModule.getInstance())
+        );
 
         IllegalStateException expected = new IllegalStateException("fatal");
 
@@ -99,7 +125,11 @@ class SqliteDatabaseSupportTest {
 
     @Test
     void executeWithRetryWrapsUnexpectedExceptions() {
-        SqliteDatabaseSupport support = new SqliteDatabaseSupport(this.tempDir.resolve("ranking.db"), 0);
+        PostgresDatabaseSupport support = new PostgresDatabaseSupport(
+                this.createIsolatedConnectionConfig("retry_unexpected"),
+                0,
+                List.of(PostgresRankingSchemaModule.getInstance())
+        );
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
                 support.executeWithRetry(() -> {

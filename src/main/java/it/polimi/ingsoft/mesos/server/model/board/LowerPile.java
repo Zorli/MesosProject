@@ -28,6 +28,17 @@ public class LowerPile {
     }
 
     /**
+     * Creates a lower pile from already ordered visible cards.
+     *
+     * @param tribeCards visible tribe cards in row order
+     * @param buildingCards visible building cards in row order
+     */
+    public LowerPile(List<TribeCard> tribeCards, List<BuildingCard> buildingCards) {
+        this.tribeCards = new ArrayList<>(tribeCards);
+        this.buildingCards = new ArrayList<>(buildingCards);
+    }
+
+    /**
      * Smartly adds a single card to the pile, automatically routing it
      * to the correct internal list based on its specific type.
      *
@@ -131,5 +142,23 @@ public class LowerPile {
         allCards.addAll(this.tribeCards);
         allCards.addAll(this.buildingCards);
         return allCards;
+    }
+
+    /**
+     * Returns the tribe cards currently visible in the lower row preserving their order.
+     *
+     * @return copy of visible lower tribe cards
+     */
+    public List<TribeCard> getTribeCards() {
+        return new ArrayList<>(this.tribeCards);
+    }
+
+    /**
+     * Returns the building cards currently visible in the lower row preserving their order.
+     *
+     * @return copy of visible lower building cards
+     */
+    public List<BuildingCard> getBuildingCards() {
+        return new ArrayList<>(this.buildingCards);
     }
 }

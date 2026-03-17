@@ -4,6 +4,8 @@ import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
+import java.util.Map;
+
 /**
  * Base abstraction for every building card.
  * <p>
@@ -99,6 +101,26 @@ public class BuildingCard extends Card {
 
     public void applyEffect(Player player) {
         // Default implementation does nothing, as some buildings only have intrinsic prestige points.
+    }
+
+    /**
+     * Exports the mutable runtime state owned by this building card.
+     *
+     * @return string-to-integer state entries required to restore the card exactly
+     */
+    public Map<String, Integer> exportRuntimeState() {
+        return Map.of();
+    }
+
+    /**
+     * Restores the mutable runtime state previously exported by {@link #exportRuntimeState()}.
+     *
+     * @param runtimeState integer state entries persisted for this card
+     */
+    public void restoreRuntimeState(Map<String, Integer> runtimeState) {
+        if (runtimeState != null && !runtimeState.isEmpty()) {
+            throw new IllegalArgumentException("Runtime state is not supported for building " + this.getId());
+        }
     }
 
 }

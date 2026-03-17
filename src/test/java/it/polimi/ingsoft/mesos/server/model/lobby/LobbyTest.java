@@ -96,4 +96,36 @@ class LobbyTest {
 
         assertNull(lobby.getHostNickname());
     }
+
+    @Test
+    void resumableLobbyStartsWithoutConnectedPlayersAndTracksReservedRoster() {
+        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob", "Carol"));
+
+        assertTrue(lobby.isResumable());
+        assertEquals("game-42", lobby.getResumableGameId());
+        assertEquals(LobbyStatus.RESUMABLE, lobby.getStatus());
+        assertTrue(lobby.getPlayers().isEmpty());
+        assertEquals(java.util.List.of("Alice", "Bob", "Carol"), lobby.getReservedPlayerNicknames());
+    }
+
+    @Test
+    void resumableLobbyAcceptsOnlyOriginalPlayers() {
+        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob"));
+
+        lobby.addPlayer(playerWithNickname("Alice"));
+
+        assertThrows(IllegalStateException.class, () -> lobby.addPlayer(playerWithNickname("Carol")));
+    }
+
+    @Test
+    void resumableLobbyCanStartOnlyWhenAllOriginalPlayersReturned() {
+        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob", "Carol"));
+
+        lobby.addPlayer(playerWithNickname("Alice"));
+        lobby.addPlayer(playerWithNickname("Bob"));
+        assertFalse(lobby.canStart());
+
+        lobby.addPlayer(playerWithNickname("Carol"));
+        assertTrue(lobby.canStart());
+    }
 }

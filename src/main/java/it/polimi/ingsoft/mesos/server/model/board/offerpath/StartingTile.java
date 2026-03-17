@@ -23,6 +23,15 @@ public class StartingTile {
     }
 
     /**
+     * Creates a starting tile from already restored starting blocks.
+     *
+     * @param startingBlocks starting blocks to reuse
+     */
+    public StartingTile(List<StartingBlock> startingBlocks) {
+        this.startingBlocks = new ArrayList<>(startingBlocks);
+    }
+
+    /**
      * Configures the starting blocks based on the total number of players in the game.
      * Assigns the specific food and prestige modifiers for each position and places
      * the players on their initial blocks for the very first round.
@@ -104,4 +113,12 @@ public class StartingTile {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Returns the current starting blocks preserving their order.
+     *
+     * @return copy of current starting blocks
+     */
+    public List<StartingBlock> getStartingBlocks() {
+        return new ArrayList<>(this.startingBlocks);
+    }
 }

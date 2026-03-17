@@ -89,4 +89,38 @@ public class SetForFood extends BuildingCard {
         }
     }
 
+    /**
+     * Returns the current internal counters for each tracked tribe-card type.
+     *
+     * @return copy of the mutable counters needed for exact restore
+     */
+    @Override
+    public Map<String, Integer> exportRuntimeState() {
+        Map<String, Integer> exportedState = new HashMap<>();
+        for (Map.Entry<TribeCardType, Integer> entry : this.characterTypeCountMap.entrySet()) {
+            exportedState.put(entry.getKey().name(), entry.getValue());
+        }
+        return exportedState;
+    }
+
+    /**
+     * Restores the internal counters used to track partial completed sets.
+     *
+     * @param runtimeState persisted counters keyed by tribe-card type name
+     */
+    @Override
+    public void restoreRuntimeState(Map<String, Integer> runtimeState) {
+        this.characterTypeCountMap.replaceAll((key, value) -> 0);
+        if (runtimeState == null) {
+            return;
+        }
+
+        for (Map.Entry<String, Integer> entry : runtimeState.entrySet()) {
+            TribeCardType type = TribeCardType.valueOf(entry.getKey());
+            if (this.characterTypeCountMap.containsKey(type)) {
+                this.characterTypeCountMap.put(type, entry.getValue());
+            }
+        }
+    }
+
 }

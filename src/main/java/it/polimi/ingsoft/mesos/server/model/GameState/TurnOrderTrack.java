@@ -31,6 +31,31 @@ public class TurnOrderTrack {
         this.currentRoundPhase = RoundPhase.PLACING_TOTEMS;
     }
 
+    /**
+     * Creates a turn-order tracker from an already persisted runtime snapshot.
+     *
+     * @param turnOrder ordered players of the current round
+     * @param currentPlayerIndex index of the next player to act
+     * @param roundNumber current round number
+     * @param currentRoundPhase current round phase
+     */
+    public TurnOrderTrack(List<Player> turnOrder,
+                          int currentPlayerIndex,
+                          int roundNumber,
+                          RoundPhase currentRoundPhase) {
+        if (turnOrder == null || turnOrder.isEmpty()) {
+            throw new IllegalArgumentException("Turn order cannot be null or empty");
+        }
+        if (currentPlayerIndex < 0 || currentPlayerIndex >= turnOrder.size()) {
+            throw new IllegalArgumentException("Current player index is out of bounds");
+        }
+
+        this.turnOrder = new ArrayList<>(turnOrder);
+        this.currentPlayerIndex = currentPlayerIndex;
+        this.roundNumber = roundNumber;
+        this.currentRoundPhase = currentRoundPhase;
+    }
+
     // Getters
     
     public Player getCurrentPlayer() {
@@ -44,6 +69,16 @@ public class TurnOrderTrack {
 
     public RoundPhase getCurrentRoundPhase() {
         return this.currentRoundPhase;
+    }
+
+    public List<Player> getTurnOrder() {
+        this.ensureOrderInitialized();
+        return new ArrayList<>(this.turnOrder);
+    }
+
+    public int getCurrentPlayerIndex() {
+        this.ensureOrderInitialized();
+        return this.currentPlayerIndex;
     }
 
     // Setters

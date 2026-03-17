@@ -94,6 +94,24 @@ public class Player {
     public int getFood() { return this.food; }
 
     /**
+     * Returns the amount of prestige points currently owned by the player.
+     *
+     * @return current prestige points
+     */
+    public int getPrestigePoints() {
+        return this.prestigePoints;
+    }
+
+    /**
+     * Returns the totem color assigned to the player.
+     *
+     * @return player totem color
+     */
+    public TotemColor getTotem() {
+        return this.totem;
+    }
+
+    /**
      * Returns the tribe aggregate owned by the player.
      *
      * @return player's tribe

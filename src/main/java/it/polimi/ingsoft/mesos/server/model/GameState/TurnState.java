@@ -21,6 +21,24 @@ public class TurnState {
         this.remainingLowerChoicesByPlayer = new HashMap<>();
     }
 
+    /**
+     * Creates a turn state from an already persisted runtime snapshot.
+     *
+     * @param phase turn phase to restore
+     * @param activePlayer active player to restore, may be null
+     * @param remainingUpperChoicesByPlayer remaining upper-row choices by player
+     * @param remainingLowerChoicesByPlayer remaining lower-row choices by player
+     */
+    public TurnState(TurnPhase phase,
+                     Player activePlayer,
+                     Map<Player, Integer> remainingUpperChoicesByPlayer,
+                     Map<Player, Integer> remainingLowerChoicesByPlayer) {
+        this.phase = phase;
+        this.activePlayer = activePlayer;
+        this.remainingUpperChoicesByPlayer = new HashMap<>(remainingUpperChoicesByPlayer);
+        this.remainingLowerChoicesByPlayer = new HashMap<>(remainingLowerChoicesByPlayer);
+    }
+
     // Getters
 
     public TurnPhase getPhase() {
@@ -37,6 +55,24 @@ public class TurnState {
 
     public int getRemainingLowerChoices(Player player) {
         return this.remainingLowerChoicesByPlayer.getOrDefault(player, 0);
+    }
+
+    /**
+     * Returns a copy of the remaining upper choices tracked for all players.
+     *
+     * @return copy of upper-row choice counters by player
+     */
+    public Map<Player, Integer> getRemainingUpperChoicesByPlayer() {
+        return new HashMap<>(this.remainingUpperChoicesByPlayer);
+    }
+
+    /**
+     * Returns a copy of the remaining lower choices tracked for all players.
+     *
+     * @return copy of lower-row choice counters by player
+     */
+    public Map<Player, Integer> getRemainingLowerChoicesByPlayer() {
+        return new HashMap<>(this.remainingLowerChoicesByPlayer);
     }
 
     // Public methods

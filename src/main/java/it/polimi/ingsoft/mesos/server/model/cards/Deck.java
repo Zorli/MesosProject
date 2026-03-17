@@ -21,8 +21,20 @@ public abstract class Deck {
      * @param cards cards to store in the deck
      */
     public Deck(ArrayList<Card> cards){
-        this.cards = cards;
-        this.shuffle();
+        this(cards, true);
+    }
+
+    /**
+     * Creates a deck from the provided card list optionally preserving the incoming order.
+     *
+     * @param cards cards to store in the deck
+     * @param shuffleOnCreate whether the standard era-aware shuffle should be applied immediately
+     */
+    protected Deck(ArrayList<Card> cards, boolean shuffleOnCreate) {
+        this.cards = new ArrayList<>(cards);
+        if (shuffleOnCreate) {
+            this.shuffle();
+        }
     }
 
     /**
@@ -69,5 +81,14 @@ public abstract class Deck {
         this.cards.addAll(firstEra);
         this.cards.addAll(secondEra);
         this.cards.addAll(thirdEra);
+    }
+
+    /**
+     * Returns the remaining deck cards preserving their current draw order.
+     *
+     * @return copy of remaining cards in draw order
+     */
+    public ArrayList<Card> getCardsInOrder() {
+        return new ArrayList<>(this.cards);
     }
 }

@@ -1,10 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
+import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 
@@ -13,17 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SqliteRankingServiceTest {
-
-    @TempDir
-    Path tempDir;
+class PostgresRankingServiceTest extends PostgresIntegrationTestSupport {
 
     private RankingService rankingService;
 
     @BeforeEach
     void setup() {
-        Path dbFile = this.tempDir.resolve("ranking-test.db");
-        this.rankingService = new SqliteRankingService(dbFile);
+        this.rankingService = new PostgresRankingService(
+                this.createIsolatedConnectionConfig("ranking_service")
+        );
     }
 
     @Test

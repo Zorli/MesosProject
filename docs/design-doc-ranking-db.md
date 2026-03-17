@@ -7,7 +7,7 @@
 
 ### Obiettivo
 Descrivere la scelta di persistenza del modulo ranking lato server, chiarendo:
-- perche' e' stato scelto SQLite;
+- perche' e' stato scelto PostgreSQL;
 - quali responsabilita' sono distribuite tra service, supporto database e query SQL;
 - quali invarianti di dominio sono protetti a livello applicativo e a livello database;
 - quali punti di integrazione restano verso orchestrator e controller.
@@ -26,7 +26,7 @@ La parte critica non e' soltanto salvare dati, ma farlo in modo atomico:
 
 ## Scelta implementativa
 
-La soluzione adottata e' una persistenza locale su `SQLite`, incapsulata dietro un service di dominio.
+La soluzione adottata e' una persistenza su `PostgreSQL`, incapsulata dietro un service di dominio.
 
 Questa scelta e' adatta al progetto perche':
 - non introduce infrastruttura esterna per sviluppo e test;
@@ -34,7 +34,7 @@ Questa scelta e' adatta al progetto perche':
 - offre transazioni, vincoli e indici sufficienti per il caso d'uso corrente;
 - mantiene semplice il setup dei test automatici.
 
-Il tradeoff e' che SQLite non e' la scelta ideale per carichi concorrenti elevati multi-process. Per il perimetro attuale del progetto e' comunque una soluzione pragmatica.
+Il tradeoff e' che PostgreSQL introduce piu' infrastruttura rispetto a un database embedded, ma offre una gestione della concorrenza migliore e un percorso di crescita piu' solido lato server.
 
 ## Vista d'insieme
 
@@ -48,7 +48,7 @@ Il tradeoff e' che SQLite non e' la scelta ideale per carichi concorrenti elevat
 - `getMatchHistory(int playerCount)`
 
 ### Implementazione concreta
-`SqliteRankingService` e' l'application service del package ranking:
+`PostgresRankingService` e' l'application service del package ranking:
 - valida input e precondizioni;
 - apre le transazioni;
 - legge lo stato rating corrente;
@@ -57,14 +57,14 @@ Il tradeoff e' che SQLite non e' la scelta ideale per carichi concorrenti elevat
 - restituisce al chiamante leaderboard e ranking della partita.
 
 ### Supporto infrastrutturale
-`SqliteDatabaseSupport` incapsula gli aspetti tecnici di accesso al database:
-- creazione cartelle e file;
+`PostgresDatabaseSupport` incapsula gli aspetti tecnici di accesso al database:
 - inizializzazione schema;
-- apertura connessioni con pragma coerenti;
-- retry su errori `busy` o `locked`.
+- apertura connessioni JDBC;
+- configurazione transazionale coerente;
+- retry su errori transitori come serialization failure, deadlock o lock non disponibili.
 
 ### SQL centralizzato
-`SqliteRankingQueries` contiene DDL e DML, cosi' da evitare stringhe SQL sparse in piu' classi.
+`PostgresRankingQueries` contiene DDL e DML, cosi' da evitare stringhe SQL sparse in piu' classi.
 
 ## Modello dati persistito
 
@@ -99,7 +99,7 @@ Queste regole sono distribuite su due livelli:
 ### Livello applicativo
 - `RankingInputValidator` valida nickname, `gameId`, timestamp, player count e lista score;
 - `EloRatingCalculator` calcola placement e delta rating;
-- `SqliteRankingService` garantisce il flusso corretto dell'operazione.
+- `PostgresRankingService` garantisce il flusso corretto dell'operazione.
 
 ### Livello database
 - vincoli `UNIQUE`;
@@ -134,18 +134,18 @@ Contiene la logica di calcolo:
 - applicazione del bonus streak;
 - clamp al minimo Elo configurato.
 
-### `SqliteDatabaseSupport`
-Gestisce la parte operativa di SQLite:
+### `PostgresDatabaseSupport`
+Gestisce la parte operativa di PostgreSQL:
 - `initializeSchema()`;
 - `openConnection()`;
 - `executeWithRetry(...)`.
 
-In apertura connessione vengono usati pragma coerenti con il modulo:
-- `foreign_keys = ON`
-- `journal_mode = WAL`
-- `busy_timeout`
+In apertura connessione viene imposto un livello di isolamento coerente con il modulo:
+- `TRANSACTION_SERIALIZABLE`
+- connessione JDBC verso il database configurato
+- retry applicativo su SQL state transienti
 
-### `SqliteRankingService`
+### `PostgresRankingService`
 Coordina l'intera operazione di registrazione partita:
 1. valida input;
 2. apre transazione;
@@ -160,11 +160,11 @@ Coordina l'intera operazione di registrazione partita:
 Il package cerca di ridurre race condition e aggiornamenti parziali tramite:
 - transazioni SQL esplicite;
 - livello di isolamento coerente;
-- modalita' `WAL` per migliorare concorrenza in lettura/scrittura;
+- semantica transazionale nativa di PostgreSQL;
 - retry con backoff su errori transitori del database;
 - vincolo di unicita' sul match per garantire idempotenza pratica in inserimento.
 
-Per il progetto corrente questo e' sufficiente. Se in futuro il numero di processi concorrenti aumentasse sensibilmente, la stessa architettura andrebbe mantenuta ma con backend DB piu' adatto, per esempio PostgreSQL.
+Per il progetto corrente questo backend e' gia' adatto anche a piu' partite concorrenti. Se in futuro il carico crescesse ancora, la stessa architettura potra' evolvere senza cambiare il contratto di dominio `RankingService`.
 
 ## Pattern e struttura
 
@@ -192,12 +192,12 @@ Unit test principali:
 - `RankingDataExceptionTest`
 - `RatingSnapshotTest`
 - `PlayerMatchUpdateTest`
-- `SqliteDatabaseSupportTest`
-- `SqliteRankingQueriesTest`
+- `PostgresDatabaseSupportTest`
+- `PostgresRankingQueriesTest`
 
 Test di servizio e integrazione:
-- `SqliteRankingServiceTest`
-- `SqliteRankingServiceIntegrationTest`
+- `PostgresRankingServiceTest`
+- `PostgresRankingServiceIntegrationTest`
 
 ## Punti di integrazione ancora aperti
 
@@ -209,6 +209,6 @@ Il package e' progettato per essere usato dal flusso applicativo principale, ma 
 ## Miglioramenti possibili
 
 I miglioramenti piu' naturali del modulo sono:
-- estrarre eventuali mapper SQL dedicati se `SqliteRankingService` cresce troppo;
+- estrarre eventuali mapper SQL dedicati se `PostgresRankingService` cresce troppo;
 - aggiungere test concorrenti piu' aggressivi;
 - rendere esplicita la strategia di migrazione schema se il database evolve.

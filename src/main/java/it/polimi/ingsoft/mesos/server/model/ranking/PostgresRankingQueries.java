@@ -1,14 +1,14 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
- * Centralized SQL statements used by the SQLite ranking persistence layer.
+ * Centralized SQL statements used by the PostgreSQL ranking persistence layer.
  */
-final class SqliteRankingQueries {
+final class PostgresRankingQueries {
     /** Creates the table of registered users. */
     static final String CREATE_USERS_TABLE = """
             CREATE TABLE IF NOT EXISTS users (
                 nickname TEXT PRIMARY KEY,
-                created_at TEXT NOT NULL
+                created_at TIMESTAMPTZ NOT NULL
             )
             """;
 
@@ -20,7 +20,7 @@ final class SqliteRankingQueries {
                 games_played INTEGER NOT NULL DEFAULT 0,
                 wins INTEGER NOT NULL DEFAULT 0,
                 win_streak INTEGER NOT NULL DEFAULT 0,
-                last_updated TEXT NOT NULL,
+                last_updated TIMESTAMPTZ NOT NULL,
                 FOREIGN KEY(nickname) REFERENCES users(nickname)
             )
             """;
@@ -28,12 +28,12 @@ final class SqliteRankingQueries {
     /** Creates the table containing immutable per-match player results. */
     static final String CREATE_MATCH_RESULTS_TABLE = """
             CREATE TABLE IF NOT EXISTS match_results (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id BIGSERIAL PRIMARY KEY,
                 game_id TEXT NOT NULL,
                 nickname TEXT NOT NULL,
                 final_score INTEGER NOT NULL CHECK(final_score >= 0),
                 placement INTEGER NOT NULL CHECK(placement >= 1),
-                played_at TEXT NOT NULL,
+                played_at TIMESTAMPTZ NOT NULL,
                 player_count INTEGER NOT NULL CHECK(player_count BETWEEN 2 AND 5),
                 elo_before INTEGER NOT NULL CHECK(elo_before >= 0),
                 elo_delta INTEGER NOT NULL,
@@ -63,13 +63,17 @@ final class SqliteRankingQueries {
             """;
 
     /** Inserts a user row if nickname is not already present. */
-    static final String INSERT_USER_IF_MISSING =
-            "INSERT OR IGNORE INTO users(nickname, created_at) VALUES(?, ?)";
+    static final String INSERT_USER_IF_MISSING = """
+            INSERT INTO users(nickname, created_at)
+            VALUES(?, ?)
+            ON CONFLICT (nickname) DO NOTHING
+            """;
 
     /** Inserts an initial rating row if nickname does not have one yet. */
     static final String INSERT_RATING_IF_MISSING = """
-            INSERT OR IGNORE INTO user_ratings(nickname, elo, games_played, wins, win_streak, last_updated)
+            INSERT INTO user_ratings(nickname, elo, games_played, wins, win_streak, last_updated)
             VALUES(?, ?, 0, 0, 0, ?)
+            ON CONFLICT (nickname) DO NOTHING
             """;
 
     /** Checks if a nickname already exists in users table. */
@@ -150,6 +154,6 @@ final class SqliteRankingQueries {
             """;
 
     /** Utility class: not instantiable. */
-    private SqliteRankingQueries() {
+    private PostgresRankingQueries() {
     }
 }

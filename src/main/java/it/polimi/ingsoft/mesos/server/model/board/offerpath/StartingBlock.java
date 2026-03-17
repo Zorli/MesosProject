@@ -75,6 +75,15 @@ public class StartingBlock {
     }
 
     /**
+     * Returns the position of this block inside the starting tile.
+     *
+     * @return block position, starting from 1
+     */
+    public int getPosition() {
+        return this.position;
+    }
+    
+    /**
      * Resolves the immediate effect of occupying this starting block.
      * Depending on the block's modifiers, the player either gains food, pays a food cost,
      * or suffers a prestige penalty if they cannot afford the required food cost.

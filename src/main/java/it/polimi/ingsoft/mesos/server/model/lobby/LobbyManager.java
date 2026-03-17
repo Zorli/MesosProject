@@ -2,16 +2,21 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.NoOpSavedMatchService;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Coordinates the lifecycle of all active lobbies.
@@ -62,6 +67,19 @@ public class LobbyManager {
     }
 
     /**
+     * Creates a resumable lobby for a suspended match waiting to be restored.
+     *
+     * @param resumableGameId persisted match identifier
+     * @param reservedPlayerNicknames original player nicknames that are allowed to rejoin
+     * @return created resumable lobby
+     */
+    public Lobby createResumeLobby(String resumableGameId, List<String> reservedPlayerNicknames) {
+        Lobby lobby = Lobby.resumable(this.nextLobbyId++, resumableGameId, reservedPlayerNicknames);
+        this.lobbies.put(lobby.getId(), lobby);
+        return lobby;
+    }
+
+    /**
      * Adds a player to an existing lobby if its status still allows joins.
      *
      * @param lobbyId target lobby identifier
@@ -76,7 +94,8 @@ public class LobbyManager {
         this.ensureLobbyAcceptsPlayers(lobby);
         lobby.addPlayer(player);
 
-        if (lobby.canStart() && lobby.getStatus() == LobbyStatus.WAITING) {
+        if (lobby.canStart()
+                && (lobby.getStatus() == LobbyStatus.WAITING || lobby.getStatus() == LobbyStatus.RESUMABLE)) {
             lobby.setStatus(LobbyStatus.READY);
         }
     }
@@ -106,14 +125,14 @@ public class LobbyManager {
         Lobby lobby = this.resolveLobby(lobbyId);
         lobby.removePlayer(player);
 
-        if (lobby.getPlayers().isEmpty()) {
+        if (lobby.getPlayers().isEmpty() && !lobby.isResumable()) {
             lobby.setStatus(LobbyStatus.CLOSED);
             this.lobbies.remove(lobbyId);
             return;
         }
 
         if (!lobby.canStart() && lobby.getStatus() == LobbyStatus.READY) {
-            lobby.setStatus(LobbyStatus.WAITING);
+            lobby.setStatus(lobby.isResumable() ? LobbyStatus.RESUMABLE : LobbyStatus.WAITING);
         }
     }
 
@@ -158,6 +177,21 @@ public class LobbyManager {
      * @return created game orchestrator
      */
     public GameOrchestrator createGameFromLobby(int lobbyId) {
+        return this.createGameFromLobby(lobbyId, NoOpSavedMatchService.INSTANCE);
+    }
+
+    /**
+     * Creates a game orchestrator from a ready lobby and wires save-match persistence for that match.
+     *
+     * @param lobbyId lobby identifier
+     * @param savedMatchService persistence service selected for the current runtime mode
+     * @return created game orchestrator
+     */
+    public GameOrchestrator createGameFromLobby(int lobbyId, SavedMatchService savedMatchService) {
+        if (savedMatchService == null) {
+            throw new IllegalArgumentException("Saved-match service cannot be null");
+        }
+
         Lobby lobby = this.resolveLobby(lobbyId);
 
         if (lobby.getStatus() != LobbyStatus.READY) {
@@ -168,9 +202,53 @@ public class LobbyManager {
             throw new IllegalStateException("Cannot create game from lobby that cannot start");
         }
 
+        if (lobby.isResumable()) {
+            throw new IllegalStateException("Resumable lobbies must restore a saved match instead of creating a new one");
+        }
+
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 this.gameFactory,
-                new ArrayList<>(lobby.getPlayers())
+                new ArrayList<>(lobby.getPlayers()),
+                lobby.getHostNickname(),
+                savedMatchService
+        );
+        lobby.setStatus(LobbyStatus.STARTED);
+        return gameOrchestrator;
+    }
+
+    /**
+     * Restores a previously persisted match from a ready resumable lobby.
+     *
+     * @param lobbyId resumable lobby identifier
+     * @param restoreService application service able to rebuild the match aggregate
+     * @return created game orchestrator
+     */
+    public GameOrchestrator resumeGameFromLobby(int lobbyId, SavedMatchService savedMatchService) {
+        if (savedMatchService == null) {
+            throw new IllegalArgumentException("Saved-match service cannot be null");
+        }
+
+        Lobby lobby = this.resolveLobby(lobbyId);
+
+        if (!lobby.isResumable()) {
+            throw new IllegalStateException("Cannot resume game from a non-resumable lobby");
+        }
+
+        if (lobby.getStatus() != LobbyStatus.READY) {
+            throw new IllegalStateException("Cannot resume game from lobby with status: " + lobby.getStatus());
+        }
+
+        if (!lobby.canStart()) {
+            throw new IllegalStateException("Cannot resume game from lobby that cannot start");
+        }
+
+        Game restoredGame = savedMatchService.restoreGame(lobby.getResumableGameId());
+        this.ensureRestoredRosterMatchesLobby(lobby, restoredGame);
+
+        GameOrchestrator gameOrchestrator = new GameOrchestrator(
+                restoredGame,
+                lobby.getHostNickname(),
+                savedMatchService
         );
         lobby.setStatus(LobbyStatus.STARTED);
         return gameOrchestrator;
@@ -200,6 +278,20 @@ public class LobbyManager {
     private void ensureLobbyAcceptsPlayers(Lobby lobby) {
         if (lobby.getStatus() == LobbyStatus.CLOSED || lobby.getStatus() == LobbyStatus.STARTED) {
             throw new IllegalStateException("Cannot join lobby with status: " + lobby.getStatus());
+        }
+    }
+
+    /**
+     * Verifies that the restored match roster matches the reserved resumable lobby roster.
+     */
+    private void ensureRestoredRosterMatchesLobby(Lobby lobby, Game restoredGame) {
+        Set<String> reservedNicknames = new HashSet<>(lobby.getReservedPlayerNicknames());
+        Set<String> restoredNicknames = restoredGame.getPlayers().stream()
+                .map(Player::getNickname)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!reservedNicknames.equals(restoredNicknames)) {
+            throw new IllegalStateException("Restored match roster does not match resumable lobby roster");
         }
     }
 
