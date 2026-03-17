@@ -18,11 +18,11 @@ public class ShamanRitualEventCard extends EventCard {
     /**
      * Creates the event card.
      *
-     * @param id card identifier
-     * @param era card era
-     * @param type tribe card type, expected to be {@code EVENT}
+     * @param id                      card identifier
+     * @param era                     card era
+     * @param type                    tribe card type, expected to be {@code EVENT}
      * @param prestigePointsForHigher prestige points awarded to the highest star total
-     * @param prestigePointsForLower prestige points lost by the lowest star total
+     * @param prestigePointsForLower  prestige points lost by the lowest star total
      */
     public ShamanRitualEventCard(int id, Era era, TribeCardType type, int prestigePointsForHigher, int prestigePointsForLower) {
         super(id, era, type);
@@ -57,9 +57,7 @@ public class ShamanRitualEventCard extends EventCard {
                 } else {
                     players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
                 }
-                if (players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
-                    continue;
-                } else {
+                if (!players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
                     players.get(i).payPrestigePoints(this.prestigePointsForLower);
                 }
             } else {
@@ -70,9 +68,7 @@ public class ShamanRitualEventCard extends EventCard {
                         players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
                     }
                 } else if (playerStars == minStars) {
-                    if (players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
-                        continue;
-                    } else {
+                    if (!players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
                         players.get(i).payPrestigePoints(this.prestigePointsForLower);
                     }
                 }
