@@ -26,6 +26,17 @@ public class OfferPath {
     }
 
     /**
+     * Creates an offer path from already restored offer spaces and starting tile state.
+     *
+     * @param startingTile restored starting tile
+     * @param offerSpaces restored offer spaces
+     */
+    public OfferPath(StartingTile startingTile, List<OfferSpace> offerSpaces) {
+        this.startingTile = startingTile;
+        this.offerSpaces = new ArrayList<>(offerSpaces);
+    }
+
+    /**
      * Configures the offer path and the starting tile for the beginning of the game,
      * tailoring the available spaces and blocks to the exact number of players.
      *
@@ -181,5 +192,14 @@ public class OfferPath {
      */
     public List<OfferSpace> getAvailableOfferSpaces() {
         return new ArrayList<>(this.offerSpaces);
+    }
+
+    /**
+     * Returns the starting tile associated with this offer path.
+     *
+     * @return starting tile
+     */
+    public StartingTile getStartingTile() {
+        return this.startingTile;
     }
 }

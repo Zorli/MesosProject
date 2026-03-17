@@ -76,6 +76,15 @@ public class StartingBlock {
     public int getPrestigeModifier() {
         return this.prestigeModifier;
     }
+
+    /**
+     * Returns the position of this block inside the starting tile.
+     *
+     * @return block position, starting from 1
+     */
+    public int getPosition() {
+        return this.position;
+    }
     public void resolveEffect() {
         if (this.occupiedBy != null) {
             if (this.foodModifier > 0) {

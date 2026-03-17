@@ -14,4 +14,18 @@ public class TribeDeck extends Deck {
     public TribeDeck(ArrayList<Card> cards) {
         super(cards);
     }
+
+    /**
+     * Creates a tribe deck preserving the provided card order.
+     *
+     * @param orderedCards tribe cards already ordered as the remaining draw pile
+     * @return deck preserving the supplied order
+     */
+    public static TribeDeck fromOrderedCards(ArrayList<Card> orderedCards) {
+        return new TribeDeck(orderedCards, false);
+    }
+
+    private TribeDeck(ArrayList<Card> cards, boolean shuffleOnCreate) {
+        super(cards, shuffleOnCreate);
+    }
 }

@@ -17,4 +17,18 @@ public class BuildingDeck extends Deck{
     public BuildingDeck(ArrayList<Card> cards) {
             super(cards);
         }
+
+    /**
+     * Creates a building deck preserving the provided card order.
+     *
+     * @param orderedCards building cards already ordered as the remaining draw pile
+     * @return deck preserving the supplied order
+     */
+    public static BuildingDeck fromOrderedCards(ArrayList<Card> orderedCards) {
+        return new BuildingDeck(orderedCards, false);
+    }
+
+    private BuildingDeck(ArrayList<Card> cards, boolean shuffleOnCreate) {
+        super(cards, shuffleOnCreate);
+    }
 }

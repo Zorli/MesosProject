@@ -62,4 +62,38 @@ public class PairOfInventor extends BuildingCard {
     public int getRewardFood() {
         return this.rewardFood;
     }
+
+    /**
+     * Returns the current internal counters for each invention type.
+     *
+     * @return copy of the mutable counters needed for exact restore
+     */
+    @Override
+    public Map<String, Integer> exportRuntimeState() {
+        Map<String, Integer> exportedState = new HashMap<>();
+        for (Map.Entry<InventionType, Integer> entry : this.inventionTypeIntegerMap.entrySet()) {
+            exportedState.put(entry.getKey().name(), entry.getValue());
+        }
+        return exportedState;
+    }
+
+    /**
+     * Restores the internal counters used to track partial inventor pairs.
+     *
+     * @param runtimeState persisted counters keyed by invention type name
+     */
+    @Override
+    public void restoreRuntimeState(Map<String, Integer> runtimeState) {
+        this.inventionTypeIntegerMap.replaceAll((key, value) -> 0);
+        if (runtimeState == null) {
+            return;
+        }
+
+        for (Map.Entry<String, Integer> entry : runtimeState.entrySet()) {
+            InventionType type = InventionType.valueOf(entry.getKey());
+            if (this.inventionTypeIntegerMap.containsKey(type)) {
+                this.inventionTypeIntegerMap.put(type, entry.getValue());
+            }
+        }
+    }
 }

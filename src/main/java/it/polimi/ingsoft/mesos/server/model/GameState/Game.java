@@ -47,6 +47,33 @@ public class Game {
         this.status = GameStatus.SETUP;
     }
 
+    /**
+     * Creates a game aggregate from an already restored runtime snapshot.
+     *
+     * @param id unique game identifier
+     * @param players players participating in the match
+     * @param turnState restored turn-state machine
+     * @param turnOrderTrack restored round-order tracker
+     * @param board restored board and decks
+     * @param currentEra restored current era
+     * @param status restored lifecycle status
+     */
+    public Game(int id,
+                ArrayList<Player> players,
+                TurnState turnState,
+                TurnOrderTrack turnOrderTrack,
+                Board board,
+                Era currentEra,
+                GameStatus status) {
+        this.id = id;
+        this.players = players;
+        this.turnState = turnState;
+        this.turnOrderTrack = turnOrderTrack;
+        this.board = board;
+        this.currentEra = currentEra;
+        this.status = status;
+    }
+
     // Getters
 
     /**
@@ -83,6 +110,33 @@ public class Game {
      */
     public GameStatus getStatus(){
         return this.status;
+    }
+
+    /**
+     * Returns the board currently owned by the game.
+     *
+     * @return current board
+     */
+    public Board getBoard() {
+        return this.board;
+    }
+
+    /**
+     * Returns the round-order tracker currently owned by the game.
+     *
+     * @return turn-order tracker
+     */
+    public TurnOrderTrack getTurnOrderTrack() {
+        return this.turnOrderTrack;
+    }
+
+    /**
+     * Returns the turn-state machine currently owned by the game.
+     *
+     * @return turn state
+     */
+    public TurnState getTurnState() {
+        return this.turnState;
     }
 
     // Setters

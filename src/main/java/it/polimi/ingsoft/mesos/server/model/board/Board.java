@@ -45,6 +45,31 @@ public class Board {
     }
 
     /**
+     * Creates a board from an already persisted runtime snapshot.
+     *
+     * @param tribeDeck remaining tribe deck in draw order
+     * @param buildingDeck remaining building deck in draw order
+     * @param players match players
+     * @param upperPile restored upper row
+     * @param lowerPile restored lower row
+     * @param offerPath restored offer path and starting tile
+     */
+    public Board(TribeDeck tribeDeck,
+                 BuildingDeck buildingDeck,
+                 List<Player> players,
+                 UpperPile upperPile,
+                 LowerPile lowerPile,
+                 OfferPath offerPath) {
+        this.upperPile = upperPile;
+        this.lowerPile = lowerPile;
+        this.offerPath = offerPath;
+        this.tribeDeck = tribeDeck;
+        this.buildingDeck = buildingDeck;
+        this.players = players;
+        this.numPlayer = players.size();
+    }
+
+    /**
      * Populates the upper and lower rows with the initial set of cards drawn from the decks.
      * Events are automatically placed in the upper row, while characters fill the lower row first.
      */
@@ -349,5 +374,32 @@ public class Board {
      */
     public List<OfferSpace> getAvailableOfferSpaces() {
         return this.offerPath.getAvailableOfferSpaces();
+    }
+
+    /**
+     * Returns the cards still present in the tribe deck preserving their draw order.
+     *
+     * @return copy of remaining tribe-deck cards
+     */
+    public List<Card> getRemainingTribeDeckCards() {
+        return this.tribeDeck.getCardsInOrder();
+    }
+
+    /**
+     * Returns the cards still present in the building deck preserving their draw order.
+     *
+     * @return copy of remaining building-deck cards
+     */
+    public List<Card> getRemainingBuildingDeckCards() {
+        return this.buildingDeck.getCardsInOrder();
+    }
+
+    /**
+     * Returns the starting blocks currently associated with the offer path.
+     *
+     * @return current starting blocks in positional order
+     */
+    public List<it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock> getStartingBlocks() {
+        return this.offerPath.getStartingTile().getStartingBlocks();
     }
 }
