@@ -190,9 +190,10 @@ public class Game {
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
-        if(!this.turnState.canMoveTotem()){
-            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
-        }
+        //It makes no more sense, now we have a starting phase in which each player ask for moving the totem.
+//        if(!this.turnState.canMoveTotem()){
+//            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
+//        }
 
         //I ask the board if a specific tile is free
         if(tilecode == null || !board.isSpaceAvailable(tilecode)){throw new TileNotAvailableException(tilecode);}
@@ -200,7 +201,7 @@ public class Game {
         //Place the totem on the specific tile.
         board.placePlayerOnOfferSpace(player, tilecode);
 
-        //Once the totem has been moved I can update the turnstate
+        //Once the totem has been moved I can update the turnstate with the info specific to the player
         if(turnOrderTrack.isLastPlayer()){
             this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
             List<Player> resolutionOrder = this.board.getResolutionOrder();
@@ -210,10 +211,11 @@ public class Game {
                 int[] drawableCards = this.board.returnNumberDrawableCard(resolvedPlayer);
                 this.turnState.onTotemMoved(resolvedPlayer, drawableCards[0], drawableCards[1]);
             }
+            //If the first player was in one of the tile with no card to draw, it makes sense to skip it
             if (skipFirstPlayer && !this.turnOrderTrack.isLastPlayer()) {
                 this.turnOrderTrack.advanceToNextPlayer();
             }
-            this.startCurrentPlayerCardSelection();
+            this.turnState.startCardSelection(this.turnOrderTrack.getCurrentPlayer());
         }else{
             this.turnOrderTrack.advanceToNextPlayer();
         }
@@ -328,7 +330,7 @@ public class Game {
                 this.currentRoundPhase = RoundPhase.RESOLVING_EVENTS;
             }else {
                 turnOrderTrack.advanceToNextPlayer();
-                this.startCurrentPlayerCardSelection();
+                turnState.startCardSelection(this.turnOrderTrack.getCurrentPlayer());
             }
 
         }
@@ -595,27 +597,6 @@ public class Game {
         }
         Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
         return this.board.getDraftableLowerCards(currentPlayer);
-    }
-
-    /**
-     * Enters card-selection phase for the active player and skips players that have no drawable cards.
-     */
-    private void startCurrentPlayerCardSelection() {
-        while (true) {
-            Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
-            this.turnState.startCardSelection(currentPlayer);
-
-            if (!this.turnState.isTurnCompleted()) {
-                return;
-            }
-
-            this.turnState.resetForNextPlayer();
-            if (this.turnOrderTrack.isLastPlayer()) {
-                this.currentRoundPhase = RoundPhase.RESOLVING_EVENTS;
-                return;
-            }
-            this.turnOrderTrack.advanceToNextPlayer();
-        }
     }
 
 }
