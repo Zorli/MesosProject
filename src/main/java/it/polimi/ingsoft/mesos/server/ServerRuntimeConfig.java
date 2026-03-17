@@ -11,12 +11,31 @@ public record ServerRuntimeConfig(String jdbcUrl,
                                   String adminJdbcUrl,
                                   String username,
                                   String password,
-                                  int maxBusyRetries) {
+                                  int maxBusyRetries,
+                                  boolean dbEnabled) {
     private static final String DEFAULT_JDBC_URL = "jdbc:postgresql://localhost:5432/mesos";
     private static final String DEFAULT_ADMIN_DATABASE = "postgres";
     private static final String DEFAULT_USERNAME = "postgres";
     private static final String DEFAULT_PASSWORD = "postgres";
     private static final int DEFAULT_MAX_BUSY_RETRIES = 3;
+    private static final boolean DEFAULT_DB_ENABLED = true;
+
+    /**
+     * Backward-compatible constructor used by existing tests and bootstrap code.
+     *
+     * @param jdbcUrl JDBC URL for the target PostgreSQL database
+     * @param adminJdbcUrl JDBC URL for the admin PostgreSQL database
+     * @param username database username
+     * @param password database password
+     * @param maxBusyRetries maximum number of transient retry attempts
+     */
+    public ServerRuntimeConfig(String jdbcUrl,
+                               String adminJdbcUrl,
+                               String username,
+                               String password,
+                               int maxBusyRetries) {
+        this(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries, DEFAULT_DB_ENABLED);
+    }
 
     /**
      * Builds runtime configuration from environment variables with local-development defaults.
@@ -37,6 +56,7 @@ public record ServerRuntimeConfig(String jdbcUrl,
                 "MESOS_DB_MAX_BUSY_RETRIES",
                 Integer.toString(DEFAULT_MAX_BUSY_RETRIES)
         );
+        String dbEnabledValue = environment.getOrDefault("MESOS_NO_DB", Boolean.toString(!DEFAULT_DB_ENABLED));
 
         int maxBusyRetries;
         try {
@@ -45,7 +65,8 @@ public record ServerRuntimeConfig(String jdbcUrl,
             throw new IllegalArgumentException("MESOS_DB_MAX_BUSY_RETRIES must be an integer", exception);
         }
 
-        return new ServerRuntimeConfig(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries);
+        boolean dbEnabled = !Boolean.parseBoolean(dbEnabledValue);
+        return new ServerRuntimeConfig(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries, dbEnabled);
     }
 
     /**

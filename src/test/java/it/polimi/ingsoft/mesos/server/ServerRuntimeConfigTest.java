@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ServerRuntimeConfigTest {
 
@@ -18,6 +20,7 @@ class ServerRuntimeConfigTest {
         assertEquals("postgres", config.username());
         assertEquals("postgres", config.password());
         assertEquals(3, config.maxBusyRetries());
+        assertTrue(config.dbEnabled());
     }
 
     @Test
@@ -35,6 +38,7 @@ class ServerRuntimeConfigTest {
         assertEquals("mesos", config.username());
         assertEquals("secret", config.password());
         assertEquals(8, config.maxBusyRetries());
+        assertTrue(config.dbEnabled());
     }
 
     @Test
@@ -53,5 +57,12 @@ class ServerRuntimeConfigTest {
 
         assertEquals("jdbc:postgresql://db.internal:5433/postgres", config.adminJdbcUrl());
         assertEquals("custom_db", config.databaseName());
+    }
+
+    @Test
+    void fromEnvironmentDisablesDatabaseWhenNoDbFlagIsTrue() {
+        ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(Map.of("MESOS_NO_DB", "true"));
+
+        assertFalse(config.dbEnabled());
     }
 }
