@@ -31,6 +31,7 @@ public class BigPpReward extends BuildingCard {
      *
      * @param player player receiving the reward
      */
+    @Override
     public void applyEffect(Player player) {
         player.gainPrestigePoints(this.ppReward);
     }
