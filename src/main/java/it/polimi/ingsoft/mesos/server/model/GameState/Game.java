@@ -182,13 +182,15 @@ public class Game {
 
         if(this.status !=  GameStatus.IN_PROGRESS) {throw new InvalidGameStatusException("moveTotem", this.status);}
 
-        if(this.currentRoundPhase !=  RoundPhase.PLACING_TOTEMS) {throw  new InvalidGamePhaseException("moveTotem", this.currentRoundPhase);}
+        if(this.currentRoundPhase !=  RoundPhase.PLACING_TOTEMS) {
+            throw  new InvalidGamePhaseException("moveTotem", this.currentRoundPhase);
+        }
 
         //Firstly I need to check if the player can make that request
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
-        //Then I check if he can move the totem
+//        Then I check if he can move the totem
 //        if(!turnState.canMoveTotem()){
 //            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
 //        }
@@ -209,6 +211,10 @@ public class Game {
             //If it's the last player pass in the phase in which once for turn it drawn card
             this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
             this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
+            boolean skipFirstPlayer = this.board.resolveEventA();
+            if(skipFirstPlyaer){
+                turnOrderTrack.advanceToNextPlayer();
+            }
         }else{
             this.turnOrderTrack.advanceToNextPlayer();
         }
@@ -269,6 +275,7 @@ public class Game {
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
+
         //Then I check if he can drawn card
         if (!turnState.isWaitingForCardSelection()) {
             throw new InvalidTurnPhaseException("chooseCard", turnState.getPhase());
