@@ -61,21 +61,37 @@ public class OfferPath {
         }
     }
 
+//    /**
+//     * Executes the end-of-round logic for the path. It extracts the new turn order
+//     * based on totem placements, clears the offer spaces, and relocates players
+//     * back to the starting tile to resolve end-of-round prestige and food effects.
+//     *
+//     * @return The list of players sorted in their new turn order for the upcoming round.
+//     */
+//    public List<Player> resetAndGetNewOrder() {
+//        List<Player> newOrder = this.getPlayersInOrder();
+//
+//        this.clearOfferSpaces();
+//
+//        this.startingTile.placePlayersAndResolveEffects(newOrder);
+//
+//        return newOrder;
+//    }
     /**
-     * Executes the end-of-round logic for the path. It extracts the new turn order
-     * based on totem placements, clears the offer spaces, and relocates players
-     * back to the starting tile to resolve end-of-round prestige and food effects.
+     * Sposta un giocatore dallo spazio offerta in cui si trova alla tessera di partenza.
+     * Libera lo spazio offerta e occupa il primo blocco di partenza disponibile.
      *
-     * @return The list of players sorted in their new turn order for the upcoming round.
+     * @param player Il giocatore che ha terminato il suo turno attivo.
      */
-    public List<Player> resetAndGetNewOrder() {
-        List<Player> newOrder = this.getPlayersInOrder();
+    public void returnPlayerToStartingTile(Player player) {
+        // 1. Troviamo lo spazio offerta occupato dal giocatore e lo liberiamo
+        this.offerSpaces.stream()
+                .filter(space -> player.equals(space.getOccupiedBy()))
+                .findFirst()
+                .ifPresent(OfferSpace::clear);
 
-        this.clearOfferSpaces();
-
-        this.startingTile.placePlayersAndResolveEffects(newOrder);
-
-        return newOrder;
+        // 2. Lo piazziamo sul primo blocco libero della Starting Tile
+        this.startingTile.placePlayerOnNextAvailableBlock(player);
     }
 
     /**
@@ -119,15 +135,31 @@ public class OfferPath {
      * @return An integer array containing the drafting constraints:
      * [0] = cards to draw from the upper row, [1] = cards to draw from the lower row.
      */
-    public int[] placePlayer(Player player, String targetCode) {
+    public void placePlayer(Player player, String targetCode) {
         for (OfferSpace space : this.offerSpaces) {
             if (targetCode.equals(space.getCode())) {
                 space.occupy(player);
-                space.resolveImmediateAction(player);
-                return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
+                this.startingTile.removePlayer(player);
+//                space.resolveImmediateAction(player);
+                break;
             }
         }
-        return new int[]{0, 0};
+    }
+    /**
+     * Risolve l'azione immediata (es. cibo) ESCLUSIVAMENTE per il giocatore specificato,
+     * basandosi sullo spazio che occupa attualmente, e restituisce le regole di pescata.
+     * * @param player Il giocatore di cui si sta risolvendo il turno attivo.
+     * @return int[] {carteDaSopra, carteDaSotto}
+     */
+    public int[] resolveActionForPlayer(Player player) {
+        return this.offerSpaces.stream()
+                .filter(space -> player.equals(space.getOccupiedBy()))
+                .findFirst()
+                .map(space -> {
+                    space.resolveImmediateAction(player);
+                    return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
+                })
+                .orElse(new int[]{0, 0}); // Fallback di sicurezza
     }
 
     /**

@@ -290,7 +290,7 @@ public class Game {
                 ((BuildingCard) card).payEffectiveCost(player);
                 player.getTribe().addBuilding((BuildingCard) card);
             }else{
-                player.getTribe().addCharacter((CharacterCard) card);
+                player.getTribe().addCharacter((CharacterCard) card, player);
             }
             turnState.onUpperCardChosen();
         }else{
@@ -302,7 +302,7 @@ public class Game {
                 ((BuildingCard) card).payEffectiveCost(player);
                 player.getTribe().addBuilding((BuildingCard) card);
             }else{
-                player.getTribe().addCharacter((CharacterCard) card);
+                player.getTribe().addCharacter((CharacterCard) card, player);
             }
             turnState.onLowerCardChosen();
 

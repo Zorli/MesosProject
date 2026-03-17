@@ -59,60 +59,71 @@ public class StartingTile {
         }
     }
 
-    /**
-     * Receives the newly determined turn order, physically places the players onto
-     * the corresponding starting blocks, and immediately resolves their end-of-round effects.
-     *
-     * @param newTurnOrder The list of players sorted in their new turn order for the next round.
-     */
-    public void placePlayersAndResolveEffects(List<Player> newTurnOrder) {
-        this.placePlayers(newTurnOrder);
-        this.resolveEffects();
-    }
-
-    /**
-     * Clears all current starting blocks and reassigns them to the players
-     * according to the newly established turn order.
-     *
-     * @param orderedPlayers The list of players to place on the blocks.
-     */
-    private void placePlayers(List<Player> orderedPlayers) {
-        this.startingBlocks.forEach(StartingBlock::clear);
-
-        for (int i = 0; i < orderedPlayers.size(); i++) {
-            if (i < this.startingBlocks.size()) {
-                StartingBlock currentBlock = this.startingBlocks.get(i);
-                Player currentPlayer = orderedPlayers.get(i);
-                currentBlock.occupy(currentPlayer);
-            }
-        }
-    }
-
-    /**
-     * Resolves the end-of-round effects for all players currently occupying the starting blocks.
-     * Applies food bonuses, deducts food costs, or applies prestige penalties if a player
-     * cannot afford the required food cost for their position.
-     */
-    private void resolveEffects() {
+    public void placePlayerOnNextAvailableBlock(Player player) {
         for (StartingBlock block : this.startingBlocks) {
-            Player player = block.getOccupiedBy();
-
-            if (player != null) {
-                int foodMod = block.getFoodModifier();
-
-                if (foodMod > 0) {
-                    player.gainFood(foodMod);
-                } else if (foodMod < 0) {
-                    int foodCost = Math.abs(foodMod);
-
-                    if (player.getFood() >= foodCost) {
-                        player.payFood(foodCost);
-                    } else {
-                        int prestigePenalty = block.getPrestigeModifier();
-                        player.gainPrestigePoints(prestigePenalty);
-                    }
-                }
+            if (block.getOccupiedBy() == null) {
+                block.occupy(player);
+                block.resolveEffect();
+                return;
             }
         }
     }
+    /**
+     * Rimuove il giocatore dal suo blocco di partenza corrente.
+     * Viene chiamato nel momento in cui il giocatore muove il suo totem verso un'offerta.
+     *
+     * @param player Il giocatore che sta lasciando la tessera di partenza.
+     */
+    public void removePlayer(Player player) {
+        this.startingBlocks.stream()
+                .filter(block -> player.equals(block.getOccupiedBy()))
+                .findFirst()
+                .ifPresent(StartingBlock::clear);
+    }
+
+//    /**
+//     * Clears all current starting blocks and reassigns them to the players
+//     * according to the newly established turn order.
+//     *
+//     * @param orderedPlayers The list of players to place on the blocks.
+//     */
+//    private void placePlayers(List<Player> orderedPlayers) {
+//        this.startingBlocks.forEach(StartingBlock::clear);
+//
+//        for (int i = 0; i < orderedPlayers.size(); i++) {
+//            if (i < this.startingBlocks.size()) {
+//                StartingBlock currentBlock = this.startingBlocks.get(i);
+//                Player currentPlayer = orderedPlayers.get(i);
+//                currentBlock.occupy(currentPlayer);
+//            }
+//        }
+//    }
+
+//    /**
+//     * Resolves the end-of-round effects for all players currently occupying the starting blocks.
+//     * Applies food bonuses, deducts food costs, or applies prestige penalties if a player
+//     * cannot afford the required food cost for their position.
+//     */
+//    private void resolveEffects() {
+//        for (StartingBlock block : this.startingBlocks) {
+//            Player player = block.getOccupiedBy();
+//
+//            if (player != null) {
+//                int foodMod = block.getFoodModifier();
+//
+//                if (foodMod > 0) {
+//                    player.gainFood(foodMod);
+//                } else if (foodMod < 0) {
+//                    int foodCost = Math.abs(foodMod);
+//
+//                    if (player.getFood() >= foodCost) {
+//                        player.payFood(foodCost);
+//                    } else {
+//                        int prestigePenalty = block.getPrestigeModifier();
+//                        player.gainPrestigePoints(prestigePenalty);
+//                    }
+//                }
+//            }
+//        }
+//    }
 }

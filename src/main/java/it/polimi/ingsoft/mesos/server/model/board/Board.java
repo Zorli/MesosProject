@@ -30,9 +30,9 @@ public class Board {
     /**
      * Initializes the board by creating empty physical structures and injecting the necessary game data.
      *
-     * @param tribeDeck The deck containing tribe cards (characters and events).
+     * @param tribeDeck    The deck containing tribe cards (characters and events).
      * @param buildingDeck The deck containing building cards.
-     * @param players The list of players participating in the game.
+     * @param players      The list of players participating in the game.
      */
     public Board(TribeDeck tribeDeck, BuildingDeck buildingDeck, List<Player> players) {
         this.upperPile = new UpperPile();
@@ -123,14 +123,17 @@ public class Board {
         this.lowerPile.resolveLowerRowEvents(arrayListPlayers);
     }
 
-    /**
-     * Extracts the new turn order based on the current totem positions on the offer path,
-     * clears the offer spaces, and places players on the starting blocks to resolve end-of-round effects.
-     *
-     * @return The list of players sorted in the new turn order for the next round.
-     */
-    public List<Player> rebuildOrderFromOfferPath() {
-        return this.offerPath.resetAndGetNewOrder();
+//    /**
+//     * Extracts the new turn order based on the current totem positions on the offer path,
+//     * clears the offer spaces, and places players on the starting blocks to resolve end-of-round effects.
+//     *
+//     * @return The list of players sorted in the new turn order for the next round.
+//     */
+//    public List<Player> rebuildOrderFromOfferPath() {
+//        return this.offerPath.resetAndGetNewOrder();
+//    }
+    public void returnPlayerToStartingTile(Player player) {
+        this.offerPath.returnPlayerToStartingTile(player);
     }
 
     /**
@@ -220,14 +223,26 @@ public class Board {
      * Places a player's totem on the specified offer space, resolves immediate space effects (e.g., food),
      * and returns the drafting constraints.
      *
-     * @param player The player taking the action.
+     * @param player     The player taking the action.
      * @param targetCode The unique string code of the target offer space.
      * @return An integer array where index 0 is the number of upper row cards to draft,
      * and index 1 is the number of lower row cards to draft.
      */
-    public int[] placePlayerOnOfferSpace(Player player, String targetCode) {
-        return this.offerPath.placePlayer(player, targetCode);
+    // questa rimane ma senza risoluzione, la risoluzione avviene dopo (diventa un void)
+    public void placePlayerOnOfferSpace(Player player, String targetCode) {
+        this.offerPath.placePlayer(player, targetCode);
     }
+
+    //ordine per game
+    public List<Player> getResolutionOrder() {
+        return this.offerPath.getPlayersInOrder();
+    }
+
+    // per ogni giocatore in ordine dettato dal game si fa il resolve
+    public int[] resolveActionForPlayer(Player player) {
+        return this.offerPath.resolveActionForPlayer(player);
+    }
+
 
     /**
      * Retrieves all cards currently in the upper row that the specified player is legally allowed to draft.
@@ -237,7 +252,7 @@ public class Board {
      */
     public List<Card> getDraftableUpperCards(Player player) {
         return this.upperPile.getAllCards().stream()
-                .filter(card -> this.isCardDraftableForPlayer(card, player))
+                .filter(card -> card.isDrawable(player))
                 .collect(Collectors.toList());
     }
 
@@ -249,7 +264,7 @@ public class Board {
      */
     public List<Card> getDraftableLowerCards(Player player) {
         return this.lowerPile.getAllCards().stream()
-                .filter(card -> this.isCardDraftableForPlayer(card, player))
+                .filter(card -> card.isDrawable(player))
                 .collect(Collectors.toList());
     }
 
@@ -269,18 +284,6 @@ public class Board {
             return CardRow.LOWER;
         }
         return CardRow.NOT_PRESENT;
-    }
-
-    /**
-     * Returns whether the provided player may currently draw the requested card from the board.
-     *
-     * @param player player attempting to draw the card
-     * @param card requested card
-     * @return {@code true} when the card is present on the board and drawable by the player
-     */
-    public boolean canPlayerDrawCard(Player player, Card card) {
-        return this.getCardRow(card) != CardRow.NOT_PRESENT
-                && this.isCardDraftableForPlayer(card, player);
     }
 
     /**
@@ -326,14 +329,5 @@ public class Board {
      */
     public List<OfferSpace> getAvailableOfferSpaces() {
         return this.offerPath.getAvailableOfferSpaces();
-    }
-
-    private boolean isCardDraftableForPlayer(Card card, Player player) {
-        if (card instanceof BuildingCard) {
-            BuildingCard buildingCard = (BuildingCard) card;
-            return player.getFood() >= buildingCard.getEffectiveFoodCost(player);
-        }
-        //it's always true
-        return card.isDrawable(player);
     }
 }
