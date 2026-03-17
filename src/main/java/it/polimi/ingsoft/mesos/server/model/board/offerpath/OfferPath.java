@@ -61,22 +61,22 @@ public class OfferPath {
         }
     }
 
-//    /**
-//     * Executes the end-of-round logic for the path. It extracts the new turn order
-//     * based on totem placements, clears the offer spaces, and relocates players
-//     * back to the starting tile to resolve end-of-round prestige and food effects.
-//     *
-//     * @return The list of players sorted in their new turn order for the upcoming round.
-//     */
-//    public List<Player> resetAndGetNewOrder() {
-//        List<Player> newOrder = this.getPlayersInOrder();
-//
-//        this.clearOfferSpaces();
-//
-//        this.startingTile.placePlayersAndResolveEffects(newOrder);
-//
-//        return newOrder;
-//    }
+    /**
+     * Executes the end-of-round logic for the path. It extracts the new turn order
+     * based on totem placements, clears the offer spaces, and relocates players
+     * back to the starting tile to resolve end-of-round prestige and food effects.
+     *
+     * @return The list of players sorted in their new turn order for the upcoming round.
+     */
+    public List<Player> resetAndGetNewOrder() {
+        List<Player> newOrder = this.getPlayersInOrder();
+
+        this.clearOfferSpaces();
+
+        this.startingTile.placePlayersAndResolveEffects(newOrder);
+
+        return newOrder;
+    }
     /**
      * Sposta un giocatore dallo spazio offerta in cui si trova alla tessera di partenza.
      * Libera lo spazio offerta e occupa il primo blocco di partenza disponibile.

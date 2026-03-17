@@ -9,7 +9,9 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -120,16 +122,34 @@ class GameTest {
         Game game = new Game(42, players, new TurnState(), new TurnOrderTrack(), board, null, null);
         game.setup();
         game.moveTotem(players.get(0), "A");
+        game.moveTotem(players.get(1), "B");
 
-        InvalidTurnPhaseException exception = assertThrows(
-                InvalidTurnPhaseException.class,
-                () -> game.moveTotem(players.get(0), "A")
+        InvalidGamePhaseException exception = assertThrows(
+                InvalidGamePhaseException.class,
+                () -> game.moveTotem(players.get(0), "C")
         );
 
         assertEquals(
-                "Action moveTotem is not allowed during phase WAITING_FOR_CARD_SELECTION",
+                "Action moveTotem is not allowed during round phase PLAYER_TURNS",
                 exception.getMessage()
         );
+    }
+
+    @Test
+    void moveTotemOnLastPlayerResolvesTileAAndMaySkipFirstResolutionPlayer() {
+        ArrayList<Player> players = players("Alice", "Bob");
+        RecordingBoard board = new RecordingBoard(players);
+        board.resolveEventAReturnValue = true;
+        Game game = new Game(42, players, new TurnState(), new TurnOrderTrack(), board, null, null);
+        game.setup();
+
+        game.moveTotem(players.get(0), "A");
+        ActionResult actionResult = game.moveTotem(players.get(1), "B");
+
+        assertTrue(board.resolveEventACalled);
+        assertEquals(TurnPhase.WAITING_FOR_CARD_SELECTION, actionResult.getTurnPhase());
+        assertEquals("Bob", actionResult.getExpectedPlayer());
+        assertEquals(2, actionResult.getRoundNumber());
     }
 
     private static ArrayList<Player> players(String... nicknames) {
@@ -145,12 +165,16 @@ class GameTest {
 
     private static final class RecordingBoard extends Board {
         private final List<String> calls = new ArrayList<>();
+        private final List<Player> players;
+        private final Set<String> occupiedSpaces = new HashSet<>();
         private boolean failOnBuildOfferPath;
         private boolean failOnSetupInitialRows;
-        private boolean spaceAvailable = true;
+        private boolean resolveEventAReturnValue;
+        private boolean resolveEventACalled;
 
         private RecordingBoard(List<Player> players) {
             super(null, null, players);
+            this.players = new ArrayList<>(players);
         }
 
         @Override
@@ -171,13 +195,28 @@ class GameTest {
 
         @Override
         public boolean isSpaceAvailable(String targetCode) {
-            return this.spaceAvailable && "A".equals(targetCode);
+            return List.of("A", "B", "C").contains(targetCode) && !this.occupiedSpaces.contains(targetCode);
         }
 
         @Override
-        public int[] placePlayerOnOfferSpace(Player player, String targetCode) {
-            this.spaceAvailable = false;
-            return new int[]{0, 0};
+        public void placePlayerOnOfferSpace(Player player, String targetCode) {
+            this.occupiedSpaces.add(targetCode);
+        }
+
+        @Override
+        public List<Player> getResolutionOrder() {
+            return new ArrayList<>(this.players);
+        }
+
+        @Override
+        public boolean resolveEventA() {
+            this.resolveEventACalled = true;
+            return this.resolveEventAReturnValue;
+        }
+
+        @Override
+        public int[] returnNumberDrawableCard(Player player) {
+            return new int[]{1, 0};
         }
     }
 }

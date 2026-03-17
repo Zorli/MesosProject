@@ -156,12 +156,12 @@ public class Game {
         //Now I have to update the turnordertrack fsm to it knows the current round order
         this.turnOrderTrack.setNewOrder(players);
 
-        //Note : Turnstate it's already in waiting for totem move state
+        this.turnState.resetForNewRound();
         //Need to return an ActionrResult object
 
         //I can update the game status
         this.status = GameStatus.IN_PROGRESS;
-        this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
+        this.currentRoundPhase = RoundPhase.PLACING_TOTEMS;
         return buildActionResult(false, false, false);
     }
 
@@ -190,36 +190,34 @@ public class Game {
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
-//        Then I check if he can move the totem
-//        if(!turnState.canMoveTotem()){
-//            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
-//        }
-
+        if(!this.turnState.canMoveTotem()){
+            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
+        }
 
         //I ask the board if a specific tile is free
         if(tilecode == null || !board.isSpaceAvailable(tilecode)){throw new TileNotAvailableException(tilecode);}
 
-        //Place the totem on the specific tile, i get the card he can get from the upper row and the lower row
+        //Place the totem on the specific tile.
         board.placePlayerOnOfferSpace(player, tilecode);
-        int [] drawablecard = this.board.returnNumberDrawableCard(player);
-
-
-        //Update the turnfsmle
-        //turnState.onTotemMoved(choices[0], choices[1]);
 
         //Once the totem has been moved I can update the turnstate
-        //I should pass the player because he has a tribe and maybe that tribe has a perk on the drawnable cards
         if(turnOrderTrack.isLastPlayer()){
-            //If it's the last player pass in the phase in which once for turn it drawn card
             this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
-            this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
-            boolean skipFirstPlayer = this.board.resolveEventA(); //Risolvi il solo evento cibo della tile A
-            if(skipFirstPlayer){
-                turnOrderTrack.advanceToNextPlayer(); //Next
+            List<Player> resolutionOrder = this.board.getResolutionOrder();
+            this.turnOrderTrack.setNewOrder(resolutionOrder);
+            boolean skipFirstPlayer = this.board.resolveEventA();
+            for (Player resolvedPlayer : resolutionOrder) {
+                int[] drawableCards = this.board.returnNumberDrawableCard(resolvedPlayer);
+                this.turnState.onTotemMoved(resolvedPlayer, drawableCards[0], drawableCards[1]);
             }
+            if (skipFirstPlayer && !this.turnOrderTrack.isLastPlayer()) {
+                this.turnOrderTrack.advanceToNextPlayer();
+            }
+            this.startCurrentPlayerCardSelection();
         }else{
             this.turnOrderTrack.advanceToNextPlayer();
         }
+
         return buildActionResult(false, false, false);
     }
 
@@ -288,11 +286,10 @@ public class Game {
         if(cardRow == CardRow.NOT_PRESENT){
             throw  new CardNotPresentException(card);
         }
-        if (!board.canPlayerDrawCard(player, card)) {
-            throw new CardNotDrawableException(player, card);
-        }
-
         if (cardRow == CardRow.UPPER) {
+            if (!board.getDraftableUpperCards(player).contains(card)) {
+                throw new CardNotDrawableException(player, card);
+            }
             if(!turnState.canChooseFromUpperRow()){
                 throw new CardRowSelectionNotAllowedException(cardRow);
             }
@@ -305,6 +302,9 @@ public class Game {
             }
             turnState.onUpperCardChosen();
         }else{
+            if (!board.getDraftableLowerCards(player).contains(card)) {
+                throw new CardNotDrawableException(player, card);
+            }
             if(!turnState.canChooseFromLowerRow()){
                 throw new CardRowSelectionNotAllowedException(cardRow);
             }
@@ -322,13 +322,13 @@ public class Game {
         //Now I have to check If I have to advance to another player
 
         if (turnState.isTurnCompleted()) {
+            turnState.resetForNextPlayer();
             if(turnOrderTrack.isLastPlayer()){
                 //I need to go in a state in which only event resolution in possible
                 this.currentRoundPhase = RoundPhase.RESOLVING_EVENTS;
-                turnState.resetForNextPlayer();
             }else {
                 turnOrderTrack.advanceToNextPlayer();
-                turnState.resetForNextPlayer();
+                this.startCurrentPlayerCardSelection();
             }
 
         }
@@ -386,8 +386,12 @@ public class Game {
             throw new InvalidGamePhaseException("returnToStart", this.currentRoundPhase);
         }
 
-        List<Player> newOrder = this.board.rebuildOrderFromOfferPath();
+        List<Player> newOrder = this.board.getResolutionOrder();
+        for (Player player : newOrder) {
+            this.board.returnPlayerToStartingTile(player);
+        }
         this.turnOrderTrack.setNewOrder(newOrder);
+        this.turnState.resetForNewRound();
         this.currentRoundPhase = RoundPhase.RESETTING_BOARD;
     }
 
@@ -573,6 +577,9 @@ public class Game {
      * @return list of upper-row cards the current player may draft
      */
     private List<Card> getDrawableUpperCardsForCurrentPlayer() {
+        if (!this.turnState.isWaitingForCardSelection()) {
+            return List.of();
+        }
         Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
         return this.board.getDraftableUpperCards(currentPlayer);
     }
@@ -583,8 +590,32 @@ public class Game {
      * @return list of lower-row cards the current player may draft
      */
     private List<Card> getDrawableLowerCardsForCurrentPlayer() {
+        if (!this.turnState.isWaitingForCardSelection()) {
+            return List.of();
+        }
         Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
         return this.board.getDraftableLowerCards(currentPlayer);
+    }
+
+    /**
+     * Enters card-selection phase for the active player and skips players that have no drawable cards.
+     */
+    private void startCurrentPlayerCardSelection() {
+        while (true) {
+            Player currentPlayer = this.turnOrderTrack.getCurrentPlayer();
+            this.turnState.startCardSelection(currentPlayer);
+
+            if (!this.turnState.isTurnCompleted()) {
+                return;
+            }
+
+            this.turnState.resetForNextPlayer();
+            if (this.turnOrderTrack.isLastPlayer()) {
+                this.currentRoundPhase = RoundPhase.RESOLVING_EVENTS;
+                return;
+            }
+            this.turnOrderTrack.advanceToNextPlayer();
+        }
     }
 
 }
