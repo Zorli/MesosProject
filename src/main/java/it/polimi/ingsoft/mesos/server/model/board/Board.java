@@ -237,9 +237,13 @@ public class Board {
     public List<Player> getResolutionOrder() {
         return this.offerPath.getPlayersInOrder();
     }
+    public boolean resolveEventA()
+    {
+        return this.offerPath.resolveEventA();
+    }
 
     // per ogni giocatore in ordine dettato dal game si fa il resolve
-    public int[] resolveActionForPlayer(Player player) {
+    public int[] returnNumberDrawableCard(Player player) {
         return this.offerPath.resolveActionForPlayer(player);
     }
 
