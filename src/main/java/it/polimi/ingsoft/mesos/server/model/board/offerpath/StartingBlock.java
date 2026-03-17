@@ -76,4 +76,20 @@ public class StartingBlock {
     public int getPrestigeModifier() {
         return this.prestigeModifier;
     }
+    public void resolveEffect() {
+        if (this.occupiedBy != null) {
+            if (this.foodModifier > 0) {
+                this.occupiedBy.gainFood(this.foodModifier);
+            } else if (this.foodModifier < 0) {
+                int foodCost = Math.abs(this.foodModifier);
+
+                if (this.occupiedBy.getFood() >= foodCost) {
+                    this.occupiedBy.payFood(foodCost);
+                } else {
+                    // Player cannot pay the food cost, apply prestige penalty
+                    this.occupiedBy.gainPrestigePoints(this.prestigeModifier);
+                }
+            }
+        }
+    }
 }
