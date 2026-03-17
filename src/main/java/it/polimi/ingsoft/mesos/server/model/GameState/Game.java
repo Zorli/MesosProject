@@ -182,30 +182,36 @@ public class Game {
 
         if(this.status !=  GameStatus.IN_PROGRESS) {throw new InvalidGameStatusException("moveTotem", this.status);}
 
-        if(this.currentRoundPhase !=  RoundPhase.PLAYER_TURNS) {throw  new InvalidGamePhaseException("moveTotem", this.currentRoundPhase);}
+        if(this.currentRoundPhase !=  RoundPhase.PLACING_TOTEMS) {throw  new InvalidGamePhaseException("moveTotem", this.currentRoundPhase);}
 
         //Firstly I need to check if the player can make that request
         if(!turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
         //Then I check if he can move the totem
-        if(!turnState.canMoveTotem()){
-            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
-        }
+//        if(!turnState.canMoveTotem()){
+//            throw new InvalidTurnPhaseException("moveTotem", this.turnState.getPhase());
+//        }
+
 
         //I ask the board if a specific tile is free
         if(tilecode == null || !board.isSpaceAvailable(tilecode)){throw new TileNotAvailableException(tilecode);}
 
         //Place the totem on the specific tile, i get the card he can get from the upper row and the lower row
-        //int [] choices = board.placePlayerOnOfferSpace(player, tilecode);
+        board.placePlayerOnOfferSpace(player, tilecode);
 
         //Update the turnfsmle
         //turnState.onTotemMoved(choices[0], choices[1]);
 
         //Once the totem has been moved I can update the turnstate
         //I should pass the player because he has a tribe and maybe that tribe has a perk on the drawnable cards
-
-
+        if(turnOrderTrack.isLastPlayer()){
+            //If it's the last player pass in the phase in which once for turn it drawn card
+            this.currentRoundPhase = RoundPhase.PLAYER_TURNS;
+            this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
+        }else{
+            this.turnOrderTrack.advanceToNextPlayer();
+        }
         return buildActionResult(false, false, false);
     }
 
@@ -231,11 +237,7 @@ public class Game {
         return buildDrawableCardsActionResult(false, false, false);
     }
 
-    //TODO:
-    //Vedere metodo di pescaggio aggiuntivo dopo gli eventi, avviene pescaggio dopo essere tornato in posizione
-    //fa scelta solo da sopra
 
-    //Which card on the board the player choose to pick
 
     /**
      * Resolves a card draft performed by the current player.
@@ -408,6 +410,12 @@ public class Game {
         this.currentRoundPhase = RoundPhase.POST_REFILL_DRAW;
     }
 
+
+    //TODO:
+    //Vedere metodo di pescaggio aggiuntivo dopo gli eventi, avviene pescaggio dopo essere tornato in posizione
+    //fa scelta solo da sopra
+
+    //Which card on the board the player choose to pick
     /**
      * Completes the post-refill draw window and reopens normal player turns.
      *
