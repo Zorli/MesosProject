@@ -22,4 +22,69 @@ public class TurnOrderTrack {
     private int roundNumber;
     private RoundPhase currentRoundPhase;
 
+    // Constructors
+
+    public TurnOrderTrack() {
+        this.turnOrder = new ArrayList<>();
+        this.currentPlayerIndex = 0;
+        this.roundNumber = 0;
+        this.currentRoundPhase = RoundPhase.PLACING_TOTEMS;
+    }
+
+    // Getters
+    
+    public Player getCurrentPlayer() {
+        this.ensureOrderInitialized();
+        return this.turnOrder.get(this.currentPlayerIndex);
+    }
+
+    public int getRoundNumber() {
+        return this.roundNumber;
+    }
+
+    public RoundPhase getCurrentRoundPhase() {
+        return this.currentRoundPhase;
+    }
+
+    // Setters
+
+    public void setNewOrder(List<Player> newOrder) {
+        if (newOrder == null || newOrder.isEmpty()) {
+            throw new IllegalArgumentException("Turn order cannot be null or empty");
+        }
+        this.turnOrder = new ArrayList<>(newOrder);
+        this.currentPlayerIndex = 0;
+    }
+
+    public void setCurrentRoundPhase(RoundPhase currentRoundPhase) {
+        this.currentRoundPhase = currentRoundPhase;
+    }
+
+    // Public methods
+
+    public void advanceToNextPlayer() {
+        this.ensureOrderInitialized();
+        if (this.isLastPlayer()) {
+            throw new IllegalStateException("Cannot advance beyond the last player of the round");
+        }
+        this.currentPlayerIndex = this.currentPlayerIndex + 1;
+    }
+
+    public boolean isLastPlayer() {
+        this.ensureOrderInitialized();
+        return this.currentPlayerIndex == this.turnOrder.size() - 1;
+    }
+
+    public void advanceRoundNumber() {
+        this.roundNumber = this.roundNumber + 1;
+    }
+
+    // Private methods
+
+    private void ensureOrderInitialized() {
+        if (this.turnOrder.isEmpty()) {
+            throw new IllegalStateException("Turn order has not been initialized");
+        }
+    }
+
 }

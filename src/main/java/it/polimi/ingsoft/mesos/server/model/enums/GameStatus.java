@@ -9,5 +9,5 @@ public enum GameStatus {
     /** The match is actively being played. */
     IN_PROGRESS,
     /** The match reached its end and final scoring can be shown. */
-    ENDED
+    FINISHED
 }
