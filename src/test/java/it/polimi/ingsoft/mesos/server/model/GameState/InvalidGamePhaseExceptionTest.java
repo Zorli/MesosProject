@@ -9,10 +9,10 @@ class InvalidGamePhaseExceptionTest {
     @Test
     void constructorBuildsMessageWithActionAndRoundPhase() {
         InvalidGamePhaseException exception =
-                new InvalidGamePhaseException("endRound", RoundPhase.RESOLVING_EVENTS);
+                new InvalidGamePhaseException("endRound", RoundPhase.RESOLVING_EFFECTS);
 
         assertEquals(
-                "Action endRound is not allowed during round phase RESOLVING_EVENTS",
+                "Action endRound is not allowed during round phase RESOLVING_EFFECTS",
                 exception.getMessage()
         );
     }

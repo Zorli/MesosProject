@@ -8,10 +8,9 @@ package it.polimi.ingsoft.mesos.server.model.GameState;
  */
 public enum RoundPhase {
     PLACING_TOTEMS,
-    PLAYER_TURNS,
-    RESOLVING_EVENTS,
-    RETURNING_TO_START,
+    PLAYER_DRAWS,
+    EXTRA_DRAWS,
+    RESOLVING_EFFECTS,
     RESETTING_BOARD,
-    POST_REFILL_DRAW,
     FINAL_SCORING
 }
