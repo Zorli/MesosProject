@@ -55,11 +55,13 @@ class GameMoveTotemTest {
     }
 
     @Test
-    void moveTotemOnLastPlacementResolvesTileAAndSkipsFirstPlayerInDrawOrder() {
+    void moveTotemOnLastPlacementResolvesTileAThenGenericSkipSelectsNextDrawablePlayer() {
         ArrayList<Player> players = players("Alice", "Bob", "Carol");
         RecordingBoard board = new RecordingBoard(players);
         board.resolutionOrder = List.of(players.get(0), players.get(2), players.get(1));
-        board.resolveEventAReturnValue = true;
+        board.drawableCardsByPlayer.put(players.get(0), new int[]{0, 0});
+        board.drawableCardsByPlayer.put(players.get(2), new int[]{1, 2});
+        board.drawableCardsByPlayer.put(players.get(1), new int[]{1, 2});
         TurnState turnState = new TurnState();
         TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
         Game game = new Game(1, players, turnState, turnOrderTrack, board);
@@ -140,7 +142,6 @@ class GameMoveTotemTest {
     private static final class RecordingBoard extends Board {
         private final Set<String> occupiedSpaces = new HashSet<>();
         private List<Player> resolutionOrder;
-        private boolean resolveEventAReturnValue;
         private final java.util.Map<Player, int[]> drawableCardsByPlayer = new java.util.HashMap<>();
 
         private RecordingBoard(List<Player> players) {
@@ -178,7 +179,7 @@ class GameMoveTotemTest {
 
         @Override
         public boolean resolveEventA() {
-            return this.resolveEventAReturnValue;
+            return true;
         }
     }
 }

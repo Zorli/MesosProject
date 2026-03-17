@@ -158,11 +158,8 @@ public class Game {
         this.turnState.registerDrawableCards(player, drawableCards[0], drawableCards[1]);
 
         if (this.turnOrderTrack.isLastPlayer()) {
-            boolean skipFirstPlayer = this.board.resolveEventA();
+            this.board.resolveEventA();
             this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
-            if (skipFirstPlayer && !this.turnOrderTrack.isLastPlayer()) {
-                this.turnOrderTrack.advanceToNextPlayer();
-            }
             while (!this.turnState.hasDrawableCards(this.turnOrderTrack.getCurrentPlayer())
                     && !this.turnOrderTrack.isLastPlayer()) {
                 this.turnOrderTrack.advanceToNextPlayer();
