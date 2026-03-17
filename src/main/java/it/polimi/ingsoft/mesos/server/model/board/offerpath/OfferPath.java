@@ -62,35 +62,19 @@ public class OfferPath {
     }
 
     /**
-     * Executes the end-of-round logic for the path. It extracts the new turn order
-     * based on totem placements, clears the offer spaces, and relocates players
-     * back to the starting tile to resolve end-of-round prestige and food effects.
+     * Moves a player from their current offer space back to the starting tile.
+     * Clears the occupied offer space and automatically places the player on the first available starting block.
      *
-     * @return The list of players sorted in their new turn order for the upcoming round.
-     */
-    public List<Player> resetAndGetNewOrder() {
-        List<Player> newOrder = this.getPlayersInOrder();
-
-        this.clearOfferSpaces();
-
-        this.startingTile.placePlayersAndResolveEffects(newOrder);
-
-        return newOrder;
-    }
-    /**
-     * Sposta un giocatore dallo spazio offerta in cui si trova alla tessera di partenza.
-     * Libera lo spazio offerta e occupa il primo blocco di partenza disponibile.
-     *
-     * @param player Il giocatore che ha terminato il suo turno attivo.
+     * @param player The player who has just completed their active turn.
      */
     public void returnPlayerToStartingTile(Player player) {
-        // 1. Troviamo lo spazio offerta occupato dal giocatore e lo liberiamo
+        // 1. Find the offer space occupied by the player and clear it
         this.offerSpaces.stream()
                 .filter(space -> player.equals(space.getOccupiedBy()))
                 .findFirst()
                 .ifPresent(OfferSpace::clear);
 
-        // 2. Lo piazziamo sul primo blocco libero della Starting Tile
+        // 2. Place the player on the first available block of the Starting Tile
         this.startingTile.placePlayerOnNextAvailableBlock(player);
     }
 
@@ -107,8 +91,25 @@ public class OfferPath {
                 .map(OfferSpace::getOccupiedBy)
                 .collect(Collectors.toList());
     }
-    public boolean resolveEventA()
-    {
+
+    /**
+     * Retrieves the turn order for the upcoming round based on the players'
+     * positions on the starting tile blocks.
+     *
+     * @return A list of players sorted by their new turn order.
+     */
+    public List<Player> getNextRoundTurnOrder() {
+        return this.startingTile.getNextRoundOrder();
+    }
+
+    /**
+     * Checks if the offer space 'A' is currently occupied by a player.
+     * If occupied, it immediately resolves the space's specific effect for that player
+     * and returns true. If the space is empty or unavailable, it does nothing and returns false.
+     *
+     * @return true if a player was on space 'A' and the effect was resolved; false otherwise.
+     */
+    public boolean resolveEventA() {
         String targetCode = "A";
         return this.offerSpaces.stream()
                 .filter(space -> targetCode.equals(space.getCode()) && !space.isAvailable())
@@ -119,12 +120,6 @@ public class OfferPath {
                     return true;
                 })
                 .orElse(false);
-    }
-    /**
-     * Removes all players from the offer spaces, making them available for the next round.
-     */
-    public void clearOfferSpaces() {
-        this.offerSpaces.forEach(OfferSpace::clear);
     }
 
     /**
@@ -139,47 +134,45 @@ public class OfferPath {
     }
 
     /**
-     * Places a player's totem on the specified offer space, resolves any immediate
-     * space effects (such as food bonuses), and retrieves the drafting values.
+     * Places a player's totem on the specified offer space.
      *
      * @param player The player taking the space.
      * @param targetCode The unique string code of the target offer space.
-     * @return An integer array containing the drafting constraints:
-     * [0] = cards to draw from the upper row, [1] = cards to draw from the lower row.
      */
     public void placePlayer(Player player, String targetCode) {
         for (OfferSpace space : this.offerSpaces) {
             if (targetCode.equals(space.getCode())) {
                 space.occupy(player);
                 this.startingTile.removePlayer(player);
-//                space.resolveImmediateAction(player);
                 break;
             }
         }
     }
+
     /**
-     * Risolve l'azione immediata (es. cibo) ESCLUSIVAMENTE per il giocatore specificato,
-     * basandosi sullo spazio che occupa attualmente, e restituisce le regole di pescata.
-     * * @param player Il giocatore di cui si sta risolvendo il turno attivo.
-     * @return int[] {carteDaSopra, carteDaSotto}
+     * Retrieves the specific drafting rules for the specified player
+     * based on the space they currently occupy.
+     *
+     * @param player The player whose active turn is being resolved.
+     * @return An int[] containing the drafting rules: index 0 is the number of cards to draw from the upper row, and index 1 from the lower row.
      */
     public int[] resolveActionForPlayer(Player player) {
         return this.offerSpaces.stream()
                 .filter(space -> player.equals(space.getOccupiedBy()))
                 .findFirst()
-                .map(space -> {
-                    return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
-                })
-                .orElse(new int[]{0, 0}); // Fallback di sicurezza
+                .map(space -> new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()})
+                .orElse(new int[]{0, 0}); // Safety fallback
     }
 
     /**
-     * Provides a read-only list of all offer spaces valid for the current game setup.
-     * Useful for broadcasting the board state to clients or the game controller.
+     * Provides a read-only list of all offer spaces that are currently FREE to be occupied.
+     * Useful for broadcasting the valid placement options to clients.
      *
-     * @return A list of the current offer spaces.
+     * @return A list of the currently available offer spaces.
      */
     public List<OfferSpace> getAvailableOfferSpaces() {
-        return new ArrayList<>(this.offerSpaces);
+        return this.offerSpaces.stream()
+                .filter(OfferSpace::isAvailable)
+                .collect(Collectors.toList());
     }
 }

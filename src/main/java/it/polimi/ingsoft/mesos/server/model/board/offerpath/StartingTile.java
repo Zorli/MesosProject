@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents the starting tile of the game board, containing the individual starting blocks.
@@ -59,6 +60,14 @@ public class StartingTile {
         }
     }
 
+    /**
+     * Places the specified player on the first available starting block.
+     * This automatically maintains the return order for the next round and
+     * immediately resolves the specific effect of the newly occupied block
+     * (e.g., food bonuses or prestige penalties).
+     *
+     * @param player The player returning to the starting tile.
+     */
     public void placePlayerOnNextAvailableBlock(Player player) {
         for (StartingBlock block : this.startingBlocks) {
             if (block.getOccupiedBy() == null) {
@@ -68,11 +77,12 @@ public class StartingTile {
             }
         }
     }
+
     /**
-     * Rimuove il giocatore dal suo blocco di partenza corrente.
-     * Viene chiamato nel momento in cui il giocatore muove il suo totem verso un'offerta.
+     * Removes the player from their current starting block.
+     * This is triggered when the player moves their totem to an offer space.
      *
-     * @param player Il giocatore che sta lasciando la tessera di partenza.
+     * @param player The player leaving the starting tile.
      */
     public void removePlayer(Player player) {
         this.startingBlocks.stream()
@@ -82,48 +92,16 @@ public class StartingTile {
     }
 
     /**
-     * Receives the newly determined turn order, places players onto the starting blocks,
-     * and resolves the start-of-round block effects.
+     * Retrieves the list of players currently placed on the starting blocks,
+     * in the exact order they will take their turns in the next round.
      *
-     * @param newTurnOrder players sorted in the order they should occupy the starting tile
+     * @return A list of players sorted by their turn order for the upcoming round.
      */
-    public void placePlayersAndResolveEffects(List<Player> newTurnOrder) {
-        this.placePlayers(newTurnOrder);
-        this.resolveEffects();
+    public List<Player> getNextRoundOrder() {
+        return this.startingBlocks.stream()
+                .filter(block -> block.getOccupiedBy() != null)
+                .map(StartingBlock::getOccupiedBy)
+                .collect(Collectors.toList());
     }
 
-    private void placePlayers(List<Player> orderedPlayers) {
-        this.startingBlocks.forEach(StartingBlock::clear);
-
-        for (int i = 0; i < orderedPlayers.size(); i++) {
-            if (i < this.startingBlocks.size()) {
-                StartingBlock currentBlock = this.startingBlocks.get(i);
-                Player currentPlayer = orderedPlayers.get(i);
-                currentBlock.occupy(currentPlayer);
-            }
-        }
-    }
-
-    private void resolveEffects() {
-        for (StartingBlock block : this.startingBlocks) {
-            Player player = block.getOccupiedBy();
-
-            if (player == null) {
-                continue;
-            }
-
-            int foodMod = block.getFoodModifier();
-            if (foodMod > 0) {
-                player.gainFood(foodMod);
-            } else if (foodMod < 0) {
-                int foodCost = Math.abs(foodMod);
-
-                if (player.getFood() >= foodCost) {
-                    player.payFood(foodCost);
-                } else {
-                    player.gainPrestigePoints(block.getPrestigeModifier());
-                }
-            }
-        }
-    }
 }

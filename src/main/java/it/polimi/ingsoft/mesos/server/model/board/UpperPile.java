@@ -40,23 +40,6 @@ public class UpperPile {
         }
     }
 
-    /**
-     * Adds a collection of tribe cards to the upper row.
-     *
-     * @param cards The list of tribe cards to add.
-     */
-    public void addTribeCards(List<TribeCard> cards) {
-        this.tribeCards.addAll(cards);
-    }
-
-    /**
-     * Adds a collection of building cards to the upper row.
-     *
-     * @param cards The list of building cards to add.
-     */
-    public void addBuildingCards(List<BuildingCard> cards) {
-        this.buildingCards.addAll(cards);
-    }
 
     /**
      * Extracts all tribe cards currently present in the upper row and clears the internal list.
