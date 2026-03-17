@@ -197,10 +197,10 @@ public class Game {
         if(tilecode == null || !board.isSpaceAvailable(tilecode)){throw new TileNotAvailableException(tilecode);}
 
         //Place the totem on the specific tile, i get the card he can get from the upper row and the lower row
-        int [] choices = board.placePlayerOnOfferSpace(player, tilecode);
+        //int [] choices = board.placePlayerOnOfferSpace(player, tilecode);
 
         //Update the turnfsmle
-        turnState.onTotemMoved(choices[0], choices[1]);
+        //turnState.onTotemMoved(choices[0], choices[1]);
 
         //Once the totem has been moved I can update the turnstate
         //I should pass the player because he has a tribe and maybe that tribe has a perk on the drawnable cards
