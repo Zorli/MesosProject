@@ -107,7 +107,19 @@ public class OfferPath {
                 .map(OfferSpace::getOccupiedBy)
                 .collect(Collectors.toList());
     }
-
+    public boolean resolveEventA()
+    {
+        String targetCode = "A";
+        return this.offerSpaces.stream()
+                .filter(space -> targetCode.equals(space.getCode()) && !space.isAvailable())
+                .findFirst()
+                .map(space -> {
+                    Player currentPlayer = space.getOccupiedBy();
+                    space.resolveImmediateAction(currentPlayer);
+                    return true;
+                })
+                .orElse(false);
+    }
     /**
      * Removes all players from the offer spaces, making them available for the next round.
      */
@@ -156,7 +168,6 @@ public class OfferPath {
                 .filter(space -> player.equals(space.getOccupiedBy()))
                 .findFirst()
                 .map(space -> {
-                    space.resolveImmediateAction(player);
                     return new int[]{space.getTopRowCardsToTake(), space.getBottomRowCardsToTake()};
                 })
                 .orElse(new int[]{0, 0}); // Fallback di sicurezza
