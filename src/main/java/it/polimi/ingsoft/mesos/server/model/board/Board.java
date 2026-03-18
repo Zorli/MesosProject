@@ -253,7 +253,7 @@ public class Board {
 
     /**
      * Retrieves the list of players currently placed on the offer path,
-     * ordered strictly ascending by their space's position index (from left to right).
+     * ordered strictly ascending by their space's position index (from left to right skipping A).
      * This method is used by the game controller to determine the exact
      * resolution order of the active turns.
      *
@@ -276,13 +276,12 @@ public class Board {
     /**
      * Checks if the offer space 'A' is currently occupied by a player.
      * If occupied, it immediately resolves the space's specific effect for that player
-     * and returns true. If the space is empty or unavailable, it does nothing and returns false.
+     * and returns it to the starting tile. If the space is empty or unavailable, it does nothing.
      *
-     * @return true if a player was on space 'A' and the effect was resolved; false otherwise.
      */
-    public boolean resolveEventA()
+    public void resolveEventA()
     {
-        return this.offerPath.resolveEventA();
+       this.offerPath.resolveEventA();
     }
 
 

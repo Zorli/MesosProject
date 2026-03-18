@@ -178,8 +178,6 @@ class GameMoveTotemTest {
         }
 
         @Override
-        public boolean resolveEventA() {
-            return true;
-        }
+        public void resolveEventA() {}
     }
 }

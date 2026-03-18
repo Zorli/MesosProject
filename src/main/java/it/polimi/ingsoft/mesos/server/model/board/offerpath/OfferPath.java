@@ -91,13 +91,14 @@ public class OfferPath {
 
     /**
      * Determines the new turn order by extracting players from currently occupied spaces,
-     * sorted from left to right (by the space's position index).
+     * sorted from left to right (by the space's position index), it skips offer space A
+     * as it was already resolved
      *
-     * @return A sorted list of players representing the turn order for the next round.
+     * @return A sorted list of players representing the turn order for the next turn step.
      */
     public List<Player> getPlayersInOrder() {
         return this.offerSpaces.stream()
-                .filter(space -> space.getOccupiedBy() != null)
+                .filter(space -> space.getOccupiedBy() != null && !"A".equals(space.getCode()))
                 .sorted(Comparator.comparingInt(OfferSpace::getPositionIndex))
                 .map(OfferSpace::getOccupiedBy)
                 .collect(Collectors.toList());
@@ -116,21 +117,20 @@ public class OfferPath {
     /**
      * Checks if the offer space 'A' is currently occupied by a player.
      * If occupied, it immediately resolves the space's specific effect for that player
-     * and returns true. If the space is empty or unavailable, it does nothing and returns false.
+     * and returns the player to the starting tile . If the space is empty or unavailable,
+     * it does nothing.
      *
-     * @return true if a player was on space 'A' and the effect was resolved; false otherwise.
      */
-    public boolean resolveEventA() {
+    public void resolveEventA() {
         String targetCode = "A";
-        return this.offerSpaces.stream()
+        this.offerSpaces.stream()
                 .filter(space -> targetCode.equals(space.getCode()) && !space.isAvailable())
                 .findFirst()
-                .map(space -> {
+                .ifPresent(space -> {
                     Player currentPlayer = space.getOccupiedBy();
                     space.resolveImmediateAction(currentPlayer);
-                    return true;
-                })
-                .orElse(false);
+                    returnPlayerToStartingTile(currentPlayer);
+                });
     }
 
     /**
