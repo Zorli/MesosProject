@@ -1,0 +1,86 @@
+package it.polimi.ingsoft.mesos.server.model.board;
+
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer;
+import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class UpperPileTest {
+
+    private UpperPile upperPile;
+    private Gatherer tribeCard1;
+    private Gatherer tribeCard2;
+    private BuildingCard buildingCard1;
+
+    @BeforeEach
+    void setUp() {
+        upperPile = new UpperPile();
+
+        // Creiamo carte fittizie usando le tue classi concrete
+        tribeCard1 = new Gatherer(1, Era.first, TribeCardType.GATHERER);
+        tribeCard2 = new Gatherer(2, Era.first, TribeCardType.GATHERER);
+        buildingCard1 = new BuildingCard(3, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD);
+    }
+
+    @Test
+    void addCard_And_removeCard_RouteToCorrectLists() {
+        // Aggiungiamo una tribù e un edificio
+        upperPile.addCard(tribeCard1);
+        upperPile.addCard(buildingCard1);
+
+        // La rimozione di una tribù NON deve intaccare gli edifici
+        upperPile.removeCard(tribeCard1);
+
+        // Rimuoviamo la carta, ma controlliamo se l'edificio è ancora lì
+        List<BuildingCard> remainingBuildings = upperPile.removeAndReturnAllBuildingCards();
+        List<Gatherer> remainingTribes = (List<Gatherer>)(List<?>) upperPile.removeAndReturnAllTribeCards();
+
+        assertEquals(1, remainingBuildings.size(), "L'edificio dovrebbe essere ancora al suo posto");
+        assertEquals(buildingCard1, remainingBuildings.get(0));
+        assertTrue(remainingTribes.isEmpty(), "La tribù dovrebbe essere stata rimossa correttamente");
+    }
+
+    @Test
+    void removeCard_EdgeCase_CardNotInPile_DoesNothing() {
+        upperPile.addCard(tribeCard1);
+
+        // EDGE CASE: proviamo a rimuovere una carta che non è nella pila (tribeCard2)
+        // Il test passa se non viene lanciata nessuna eccezione (es. NullPointerException)
+        assertDoesNotThrow(() -> upperPile.removeCard(tribeCard2), "Rimuovere una carta inesistente non deve far crashare il gioco");
+
+        // Verifichiamo che la carta originale sia ancora lì
+        assertEquals(1, upperPile.removeAndReturnAllTribeCards().size(), "La carta presente non deve essere stata alterata");
+    }
+
+    @Test
+    void removeAndReturnAllCards_EmptiesThePile_AndHandlesEmptyCase() {
+        // Aggiungiamo carte
+        upperPile.addCard(tribeCard1);
+        upperPile.addCard(tribeCard2);
+        upperPile.addCard(buildingCard1);
+
+        // 1. Estraiamo e svuotiamo
+        List<?> returnedTribes = upperPile.removeAndReturnAllTribeCards();
+        List<BuildingCard> returnedBuildings = upperPile.removeAndReturnAllBuildingCards();
+
+        assertEquals(2, returnedTribes.size(), "Dovrebbe restituire le 2 tribù");
+        assertEquals(1, returnedBuildings.size(), "Dovrebbe restituire l'edificio");
+
+        // 2. EDGE CASE: Chiamiamo i metodi su una pila ora VUOTA
+        List<?> emptyTribes = upperPile.removeAndReturnAllTribeCards();
+        List<BuildingCard> emptyBuildings = upperPile.removeAndReturnAllBuildingCards();
+
+        assertNotNull(emptyTribes, "Non deve mai restituire null, ma una lista vuota");
+        assertTrue(emptyTribes.isEmpty(), "La lista delle tribù deve essere vuota");
+
+        assertNotNull(emptyBuildings, "Non deve mai restituire null, ma una lista vuota");
+        assertTrue(emptyBuildings.isEmpty(), "La lista degli edifici deve essere vuota");
+    }
+}
