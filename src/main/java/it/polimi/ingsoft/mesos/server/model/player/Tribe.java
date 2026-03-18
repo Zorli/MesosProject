@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * Stores the cards collected by a player and computes tribe-dependent bonuses.
@@ -147,7 +148,7 @@ public class Tribe {
      * @return mutable list of owned building cards
      */
     public ArrayList<BuildingCard> getBuildings(){
-        return this.buildings;
+        return (ArrayList<BuildingCard>) Collections.unmodifiableList(this.buildings);
     }
 
     /**
@@ -156,7 +157,7 @@ public class Tribe {
      * @return mutable list of owned character cards
      */
     public ArrayList<CharacterCard> getCharacters(){
-        return this.characters;
+        return (ArrayList<CharacterCard>) Collections.unmodifiableList(this.characters);
     }
 
     /**
