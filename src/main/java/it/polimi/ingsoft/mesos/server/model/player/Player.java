@@ -140,14 +140,5 @@ public class Player {
         return this.tribe == null ? 0 : this.tribe.getTotalFoodDiscountFromBuilders();
     }
 
-    /**
-     * Returns the player's nickname.
-     *
-     * <p>This method duplicates {@link #getNickname()} and is kept for compatibility with existing
-     * call sites.
-     *
-     * @return nickname used to identify the player
-     */
-    public String getNickName () { return this.nickname; }
 
 }
