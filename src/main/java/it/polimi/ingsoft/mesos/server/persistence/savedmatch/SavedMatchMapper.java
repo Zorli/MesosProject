@@ -131,7 +131,7 @@ final class SavedMatchMapper {
                 game.getTurnOrderTrack().getRoundNumber(),
                 game.getTurnOrderTrack().getCurrentRoundPhase(),
                 game.getTurnState().getPhase(),
-                game.getTurnState().getActivePlayer() == null ? null : game.getTurnState().getActivePlayer().getNickname(),
+                game.getTurnState().isWaitingForCardSelection() ? game.getTurnOrderTrack().getCurrentPlayer().getNickname() : null,
                 game.getTurnOrderTrack().getCurrentPlayerIndex(),
                 checkpointType,
                 playerRecords,

@@ -212,7 +212,6 @@ final class SavedMatchRestoreFactory {
 
         return new TurnState(
                 aggregate.turnPhase(),
-                aggregate.activePlayerNickname() == null ? null : resolvePlayer(playersByNickname, aggregate.activePlayerNickname()),
                 remainingUpperChoices,
                 remainingLowerChoices
         );

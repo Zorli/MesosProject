@@ -281,10 +281,6 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
         assertEquals(expected.getTurnOrderTrack().getCurrentRoundPhase(), actual.getTurnOrderTrack().getCurrentRoundPhase());
         assertEquals(expected.getTurnOrderTrack().getCurrentPlayerIndex(), actual.getTurnOrderTrack().getCurrentPlayerIndex());
         assertEquals(expected.getTurnState().getPhase(), actual.getTurnState().getPhase());
-        assertEquals(
-                expected.getTurnState().getActivePlayer() == null ? null : expected.getTurnState().getActivePlayer().getNickname(),
-                actual.getTurnState().getActivePlayer() == null ? null : actual.getTurnState().getActivePlayer().getNickname()
-        );
         assertNicknameOrderEquals(expected.getPlayers(), actual.getPlayers());
         assertPlayerResourcesEqual(expected.getPlayers(), actual.getPlayers());
         assertNicknameOrderEquals(expected.getTurnOrderTrack().getTurnOrder(), actual.getTurnOrderTrack().getTurnOrder());
