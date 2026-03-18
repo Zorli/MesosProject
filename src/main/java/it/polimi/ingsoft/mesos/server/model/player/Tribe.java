@@ -138,12 +138,7 @@ public class Tribe {
      * @return {@code true} when the protection building is present
      */
     public boolean hasBuildingForShamanRitualProtection(){
-        for (BuildingCard b: buildings){
-            if(b.getBenefitType() == BenefitType.EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT){
-                return true;
-            }
-        }
-        return false;
+        return this.hasBuildingWithBenefit(BenefitType.EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT);
     }
 
     /**
@@ -170,12 +165,17 @@ public class Tribe {
      * @return {@code true} when the multiplier building is present
      */
     public boolean hasWinMultiplier(){
-        for(BuildingCard b: buildings){
-            if(b.getBenefitType() == BenefitType.EVENT_BONUS_SHAMAN_WIN_MULTIPLIER){
-                return true;
-            }
-        }
-        return false;
+        return this.hasBuildingWithBenefit(BenefitType.EVENT_BONUS_SHAMAN_WIN_MULTIPLIER);
+    }
+
+    /**
+     * Checks whether the tribe owns a building that grants an extra draw during the end-of-round
+     * sequence.
+     *
+     * @return {@code true} when at least one extra-draw building is present
+     */
+    public boolean hasEndRoundExtraCardBuilding() {
+        return this.hasBuildingWithBenefit(BenefitType.END_ROUND_EXTRA_CARD);
     }
 
     /**
@@ -213,6 +213,15 @@ public class Tribe {
             }
         }
         return reward;
+    }
+
+    private boolean hasBuildingWithBenefit(BenefitType benefitType) {
+        for (BuildingCard building : this.buildings) {
+            if (building.getBenefitType() == benefitType) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

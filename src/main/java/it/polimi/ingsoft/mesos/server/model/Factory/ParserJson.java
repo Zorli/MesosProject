@@ -6,9 +6,12 @@ import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.BigPpReward;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.CavePaintingBonus;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.HunterBonus;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.MultiplierForType;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.PairOfInventor;
+import it.polimi.ingsoft.mesos.server.model.cards.buildings.PrestigePointsForSet;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.SetForFood;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.ShamanStarsBonus;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.SustenanceDiscount;
@@ -356,14 +359,24 @@ public final class ParserJson {
                         bonusFoodPerArtist
                 );
             }
+            case FINAL_PRESTIGE_POINTS_FOR_SET -> {
+                int pointsPerSet = requiredInt(modelNode, "rewardPrestigePoints");
+                yield () -> new PrestigePointsForSet(id, era, foodCost, prestigePoints, benefitType, pointsPerSet);
+            }
+            case FINAL_BONUS_MULTIPLIER_FOR_TYPE -> {
+                int multiplier = requiredInt(modelNode, "multiplier");
+                TribeCardType applicableType = TribeCardType.valueOf(requiredText(modelNode, "applicableTribeCardType"));
+                yield () -> new MultiplierForType(id, era, foodCost, prestigePoints, benefitType, multiplier, applicableType);
+            }
+            case FINAL_BONUS_BIG_PP_REWARD -> {
+                int ppReward = requiredInt(modelNode, "rewardPrestigePoints");
+                yield () -> new BigPpReward(id, era, foodCost, prestigePoints, benefitType, ppReward);
+            }
             case EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT,
                  EVENT_BONUS_SHAMAN_WIN_MULTIPLIER,
                  END_ROUND_EXTRA_CARD,
                  END_ROUND_TOTEM_POSITION,
-                 FINAL_PRESTIGE_POINTS_FOR_SET,
-                 BUILDER_TOTAL_PP_MULTIPLIER,
-                 FINAL_BONUS_MULTIPLIER_FOR_TYPE,
-                 FINAL_BONUS_BIG_PP_REWARD -> () -> new BuildingCard(id, era, foodCost, prestigePoints, benefitType);
+                 BUILDER_TOTAL_PP_MULTIPLIER -> () -> new BuildingCard(id, era, foodCost, prestigePoints, benefitType);
         };
     }
 

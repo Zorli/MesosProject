@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
+import it.polimi.ingsoft.mesos.server.model.board.CardRow;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
@@ -8,7 +9,6 @@ import java.util.Map;
 
 public class TurnState {
     private TurnPhase phase;
-    private Player activePlayer;
     private final Map<Player, Integer> remainingUpperChoicesByPlayer;
     private final Map<Player, Integer> remainingLowerChoicesByPlayer;
 
@@ -16,7 +16,6 @@ public class TurnState {
 
     public TurnState() {
         this.phase = TurnPhase.TURN_COMPLETED;
-        this.activePlayer = null;
         this.remainingUpperChoicesByPlayer = new HashMap<>();
         this.remainingLowerChoicesByPlayer = new HashMap<>();
     }
@@ -25,16 +24,13 @@ public class TurnState {
      * Creates a turn state from an already persisted runtime snapshot.
      *
      * @param phase turn phase to restore
-     * @param activePlayer active player to restore, may be null
      * @param remainingUpperChoicesByPlayer remaining upper-row choices by player
      * @param remainingLowerChoicesByPlayer remaining lower-row choices by player
      */
     public TurnState(TurnPhase phase,
-                     Player activePlayer,
                      Map<Player, Integer> remainingUpperChoicesByPlayer,
                      Map<Player, Integer> remainingLowerChoicesByPlayer) {
         this.phase = phase;
-        this.activePlayer = activePlayer;
         this.remainingUpperChoicesByPlayer = new HashMap<>(remainingUpperChoicesByPlayer);
         this.remainingLowerChoicesByPlayer = new HashMap<>(remainingLowerChoicesByPlayer);
     }
@@ -43,10 +39,6 @@ public class TurnState {
 
     public TurnPhase getPhase() {
         return this.phase;
-    }
-
-    public Player getActivePlayer() {
-        return this.activePlayer;
     }
 
     public int getRemainingUpperChoices(Player player) {
@@ -81,6 +73,26 @@ public class TurnState {
         return this.getRemainingUpperChoices(player) > 0 || this.getRemainingLowerChoices(player) > 0;
     }
 
+    public boolean isWaitingForCardSelection() {
+        return this.phase == TurnPhase.WAITING_FOR_CARD_SELECTION;
+    }
+
+    public boolean isTurnCompleted() {
+        return this.phase == TurnPhase.TURN_COMPLETED;
+    }
+
+    public boolean canChooseFromUpperRow(Player player) {
+        return player != null
+                && this.phase == TurnPhase.WAITING_FOR_CARD_SELECTION
+                && this.getRemainingUpperChoices(player) > 0;
+    }
+
+    public boolean canChooseFromLowerRow(Player player) {
+        return player != null
+                && this.phase == TurnPhase.WAITING_FOR_CARD_SELECTION
+                && this.getRemainingLowerChoices(player) > 0;
+    }
+
     public void registerDrawableCards(Player player, int upperChoices, int lowerChoices) {
         if (player == null) {
             throw new IllegalArgumentException("Player cannot be null");
@@ -102,23 +114,49 @@ public class TurnState {
             throw new IllegalStateException("Drawable cards were not registered for player " + player.getNickname());
         }
 
-        this.activePlayer = player;
         this.phase = TurnPhase.WAITING_FOR_CARD_SELECTION;
+    }
+
+    public void onCardChosen(Player player, CardRow cardRow) {
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
+        if (cardRow == CardRow.UPPER) {
+            if (!this.canChooseFromUpperRow(player)) {
+                throw new IllegalStateException("Cannot choose from upper row");
+            }
+            this.remainingUpperChoicesByPlayer.put(
+                    player,
+                    this.getRemainingUpperChoices(player) - 1
+            );
+        } else if (cardRow == CardRow.LOWER) {
+            if (!this.canChooseFromLowerRow(player)) {
+                throw new IllegalStateException("Cannot choose from lower row");
+            }
+            this.remainingLowerChoicesByPlayer.put(
+                    player,
+                    this.getRemainingLowerChoices(player) - 1
+            );
+        } else {
+            throw new IllegalArgumentException("Card row cannot be NOT_PRESENT");
+        }
+
+        if (!this.hasDrawableCards(player)) {
+            this.phase = TurnPhase.TURN_COMPLETED;
+        }
     }
 
     public void resetForNewRound() {
         this.phase = TurnPhase.TURN_COMPLETED;
-        this.activePlayer = null;
         this.remainingUpperChoicesByPlayer.clear();
         this.remainingLowerChoicesByPlayer.clear();
     }
 
-    public void resetForNextPlayer() {
-        if (this.activePlayer != null) {
-            this.remainingUpperChoicesByPlayer.remove(this.activePlayer);
-            this.remainingLowerChoicesByPlayer.remove(this.activePlayer);
+    public void resetForNextPlayer(Player player) {
+        if (player != null) {
+            this.remainingUpperChoicesByPlayer.remove(player);
+            this.remainingLowerChoicesByPlayer.remove(player);
         }
         this.phase = TurnPhase.TURN_COMPLETED;
-        this.activePlayer = null;
     }
 }
