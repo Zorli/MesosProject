@@ -63,11 +63,11 @@ public class Tribe {
 
     private void notifyPostDrawBuildings(CharacterCard character, Player player) {
         for (BuildingCard building : this.buildings) {
-            if (building instanceof SetForFood setForFood) {
-                setForFood.addCharacterTypeAndApplyEffect(character.getType(), player);
+            if (building.getBenefitType() == BenefitType.POST_DRAW_SET_FOR_FOOD) {
+                ((SetForFood)building).addCharacterTypeAndApplyEffect(character.getType(), player);
             }
-            if (building instanceof PairOfInventor pairOfInventor && character instanceof Inventor inventor) {
-                pairOfInventor.addInventionTypeAndApplyEffect(inventor.getInventionType(), player);
+            if (building.getBenefitType() == BenefitType.POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION && character.getType() == TribeCardType.INVENTOR) {
+                ((PairOfInventor)building).addInventionTypeAndApplyEffect(((Inventor)character).getInventionType(), player);
             }
         }
     }
