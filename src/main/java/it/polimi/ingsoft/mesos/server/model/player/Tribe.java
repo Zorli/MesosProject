@@ -49,7 +49,8 @@ public class Tribe {
      * @param player owner of the tribe receiving the character
      */
     public void addCharacter(CharacterCard c, Player player){
-        this.characters.add(c); //Notify the set for food and pair of inventors about the card. If needed apply effect
+        this.characters.add(c);
+        notifyHunterDraw(c, player);
         notifyPostDrawBuildings(c, player);
     }
 
@@ -60,6 +61,12 @@ public class Tribe {
      */
     public void addBuilding(BuildingCard b){
         this.buildings.add(b);
+    }
+
+    private void notifyHunterDraw(CharacterCard character, Player player) {
+        if (character.getType() == TribeCardType.HUNTER) {
+            ((Hunter) character).applyEffect(player);
+        }
     }
 
     private void notifyPostDrawBuildings(CharacterCard character, Player player) {
