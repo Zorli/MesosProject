@@ -68,7 +68,7 @@ public class GameOrchestrator {
         }
 
         this.game = gameFactory.createGame(players);
-        this.players = players;
+        this.players = List.copyOf(players);
         this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, hostNickname);
     }
 
@@ -95,7 +95,7 @@ public class GameOrchestrator {
     public GameOrchestrator(Game restoredGame, String hostNickname, SavedMatchService savedMatchService) {
         this.game = Objects.requireNonNull(restoredGame, "Restored game cannot be null");
         this.players = restoredGame.getPlayers();
-        if (this.players == null || this.players.isEmpty()) {
+        if (this.players.isEmpty()) {
             throw new IllegalArgumentException("Restored game must contain at least one player");
         }
         this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, hostNickname);

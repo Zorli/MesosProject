@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,7 +30,7 @@ class GameOrchestratorTest {
         GameOrchestrator orchestrator = new GameOrchestrator(restoredGame);
 
         assertSame(restoredGame, orchestrator.getGame());
-        assertSame(restoredGame.getPlayers(), orchestrator.getPlayers());
+        assertIterableEquals(restoredGame.getPlayers(), orchestrator.getPlayers());
     }
 
     @Test

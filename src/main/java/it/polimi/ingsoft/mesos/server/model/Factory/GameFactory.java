@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.Factory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Contract for components that bootstrap a full server-side game instance from
@@ -16,5 +16,5 @@ public interface GameFactory {
      * @param players players that will participate in the match
      * @return a newly initialized game instance
      */
-    Game createGame(ArrayList<Player> players);
+    Game createGame(List<Player> players);
 }
