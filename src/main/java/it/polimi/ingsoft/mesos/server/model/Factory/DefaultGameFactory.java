@@ -8,7 +8,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -50,7 +50,7 @@ public class DefaultGameFactory implements GameFactory {
      * @return a fully initialized game ready to be orchestrated
      */
     @Override
-    public Game createGame(ArrayList<Player> players) {
+    public Game createGame(List<Player> players) {
         players.forEach(Player::initializeGameAttributes);
         TribeDeck tribeDeck = deckTemplate.createTribeDeck(players.size());
         BuildingDeck buildingDeck = deckTemplate.createBuildingDeck();

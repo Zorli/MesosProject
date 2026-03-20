@@ -311,7 +311,7 @@ class LobbyManagerTest {
         private RuntimeException failure;
 
         @Override
-        public Game createGame(ArrayList<Player> players) {
+        public Game createGame(List<Player> players) {
             this.createGameCalls++;
             this.capturedPlayers = new ArrayList<>(players);
 

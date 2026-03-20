@@ -9,8 +9,8 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 //References : docs/design-doc-game-state.md
 
@@ -23,7 +23,7 @@ import java.util.List;
  */
 public class Game {
     private final int id;   //Immutable, provided by the game orchestrator
-    private final ArrayList<Player> players;
+    private final List<Player> players;
     private Era currentEra; //Mutable
     private GameStatus status;  //Mutable
     private final Board board;
@@ -41,9 +41,9 @@ public class Game {
      * @param turnOrderTrack tracker for the order of play inside each round
      * @param board board that exposes rows, offer path, and available spaces
      */
-    public Game(int id, ArrayList<Player> players, TurnState turnState, TurnOrderTrack turnOrderTrack, Board board) {
+    public Game(int id, List<Player> players, TurnState turnState, TurnOrderTrack turnOrderTrack, Board board) {
         this.id = id;
-        this.players = players;
+        this.players = List.copyOf(Objects.requireNonNull(players, "Players cannot be null"));
         this.turnState = turnState;
         this.turnOrderTrack = turnOrderTrack;
         this.board = board;
@@ -63,14 +63,14 @@ public class Game {
      * @param status restored lifecycle status
      */
     public Game(int id,
-                ArrayList<Player> players,
+                List<Player> players,
                 TurnState turnState,
                 TurnOrderTrack turnOrderTrack,
                 Board board,
                 Era currentEra,
                 GameStatus status) {
         this.id = id;
-        this.players = players;
+        this.players = List.copyOf(Objects.requireNonNull(players, "Players cannot be null"));
         this.turnState = turnState;
         this.turnOrderTrack = turnOrderTrack;
         this.board = board;
@@ -83,9 +83,9 @@ public class Game {
     /**
      * Returns the players that belong to this game.
      *
-     * @return mutable list of players tracked by the game
+     * @return read-only list of players tracked by the game
      */
-    public ArrayList<Player> getPlayers(){
+    public List<Player> getPlayers(){
         return this.players;
     }
 

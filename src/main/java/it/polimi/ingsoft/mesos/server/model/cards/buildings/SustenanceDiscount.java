@@ -7,7 +7,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Building that reduces the sustenance penalty based on how many characters of
@@ -40,7 +40,7 @@ public class SustenanceDiscount extends BuildingCard {
      * @param characters characters currently in the tribe
      * @return total discount amount
      */
-    public int getDiscountAmount(ArrayList<CharacterCard> characters) {
+    public int getDiscountAmount(List<CharacterCard> characters) {
         int count = 0;
         for (CharacterCard character : characters) {
             if (character.getType() == this.applicableTribeCardType) {

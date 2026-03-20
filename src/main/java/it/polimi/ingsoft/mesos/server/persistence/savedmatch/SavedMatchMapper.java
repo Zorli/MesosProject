@@ -29,7 +29,7 @@ final class SavedMatchMapper {
      * @return normalized persistence aggregate
      */
     static SavedMatchAggregate fromGame(Game game, String hostNickname, SavedMatchCheckpointType checkpointType) {
-        ArrayList<Player> players = game.getPlayers();
+        List<Player> players = game.getPlayers();
         List<SavedMatchPlayerRecord> playerRecords = new ArrayList<>();
         List<SavedMatchPlayerCardRecord> playerCardRecords = new ArrayList<>();
         List<SavedMatchPlayerCardRuntimeStateRecord> playerCardRuntimeStates = new ArrayList<>();
