@@ -30,6 +30,11 @@ public final class PostgresSavedMatchService implements SavedMatchService {
         this.repository = Objects.requireNonNull(repository, "Repository cannot be null");
     }
 
+    /**
+     * Returns whether this service is backed by a real persistence implementation.
+     *
+     * @return always {@code true}
+     */
     @Override
     public boolean isPersistenceEnabled() {
         return true;

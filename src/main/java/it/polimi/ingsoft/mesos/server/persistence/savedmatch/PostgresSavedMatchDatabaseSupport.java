@@ -106,6 +106,12 @@ final class PostgresSavedMatchDatabaseSupport {
         }
     }
 
+    /**
+     * Returns whether the SQL state identifies a retryable transactional failure.
+     *
+     * @param exception SQL failure raised by PostgreSQL
+     * @return {@code true} for serialization, deadlock, or lock-not-available failures
+     */
     private boolean isRetryableException(SQLException exception) {
         String sqlState = exception.getSQLState();
         return "40001".equals(sqlState)
@@ -113,6 +119,11 @@ final class PostgresSavedMatchDatabaseSupport {
                 || "55P03".equals(sqlState);
     }
 
+    /**
+     * Sleeps for a short backoff interval before the next retry attempt.
+     *
+     * @param attempt current retry attempt number starting from one
+     */
     private void sleepBeforeRetry(int attempt) {
         try {
             Thread.sleep(50L * attempt);

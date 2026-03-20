@@ -18,6 +18,9 @@ import java.util.UUID;
 
 /**
  * Shared PostgreSQL container and isolated test-database lifecycle for integration tests.
+ *
+ * <p>Subclasses use this harness to allocate one disposable database per test method while
+ * reusing a single Testcontainers PostgreSQL instance for the whole suite.
  */
 @Testcontainers(disabledWithoutDocker = true)
 public abstract class PostgresIntegrationTestSupport {

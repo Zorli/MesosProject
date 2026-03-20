@@ -71,6 +71,9 @@ public class PostgresRankingService implements RankingService {
 
     /**
      * Produces a copy of default configuration overriding only busy retries.
+     *
+     * @param maxBusyRetries retry limit to inject into the default configuration
+     * @return default ranking configuration with the requested retry limit
      */
     private static RankingConfig defaultConfigWithRetries(int maxBusyRetries) {
         RankingConfig baseConfig = RankingConfig.defaultConfig();
@@ -412,6 +415,13 @@ public class PostgresRankingService implements RankingService {
 
     /** Maps raw SQL rows to immutable match history aggregates grouped by game id. */
     private List<MatchHistory> mapMatchHistoryRows(ResultSet resultSet) throws SQLException {
+        /**
+         * Mutable accumulator used while grouping multiple SQL rows belonging to the same match.
+         *
+         * @param playedAtUtc match timestamp in UTC
+         * @param playerCount number of players that took part in the match
+         * @param ranking ranking rows accumulated for the match
+         */
         record MatchHistoryBuilder(Instant playedAtUtc, int playerCount, List<MatchRankingEntry> ranking) {
         }
 

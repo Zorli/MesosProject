@@ -15,6 +15,9 @@ import java.util.Objects;
  * Factory responsible for wiring the runtime services selected for the current server mode.
  */
 public final class ServerServicesFactory {
+    /**
+     * Prevents instantiation of the utility factory class.
+     */
     private ServerServicesFactory() {
     }
 

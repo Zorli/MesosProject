@@ -21,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class PostgresDatabaseBootstrap {
     private final Set<String> initializedTargets;
 
+    /**
+     * Creates the singleton bootstrap and initializes the per-target bootstrap cache.
+     */
     private PostgresDatabaseBootstrap() {
         this.initializedTargets = ConcurrentHashMap.newKeySet();
     }
@@ -244,6 +247,9 @@ public final class PostgresDatabaseBootstrap {
     private static final class Holder {
         private static final PostgresDatabaseBootstrap INSTANCE = new PostgresDatabaseBootstrap();
 
+        /**
+         * Prevents instantiation of the holder utility class.
+         */
         private Holder() {
         }
     }

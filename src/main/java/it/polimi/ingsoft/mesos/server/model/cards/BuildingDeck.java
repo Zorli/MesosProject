@@ -28,6 +28,12 @@ public class BuildingDeck extends Deck{
         return new BuildingDeck(orderedCards, false);
     }
 
+    /**
+     * Creates a building deck optionally preserving the supplied order.
+     *
+     * @param cards cards that make up the draw pile
+     * @param shuffleOnCreate whether the deck should be shuffled during construction
+     */
     private BuildingDeck(ArrayList<Card> cards, boolean shuffleOnCreate) {
         super(cards, shuffleOnCreate);
     }

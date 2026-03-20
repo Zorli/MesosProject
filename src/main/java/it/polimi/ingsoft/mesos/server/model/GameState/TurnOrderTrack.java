@@ -5,17 +5,13 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
-This class is meant to be used as a tracker of the order to follow in the current round.
-At the initialization of the game, after the player have chosen the starting block in the starting tile,
-I can initialize the object.
-Then I can use it to track who needs to play.
-After the round I have to re-insert the new order provided from the offer path.
-This operation is going to be completed in Game.
-This class has to be instantied by the factory.
+/**
+ * Tracks the order of play and round phase of the current match round.
+ *
+ * <p>The tracker is initialized by the game factory and then updated by {@link Game} as players
+ * place totems, draw cards, and transition to later phases. At the end of each round the order
+ * can be replaced with the resolution order returned by the offer path.
  */
-
-
 public class TurnOrderTrack {
     private List<Player> turnOrder;
     private int currentPlayerIndex;
@@ -24,6 +20,9 @@ public class TurnOrderTrack {
 
     // Constructors
 
+    /**
+     * Creates an empty tracker waiting for the first round order to be assigned.
+     */
     public TurnOrderTrack() {
         this.turnOrder = new ArrayList<>();
         this.currentPlayerIndex = 0;
@@ -57,25 +56,50 @@ public class TurnOrderTrack {
     }
 
     // Getters
-    
+
+    /**
+     * Returns the player whose action is currently expected.
+     *
+     * @return current player in turn order
+     */
     public Player getCurrentPlayer() {
         this.ensureOrderInitialized();
         return this.turnOrder.get(this.currentPlayerIndex);
     }
 
+    /**
+     * Returns the number of the round currently being played.
+     *
+     * @return current round number
+     */
     public int getRoundNumber() {
         return this.roundNumber;
     }
 
+    /**
+     * Returns the active phase inside the current round.
+     *
+     * @return current round phase
+     */
     public RoundPhase getCurrentRoundPhase() {
         return this.currentRoundPhase;
     }
 
+    /**
+     * Returns a defensive copy of the current round order.
+     *
+     * @return ordered players for the active round
+     */
     public List<Player> getTurnOrder() {
         this.ensureOrderInitialized();
         return new ArrayList<>(this.turnOrder);
     }
 
+    /**
+     * Returns the index of the player who must currently act.
+     *
+     * @return zero-based current-player index
+     */
     public int getCurrentPlayerIndex() {
         this.ensureOrderInitialized();
         return this.currentPlayerIndex;
@@ -83,6 +107,11 @@ public class TurnOrderTrack {
 
     // Setters
 
+    /**
+     * Replaces the round order and resets the current-player cursor to the first player.
+     *
+     * @param newOrder order to use for the current round
+     */
     public void setNewOrder(List<Player> newOrder) {
         if (newOrder == null || newOrder.isEmpty()) {
             throw new IllegalArgumentException("Turn order cannot be null or empty");
@@ -91,12 +120,22 @@ public class TurnOrderTrack {
         this.currentPlayerIndex = 0;
     }
 
+    /**
+     * Updates the active phase of the round.
+     *
+     * @param currentRoundPhase phase reached by the round flow
+     */
     public void setCurrentRoundPhase(RoundPhase currentRoundPhase) {
         this.currentRoundPhase = currentRoundPhase;
     }
 
     // Public methods
 
+    /**
+     * Moves the cursor to the next player in the current order.
+     *
+     * @throws IllegalStateException if the tracker is already on the last player
+     */
     public void advanceToNextPlayer() {
         this.ensureOrderInitialized();
         if (this.isLastPlayer()) {
@@ -105,17 +144,28 @@ public class TurnOrderTrack {
         this.currentPlayerIndex = this.currentPlayerIndex + 1;
     }
 
+    /**
+     * Returns whether the cursor already points to the last player of the round.
+     *
+     * @return {@code true} when the current player is the final one in the order
+     */
     public boolean isLastPlayer() {
         this.ensureOrderInitialized();
         return this.currentPlayerIndex == this.turnOrder.size() - 1;
     }
 
+    /**
+     * Increments the round number after a new round has been prepared.
+     */
     public void advanceRoundNumber() {
         this.roundNumber = this.roundNumber + 1;
     }
 
     // Private methods
 
+    /**
+     * Ensures that a non-empty order has already been assigned to the tracker.
+     */
     private void ensureOrderInitialized() {
         if (this.turnOrder.isEmpty()) {
             throw new IllegalStateException("Turn order has not been initialized");
