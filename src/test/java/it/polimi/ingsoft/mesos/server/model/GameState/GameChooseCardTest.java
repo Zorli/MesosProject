@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Focused tests for the card-selection branch of the {@link Game} turn flow.
+ */
 class GameChooseCardTest {
 
     @Test
@@ -172,6 +175,9 @@ class GameChooseCardTest {
         return player;
     }
 
+    /**
+     * Minimal board double exposing only the hooks exercised by choose-card scenarios.
+     */
     private static final class RecordingBoard extends Board {
         private CardRow cardRow = CardRow.NOT_PRESENT;
         private List<Card> upperDraftableCards = List.of();
@@ -221,18 +227,27 @@ class GameChooseCardTest {
         }
     }
 
+    /**
+     * Lightweight building card used to test payment and acquisition logic.
+     */
     private static final class DummyBuildingCard extends BuildingCard {
         private DummyBuildingCard(int id, int foodCost) {
             super(id, Era.first, foodCost, 1, BenefitType.FINAL_BONUS_BIG_PP_REWARD);
         }
     }
 
+    /**
+     * Lightweight character card used to test lower-row draft scenarios.
+     */
     private static final class DummyCharacterCard extends CharacterCard {
         private DummyCharacterCard(int id) {
             super(id, Era.first, TribeCardType.HUNTER);
         }
     }
 
+    /**
+     * Building stub exposing the end-of-round extra-draw benefit.
+     */
     private static final class ExtraDrawBuildingCard extends BuildingCard {
         private ExtraDrawBuildingCard(int id, int foodCost) {
             super(id, Era.first, foodCost, 1, BenefitType.END_ROUND_EXTRA_CARD);

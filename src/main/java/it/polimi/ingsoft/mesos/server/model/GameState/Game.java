@@ -189,10 +189,17 @@ public class Game {
         this.status = GameStatus.IN_PROGRESS;
     }
 
-    //After the setup and at the start of every round, following the order of the turnordertrack, users can ask
-    //to place the totem.
-    //When we reach the final user, we ask to the board the action order to insert in the turnorder track
-    //If there are any, we resolve player that are on a tile that prescribres only food gaining and not cards to drawn
+    /**
+     * Places the current player's totem on the requested offer-path space.
+     *
+     * <p>The method validates match status, phase, turn ownership, and tile availability. After
+     * placement it computes how many cards the player may later draw. Once the last player has
+     * placed a totem, the offer path resolves the new draw order and the game transitions to the
+     * player-draws phase.
+     *
+     * @param player player placing the totem
+     * @param tile board-space identifier selected by the player
+     */
     public void moveTotem(Player player, String tile){
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("moveTotem", this.status);
@@ -228,10 +235,16 @@ public class Game {
         }
 
     }
-
-    //Following the turn imposed the turnordertrack, and checking with the fsm and with the board we make an user
-    //draw a card, after the player has finished to draw all his card, he come back to the initial tile,
-    //and we reset the fsm for another player to draw
+    /**
+     * Makes the active player draw one card from the board.
+     *
+     * <p>The method validates the request against the current round phase, turn owner, state
+     * machine, and board rows. The chosen card is removed from the board, applied to the player's
+     * tribe, and the turn is advanced when no more choices remain.
+     *
+     * @param player player selecting the card
+     * @param card card to draw from the board
+     */
     public void chooseCard(Player player, Card card){
         this.validateChooseCardRequest(player);
         this.ensureDrawStateStarted(player);
@@ -246,9 +259,12 @@ public class Game {
         }
 
     }
-
-    //After everyone has drawned and after everyone has come back to the starting position, if a player has a certain
-    //building, he can drawn an extra card
+    /**
+     * Resolves an extra card draw granted by a previously acquired building effect.
+     *
+     * @param player player receiving the extra draw
+     * @param card extra card chosen from the board
+     */
     public void extraDrawn(Player player, Card card){
         this.validateExtraDrawRequest(player);
 
@@ -256,9 +272,12 @@ public class Game {
         this.applyChosenCardToPlayer(player, card);
         this.completeExtraDrawTurn();
     }
-
-    //Adter the extradrawn we resolve the effect using the board
-    //If wr are at round ten we go for calculatefinalscore
+    /**
+     * Resolves lower-row events after all standard and bonus draws are completed.
+     *
+     * <p>If the match has reached round ten the method transitions directly to final scoring;
+     * otherwise it advances the round flow to board reset.
+     */
     public void resolveEffects(){
         this.validateResolveEffectsRequest();
         this.board.resolveLowerEvents();
@@ -269,9 +288,13 @@ public class Game {
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
 
     }
-
-    //We reset the board and prepare the turnordertrack with the new order for the next totem position,
-    //if we are
+    /**
+     * Resets the board after event resolution and prepares the next round.
+     *
+     * <p>The reset may also advance the era when the board reports an era transition. At the end
+     * of the method the round counter, turn state, and phase tracker are ready for the next totem
+     * placement sequence.
+     */
     public void resetBoard(){
         this.validateResetBoardRequest();
 
@@ -286,7 +309,12 @@ public class Game {
 
 
     }
-
+    /**
+     * Applies final-scoring rules to every player and closes the match.
+     *
+     * <p>The method evaluates final building effects, awards final prestige points, and transitions
+     * the match status to {@code FINISHED}.
+     */
     public void calculateFinalScore(){
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("calculateFinalScore", this.status);
@@ -309,6 +337,11 @@ public class Game {
 
     // Private methods
 
+    /**
+     * Validates lifecycle status, round phase, and turn ownership for a standard card draw.
+     *
+     * @param player player attempting to draw a card
+     */
     private void validateChooseCardRequest(Player player) {
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("chooseCard", this.status);
@@ -323,6 +356,11 @@ public class Game {
         }
     }
 
+    /**
+     * Ensures the turn state is ready to accept a card selection for the active player.
+     *
+     * @param player active player whose card selection is starting
+     */
     private void ensureDrawStateStarted(Player player) {
         if (this.turnState.isTurnCompleted()) {
             this.turnState.startCardSelection(player);
@@ -333,6 +371,13 @@ public class Game {
         }
     }
 
+    /**
+     * Verifies that the chosen card is currently drawable and removes it from the correct board row.
+     *
+     * @param player player attempting the draw
+     * @param card chosen board card
+     * @return board row the card was removed from
+     */
     private CardRow validateAndRemoveChosenCard(Player player, Card card) {
         CardRow cardRow = this.board.getCardRow(card);
         if (cardRow == CardRow.NOT_PRESENT) {
@@ -360,6 +405,12 @@ public class Game {
         return cardRow;
     }
 
+    /**
+     * Applies the chosen card to the player's tribe, paying costs when the card is a building.
+     *
+     * @param player player receiving the card
+     * @param card chosen card to apply
+     */
     private void applyChosenCardToPlayer(Player player, Card card) {
         if (card instanceof BuildingCard buildingCard) {
             buildingCard.payEffectiveCost(player);
@@ -369,6 +420,11 @@ public class Game {
         }
     }
 
+    /**
+     * Finalizes a completed standard draw turn and advances the round flow.
+     *
+     * @param player player whose draw turn has just ended
+     */
     private void completeDrawTurn(Player player) {
         this.board.returnPlayerToStartingTile(player);
         this.turnState.resetForNextPlayer(player);
@@ -381,6 +437,11 @@ public class Game {
         this.turnOrderTrack.advanceToNextPlayer();
     }
 
+    /**
+     * Validates lifecycle status, round phase, turn ownership, and player eligibility for an extra draw.
+     *
+     * @param player player attempting the bonus draw
+     */
     private void validateExtraDrawRequest(Player player) {
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("extraDrawn", this.status);
@@ -399,6 +460,13 @@ public class Game {
         }
     }
 
+    /**
+     * Verifies that the requested extra-draw card is present and drawable, then removes it.
+     *
+     * @param player player performing the extra draw
+     * @param card chosen extra-draw card
+     * @return board row the card was removed from
+     */
     private CardRow validateAndRemoveExtraDrawCard(Player player, Card card) {
         CardRow cardRow = this.board.getCardRow(card);
         if (cardRow == CardRow.NOT_PRESENT) {
@@ -420,6 +488,9 @@ public class Game {
         return cardRow;
     }
 
+    /**
+     * Advances the game after one bonus draw, either to the next eligible player or to effect resolution.
+     */
     private void completeExtraDrawTurn() {
         if (this.turnOrderTrack.isLastPlayer()) {
             this.turnOrderTrack.setNewOrder(this.board.getNextRoundTurnOrder());
@@ -430,6 +501,9 @@ public class Game {
         this.turnOrderTrack.advanceToNextPlayer();
     }
 
+    /**
+     * Chooses the next phase after all standard draws, filtering players eligible for extra draws.
+     */
     private void transitionAfterPlayerDraws() {
         List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
         List<Player> extraDrawOrder = nextRoundOrder.stream()
@@ -446,6 +520,9 @@ public class Game {
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.EXTRA_DRAWS);
     }
 
+    /**
+     * Validates that lower-event resolution is being requested in a valid game state.
+     */
     private void validateResolveEffectsRequest() {
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("resolveEffects", this.status);
@@ -456,6 +533,9 @@ public class Game {
         }
     }
 
+    /**
+     * Validates that board reset is being requested in a valid game state.
+     */
     private void validateResetBoardRequest() {
         if (this.status != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("resetBoard", this.status);

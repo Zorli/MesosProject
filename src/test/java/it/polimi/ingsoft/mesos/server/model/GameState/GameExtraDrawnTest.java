@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Focused tests for the bonus-draw branch of the {@link Game} turn flow.
+ */
 class GameExtraDrawnTest {
 
     @Test
@@ -80,6 +83,9 @@ class GameExtraDrawnTest {
         return player;
     }
 
+    /**
+     * Minimal board double exposing only the hooks exercised by extra-draw scenarios.
+     */
     private static final class RecordingBoard extends Board {
         private CardRow cardRow = CardRow.NOT_PRESENT;
         private List<Card> upperDraftableCards = List.of();
@@ -121,18 +127,27 @@ class GameExtraDrawnTest {
         }
     }
 
+    /**
+     * Lightweight building card used to verify extra-draw acquisition and payment.
+     */
     private static final class DummyBuildingCard extends BuildingCard {
         private DummyBuildingCard(int id, int foodCost) {
             super(id, Era.first, foodCost, 1, BenefitType.FINAL_BONUS_BIG_PP_REWARD);
         }
     }
 
+    /**
+     * Building stub granting permission to perform one extra draw.
+     */
     private static final class ExtraDrawPermissionBuildingCard extends BuildingCard {
         private ExtraDrawPermissionBuildingCard(int id, int foodCost) {
             super(id, Era.first, foodCost, 1, BenefitType.END_ROUND_EXTRA_CARD);
         }
     }
 
+    /**
+     * Lightweight character card used in negative extra-draw scenarios.
+     */
     private static final class DummyCharacterCard extends CharacterCard {
         private DummyCharacterCard(int id) {
             super(id, Era.first, TribeCardType.HUNTER);

@@ -29,6 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests lobby-manager lifecycle behavior for fresh and resumable lobbies.
+ */
 class LobbyManagerTest {
 
     @Test
@@ -323,6 +326,9 @@ class LobbyManagerTest {
         }
     }
 
+    /**
+     * Saved-match service stub returning a predetermined restored game.
+     */
     private static final class RecordingRestoreService implements SavedMatchService {
         private final Game gameToReturn;
         private String capturedGameId;

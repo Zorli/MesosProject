@@ -10,6 +10,9 @@ import java.util.List;
 public final class PostgresSavedMatchSchemaModule implements PostgresSchemaModule {
     private static final PostgresSavedMatchSchemaModule INSTANCE = new PostgresSavedMatchSchemaModule();
 
+    /**
+     * Prevents external instantiation of the singleton schema module.
+     */
     private PostgresSavedMatchSchemaModule() {
     }
 
@@ -22,11 +25,21 @@ public final class PostgresSavedMatchSchemaModule implements PostgresSchemaModul
         return INSTANCE;
     }
 
+    /**
+     * Returns the diagnostics name of the saved-match schema contribution.
+     *
+     * @return schema module name
+     */
     @Override
     public String moduleName() {
         return "saved_matches";
     }
 
+    /**
+     * Returns the DDL statements required by the saved-match subsystem.
+     *
+     * @return ordered schema-creation statements
+     */
     @Override
     public List<String> createStatements() {
         return List.of(
@@ -50,6 +63,11 @@ public final class PostgresSavedMatchSchemaModule implements PostgresSchemaModul
         );
     }
 
+    /**
+     * Returns the tables that must exist for saved-match persistence to be considered healthy.
+     *
+     * @return required saved-match table names
+     */
     @Override
     public List<String> requiredTables() {
         return List.of(

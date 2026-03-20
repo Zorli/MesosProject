@@ -7,6 +7,3 @@
  * the model while keeping all game-domain logic under a single namespace.
  */
 package it.polimi.ingsoft.mesos.server.model;
-//TODO : S
-//TODO: M
-//TODO: E

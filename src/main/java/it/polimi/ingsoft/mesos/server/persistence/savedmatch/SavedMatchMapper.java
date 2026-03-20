@@ -17,6 +17,9 @@ import java.util.Map;
  * Translates the live domain aggregate into the normalized saved-match persistence model.
  */
 final class SavedMatchMapper {
+    /**
+     * Prevents instantiation of the mapping utility class.
+     */
     private SavedMatchMapper() {
     }
 
@@ -148,6 +151,12 @@ final class SavedMatchMapper {
         return aggregate;
     }
 
+    /**
+     * Extracts only non-building cards from a mixed board-card list.
+     *
+     * @param cards mixed board-card list
+     * @return filtered list containing only tribe or event cards
+     */
     private static List<Card> extractNonBuildingCards(List<Card> cards) {
         List<Card> filteredCards = new ArrayList<>();
         for (Card card : cards) {
@@ -158,6 +167,12 @@ final class SavedMatchMapper {
         return filteredCards;
     }
 
+    /**
+     * Extracts only building cards from a mixed board-card list.
+     *
+     * @param cards mixed board-card list
+     * @return filtered list containing only building cards
+     */
     private static List<Card> extractBuildingCards(List<Card> cards) {
         List<Card> filteredCards = new ArrayList<>();
         for (Card card : cards) {
@@ -168,6 +183,13 @@ final class SavedMatchMapper {
         return filteredCards;
     }
 
+    /**
+     * Appends normalized board-card rows using the supplied zone and list order.
+     *
+     * @param target destination list for normalized records
+     * @param zone persistence zone assigned to every appended card
+     * @param cards ordered cards to serialize
+     */
     private static void appendBoardCardRecords(List<SavedMatchBoardCardRecord> target,
                                                SavedMatchBoardCardZone zone,
                                                List<Card> cards) {

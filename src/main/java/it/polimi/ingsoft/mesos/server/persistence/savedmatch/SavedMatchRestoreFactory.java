@@ -30,6 +30,9 @@ import java.util.Map;
  * Rebuilds the live domain aggregate from the normalized saved-match persistence model.
  */
 final class SavedMatchRestoreFactory {
+    /**
+     * Prevents instantiation of the restore utility class.
+     */
     private SavedMatchRestoreFactory() {
     }
 
@@ -77,6 +80,13 @@ final class SavedMatchRestoreFactory {
         );
     }
 
+    /**
+     * Restores player-owned cards and collects restored building instances by owner and card id.
+     *
+     * @param aggregate normalized saved-match aggregate
+     * @param playersByNickname restored players keyed by nickname
+     * @return restored building cards keyed first by nickname and then by card id
+     */
     private static Map<String, Map<Integer, BuildingCard>> restorePlayerCards(
             SavedMatchAggregate aggregate,
             Map<String, Player> playersByNickname
@@ -101,6 +111,12 @@ final class SavedMatchRestoreFactory {
         return buildingsByNicknameAndId;
     }
 
+    /**
+     * Reapplies persisted runtime state to restored player-owned building cards.
+     *
+     * @param aggregate normalized saved-match aggregate
+     * @param buildingsByNicknameAndId restored building instances keyed by owner and card id
+     */
     private static void restorePlayerCardRuntimeState(
             SavedMatchAggregate aggregate,
             Map<String, Map<Integer, BuildingCard>> buildingsByNicknameAndId
@@ -130,6 +146,14 @@ final class SavedMatchRestoreFactory {
         }
     }
 
+    /**
+     * Restores the board, visible piles, decks, offer path, and starting blocks.
+     *
+     * @param aggregate normalized saved-match aggregate
+     * @param players restored players in original index order
+     * @param playersByNickname restored players keyed by nickname
+     * @return reconstructed board aggregate
+     */
     private static Board restoreBoard(
             SavedMatchAggregate aggregate,
             ArrayList<Player> players,
@@ -180,6 +204,13 @@ final class SavedMatchRestoreFactory {
         return new Board(tribeDeck, buildingDeck, players, upperPile, lowerPile, offerPath);
     }
 
+    /**
+     * Restores the round-order tracker from normalized turn-order rows.
+     *
+     * @param aggregate normalized saved-match aggregate
+     * @param playersByNickname restored players keyed by nickname
+     * @return reconstructed turn-order tracker
+     */
     private static TurnOrderTrack restoreTurnOrderTrack(
             SavedMatchAggregate aggregate,
             Map<String, Player> playersByNickname
@@ -197,6 +228,13 @@ final class SavedMatchRestoreFactory {
         );
     }
 
+    /**
+     * Restores per-player draw counters and turn phase.
+     *
+     * @param aggregate normalized saved-match aggregate
+     * @param playersByNickname restored players keyed by nickname
+     * @return reconstructed turn-state machine
+     */
     private static TurnState restoreTurnState(
             SavedMatchAggregate aggregate,
             Map<String, Player> playersByNickname
@@ -217,6 +255,13 @@ final class SavedMatchRestoreFactory {
         );
     }
 
+    /**
+     * Extracts and reconstructs board cards belonging to the requested persistence zone.
+     *
+     * @param aggregate normalized saved-match aggregate
+     * @param zone board-card zone to rebuild
+     * @return ordered cards reconstructed from persisted identifiers
+     */
     private static List<Card> extractBoardCards(SavedMatchAggregate aggregate, SavedMatchBoardCardZone zone) {
         return aggregate.boardCards().stream()
                 .filter(boardCardRecord -> boardCardRecord.cardZone() == zone)
@@ -225,18 +270,37 @@ final class SavedMatchRestoreFactory {
                 .toList();
     }
 
+    /**
+     * Casts a generic card list to tribe cards after restore.
+     *
+     * @param cards cards known to belong to the tribe-card family
+     * @return same cards viewed as tribe cards
+     */
     private static List<TribeCard> toTribeCards(List<Card> cards) {
         return cards.stream()
                 .map(card -> (TribeCard) card)
                 .toList();
     }
 
+    /**
+     * Casts a generic card list to building cards after restore.
+     *
+     * @param cards cards known to belong to the building-card family
+     * @return same cards viewed as building cards
+     */
     private static List<BuildingCard> toBuildingCards(List<Card> cards) {
         return cards.stream()
                 .map(card -> (BuildingCard) card)
                 .toList();
     }
 
+    /**
+     * Resolves one restored player by nickname, failing when the snapshot references an unknown player.
+     *
+     * @param playersByNickname restored players keyed by nickname
+     * @param nickname nickname to resolve
+     * @return resolved player instance
+     */
     private static Player resolvePlayer(Map<String, Player> playersByNickname, String nickname) {
         Player player = playersByNickname.get(nickname);
         if (player == null) {
@@ -245,6 +309,12 @@ final class SavedMatchRestoreFactory {
         return player;
     }
 
+    /**
+     * Parses the persisted string game identifier back to the numeric model identifier.
+     *
+     * @param gameId persisted game identifier
+     * @return numeric game identifier
+     */
     private static int parseGameId(String gameId) {
         try {
             return Integer.parseInt(gameId);
@@ -261,6 +331,12 @@ final class SavedMatchRestoreFactory {
             int topRowCardsToTake,
             int bottomRowCardsToTake
     ) {
+        /**
+         * Reconstructs the static offer-space definition associated with a persisted space code.
+         *
+         * @param code saved offer-space code
+         * @return static definition used to rebuild the runtime offer space
+         */
         private static OfferSpaceDefinition fromCode(String code) {
             return switch (code) {
                 case "A" -> new OfferSpaceDefinition(1, "A", 5, 3, 0, 0);

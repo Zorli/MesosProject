@@ -17,6 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests orchestration behavior around setup and persistence checkpoints.
+ */
 class GameOrchestratorTest {
 
     @Test
@@ -85,6 +88,9 @@ class GameOrchestratorTest {
         return players;
     }
 
+    /**
+     * Saved-match service spy capturing the checkpoints emitted by the orchestrator.
+     */
     private static final class RecordingSavedMatchService implements SavedMatchService {
         private int initializeCalls;
         private int turnStartedCalls;

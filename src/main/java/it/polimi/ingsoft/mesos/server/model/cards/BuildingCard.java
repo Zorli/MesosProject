@@ -99,6 +99,14 @@ public class BuildingCard extends Card {
         player.gainPrestigePoints(this.prestigePoints);
     }
 
+    /**
+     * Applies the runtime effect of the building to the owning player.
+     *
+     * <p>The base implementation is intentionally empty because some buildings only contribute
+     * static prestige points or override other hooks instead of running an immediate effect.
+     *
+     * @param player owner of the building
+     */
     public void applyEffect(Player player) {
         // Default implementation does nothing, as some buildings only have intrinsic prestige points.
     }

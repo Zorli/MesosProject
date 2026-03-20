@@ -26,6 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Integration tests for round-trip persistence and restore of saved matches.
+ */
 class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Test

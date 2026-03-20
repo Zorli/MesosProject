@@ -7,6 +7,9 @@ import java.util.Set;
  * Validates normalized saved-match aggregates before they are stored or restored.
  */
 final class SavedMatchConsistencyChecker {
+    /**
+     * Prevents instantiation of the validation utility class.
+     */
     private SavedMatchConsistencyChecker() {
     }
 

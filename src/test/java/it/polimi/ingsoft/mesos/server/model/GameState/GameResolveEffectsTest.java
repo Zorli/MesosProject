@@ -14,6 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Focused tests for lower-event resolution and phase transitions in {@link Game}.
+ */
 class GameResolveEffectsTest {
 
     @Test
@@ -78,6 +81,9 @@ class GameResolveEffectsTest {
         return player;
     }
 
+    /**
+     * Minimal board double exposing only lower-event resolution to the game aggregate.
+     */
     private static final class RecordingBoard extends Board {
         private boolean resolveLowerEventsCalled;
 
