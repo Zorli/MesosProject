@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Unit tests for the saved-match application service independent of PostgreSQL.
+ */
 class PostgresSavedMatchServiceTest {
 
     @Test
@@ -50,6 +53,9 @@ class PostgresSavedMatchServiceTest {
         return DefaultGameFactory.getInstance().createGame(players);
     }
 
+    /**
+     * Repository spy capturing the last aggregate requested by the service.
+     */
     private static final class RecordingSavedMatchRepository implements SavedMatchRepository {
         private SavedMatchAggregate lastSavedAggregate;
 

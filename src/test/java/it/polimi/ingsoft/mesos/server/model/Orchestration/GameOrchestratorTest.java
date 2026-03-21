@@ -32,6 +32,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests orchestration behavior around setup and persistence checkpoints.
+ */
 class GameOrchestratorTest {
 
     @Test
@@ -194,6 +197,9 @@ class GameOrchestratorTest {
         }
     }
 
+    /**
+     * Saved-match service spy capturing the checkpoints emitted by the orchestrator.
+     */
     private static final class RecordingSavedMatchService implements SavedMatchService {
         private int initializeCalls;
         private int turnStartedCalls;

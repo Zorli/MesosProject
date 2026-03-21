@@ -14,6 +14,9 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Focused tests for the totem-placement branch of the {@link Game} round flow.
+ */
 class GameMoveTotemTest {
 
     @Test
@@ -139,6 +142,9 @@ class GameMoveTotemTest {
         return players;
     }
 
+    /**
+     * Minimal board double exposing placement, availability, and resolution-order behavior.
+     */
     private static final class RecordingBoard extends Board {
         private final Set<String> occupiedSpaces = new HashSet<>();
         private List<Player> resolutionOrder;

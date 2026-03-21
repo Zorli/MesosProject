@@ -39,6 +39,11 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         this.database.initializeSchema();
     }
 
+    /**
+     * Persists a complete saved-match aggregate inside a single database transaction.
+     *
+     * @param aggregate normalized saved-match snapshot to store
+     */
     @Override
     public void save(SavedMatchAggregate aggregate) {
         SavedMatchConsistencyChecker.validate(aggregate);
@@ -72,6 +77,12 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         });
     }
 
+    /**
+     * Loads a saved-match aggregate and validates its structural consistency.
+     *
+     * @param gameId identifier of the match to restore
+     * @return validated aggregate loaded from PostgreSQL
+     */
     @Override
     public SavedMatchAggregate load(String gameId) {
         return this.database.executeWithRetry(() -> {
@@ -83,6 +94,13 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         });
     }
 
+    /**
+     * Marks the given player as online, guarding against concurrent sessions for the same slot.
+     *
+     * @param gameId match identifier
+     * @param nickname player nickname
+     * @param sessionToken token of the connecting session
+     */
     @Override
     public void markPlayerOnline(String gameId, String nickname, String sessionToken) {
         this.database.executeWithRetry(() -> {
@@ -129,6 +147,12 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         });
     }
 
+    /**
+     * Marks the given player as offline in the persisted saved-match snapshot.
+     *
+     * @param gameId match identifier
+     * @param nickname player nickname
+     */
     @Override
     public void markPlayerOffline(String gameId, String nickname) {
         this.database.executeWithRetry(() -> {
@@ -142,6 +166,11 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         });
     }
 
+    /**
+     * Deletes in-progress matches that exceeded the configured retention window.
+     *
+     * @return number of deleted saved matches
+     */
     @Override
     public int deleteExpiredInProgressMatches() {
         return this.database.executeWithRetry(() -> {
@@ -152,6 +181,13 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         });
     }
 
+    /**
+     * Inserts or updates the top-level saved-match row.
+     *
+     * @param connection active transaction connection
+     * @param aggregate aggregate whose root row must be persisted
+     * @throws SQLException if the update fails
+     */
     private void upsertMatch(Connection connection, SavedMatchAggregate aggregate) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.UPSERT_SAVED_MATCH)) {
             statement.setString(1, aggregate.gameId());
@@ -170,6 +206,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Inserts or updates the normalized player rows belonging to one saved match.
+     *
+     * @param connection active transaction connection
+     * @param players player rows to persist
+     * @param gameId identifier of the owning match
+     * @throws SQLException if the batch update fails
+     */
     private void upsertPlayers(Connection connection, List<SavedMatchPlayerRecord> players, String gameId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.UPSERT_SAVED_MATCH_PLAYER)) {
             for (SavedMatchPlayerRecord player : players) {
@@ -185,6 +229,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Replaces the persisted turn order with the supplied normalized order rows.
+     *
+     * @param connection active transaction connection
+     * @param gameId identifier of the owning match
+     * @param turnOrder ordered turn rows to persist
+     * @throws SQLException if the replacement fails
+     */
     private void replaceTurnOrder(Connection connection, String gameId, List<SavedMatchTurnOrderRecord> turnOrder) throws SQLException {
         this.deleteByGameId(connection, PostgresSavedMatchQueries.DELETE_SAVED_MATCH_TURN_ORDER, gameId);
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.INSERT_SAVED_MATCH_TURN_ORDER)) {
@@ -198,6 +250,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Replaces the persisted per-player turn-choice counters.
+     *
+     * @param connection active transaction connection
+     * @param gameId identifier of the owning match
+     * @param turnChoices normalized turn-choice rows to persist
+     * @throws SQLException if the replacement fails
+     */
     private void replaceTurnChoices(Connection connection, String gameId, List<SavedMatchTurnChoiceRecord> turnChoices) throws SQLException {
         this.deleteByGameId(connection, PostgresSavedMatchQueries.DELETE_SAVED_MATCH_TURN_CHOICES, gameId);
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.INSERT_SAVED_MATCH_TURN_CHOICES)) {
@@ -212,6 +272,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Replaces the persisted offer-path occupancy rows.
+     *
+     * @param connection active transaction connection
+     * @param gameId identifier of the owning match
+     * @param offerSpaces normalized offer-space rows to persist
+     * @throws SQLException if the replacement fails
+     */
     private void replaceOfferSpaces(Connection connection, String gameId, List<SavedMatchOfferSpaceRecord> offerSpaces) throws SQLException {
         this.deleteByGameId(connection, PostgresSavedMatchQueries.DELETE_SAVED_MATCH_OFFER_SPACES, gameId);
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.INSERT_SAVED_MATCH_OFFER_SPACE)) {
@@ -226,6 +294,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Replaces the persisted starting-block occupancy rows.
+     *
+     * @param connection active transaction connection
+     * @param gameId identifier of the owning match
+     * @param startingBlocks normalized starting-block rows to persist
+     * @throws SQLException if the replacement fails
+     */
     private void replaceStartingBlocks(Connection connection, String gameId, List<SavedMatchStartingBlockRecord> startingBlocks) throws SQLException {
         this.deleteByGameId(connection, PostgresSavedMatchQueries.DELETE_SAVED_MATCH_STARTING_BLOCKS, gameId);
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.INSERT_SAVED_MATCH_STARTING_BLOCK)) {
@@ -241,6 +317,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Replaces the persisted board-card rows for both visible piles and remaining decks.
+     *
+     * @param connection active transaction connection
+     * @param gameId identifier of the owning match
+     * @param boardCards normalized board-card rows to persist
+     * @throws SQLException if the replacement fails
+     */
     private void replaceBoardCards(Connection connection, String gameId, List<SavedMatchBoardCardRecord> boardCards) throws SQLException {
         this.deleteByGameId(connection, PostgresSavedMatchQueries.DELETE_SAVED_MATCH_BOARD_CARDS, gameId);
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.INSERT_SAVED_MATCH_BOARD_CARD)) {
@@ -255,6 +339,15 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Replaces player-owned cards together with their optional runtime state rows.
+     *
+     * @param connection active transaction connection
+     * @param gameId identifier of the owning match
+     * @param playerCards normalized player-card rows to persist
+     * @param runtimeStates normalized runtime-state rows to persist
+     * @throws SQLException if the replacement fails
+     */
     private void replacePlayerCards(Connection connection,
                                     String gameId,
                                     List<SavedMatchPlayerCardRecord> playerCards,
@@ -291,6 +384,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Loads the top-level saved-match aggregate and all of its normalized child collections.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return fully assembled normalized aggregate
+     * @throws SQLException if the query fails
+     */
     private SavedMatchAggregate loadAggregate(Connection connection, String gameId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH)) {
             statement.setString(1, gameId);
@@ -326,6 +427,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         }
     }
 
+    /**
+     * Loads persisted players for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return ordered saved-match player rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchPlayerRecord> loadPlayers(Connection connection, String gameId) throws SQLException {
         List<SavedMatchPlayerRecord> players = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_PLAYERS)) {
@@ -348,6 +457,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return players;
     }
 
+    /**
+     * Loads persisted turn-order rows for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return ordered turn-order rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchTurnOrderRecord> loadTurnOrder(Connection connection, String gameId) throws SQLException {
         List<SavedMatchTurnOrderRecord> turnOrder = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_TURN_ORDER)) {
@@ -364,6 +481,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return turnOrder;
     }
 
+    /**
+     * Loads persisted turn-choice counters for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return normalized turn-choice rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchTurnChoiceRecord> loadTurnChoices(Connection connection, String gameId) throws SQLException {
         List<SavedMatchTurnChoiceRecord> turnChoices = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_TURN_CHOICES)) {
@@ -381,6 +506,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return turnChoices;
     }
 
+    /**
+     * Loads persisted offer-space rows for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return normalized offer-space rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchOfferSpaceRecord> loadOfferSpaces(Connection connection, String gameId) throws SQLException {
         List<SavedMatchOfferSpaceRecord> offerSpaces = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_OFFER_SPACES)) {
@@ -398,6 +531,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return offerSpaces;
     }
 
+    /**
+     * Loads persisted starting-block rows for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return normalized starting-block rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchStartingBlockRecord> loadStartingBlocks(Connection connection, String gameId) throws SQLException {
         List<SavedMatchStartingBlockRecord> startingBlocks = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_STARTING_BLOCKS)) {
@@ -416,6 +557,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return startingBlocks;
     }
 
+    /**
+     * Loads persisted board-card rows for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return normalized board-card rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchBoardCardRecord> loadBoardCards(Connection connection, String gameId) throws SQLException {
         List<SavedMatchBoardCardRecord> boardCards = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_BOARD_CARDS)) {
@@ -436,6 +585,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return boardCards;
     }
 
+    /**
+     * Loads persisted player-owned card rows for the requested match.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return normalized player-card rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchPlayerCardRecord> loadPlayerCards(Connection connection, String gameId) throws SQLException {
         List<SavedMatchPlayerCardRecord> playerCards = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_PLAYER_CARDS)) {
@@ -454,6 +611,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return playerCards;
     }
 
+    /**
+     * Loads persisted runtime-state rows associated with player-owned building cards.
+     *
+     * @param connection active read connection
+     * @param gameId identifier of the match to load
+     * @return normalized runtime-state rows
+     * @throws SQLException if the query fails
+     */
     private List<SavedMatchPlayerCardRuntimeStateRecord> loadPlayerCardRuntimeStates(Connection connection, String gameId) throws SQLException {
         List<SavedMatchPlayerCardRuntimeStateRecord> runtimeStates = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(PostgresSavedMatchQueries.SELECT_SAVED_MATCH_PLAYER_CARD_STATE)) {
@@ -474,6 +639,14 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
         return runtimeStates;
     }
 
+    /**
+     * Executes a single-parameter delete statement scoped to one saved-match identifier.
+     *
+     * @param connection active transaction connection
+     * @param sql delete statement accepting the match id as first parameter
+     * @param gameId identifier of the match whose child rows must be deleted
+     * @throws SQLException if the delete fails
+     */
     private void deleteByGameId(Connection connection, String sql, String gameId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, gameId);

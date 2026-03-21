@@ -64,12 +64,24 @@ public class Tribe {
         this.buildings.add(b);
     }
 
+    /**
+     * Applies the immediate hunter effect when the acquired character is a hunter.
+     *
+     * @param character character that has just been drawn
+     * @param player owner receiving the character
+     */
     private void notifyHunterDraw(CharacterCard character, Player player) {
         if (character.getType() == TribeCardType.HUNTER) {
             ((Hunter) character).applyEffect(player);
         }
     }
 
+    /**
+     * Notifies owned buildings that react to newly acquired character cards.
+     *
+     * @param character character that has just been drawn
+     * @param player owner receiving the character
+     */
     private void notifyPostDrawBuildings(CharacterCard character, Player player) {
         for (BuildingCard building : this.buildings) {
             if (building.getBenefitType() == BenefitType.POST_DRAW_SET_FOR_FOOD) {
@@ -224,6 +236,12 @@ public class Tribe {
         return reward;
     }
 
+    /**
+     * Returns whether at least one owned building exposes the specified benefit type.
+     *
+     * @param benefitType benefit to search for
+     * @return {@code true} when the tribe owns a matching building
+     */
     private boolean hasBuildingWithBenefit(BenefitType benefitType) {
         for (BuildingCard building : this.buildings) {
             if (building.getBenefitType() == benefitType) {

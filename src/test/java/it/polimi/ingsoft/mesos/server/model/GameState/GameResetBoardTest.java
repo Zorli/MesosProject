@@ -14,6 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Focused tests for board-reset and era-transition behavior in {@link Game}.
+ */
 class GameResetBoardTest {
 
     @Test
@@ -89,6 +92,9 @@ class GameResetBoardTest {
         return player;
     }
 
+    /**
+     * Minimal board double exposing only round-reset behavior to the game aggregate.
+     */
     private static final class RecordingBoard extends Board {
         private boolean resetBoardAfterRoundCalled;
         private boolean eraChanged;

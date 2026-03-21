@@ -483,6 +483,9 @@ final class PostgresSavedMatchQueries {
               AND updated_at < CURRENT_TIMESTAMP - INTERVAL '2 hours'
             """;
 
+    /**
+     * Prevents instantiation of the SQL-constants holder class.
+     */
     private PostgresSavedMatchQueries() {
     }
 }

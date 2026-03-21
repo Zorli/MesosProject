@@ -25,6 +25,12 @@ public class TribeDeck extends Deck {
         return new TribeDeck(orderedCards, false);
     }
 
+    /**
+     * Creates a tribe deck optionally preserving the supplied order.
+     *
+     * @param cards cards that make up the draw pile
+     * @param shuffleOnCreate whether the deck should be shuffled during construction
+     */
     private TribeDeck(ArrayList<Card> cards, boolean shuffleOnCreate) {
         super(cards, shuffleOnCreate);
     }

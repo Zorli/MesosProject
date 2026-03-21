@@ -15,6 +15,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
+
  * Shared PostgreSQL backend and isolated test-database lifecycle for integration tests.
  *
  * <p>The support prefers a transient Testcontainers PostgreSQL instance when Docker is available.
@@ -22,6 +23,7 @@ import java.util.UUID;
  * instance using {@code MESOS_DB_*} environment variables or the local development defaults
  * ({@code localhost:5432}, {@code postgres}/{@code postgres}). This keeps integration tests
  * executable in environments where Docker CLI works but Testcontainers socket detection does not.
+
  */
 public abstract class PostgresIntegrationTestSupport {
     private static final int POSTGRES_IDENTIFIER_MAX_LENGTH = 63;

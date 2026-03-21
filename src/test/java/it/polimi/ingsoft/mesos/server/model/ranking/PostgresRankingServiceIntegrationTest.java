@@ -10,7 +10,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+
 @Tag("integration")
+
+/**
+ * Integration tests verifying ranking persistence across PostgreSQL-backed service instances.
+ */
 class PostgresRankingServiceIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Test
