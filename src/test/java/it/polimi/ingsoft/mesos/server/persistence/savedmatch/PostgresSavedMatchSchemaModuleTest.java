@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.persistence.savedmatch;
 import it.polimi.ingsoft.mesos.server.ServerRuntimeConfig;
 import it.polimi.ingsoft.mesos.server.persistence.postgres.PostgresDatabaseBootstrap;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("integration")
 class PostgresSavedMatchSchemaModuleTest extends PostgresIntegrationTestSupport {
 
     @Test

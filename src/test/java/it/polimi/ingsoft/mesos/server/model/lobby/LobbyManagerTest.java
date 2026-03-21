@@ -60,6 +60,7 @@ class LobbyManagerTest {
         manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
 
         assertEquals(LobbyStatus.READY, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+        assertTrue(manager.canStart(lobby.getId()));
     }
 
     @Test
@@ -70,6 +71,7 @@ class LobbyManagerTest {
 
         manager.removePlayer(lobby.getId(), host);
 
+        assertEquals(LobbyStatus.CLOSED, lobby.getStatus());
         assertTrue(manager.getLobby(lobby.getId()).isEmpty());
     }
 
@@ -228,6 +230,17 @@ class LobbyManagerTest {
     }
 
     @Test
+    void createResumeLobbyAdvancesLobbyIdsLikeStandardCreation() {
+        LobbyManager manager = new LobbyManager();
+
+        Lobby first = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        Lobby second = manager.createLobby(playerWithNickname("Carol"));
+
+        assertEquals(1, first.getId());
+        assertEquals(2, second.getId());
+    }
+
+    @Test
     void joinLobbySetsResumableLobbyToReadyWhenAllOriginalPlayersReconnect() {
         LobbyManager manager = new LobbyManager();
         Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
@@ -250,6 +263,22 @@ class LobbyManagerTest {
         Lobby updatedLobby = manager.getLobby(lobby.getId()).orElseThrow();
         assertEquals(LobbyStatus.RESUMABLE, updatedLobby.getStatus());
         assertTrue(updatedLobby.getPlayers().isEmpty());
+    }
+
+    @Test
+    void removingPlayerFromReadyResumableLobbyReturnsItToResumableStatus() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+
+        assertEquals(LobbyStatus.READY, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+
+        manager.removePlayer(lobby.getId(), playerWithNickname("Bob"));
+
+        Lobby updatedLobby = manager.getLobby(lobby.getId()).orElseThrow();
+        assertEquals(LobbyStatus.RESUMABLE, updatedLobby.getStatus());
+        assertFalse(manager.canStart(lobby.getId()));
     }
 
     @Test
@@ -306,6 +335,71 @@ class LobbyManagerTest {
         LobbyManager manager = new LobbyManager();
 
         assertFalse(manager.getLobby(999).isPresent());
+    }
+
+    @Test
+    void joinLobbyRejectsNullPlayerAndUnknownLobby() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createLobby(playerWithNickname("Alice"));
+
+        assertThrows(IllegalArgumentException.class, () -> manager.joinLobby(lobby.getId(), null));
+        assertThrows(IllegalArgumentException.class, () -> manager.joinLobby(999, playerWithNickname("Bob")));
+    }
+
+    @Test
+    void exitLobbyDelegatesToRemovePlayer() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createLobby(playerWithNickname("Alice"));
+        Player bob = playerWithNickname("Bob");
+        manager.joinLobby(lobby.getId(), bob);
+
+        manager.exitLobby(lobby.getId(), bob);
+
+        Lobby updatedLobby = manager.getLobby(lobby.getId()).orElseThrow();
+        assertEquals(1, updatedLobby.getPlayers().size());
+        assertEquals("Alice", updatedLobby.getPlayers().get(0).getNickname());
+        assertEquals(LobbyStatus.WAITING, updatedLobby.getStatus());
+    }
+
+    @Test
+    void createGameFromLobbyRejectsNullSavedMatchService() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createLobby(playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+
+        assertThrows(IllegalArgumentException.class, () -> manager.createGameFromLobby(lobby.getId(), null));
+    }
+
+    @Test
+    void resumeGameFromLobbyRejectsNullServiceNonResumableAndNotReadyLobby() {
+        LobbyManager manager = new LobbyManager();
+        Lobby standardLobby = manager.createLobby(playerWithNickname("Alice"));
+        Lobby resumableLobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+
+        assertThrows(IllegalArgumentException.class, () -> manager.resumeGameFromLobby(resumableLobby.getId(), null));
+        assertThrows(IllegalStateException.class, () -> manager.resumeGameFromLobby(standardLobby.getId(), new RecordingRestoreService(restoredGame("Alice", "Bob"))));
+        assertThrows(IllegalStateException.class, () -> manager.resumeGameFromLobby(resumableLobby.getId(), new RecordingRestoreService(restoredGame("Alice", "Bob"))));
+    }
+
+    @Test
+    void removePlayerRejectsNullAndUnknownLobby() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createLobby(playerWithNickname("Alice"));
+
+        assertThrows(IllegalArgumentException.class, () -> manager.removePlayer(lobby.getId(), null));
+        assertThrows(IllegalArgumentException.class, () -> manager.removePlayer(999, playerWithNickname("Alice")));
+    }
+
+    @Test
+    void toStringIncludesTrackedLobbyCount() {
+        LobbyManager manager = new LobbyManager();
+        manager.createLobby(playerWithNickname("Alice"));
+        manager.createLobby(playerWithNickname("Bob"));
+
+        String description = manager.toString();
+
+        assertTrue(description.contains("nextLobbyId=3"));
+        assertTrue(description.contains("lobbiesCount=2"));
     }
 
     private static final class RecordingGameFactory implements GameFactory {

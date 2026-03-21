@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.persistence.postgres;
 import it.polimi.ingsoft.mesos.server.ServerRuntimeConfig;
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Tag("integration")
 class PostgresDatabaseBootstrapTest extends PostgresIntegrationTestSupport {
 
     @Test

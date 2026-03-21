@@ -37,4 +37,16 @@ class RankingConfigTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new RankingConfig(2, 5, 1000, 100, 24, 2, 2, 8, -1));
     }
+
+    @Test
+    void throwsWhenInitialEloIsLowerThanMinimumOrKStepIsNegative() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankingConfig(2, 5, 99, 100, 24, 2, 2, 8, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankingConfig(2, 5, 1000, 100, 24, -1, 2, 8, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankingConfig(2, 5, 1000, 0, 24, 2, 2, 8, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankingConfig(2, 5, 1000, 100, 24, 2, 2, -1, 3));
+    }
 }

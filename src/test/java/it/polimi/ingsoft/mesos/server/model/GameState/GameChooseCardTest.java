@@ -136,6 +136,9 @@ class GameChooseCardTest {
         assertEquals(bob, turnOrderTrack.getCurrentPlayer());
         assertEquals(RoundPhase.PLAYER_DRAWS, turnOrderTrack.getCurrentRoundPhase());
         assertTrue(board.returnedPlayers.contains(alice));
+        assertTrue(board.lowerRemoved);
+        assertTrue(alice.getTribe().getCharacters().contains(character));
+        assertEquals(0, turnState.getRemainingLowerChoices(alice));
     }
 
     @Test
@@ -241,7 +244,7 @@ class GameChooseCardTest {
      */
     private static final class DummyCharacterCard extends CharacterCard {
         private DummyCharacterCard(int id) {
-            super(id, Era.first, TribeCardType.HUNTER);
+            super(id, Era.first, TribeCardType.GATHERER);
         }
     }
 

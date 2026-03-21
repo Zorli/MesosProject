@@ -1,20 +1,28 @@
 package it.polimi.ingsoft.mesos.server.persistence.savedmatch;
 
 import it.polimi.ingsoft.mesos.server.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.Factory.ParserJson;
 import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.model.Factory.ParserJson;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
+import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
+import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
+import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.PairOfInventor;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.SetForFood;
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.postgres.PostgresDatabaseBootstrap;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -26,9 +34,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+
+@Tag("integration")
 /**
  * Integration tests for round-trip persistence and restore of saved matches.
  */
+
 class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Test
@@ -90,8 +101,8 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
         assertEquals(game.getTurnOrderTrack().getCurrentPlayerIndex(), restoredGame.getTurnOrderTrack().getCurrentPlayerIndex());
         assertEquals(game.getTurnState().getRemainingLowerChoices(firstPlayer), restoredGame.getTurnState().getRemainingLowerChoices(restoredGame.getPlayers().getFirst()));
         assertEquals(
-                occupiedOfferCodes(game.getBoard().getAvailableOfferSpaces()),
-                occupiedOfferCodes(restoredGame.getBoard().getAvailableOfferSpaces())
+                occupiedOfferCodes(game.getBoard().getOfferSpaces()),
+                occupiedOfferCodes(restoredGame.getBoard().getOfferSpaces())
         );
         assertCardOrderEquals(game.getBoard().getRemainingTribeDeckCards(), restoredGame.getBoard().getRemainingTribeDeckCards());
     }
@@ -172,9 +183,6 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
                 runtimeConfig.maxBusyRetries()
         );
 
-        Game game = createGame();
-        game.setup();
-
         SetForFood setForFood = (SetForFood) ParserJson.parseBuildingDeck().getCardsInOrder().stream()
                 .filter(SetForFood.class::isInstance)
                 .findFirst()
@@ -205,8 +213,7 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
                 "PAINTING", 1
         ));
 
-        game.getPlayers().getFirst().getTribe().addBuilding(setForFood);
-        game.getPlayers().getFirst().getTribe().addBuilding(pairOfInventor);
+        Game game = createGameWithOwnedBuildings(setForFood, pairOfInventor);
 
         service.saveMatch(game, "Alice", SavedMatchCheckpointType.TURN_STARTED);
 
@@ -248,6 +255,34 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
 
     private static Game createGame() {
         return createGame(2);
+    }
+
+    private static Game createGameWithOwnedBuildings(BuildingCard... ownedBuildings) {
+        ArrayList<Player> players = new ArrayList<>();
+        players.add(new Player("Alice", 0, 0, TotemColor.RED, null));
+        players.add(new Player("Bob", 0, 0, TotemColor.BLUE, null));
+        players.forEach(Player::initializeGameAttributes);
+
+        for (BuildingCard ownedBuilding : ownedBuildings) {
+            players.getFirst().getTribe().addBuilding(ownedBuilding);
+        }
+
+        Board board = new Board(
+                TribeDeck.fromOrderedCards(new ArrayList<>()),
+                BuildingDeck.fromOrderedCards(new ArrayList<>()),
+                players
+        );
+        board.buildOfferPath();
+
+        return new Game(
+                8_800,
+                players,
+                new TurnState(),
+                new TurnOrderTrack(new ArrayList<>(players), 0, 1, RoundPhase.PLACING_TOTEMS),
+                board,
+                Era.first,
+                GameStatus.IN_PROGRESS
+        );
     }
 
     private static Game createGame(int playerCount) {
@@ -292,7 +327,7 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
         assertCardOrderEquals(expected.getBoard().getLowerRowCards(), actual.getBoard().getLowerRowCards());
         assertCardOrderEquals(expected.getBoard().getRemainingTribeDeckCards(), actual.getBoard().getRemainingTribeDeckCards());
         assertCardOrderEquals(expected.getBoard().getRemainingBuildingDeckCards(), actual.getBoard().getRemainingBuildingDeckCards());
-        assertEquals(occupiedOfferCodes(expected.getBoard().getAvailableOfferSpaces()), occupiedOfferCodes(actual.getBoard().getAvailableOfferSpaces()));
+        assertEquals(occupiedOfferCodes(expected.getBoard().getOfferSpaces()), occupiedOfferCodes(actual.getBoard().getOfferSpaces()));
         assertEquals(startingBlocksState(expected.getBoard().getStartingBlocks()), startingBlocksState(actual.getBoard().getStartingBlocks()));
         assertEquals(playerCardState(expected.getPlayers()), playerCardState(actual.getPlayers()));
         assertEquals(playerCardRuntimeState(expected.getPlayers()), playerCardRuntimeState(actual.getPlayers()));

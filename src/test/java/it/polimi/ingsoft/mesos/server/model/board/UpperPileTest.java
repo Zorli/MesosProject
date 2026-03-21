@@ -8,6 +8,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -82,5 +83,26 @@ class UpperPileTest {
 
         assertNotNull(emptyBuildings, "Non deve mai restituire null, ma una lista vuota");
         assertTrue(emptyBuildings.isEmpty(), "La lista degli edifici deve essere vuota");
+    }
+
+    @Test
+    void restoredConstructorAndGetters_CreateDefensiveCopies() {
+        ArrayList<Gatherer> restoredTribes = new ArrayList<>(List.of(tribeCard1, tribeCard2));
+        ArrayList<BuildingCard> restoredBuildings = new ArrayList<>(List.of(buildingCard1));
+
+        UpperPile restoredPile = new UpperPile(new ArrayList<>(restoredTribes), new ArrayList<>(restoredBuildings));
+        restoredTribes.clear();
+        restoredBuildings.clear();
+
+        List<?> visibleTribes = restoredPile.getTribeCards();
+        List<BuildingCard> visibleBuildings = restoredPile.getBuildingCards();
+        List<?> allCards = restoredPile.getAllCards();
+
+        visibleTribes.clear();
+        visibleBuildings.clear();
+        allCards.clear();
+
+        assertEquals(2, restoredPile.getTribeCardsSize(), "La pila deve mantenere le tribù ripristinate");
+        assertEquals(3, restoredPile.getAllCards().size(), "Le copie restituite non devono alterare lo stato interno");
     }
 }

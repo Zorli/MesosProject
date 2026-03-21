@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.postgres.PostgresDatabaseBootstrap;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@Tag("integration")
 class PostgresSavedMatchRepositoryIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Test
