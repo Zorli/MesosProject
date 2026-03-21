@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -429,6 +430,9 @@ public final class PostgresSavedMatchRepository implements SavedMatchRepository 
                 }
             }
         }
+        boardCards.sort(Comparator
+                .comparing(SavedMatchBoardCardRecord::cardZone)
+                .thenComparingInt(SavedMatchBoardCardRecord::positionIndex));
         return boardCards;
     }
 

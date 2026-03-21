@@ -42,4 +42,27 @@ class RankingInputValidatorTest {
                 2
         ));
     }
+
+    @Test
+    void rejectsNullOrBlankNicknameGameIdAndPlayedAt() {
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeNickname(null));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeNickname("   "));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeGameId(null));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeGameId("   "));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizePlayedAt(null));
+    }
+
+    @Test
+    void normalizeScoresRejectsNullEmptyWrongSizeAndNullElements() {
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeScores(null, 2));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeScores(List.of(), 2));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeScores(
+                List.of(new MatchScore("Alice", 10)),
+                2
+        ));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeScores(
+                java.util.Arrays.asList(new MatchScore("Alice", 10), null),
+                2
+        ));
+    }
 }

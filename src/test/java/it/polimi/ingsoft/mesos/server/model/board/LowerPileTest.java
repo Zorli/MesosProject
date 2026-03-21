@@ -96,4 +96,57 @@ class LowerPileTest {
         assertEquals("HUNT", executionLog.get(0), "L'evento normale (Hunt) deve agire per primo");
         assertEquals("SUSTENANCE", executionLog.get(1), "Il Sustenance DEVE agire rigorosamente per ultimo");
     }
+
+    @Test
+    void restoredConstructorAndGetters_CreateDefensiveCopies() {
+        ArrayList<Gatherer> restoredTribes = new ArrayList<>(List.of(basicTribe));
+        ArrayList<BuildingCard> restoredBuildings = new ArrayList<>(List.of(basicBuilding));
+
+        LowerPile restoredPile = new LowerPile(new ArrayList<>(restoredTribes), new ArrayList<>(restoredBuildings));
+        restoredTribes.clear();
+        restoredBuildings.clear();
+
+        List<?> visibleTribes = restoredPile.getTribeCards();
+        List<BuildingCard> visibleBuildings = restoredPile.getBuildingCards();
+        List<?> allCards = restoredPile.getAllCards();
+
+        visibleTribes.clear();
+        visibleBuildings.clear();
+        allCards.clear();
+
+        assertEquals(1, restoredPile.getTribeCardsSize(), "Le tribù ripristinate devono restare nella lower pile");
+        assertEquals(2, restoredPile.getAllCards().size(), "Le copie restituite non devono mutare la lower pile");
+    }
+
+    @Test
+    void removeCard_RemovesBuildingWithoutAffectingTribes() {
+        lowerPile.addCard(basicTribe);
+        lowerPile.addCard(basicBuilding);
+
+        lowerPile.removeCard(basicBuilding);
+
+        assertEquals(1, lowerPile.getTribeCardsSize(), "La tribù deve rimanere intatta");
+        assertEquals(List.of(basicTribe), lowerPile.getTribeCards(), "La carta tribù non deve essere toccata");
+        assertTrue(lowerPile.getBuildingCards().isEmpty(), "L'edificio rimosso non deve più essere presente");
+    }
+
+    @Test
+    void resolveLowerRowEvents_WithoutSustenance_ResolvesOnlyRegularEvents() {
+        List<String> executionLog = new ArrayList<>();
+        ArrayList<Player> dummyPlayers = new ArrayList<>();
+
+        HuntEventCard huntEvent = new HuntEventCard(7, Era.first, TribeCardType.EVENT, 1, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) {
+                executionLog.add("HUNT");
+            }
+        };
+
+        lowerPile.addCard(huntEvent);
+        lowerPile.addCard(basicBuilding);
+
+        lowerPile.resolveLowerRowEvents(dummyPlayers);
+
+        assertEquals(List.of("HUNT"), executionLog, "Senza Sustenance va risolto solo l'evento presente");
+    }
 }

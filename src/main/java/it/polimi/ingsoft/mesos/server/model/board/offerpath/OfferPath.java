@@ -188,6 +188,15 @@ public class OfferPath {
     }
 
     /**
+     * Returns all offer spaces configured for the current match, including occupied ones.
+     *
+     * @return copy of all offer spaces in path order
+     */
+    public List<OfferSpace> getOfferSpaces() {
+        return new ArrayList<>(this.offerSpaces);
+    }
+
+    /**
      * Returns the starting tile associated with this offer path.
      *
      * @return starting tile

@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -9,6 +10,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+@Tag("integration")
 class PostgresRankingServiceIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Test

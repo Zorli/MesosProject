@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.NoOpSavedMatchService;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class ServerServicesFactoryTest {
@@ -23,5 +24,10 @@ class ServerServicesFactoryTest {
 
         assertSame(NoOpRankingService.INSTANCE, services.rankingService());
         assertSame(NoOpSavedMatchService.INSTANCE, services.savedMatchService());
+    }
+
+    @Test
+    void createRejectsNullRuntimeConfig() {
+        assertThrows(NullPointerException.class, () -> ServerServicesFactory.create(null));
     }
 }

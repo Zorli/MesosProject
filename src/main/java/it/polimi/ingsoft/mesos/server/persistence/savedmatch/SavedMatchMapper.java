@@ -94,7 +94,7 @@ final class SavedMatchMapper {
             ));
         }
 
-        List<SavedMatchOfferSpaceRecord> offerSpaceRecords = game.getBoard().getAvailableOfferSpaces().stream()
+        List<SavedMatchOfferSpaceRecord> offerSpaceRecords = game.getBoard().getOfferSpaces().stream()
                 .map(space -> new SavedMatchOfferSpaceRecord(
                         space.getCode(),
                         space.getPositionIndex(),

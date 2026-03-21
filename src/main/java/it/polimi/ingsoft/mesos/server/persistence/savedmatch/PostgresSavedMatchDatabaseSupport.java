@@ -96,11 +96,9 @@ final class PostgresSavedMatchDatabaseSupport {
                 }
 
                 throw new IllegalStateException("Saved-match database operation failed", exception);
+            } catch (RuntimeException exception) {
+                throw exception;
             } catch (Exception exception) {
-                if (exception instanceof IllegalStateException illegalStateException) {
-                    throw illegalStateException;
-                }
-
                 throw new IllegalStateException("Unexpected saved-match operation failure", exception);
             }
         }

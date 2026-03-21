@@ -397,6 +397,15 @@ public class Board {
     }
 
     /**
+     * Returns all offer spaces configured on the board, including occupied ones.
+     *
+     * @return copy of all offer spaces in path order
+     */
+    public List<OfferSpace> getOfferSpaces() {
+        return this.offerPath.getOfferSpaces();
+    }
+
+    /**
      * Returns the cards still present in the tribe deck preserving their draw order.
      *
      * @return copy of remaining tribe-deck cards

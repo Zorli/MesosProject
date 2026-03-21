@@ -135,7 +135,7 @@ class GameExtraDrawnTest {
 
     private static final class DummyCharacterCard extends CharacterCard {
         private DummyCharacterCard(int id) {
-            super(id, Era.first, TribeCardType.HUNTER);
+            super(id, Era.first, TribeCardType.GATHERER);
         }
     }
 }

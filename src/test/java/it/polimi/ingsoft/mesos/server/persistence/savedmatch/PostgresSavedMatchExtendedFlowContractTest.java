@@ -10,6 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.postgres.PostgresDatabaseBootstrap;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
  * At that point they should be enabled without redesigning the persistence layer.
  */
 @Disabled("Enable when draw/effect/reset/final-scoring game-state methods are implemented")
+@Tag("integration")
 class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTestSupport {
 
     @Test

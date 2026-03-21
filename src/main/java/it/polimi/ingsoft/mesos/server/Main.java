@@ -2,28 +2,39 @@ package it.polimi.ingsoft.mesos.server;
 
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 
+import java.io.PrintStream;
+import java.util.Map;
+
 public final class Main {
     private Main() {
     }
 
     public static void main(String[] args) {
+        int exitCode = run(System.getenv(), System.out, System.err);
+        if (exitCode != 0) {
+            System.exit(exitCode);
+        }
+    }
+
+    static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
-            ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(System.getenv());
+            ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(environment);
             ServerServices serverServices = ServerServicesFactory.create(runtimeConfig);
             RankingService rankingService = serverServices.rankingService();
 
             int leaderboardEntries = rankingService.getLeaderboard().size();
-            System.out.println("Server Mesos avviato.");
+            out.println("Server Mesos avviato.");
             if (runtimeConfig.dbEnabled()) {
-                System.out.println("PostgreSQL raggiungibile su " + runtimeConfig.jdbcUrl());
+                out.println("PostgreSQL raggiungibile su " + runtimeConfig.jdbcUrl());
             } else {
-                System.out.println("Modalita no-db attiva: persistenza ranking e save-match disabilitate.");
+                out.println("Modalita no-db attiva: persistenza ranking e save-match disabilitate.");
             }
-            System.out.println("Leaderboard entries correnti: " + leaderboardEntries);
+            out.println("Leaderboard entries correnti: " + leaderboardEntries);
+            return 0;
         } catch (RuntimeException exception) {
-            System.err.println("Avvio server fallito: impossibile inizializzare i servizi runtime.");
-            System.err.println(exception.getMessage());
-            System.exit(1);
+            err.println("Avvio server fallito: impossibile inizializzare i servizi runtime.");
+            err.println(exception.getMessage());
+            return 1;
         }
     }
 }
