@@ -254,7 +254,7 @@ public class Game {
 
         this.turnState.onCardChosen(player, cardRow);
 
-        if (this.turnState.isTurnCompleted()) {
+        if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) { //Check if the player has still drawable cards from the board
             this.completeDrawTurn(player);
         }
 
@@ -429,12 +429,7 @@ public class Game {
         this.board.returnPlayerToStartingTile(player);
         this.turnState.resetForNextPlayer(player);
 
-        if (this.turnOrderTrack.isLastPlayer()) {
-            this.transitionAfterPlayerDraws();
-            return;
-        }
-
-        this.turnOrderTrack.advanceToNextPlayer();
+        this.advanceToNextDrawablePlayerOrResolveRound();
     }
 
     /**
@@ -508,6 +503,7 @@ public class Game {
         List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
         List<Player> extraDrawOrder = nextRoundOrder.stream()
                 .filter(player -> player.getTribe().hasEndRoundExtraCardBuilding())
+                .filter(this::hasAnyDraftableCardOnBoard)
                 .toList();
 
         if (extraDrawOrder.isEmpty()) {
@@ -518,6 +514,51 @@ public class Game {
 
         this.turnOrderTrack.setNewOrder(extraDrawOrder);
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.EXTRA_DRAWS);
+    }
+
+    /**
+     * Advances to the next player who can still complete a real draw, or resolves the round when
+     * no further standard draws are possible.
+     */
+    private void advanceToNextDrawablePlayerOrResolveRound() {
+        while (true) {
+            if (this.turnOrderTrack.isLastPlayer()) {
+                this.transitionAfterPlayerDraws();
+                return;
+            }
+
+            this.turnOrderTrack.advanceToNextPlayer();
+            Player nextPlayer = this.turnOrderTrack.getCurrentPlayer();
+            if (this.hasAnyAvailableDraw(nextPlayer)) {
+                return;
+            }
+
+            this.board.returnPlayerToStartingTile(nextPlayer);
+            this.turnState.resetForNextPlayer(nextPlayer);
+        }
+    }
+
+    private boolean hasAnyAvailableDraw(Player player) {
+        return this.hasAvailableUpperDraw(player) || this.hasAvailableLowerDraw(player);
+    }
+
+    /**
+     * Returns whether the player can draft at least one board card, independently from turn-state
+     * quotas. This is used for end-of-round extra draws, which do not consume tracked row choices.
+     */
+    private boolean hasAnyDraftableCardOnBoard(Player player) {
+        return !this.board.getDraftableUpperCards(player).isEmpty()
+                || !this.board.getDraftableLowerCards(player).isEmpty();
+    }
+
+    private boolean hasAvailableUpperDraw(Player player) {
+        return this.turnState.getRemainingUpperChoices(player) > 0
+                && !this.board.getDraftableUpperCards(player).isEmpty();
+    }
+
+    private boolean hasAvailableLowerDraw(Player player) {
+        return this.turnState.getRemainingLowerChoices(player) > 0
+                && !this.board.getDraftableLowerCards(player).isEmpty();
     }
 
     /**
