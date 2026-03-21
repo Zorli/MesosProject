@@ -546,6 +546,8 @@ public class Game {
      * Returns whether the player can draft at least one board card, independently from turn-state
      * quotas. This is used for end-of-round extra draws, which do not consume tracked row choices.
      */
+    //This method is used only for the extra drawn phase
+    //in which we do not have to check for left card to drawn with turn state fsm
     private boolean hasAnyDraftableCardOnBoard(Player player) {
         return !this.board.getDraftableUpperCards(player).isEmpty()
                 || !this.board.getDraftableLowerCards(player).isEmpty();
