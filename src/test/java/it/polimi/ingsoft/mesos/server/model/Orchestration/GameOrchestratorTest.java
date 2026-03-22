@@ -122,6 +122,61 @@ class GameOrchestratorTest {
     }
 
     @Test
+    void setupMatchFreezesMatchWhenInitialCheckpointSaveFails() {
+        ArrayList<Player> players = createPlayers(2);
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        savedMatchService.initializeFailure = new IllegalStateException("db down");
+
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                DefaultGameFactory.getInstance(),
+                players,
+                "Alice",
+                savedMatchService
+        );
+
+        MatchPersistenceFailureException exception = assertThrows(
+                MatchPersistenceFailureException.class,
+                orchestrator::setupMatch
+        );
+
+        assertEquals("Failed to persist checkpoint GAME_INITIALIZED; match is now frozen", exception.getMessage());
+        assertEquals("db down", exception.getCause().getMessage());
+        assertTrue(orchestrator.isFrozen());
+        assertEquals(1, savedMatchService.initializeCalls);
+        assertThrows(MatchFrozenException.class, orchestrator::setupMatch);
+        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem(players.getFirst(), "B"));
+    }
+
+    @Test
+    void moveTotemFreezesMatchWhenTurnStartedSaveFails() {
+        ArrayList<Player> players = createPlayers(2);
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        savedMatchService.turnStartedFailure = new IllegalStateException("postgres unavailable");
+
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                DefaultGameFactory.getInstance(),
+                players,
+                "Alice",
+                savedMatchService
+        );
+        orchestrator.setupMatch();
+
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+
+        MatchPersistenceFailureException exception = assertThrows(
+                MatchPersistenceFailureException.class,
+                () -> orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C")
+        );
+
+        assertEquals("Failed to persist checkpoint TURN_STARTED; match is now frozen", exception.getMessage());
+        assertEquals("postgres unavailable", exception.getCause().getMessage());
+        assertTrue(orchestrator.isFrozen());
+        assertEquals(1, savedMatchService.turnStartedCalls);
+        assertEquals(RoundPhase.PLAYER_DRAWS, orchestrator.getGame().getTurnOrderTrack().getCurrentRoundPhase());
+        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem(players.getFirst(), "D"));
+    }
+
+    @Test
     void constructorsRejectInvalidFactoryPlayersAndRestoredRoster() {
         ArrayList<Player> validPlayers = createPlayers(2);
         assertThrows(NullPointerException.class, () -> new GameOrchestrator(null, validPlayers, "Alice", NoOpSavedMatchService.INSTANCE));
@@ -206,6 +261,8 @@ class GameOrchestratorTest {
         private int turnStartedCalls;
         private Game lastGame;
         private String lastHostNickname;
+        private RuntimeException initializeFailure;
+        private RuntimeException turnStartedFailure;
 
         @Override
         public boolean isPersistenceEnabled() {
@@ -217,6 +274,9 @@ class GameOrchestratorTest {
             this.initializeCalls++;
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
+            if (this.initializeFailure != null) {
+                throw this.initializeFailure;
+            }
         }
 
         @Override
@@ -224,6 +284,9 @@ class GameOrchestratorTest {
             this.turnStartedCalls++;
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
+            if (this.turnStartedFailure != null) {
+                throw this.turnStartedFailure;
+            }
         }
 
         @Override

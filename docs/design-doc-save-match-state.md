@@ -266,11 +266,15 @@ Poi il match persistito puo' essere eliminato in una transazione finale separata
 - `GameOrchestrator` coordina i comandi client.
 - Dopo ogni transizione di dominio rilevante, chiama un servizio applicativo di persistenza.
 - Qui vanno le policy "quando salvo" e "quando creo la lobby resumable".
+- Qui deve vivere anche la policy "quando posso mandare ack al client" in caso di save failure.
 
 ### Nell'infrastruttura
 - `SavedMatchRepository` incapsula PostgreSQL.
 - Un `SavedMatchMapper` traduce `Game` in record persistibili e viceversa.
 - Un `SavedMatchConsistencyChecker` valida invarianti prima di confermare il save o dopo il restore.
+
+Per la policy applicativa sui fallimenti di persistenza, il contratto di ack verso il client e la
+test matrix da fissare, vedere [design-doc-save-failure-policy.md](/Users/tommaso/Developer/ing-sw-2026-Vaccari-Zorloni-Viggiano-Zanatta/docs/design-doc-save-failure-policy.md).
 
 ## API applicative da esporre
 ### `SavedMatchService`
@@ -406,12 +410,31 @@ e il confronto risulta coerente.
 
 ## Evoluzione consigliata in step
 1. Introdurre DTO persistenti e `SavedMatchRepository` senza toccare ancora il flow di resume.
+   Stato: completato.
 2. Aggiungere nel model i getter minimi mancanti per leggere deck residui, board rows, offer path e ordine turno.
+   Stato: completato.
 3. Implementare `SavedMatchMapper` per `Game -> persistence` e `persistence -> Game`.
+   Stato: completato.
 4. Salvare solo ai checkpoint `GAME_INITIALIZED`, `TURN_STARTED`, `ERA_CHANGED`, `TURN_FINISHED`, `MATCH_COMPLETED`.
+   Stato: parziale. I checkpoint esistono tutti nel layer di persistenza, ma `GameOrchestrator` non e' ancora il solo entry point applicativo per tutte le transizioni durevoli.
 5. Gestire lo stato di presenza dei player e il lock di connessione.
+   Stato: sostanzialmente completato.
 6. Aggiungere `resumeMatch(gameId)` e integrazione con `LobbyManager`.
+   Stato: completato.
 7. Aggiungere consistency checker e test di restore completo.
+   Stato: completato. Il consistency checker copre invarianti strutturali e semantiche di snapshot, e il restore contract esteso copre checkpoint di draw, extra-draw, era change e final scoring.
 
 ## Nota pratica
-Con il model attuale il punto da sistemare subito e' l'esposizione di uno stato leggibile dei deck e del board. Finche' `Deck`, `OfferPath`, `UpperPile` e `LowerPile` non espongono una vista persistibile chiara, il mapping pulito resta difficile.
+La nota pratica originale sul model non e' piu' il blocco principale: deck residui, board rows e ordine turno oggi sono leggibili in modo sufficiente per il mapping.
+
+Il blocco residuo vero e' applicativo:
+- centralizzare davvero tutti i checkpoint in `GameOrchestrator`
+- fissare la policy su save failure e ack client
+
+I test contrattuali estesi sui flow oltre il semplice piazzamento totem sono ora attivi e verificano:
+- restore a meta' draw con checkpoint `TURN_FINISHED`
+- restore dopo `ERA_CHANGED`
+- restore e continuazione nella fase `EXTRA_DRAWS`
+- restore prima e dopo `MATCH_COMPLETED` nel final scoring
+
+La policy di save failure e freeze del match e' documentata separatamente in [design-doc-save-failure-policy.md](/Users/tommaso/Developer/ing-sw-2026-Vaccari-Zorloni-Viggiano-Zanatta/docs/design-doc-save-failure-policy.md).
