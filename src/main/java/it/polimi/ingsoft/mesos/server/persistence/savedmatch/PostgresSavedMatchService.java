@@ -109,14 +109,18 @@ public final class PostgresSavedMatchService implements SavedMatchService {
     }
 
     /**
-     * Restores one game aggregate from PostgreSQL.
+     * Restores one saved match from PostgreSQL together with its original ownership metadata.
      *
      * @param gameId identifier of the match to restore
-     * @return restored game aggregate
+     * @return restored match aggregate plus original host metadata
      */
     @Override
-    public Game restoreGame(String gameId) {
-        return SavedMatchRestoreFactory.restore(this.repository.load(gameId));
+    public SavedMatchRestoreResult restoreMatch(String gameId) {
+        SavedMatchAggregate aggregate = this.repository.load(gameId);
+        return new SavedMatchRestoreResult(
+                SavedMatchRestoreFactory.restore(aggregate),
+                aggregate.hostNickname()
+        );
     }
 
     /**

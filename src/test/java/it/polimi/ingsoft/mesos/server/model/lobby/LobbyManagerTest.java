@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
+import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
@@ -15,6 +16,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchCheckpointType;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
 import org.junit.jupiter.api.Test;
 
@@ -302,7 +304,7 @@ class LobbyManagerTest {
         Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
         manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
         manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
-        RecordingRestoreService restoreService = new RecordingRestoreService(restoredGame("Alice", "Bob"));
+        RecordingRestoreService restoreService = new RecordingRestoreService(restoredGame("Alice", "Bob"), "Alice");
 
         GameOrchestrator gameOrchestrator = manager.resumeGameFromLobby(lobby.getId(), restoreService);
 
@@ -322,12 +324,50 @@ class LobbyManagerTest {
                 IllegalStateException.class,
                 () -> manager.resumeGameFromLobby(
                         lobby.getId(),
-                        new RecordingRestoreService(restoredGame("Alice", "Carol"))
+                        new RecordingRestoreService(restoredGame("Alice", "Carol"), "Alice")
                 )
         );
 
         assertEquals("Restored match roster does not match resumable lobby roster", exception.getMessage());
         assertEquals(LobbyStatus.READY, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void resumeGameFromLobbyKeepsPersistedHostAfterLobbyHostTransfer() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+        manager.removePlayer(lobby.getId(), playerWithNickname("Alice"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        RecordingRestoreService restoreService = new RecordingRestoreService(restoredPlacementGame("Alice", "Bob"), "Alice");
+
+        GameOrchestrator orchestrator = manager.resumeGameFromLobby(lobby.getId(), restoreService);
+
+        assertEquals("Bob", manager.getLobby(lobby.getId()).orElseThrow().getHostNickname());
+
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C");
+
+        assertEquals("Alice", restoreService.lastSavedHostNickname);
+    }
+
+    @Test
+    void resumeGameFromLobbyKeepsPersistedHostAfterPartialReconnectChangesLobbyHost() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Bob"));
+        manager.joinLobby(lobby.getId(), playerWithNickname("Alice"));
+        RecordingRestoreService restoreService = new RecordingRestoreService(restoredPlacementGame("Alice", "Bob"), "Alice");
+
+        GameOrchestrator orchestrator = manager.resumeGameFromLobby(lobby.getId(), restoreService);
+
+        assertEquals("Bob", manager.getLobby(lobby.getId()).orElseThrow().getHostNickname());
+
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C");
+
+        assertEquals("Alice", restoreService.lastSavedHostNickname);
     }
 
     @Test
@@ -377,8 +417,8 @@ class LobbyManagerTest {
         Lobby resumableLobby = manager.createResumeLobby("game-77", List.of("Alice", "Bob"));
 
         assertThrows(IllegalArgumentException.class, () -> manager.resumeGameFromLobby(resumableLobby.getId(), null));
-        assertThrows(IllegalStateException.class, () -> manager.resumeGameFromLobby(standardLobby.getId(), new RecordingRestoreService(restoredGame("Alice", "Bob"))));
-        assertThrows(IllegalStateException.class, () -> manager.resumeGameFromLobby(resumableLobby.getId(), new RecordingRestoreService(restoredGame("Alice", "Bob"))));
+        assertThrows(IllegalStateException.class, () -> manager.resumeGameFromLobby(standardLobby.getId(), new RecordingRestoreService(restoredGame("Alice", "Bob"), "Alice")));
+        assertThrows(IllegalStateException.class, () -> manager.resumeGameFromLobby(resumableLobby.getId(), new RecordingRestoreService(restoredGame("Alice", "Bob"), "Alice")));
     }
 
     @Test
@@ -425,10 +465,13 @@ class LobbyManagerTest {
      */
     private static final class RecordingRestoreService implements SavedMatchService {
         private final Game gameToReturn;
+        private final String hostNicknameToReturn;
         private String capturedGameId;
+        private String lastSavedHostNickname;
 
-        private RecordingRestoreService(Game gameToReturn) {
+        private RecordingRestoreService(Game gameToReturn, String hostNicknameToReturn) {
             this.gameToReturn = gameToReturn;
+            this.hostNicknameToReturn = hostNicknameToReturn;
         }
 
         @Override
@@ -438,32 +481,38 @@ class LobbyManagerTest {
 
         @Override
         public void initializeMatch(Game game, String hostNickname) {
+            this.lastSavedHostNickname = hostNickname;
         }
 
         @Override
         public void saveTurnStarted(Game game, String hostNickname) {
+            this.lastSavedHostNickname = hostNickname;
         }
 
         @Override
         public void saveEraChanged(Game game, String hostNickname) {
+            this.lastSavedHostNickname = hostNickname;
         }
 
         @Override
         public void saveTurnFinished(Game game, String hostNickname) {
+            this.lastSavedHostNickname = hostNickname;
         }
 
         @Override
         public void completeMatch(Game game, String hostNickname) {
+            this.lastSavedHostNickname = hostNickname;
         }
 
         @Override
         public void saveMatch(Game game, String hostNickname, SavedMatchCheckpointType checkpointType) {
+            this.lastSavedHostNickname = hostNickname;
         }
 
         @Override
-        public Game restoreGame(String gameId) {
+        public SavedMatchRestoreResult restoreMatch(String gameId) {
             this.capturedGameId = gameId;
-            return this.gameToReturn;
+            return new SavedMatchRestoreResult(this.gameToReturn, this.hostNicknameToReturn);
         }
 
         @Override
@@ -500,5 +549,17 @@ class LobbyManagerTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
+    }
+
+    private static Game restoredPlacementGame(String... nicknames) {
+        ArrayList<Player> players = new ArrayList<>();
+        TotemColor[] totemColors = TotemColor.values();
+        for (int index = 0; index < nicknames.length; index++) {
+            players.add(new Player(nicknames[index], 0, 0, totemColors[index], new Tribe()));
+        }
+
+        Game game = DefaultGameFactory.getInstance().createGame(players);
+        game.setup();
+        return game;
     }
 }

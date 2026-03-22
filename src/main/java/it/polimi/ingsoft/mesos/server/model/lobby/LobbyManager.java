@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.NoOpSavedMatchService;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
 
 import java.util.ArrayList;
@@ -242,12 +243,13 @@ public class LobbyManager {
             throw new IllegalStateException("Cannot resume game from lobby that cannot start");
         }
 
-        Game restoredGame = savedMatchService.restoreGame(lobby.getResumableGameId());
+        SavedMatchRestoreResult restoredMatch = savedMatchService.restoreMatch(lobby.getResumableGameId());
+        Game restoredGame = restoredMatch.game();
         this.ensureRestoredRosterMatchesLobby(lobby, restoredGame);
 
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 restoredGame,
-                lobby.getHostNickname(),
+                restoredMatch.hostNickname(),
                 savedMatchService
         );
         lobby.setStatus(LobbyStatus.STARTED);
