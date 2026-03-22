@@ -92,6 +92,7 @@ class SavedMatchMapperTest {
         Game finishedGame = MesosTestFixtures.createTwoPlayerGameplayFactory()
                 .createGame(MesosTestFixtures.createPlayers("Alice", "Bob"));
         finishedGame.setup();
+        finishedGame.getTurnOrderTrack().setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
         finishedGame.setStatus(GameStatus.FINISHED);
 
         SavedMatchAggregate finishedAggregate = SavedMatchMapper.fromGame(

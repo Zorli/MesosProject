@@ -34,6 +34,7 @@ public class GameOrchestrator {
     private final Game game;
     private final List<Player> players;
     private final MatchPersistenceCoordinator persistenceCoordinator;
+    private boolean frozen;
 
     /**
      * Creates an orchestrator for a new match using the provided game factory and player list.
@@ -129,11 +130,21 @@ public class GameOrchestrator {
     }
 
     /**
+     * Returns whether the match has been frozen after a persistence failure.
+     *
+     * @return {@code true} when gameplay commands are no longer accepted
+     */
+    public boolean isFrozen() {
+        return this.frozen;
+    }
+
+    /**
      * Performs match setup and persists the initial checkpoint when configured.
      */
     public void setupMatch() {
+        this.ensureMatchIsWritable();
         this.game.setup();
-        this.persistenceCoordinator.recordMatchInitialized(this.game);
+        this.persistOrFreeze("GAME_INITIALIZED", () -> this.persistenceCoordinator.recordMatchInitialized(this.game));
     }
 
     /**
@@ -143,9 +154,13 @@ public class GameOrchestrator {
      * @param tile target offer-space code
      */
     public void moveTotem(Player player, String tile) {
+        this.ensureMatchIsWritable();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.moveTotem(player, tile);
-        this.persistenceCoordinator.recordAfterMoveTotem(this.game, previousRoundPhase);
+        this.persistOrFreeze(
+                "TURN_STARTED",
+                () -> this.persistenceCoordinator.recordAfterMoveTotem(this.game, previousRoundPhase)
+        );
     }
 
     /*
@@ -171,5 +186,20 @@ public class GameOrchestrator {
         }
 
         return host.getNickname();
+    }
+
+    private void ensureMatchIsWritable() {
+        if (this.frozen) {
+            throw new MatchFrozenException();
+        }
+    }
+
+    private void persistOrFreeze(String checkpointName, Runnable saveAction) {
+        try {
+            saveAction.run();
+        } catch (RuntimeException exception) {
+            this.frozen = true;
+            throw new MatchPersistenceFailureException(checkpointName, exception);
+        }
     }
 }

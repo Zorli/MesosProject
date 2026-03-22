@@ -5,11 +5,15 @@ import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.postgres.PostgresDatabaseBootstrap;
+import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
+import it.polimi.ingsoft.mesos.server.testing.GameStateAssertions;
+import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -17,95 +21,108 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
-/**
- * Contract tests for the save/restore flow after the game-state methods beyond totem placement
- * become fully implemented.
- *
- * <p>The current domain model still contains stub implementations for:
- * {@link Game#chooseCard(Player, Card)},
- * {@link Game#extraDrawn(Player, Card)},
- * {@link Game#resolveEffects()},
- * {@link Game#resetBoard()},
- * {@link Game#calculateFinalScore()}.
- *
- * <p>These tests are intentionally disabled until those methods become behaviorally complete.
- * At that point they should be enabled without redesigning the persistence layer.
- */
-@Disabled("Enable when draw/effect/reset/final-scoring game-state methods are implemented")
 @Tag("integration")
 class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTestSupport {
 
     @Test
-    void restoreAfterDrawPhasePreservesBoardTurnStateAndPlayerTribes() {
-        PostgresSavedMatchService service = this.createService("saved_matches_draw_phase");
+    void restoreAfterTurnFinishedCheckpointPreservesMidDrawStateAndOriginalHost() {
+        PostgresSavedMatchService service = this.createService("saved_matches_extended_mid_draw");
         Game game = createGame(2);
         game.setup();
 
+        playPlacementPhase(game);
+        Card chosenCard = selectDeterministicCard(game);
+        game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), chosenCard);
+
+        SavedMatchRestoreResult restoredMatch = saveAndRestore(service, game, SavedMatchCheckpointType.TURN_FINISHED);
+        Game restoredGame = restoredMatch.game();
+
+        assertEquals("Alice", restoredMatch.hostNickname());
+        assertEquals(RoundPhase.PLAYER_DRAWS, restoredGame.getTurnOrderTrack().getCurrentRoundPhase());
+        GameStateAssertions.assertEquivalent(game, restoredGame);
+
+        while (game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
+            Card liveCard = selectDeterministicCard(game);
+            Card restoredCard = selectDeterministicCard(restoredGame);
+            game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), liveCard);
+            restoredGame.chooseCard(restoredGame.getTurnOrderTrack().getCurrentPlayer(), restoredCard);
+            GameStateAssertions.assertEquivalent(game, restoredGame);
+        }
+    }
+
+    @Test
+    void restoreAfterEraChangedCheckpointPreservesNewEraAndSupportsNextRoundPlacements() {
+        PostgresSavedMatchService service = this.createService("saved_matches_extended_era_change");
+        Game game = createGame(2);
+        game.setup();
+
+        while (game.getCurrentEra() == Era.first) {
+            playFullRound(game);
+        }
+
+        SavedMatchRestoreResult restoredMatch = saveAndRestore(service, game, SavedMatchCheckpointType.ERA_CHANGED);
+        Game restoredGame = restoredMatch.game();
+
+        assertEquals("Alice", restoredMatch.hostNickname());
+        assertEquals(Era.second, restoredGame.getCurrentEra());
+        assertEquals(RoundPhase.PLACING_TOTEMS, restoredGame.getTurnOrderTrack().getCurrentRoundPhase());
+        GameStateAssertions.assertEquivalent(game, restoredGame);
+
         game.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), "B");
-        game.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), "C");
-        assertEquals(RoundPhase.PLAYER_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
-
-        Player activePlayer = game.getTurnOrderTrack().getCurrentPlayer();
-        Card chosenCard = game.getBoard().getDraftableLowerCards(activePlayer).getFirst();
-        game.chooseCard(activePlayer, chosenCard);
-
-        service.saveMatch(game, game.getPlayers().getFirst().getNickname(), SavedMatchCheckpointType.TURN_STARTED);
-
-        Game restoredGame = service.restoreGame(String.valueOf(game.getId()));
-        assertEquivalentState(game, restoredGame);
+        restoredGame.moveTotem(restoredGame.getTurnOrderTrack().getCurrentPlayer(), "B");
+        GameStateAssertions.assertEquivalent(game, restoredGame);
     }
 
     @Test
-    void restoreAfterBoardResetAndEraChangePreservesDeckOrderAndVisibleRows() {
-        PostgresSavedMatchService service = this.createService("saved_matches_reset_board");
-        Game game = createGame(5);
-        game.setup();
+    void restoreAfterExtraDrawCheckpointPreservesLatePhaseStateAndContinuation() {
+        PostgresSavedMatchService service = this.createService("saved_matches_extended_extra_draw");
+        Game game = AdvancedGameStateFixtures.createExtraDrawScenario();
 
-        playFullPlacementRound(game, List.of("B", "C", "D", "E", "F"));
-        game.resetBoard();
+        SavedMatchRestoreResult restoredMatch = saveAndRestore(service, game, SavedMatchCheckpointType.TURN_FINISHED);
+        Game restoredGame = restoredMatch.game();
 
-        service.saveMatch(game, game.getPlayers().getFirst().getNickname(), SavedMatchCheckpointType.ERA_CHANGED);
+        assertEquals("Alice", restoredMatch.hostNickname());
+        assertEquals(RoundPhase.EXTRA_DRAWS, restoredGame.getTurnOrderTrack().getCurrentRoundPhase());
+        GameStateAssertions.assertEquivalent(game, restoredGame);
 
-        Game restoredGame = service.restoreGame(String.valueOf(game.getId()));
-        assertEquivalentState(game, restoredGame);
-    }
+        Card liveCard = selectDeterministicCard(game);
+        Card restoredCard = selectDeterministicCard(restoredGame);
+        game.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), liveCard);
+        restoredGame.extraDrawn(restoredGame.getTurnOrderTrack().getCurrentPlayer(), restoredCard);
+        GameStateAssertions.assertEquivalent(game, restoredGame);
 
-    @Test
-    void restoreAfterFinalScoringPreservesCompletedMatchState() {
-        PostgresSavedMatchService service = this.createService("saved_matches_final_scoring");
-        Game game = createGame(3);
-        game.setup();
-
-        playFullPlacementRound(game, List.of("B", "C", "D"));
-        game.calculateFinalScore();
-
-        service.saveMatch(game, game.getPlayers().getFirst().getNickname(), SavedMatchCheckpointType.MATCH_COMPLETED);
-
-        Game restoredGame = service.restoreGame(String.valueOf(game.getId()));
-        assertEquivalentState(game, restoredGame);
-    }
-
-    @Test
-    void restoredGameCanContinueAcrossMultipleCompletedCheckpoints() {
-        PostgresSavedMatchService service = this.createService("saved_matches_multi_checkpoint");
-        Game originalGame = createGame(4);
-        originalGame.setup();
-
-        playFullPlacementRound(originalGame, List.of("B", "C", "D", "E"));
-        service.saveMatch(originalGame, originalGame.getPlayers().getFirst().getNickname(), SavedMatchCheckpointType.TURN_STARTED);
-
-        Game restoredGame = service.restoreGame(String.valueOf(originalGame.getId()));
-        assertEquivalentState(originalGame, restoredGame);
-
-        originalGame.resetBoard();
-        restoredGame.resetBoard();
-        assertEquivalentState(originalGame, restoredGame);
-
-        originalGame.resolveEffects();
+        game.resolveEffects();
         restoredGame.resolveEffects();
-        assertEquivalentState(originalGame, restoredGame);
+        GameStateAssertions.assertEquivalent(game, restoredGame);
+
+        game.resetBoard();
+        restoredGame.resetBoard();
+        GameStateAssertions.assertEquivalent(game, restoredGame);
+    }
+
+    @Test
+    void restoreAcrossFinalScoringKeepsOwnershipMetadataBeforeAndAfterCompletion() {
+        PostgresSavedMatchService service = this.createService("saved_matches_extended_final_scoring");
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+
+        SavedMatchRestoreResult preScoreRestore = saveAndRestore(service, game, SavedMatchCheckpointType.MATCH_COMPLETED);
+        Game restoredGame = preScoreRestore.game();
+
+        assertEquals("Alice", preScoreRestore.hostNickname());
+        assertEquals(RoundPhase.FINAL_SCORING, restoredGame.getTurnOrderTrack().getCurrentRoundPhase());
+        GameStateAssertions.assertEquivalent(game, restoredGame);
+
+        game.calculateFinalScore();
+        restoredGame.calculateFinalScore();
+        GameStateAssertions.assertEquivalent(game, restoredGame);
+        assertEquals(GameStatus.FINISHED, restoredGame.getStatus());
+        assertEquals(28, restoredGame.getPlayers().getFirst().getPrestigePoints());
+
+        SavedMatchRestoreResult finishedRestore = saveAndRestore(service, game, SavedMatchCheckpointType.MATCH_COMPLETED);
+        assertEquals("Alice", finishedRestore.hostNickname());
+        GameStateAssertions.assertEquivalent(game, finishedRestore.game());
+        assertEquals(GameStatus.FINISHED, finishedRestore.game().getStatus());
     }
 
     private PostgresSavedMatchService createService(String dbPrefix) {
@@ -121,6 +138,13 @@ class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTest
         );
     }
 
+    private static SavedMatchRestoreResult saveAndRestore(PostgresSavedMatchService service,
+                                                          Game game,
+                                                          SavedMatchCheckpointType checkpointType) {
+        service.saveMatch(game, game.getPlayers().getFirst().getNickname(), checkpointType);
+        return service.restoreMatch(String.valueOf(game.getId()));
+    }
+
     private static Game createGame(int playerCount) {
         ArrayList<Player> players = new ArrayList<>();
         TotemColor[] totemColors = TotemColor.values();
@@ -133,39 +157,54 @@ class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTest
         return DefaultGameFactory.getInstance().createGame(players);
     }
 
-    private static void playFullPlacementRound(Game game, List<String> placementSequence) {
-        for (String tile : placementSequence) {
+    private static void playFullRound(Game game) {
+        playPlacementPhase(game);
+        playDrawPhase(game);
+        playExtraDrawPhase(game);
+        assertEquals(RoundPhase.RESOLVING_EFFECTS, game.getTurnOrderTrack().getCurrentRoundPhase());
+        game.resolveEffects();
+        assertEquals(RoundPhase.RESETTING_BOARD, game.getTurnOrderTrack().getCurrentRoundPhase());
+        game.resetBoard();
+        assertEquals(RoundPhase.PLACING_TOTEMS, game.getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    private static void playPlacementPhase(Game game) {
+        for (String tile : MesosTestFixtures.placementSequenceFor(game.getPlayers().size())) {
             game.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), tile);
+        }
+        assertEquals(RoundPhase.PLAYER_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    private static void playDrawPhase(Game game) {
+        while (game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
+            game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), selectDeterministicCard(game));
         }
     }
 
-    private static void assertEquivalentState(Game expected, Game actual) {
-        assertEquals(expected.getId(), actual.getId());
-        assertEquals(expected.getCurrentEra(), actual.getCurrentEra());
-        assertEquals(expected.getStatus(), actual.getStatus());
-        assertEquals(expected.getTurnOrderTrack().getRoundNumber(), actual.getTurnOrderTrack().getRoundNumber());
-        assertEquals(expected.getTurnOrderTrack().getCurrentRoundPhase(), actual.getTurnOrderTrack().getCurrentRoundPhase());
-        assertEquals(expected.getTurnOrderTrack().getCurrentPlayerIndex(), actual.getTurnOrderTrack().getCurrentPlayerIndex());
-        assertEquals(expected.getTurnState().getPhase(), actual.getTurnState().getPhase());
-        assertIterableEquals(
-                expected.getPlayers().stream().map(Player::getNickname).toList(),
-                actual.getPlayers().stream().map(Player::getNickname).toList()
-        );
-        assertIterableEquals(
-                expected.getBoard().getUpperRowCards().stream().map(Card::getId).toList(),
-                actual.getBoard().getUpperRowCards().stream().map(Card::getId).toList()
-        );
-        assertIterableEquals(
-                expected.getBoard().getLowerRowCards().stream().map(Card::getId).toList(),
-                actual.getBoard().getLowerRowCards().stream().map(Card::getId).toList()
-        );
-        assertIterableEquals(
-                expected.getBoard().getRemainingTribeDeckCards().stream().map(Card::getId).toList(),
-                actual.getBoard().getRemainingTribeDeckCards().stream().map(Card::getId).toList()
-        );
-        assertIterableEquals(
-                expected.getBoard().getRemainingBuildingDeckCards().stream().map(Card::getId).toList(),
-                actual.getBoard().getRemainingBuildingDeckCards().stream().map(Card::getId).toList()
+    private static void playExtraDrawPhase(Game game) {
+        while (game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
+            game.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), selectDeterministicCard(game));
+        }
+    }
+
+    private static Card selectDeterministicCard(Game game) {
+        Player currentPlayer = game.getTurnOrderTrack().getCurrentPlayer();
+        List<Card> draftableLowerCards = game.getBoard().getDraftableLowerCards(currentPlayer);
+        List<Card> draftableUpperCards = game.getBoard().getDraftableUpperCards(currentPlayer);
+        boolean playerDrawPhase = game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS;
+        boolean canChooseLower = !playerDrawPhase || game.getTurnState().getRemainingLowerChoices(currentPlayer) > 0;
+        boolean canChooseUpper = !playerDrawPhase || game.getTurnState().getRemainingUpperChoices(currentPlayer) > 0;
+
+        if (canChooseLower && !draftableLowerCards.isEmpty()) {
+            return draftableLowerCards.stream().min(java.util.Comparator.comparingInt(Card::getId)).orElseThrow();
+        }
+        if (canChooseUpper && !draftableUpperCards.isEmpty()) {
+            return draftableUpperCards.stream().min(java.util.Comparator.comparingInt(Card::getId)).orElseThrow();
+        }
+
+        throw new IllegalStateException(
+                "No draftable cards available for player " + currentPlayer.getNickname()
+                        + " during phase " + game.getTurnOrderTrack().getCurrentRoundPhase()
         );
     }
 }
