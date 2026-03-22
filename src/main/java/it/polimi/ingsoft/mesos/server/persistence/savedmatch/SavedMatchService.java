@@ -63,12 +63,22 @@ public interface SavedMatchService {
     void saveMatch(Game game, String hostNickname, SavedMatchCheckpointType checkpointType);
 
     /**
+     * Restores one saved match from persistence, including ownership metadata needed by the application layer.
+     *
+     * @param gameId identifier of the match to restore
+     * @return restored match aggregate plus original host metadata
+     */
+    SavedMatchRestoreResult restoreMatch(String gameId);
+
+    /**
      * Restores one game aggregate from persistence.
      *
      * @param gameId identifier of the match to restore
      * @return restored game aggregate
      */
-    Game restoreGame(String gameId);
+    default Game restoreGame(String gameId) {
+        return this.restoreMatch(gameId).game();
+    }
 
     /**
      * Marks one player as online for the given match.

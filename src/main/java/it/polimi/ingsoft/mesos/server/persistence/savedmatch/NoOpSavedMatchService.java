@@ -89,13 +89,13 @@ public final class NoOpSavedMatchService implements SavedMatchService {
     }
 
     /**
-     * Fails because no persistent backend exists from which a game could be restored.
+     * Fails because no persistent backend exists from which a match could be restored.
      *
      * @param gameId identifier of the requested match
      * @return never returns normally
      */
     @Override
-    public Game restoreGame(String gameId) {
+    public SavedMatchRestoreResult restoreMatch(String gameId) {
         throw new IllegalStateException("Saved-match restore is not available in no-db mode");
     }
 

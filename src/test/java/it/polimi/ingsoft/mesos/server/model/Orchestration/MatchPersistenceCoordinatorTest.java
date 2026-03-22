@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchCheckpointType;
+import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import org.junit.jupiter.api.Test;
@@ -136,7 +137,7 @@ class MatchPersistenceCoordinatorTest {
         }
 
         @Override
-        public Game restoreGame(String gameId) {
+        public SavedMatchRestoreResult restoreMatch(String gameId) {
             throw new UnsupportedOperationException();
         }
 
