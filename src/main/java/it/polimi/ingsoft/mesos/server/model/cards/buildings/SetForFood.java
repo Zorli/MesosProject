@@ -4,7 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 import java.util.HashMap;
 import java.util.Map;

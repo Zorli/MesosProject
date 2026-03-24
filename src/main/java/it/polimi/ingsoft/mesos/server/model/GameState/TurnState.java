@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.board.CardRow;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -16,6 +16,7 @@
       exports it.polimi.ingsoft.mesos.server.model.cards.characters;
       exports it.polimi.ingsoft.mesos.server.model.cards.events;
       exports it.polimi.ingsoft.mesos.server.model.enums;
-      exports it.polimi.ingsoft.mesos.server.model.player;
-      exports it.polimi.ingsoft.mesos.server.model.ranking;
+      exports it.polimi.ingsoft.mesos.server.controller.player;
+      exports it.polimi.ingsoft.mesos.server.controller.ranking;
+        exports it.polimi.ingsoft.mesos.server.model.persistence;
   }

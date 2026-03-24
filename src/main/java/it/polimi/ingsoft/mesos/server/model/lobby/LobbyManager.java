@@ -1,14 +1,14 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
-import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.NoOpSavedMatchService;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchRestoreResult;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 
 import java.util.ArrayList;
 import java.util.Comparator;

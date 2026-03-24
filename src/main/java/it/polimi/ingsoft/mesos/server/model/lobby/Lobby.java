@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;

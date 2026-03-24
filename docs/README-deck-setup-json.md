@@ -200,8 +200,8 @@ Anche qui `benefitType` non e' ripetuto nel record, perche' coincide con la chia
 ## Come viene letto dal server
 
 La lettura avviene tramite:
-- `it.polimi.ingsoft.mesos.server.model.Factory.ParserJson`
-- `it.polimi.ingsoft.mesos.server.model.Factory.DeckTemplate`
+- `it.polimi.ingsoft.mesos.server.controller.Factory.ParserJson`
+- `it.polimi.ingsoft.mesos.server.controller.Factory.DeckTemplate`
 
 `ParserJson`:
 - carica il file da `resources`

@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 /**
  * Represents a single space on the offer path where a player can place their totem.

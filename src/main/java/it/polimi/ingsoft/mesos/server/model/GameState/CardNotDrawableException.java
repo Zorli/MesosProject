@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 /**
  * Signals that a card is present on the board but cannot currently be drawn by the player.

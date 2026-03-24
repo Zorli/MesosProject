@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.testing;
 
-import it.polimi.ingsoft.mesos.server.model.Factory.ParserJson;
+import it.polimi.ingsoft.mesos.server.controller.Factory.ParserJson;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
@@ -18,7 +18,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;

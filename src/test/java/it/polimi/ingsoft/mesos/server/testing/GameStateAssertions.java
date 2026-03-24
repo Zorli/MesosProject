@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 import java.util.Comparator;
 import java.util.List;

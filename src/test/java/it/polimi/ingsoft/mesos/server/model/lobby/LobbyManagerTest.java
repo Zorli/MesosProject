@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
-import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
-import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
@@ -12,12 +12,12 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Tribe;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchCheckpointType;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchRestoreResult;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

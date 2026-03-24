@@ -3,8 +3,8 @@ package it.polimi.ingsoft.mesos.server.model.GameState;
 import it.polimi.ingsoft.mesos.server.model.board.CardRow;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Tribe;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

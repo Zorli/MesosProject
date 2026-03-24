@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 /**
  * Signals that an action was attempted by a player who is not the current player.

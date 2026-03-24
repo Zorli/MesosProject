@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.cards.buildings;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 
 /**
  * Building that grants an additional flat prestige-point reward during final scoring.

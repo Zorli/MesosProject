@@ -4,8 +4,8 @@ import it.polimi.ingsoft.mesos.server.model.GameState.CardRowSelectionNotAllowed
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.NotPlayersTurnException;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
-import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.player.Player;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import org.junit.jupiter.api.Test;
 
