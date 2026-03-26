@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.cards;
 
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.Map;
 

@@ -22,8 +22,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.SavedMatchStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.*;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import org.junit.jupiter.api.Test;
 

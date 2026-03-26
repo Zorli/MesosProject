@@ -1,8 +1,7 @@
 package it.polimi.ingsoft.mesos.server.controller.Factory;
 
-import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

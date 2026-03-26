@@ -17,8 +17,8 @@ import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
-import it.polimi.ingsoft.mesos.server.controller.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 
 import java.util.ArrayList;
 import java.util.Comparator;

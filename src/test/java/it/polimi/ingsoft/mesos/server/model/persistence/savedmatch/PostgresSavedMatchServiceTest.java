@@ -3,11 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.PostgresSavedMatchService;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchAggregate;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRepository;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

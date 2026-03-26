@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 /**
  * Represents a single block on the starting tile where players are placed.

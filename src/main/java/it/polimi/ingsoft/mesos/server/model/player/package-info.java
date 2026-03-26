@@ -5,4 +5,4 @@
  * that stores collected character and building cards. The classes here expose the operations used
  * by the rest of the model to grant rewards, spend resources, and compute tribe-based bonuses.
  */
-package it.polimi.ingsoft.mesos.server.controller.player;
+package it.polimi.ingsoft.mesos.server.model.player;
