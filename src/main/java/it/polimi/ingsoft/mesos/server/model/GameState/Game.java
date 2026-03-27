@@ -187,6 +187,18 @@ public class Game {
         this.turnState.resetForNewRound();
 
         this.status = GameStatus.IN_PROGRESS;
+//        for (int i = 0; i < players.size(); i++) {
+//            Player currentPlayer = players.get(i);
+//            int initialFood;
+//            if (i == 0) {
+//                initialFood = 2;
+//            } else if (i == 1 || i == 2) {
+//                initialFood = 3;
+//            } else {
+//                initialFood = 4;
+//            }
+//            currentPlayer.gainFood(initialFood);
+//        }
     }
 
     /**

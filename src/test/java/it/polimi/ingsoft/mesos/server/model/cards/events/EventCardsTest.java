@@ -213,8 +213,7 @@ class EventCardsTest {
     }
 
     private static Player player(String nickname, TotemColor color) {
-        Player player = new Player(nickname, 0, 0, color, null);
-        player.initializeGameAttributes();
+        Player player = new Player(nickname, 0, 0, color);
         return player;
     }
 }

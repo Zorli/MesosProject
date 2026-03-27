@@ -6,7 +6,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.SavedMatchStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

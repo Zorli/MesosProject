@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresSchemaModule;
 
 import java.sql.Connection;

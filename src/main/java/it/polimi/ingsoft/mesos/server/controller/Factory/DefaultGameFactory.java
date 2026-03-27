@@ -42,7 +42,7 @@ public class DefaultGameFactory implements GameFactory {
     /**
      * Builds a complete game model for the provided players.
      *
-     * <p>The method creates player-count-aware tribe and building decks, prepares the board fed by
+     * <p>The method creates building decks, prepares the board fed by
      * those decks, initializes the turn state and turn order tracker, and finally packages all of
      * them into a new {@link Game}.
      *
@@ -51,7 +51,6 @@ public class DefaultGameFactory implements GameFactory {
      */
     @Override
     public Game createGame(List<Player> players) {
-        players.forEach(Player::initializeGameAttributes);
         TribeDeck tribeDeck = deckTemplate.createTribeDeck(players.size());
         BuildingDeck buildingDeck = deckTemplate.createBuildingDeck();
         Board board = new Board(tribeDeck, buildingDeck, players);

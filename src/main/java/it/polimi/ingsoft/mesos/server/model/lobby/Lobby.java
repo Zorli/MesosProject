@@ -211,7 +211,6 @@ public class Lobby {
 
         this.users.add(user);
 
-        // Se era una lobby resumable e non c'era un host, il primo che entra diventa l'host temporaneo
         if (this.hostNickname == null) {
             this.hostNickname = user.getNickname();
         }
@@ -275,7 +274,6 @@ public class Lobby {
      * @return {@code true} if the lobby can start, {@code false} otherwise
      */
     public boolean canStart() {
-        // Funziona perfettamente sia per lobby normali che resumable (che hanno la capacity fissa)
         return this.users.size() == this.chosenCapacity;
     }
 
@@ -285,7 +283,6 @@ public class Lobby {
      * @return {@code true} if the lobby is full, {@code false} otherwise
      */
     public boolean isFull() {
-        // Funziona perfettamente sia per lobby normali che resumable
         return this.users.size() >= this.chosenCapacity;
     }
 

@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.RankingService;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 
 /**

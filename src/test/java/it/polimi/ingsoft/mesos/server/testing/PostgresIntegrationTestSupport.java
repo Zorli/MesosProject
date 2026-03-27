@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.testing;
 
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.testcontainers.containers.PostgreSQLContainer;
 

@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.NoOpRankingService;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import org.junit.jupiter.api.Test;
 
