@@ -1,6 +1,6 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.*;
+import it.polimi.ingsoft.mesos.server.model.ranking.*;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;

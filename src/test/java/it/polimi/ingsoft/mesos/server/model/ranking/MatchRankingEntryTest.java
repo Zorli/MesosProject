@@ -1,6 +1,6 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.MatchRankingEntry;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchRankingEntry;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

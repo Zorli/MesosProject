@@ -1,6 +1,6 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

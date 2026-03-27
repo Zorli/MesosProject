@@ -1,7 +1,7 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.MatchScore;
-import it.polimi.ingsoft.mesos.server.controller.ranking.RankingInputValidator;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingInputValidator;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

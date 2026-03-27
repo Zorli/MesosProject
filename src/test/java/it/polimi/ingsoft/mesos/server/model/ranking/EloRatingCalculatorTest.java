@@ -1,9 +1,9 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.EloRatingCalculator;
-import it.polimi.ingsoft.mesos.server.controller.ranking.MatchScore;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PlayerMatchUpdate;
-import it.polimi.ingsoft.mesos.server.controller.ranking.RatingSnapshot;
+import it.polimi.ingsoft.mesos.server.model.ranking.EloRatingCalculator;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.PlayerMatchUpdate;
+import it.polimi.ingsoft.mesos.server.model.ranking.RatingSnapshot;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
