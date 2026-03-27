@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.cards.characters;
 
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 /**
  * Character card representing a hunter.

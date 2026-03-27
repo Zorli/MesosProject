@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;

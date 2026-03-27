@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 /**
  * Small factory of lobby test players used to keep lobby-focused tests concise.

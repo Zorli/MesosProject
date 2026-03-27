@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.cards.characters;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 /**
  * Base class for all tribe character cards.

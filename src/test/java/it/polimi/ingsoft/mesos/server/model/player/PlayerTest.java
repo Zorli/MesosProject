@@ -1,7 +1,7 @@
-package it.polimi.ingsoft.mesos.server.controller.player;
+package it.polimi.ingsoft.mesos.server.model.player;
 
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
-import it.polimi.ingsoft.mesos.server.controller.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import org.junit.jupiter.api.Test;
 

@@ -7,7 +7,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

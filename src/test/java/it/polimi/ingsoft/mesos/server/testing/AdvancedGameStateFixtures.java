@@ -18,7 +18,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;

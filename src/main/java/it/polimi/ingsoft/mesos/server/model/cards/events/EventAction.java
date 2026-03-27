@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.cards.events;
 
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
 

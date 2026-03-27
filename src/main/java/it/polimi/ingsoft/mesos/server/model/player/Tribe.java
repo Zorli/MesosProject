@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.controller.player;
+package it.polimi.ingsoft.mesos.server.model.player;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.PairOfInventor;

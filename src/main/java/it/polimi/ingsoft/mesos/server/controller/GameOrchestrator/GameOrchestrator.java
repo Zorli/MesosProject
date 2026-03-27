@@ -4,7 +4,7 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 

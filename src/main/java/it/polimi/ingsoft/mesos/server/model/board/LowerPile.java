@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
-import it.polimi.ingsoft.mesos.server.controller.player.Player;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.controller.player;
+package it.polimi.ingsoft.mesos.server.model.player;
 
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 
