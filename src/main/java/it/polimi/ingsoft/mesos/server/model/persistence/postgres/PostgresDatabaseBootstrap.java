@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.postgres;
 
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

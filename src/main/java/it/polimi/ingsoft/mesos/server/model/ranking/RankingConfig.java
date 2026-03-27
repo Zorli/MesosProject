@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
  * Immutable configuration for ranking validation, Elo update and database retry policy.

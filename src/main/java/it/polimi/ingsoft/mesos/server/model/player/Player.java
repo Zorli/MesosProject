@@ -25,14 +25,13 @@ public class Player {
      * @param food starting food amount
      * @param prestigePoints starting prestige points amount
      * @param totemColor totem color assigned to the player
-     * @param tribe tribe aggregate owned by the player
      */
-    public Player(String nickname, int food, int prestigePoints, TotemColor totemColor, Tribe tribe) {
+    public Player(String nickname, int food, int prestigePoints, TotemColor totemColor) {
         this.nickname = nickname;
         this.food = food;
         this.prestigePoints = prestigePoints;
         this.totem = totemColor;
-        this.tribe = tribe;
+        this.tribe = new Tribe();
     }
 
     /**
@@ -118,17 +117,6 @@ public class Player {
      */
     public Tribe getTribe() {
         return this.tribe;
-    }
-
-    /**
-     * Initializes the player attributes required to participate in a match.
-     *
-     * <p>The method is idempotent so factories can safely call it before creating the game model.
-     */
-    public void initializeGameAttributes() {
-        if (this.tribe == null) {
-            this.tribe = new Tribe();
-        }
     }
 
     /**

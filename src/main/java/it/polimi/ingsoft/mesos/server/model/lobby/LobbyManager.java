@@ -63,6 +63,9 @@ public class LobbyManager {
         if (host == null) {
             throw new IllegalArgumentException("Host user cannot be null");
         }
+        if(isUserInAnyLobby(host)) {
+            throw new IllegalStateException("Host already in a lobby");
+        }
 
         Lobby lobby = new Lobby(this.nextLobbyId++, host, chosenCapacity);
         this.lobbies.put(lobby.getId(), lobby);
@@ -91,6 +94,9 @@ public class LobbyManager {
     public void joinLobby(int lobbyId, User user) {
         if (user == null) {
             throw new IllegalArgumentException("User cannot be null");
+        }
+        if(isUserInAnyLobby(user)) {
+            throw new IllegalStateException("User already in a lobby");
         }
 
         Lobby lobby = this.resolveLobby(lobbyId);
@@ -211,7 +217,7 @@ public class LobbyManager {
 
         // Qui avviene la trasformazione da User a Player
         List<Player> gamePlayers = lobby.getUsers().stream()
-                .map(user -> new Player(user.getNickname(), 0, 0, null, null))
+                .map(user -> new Player(user.getNickname(), 0, 0, null))
                 .toList();
 
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
@@ -302,6 +308,17 @@ public class LobbyManager {
         if (!reservedNicknames.equals(restoredNicknames)) {
             throw new IllegalStateException("Restored match roster does not match resumable lobby roster");
         }
+    }
+
+    /**
+     * Checks whether the specified user is currently present in any active lobby.
+     *
+     * @param user the user to check for presence
+     * @return {@code true} if the user is found in at least one lobby, {@code false} otherwise
+     */
+    private boolean isUserInAnyLobby(User user) {
+        return this.lobbies.values().stream()
+                .anyMatch(lobby -> lobby.getUsers().contains(user));
     }
 
     /**

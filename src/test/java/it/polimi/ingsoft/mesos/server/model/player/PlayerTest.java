@@ -12,20 +12,8 @@ class PlayerTest {
 
     @Test
     void initializeGameAttributesCreatesTribeWhenMissing() {
-        Player player = new Player("Alice", 0, 0, TotemColor.RED, null);
-
-        player.initializeGameAttributes();
-
+        Player player = new Player("Alice", 0, 0, TotemColor.RED);
         assertNotNull(player.getTribe());
     }
 
-    @Test
-    void initializeGameAttributesKeepsExistingTribe() {
-        Tribe tribe = new Tribe();
-        Player player = new Player("Alice", 0, 0, TotemColor.RED, tribe);
-
-        player.initializeGameAttributes();
-
-        assertSame(tribe, player.getTribe());
-    }
 }

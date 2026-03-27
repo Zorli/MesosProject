@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
  * Immutable per-player ranking row stored for one historical match.

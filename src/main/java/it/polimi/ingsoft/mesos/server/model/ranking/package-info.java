@@ -5,4 +5,4 @@
  * persistence support for PostgreSQL, and the service interface used by the rest of the server
  * model to register users, store results, and query leaderboard or match history data.
  */
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;

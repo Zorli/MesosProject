@@ -246,8 +246,7 @@ class GameChooseCardTest {
     }
 
     private static Player player(String nickname, int food, TotemColor color) {
-        Player player = new Player(nickname, food, 0, color, null);
-        player.initializeGameAttributes();
+        Player player = new Player(nickname, food, 0, color);
         return player;
     }
 

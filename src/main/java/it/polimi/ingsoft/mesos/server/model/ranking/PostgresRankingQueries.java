@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.controller.ranking;
+package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
  * Centralized SQL statements used by the PostgreSQL ranking persistence layer.

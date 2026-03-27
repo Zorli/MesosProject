@@ -5,62 +5,46 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 /**
- * Gestisce l'elenco di tutti gli utenti attualmente registrati/connessi al server.
+ * Manages the registry of all users currently registered or connected to the server.
+ * This class acts as the single source of truth for user network identities,
+ * ensuring that all connected users have unique nicknames.
  */
 public class UserManager {
-    // Mappa Token -> User (Ottima per le riconnessioni sicure)
-    private final Map<String, User> usersByToken;
 
-    // Mappa Nickname -> User (Ottima per controllare se un nome è già preso)
     private final Map<String, User> usersByNickname;
 
+    /**
+     * Creates a new, empty user manager.
+     * Initializes a thread-safe registry to safely handle concurrent connections.
+     */
     public UserManager() {
-        // Usiamo ConcurrentHashMap perché il server è multi-thread
-        this.usersByToken = new ConcurrentHashMap<>();
         this.usersByNickname = new ConcurrentHashMap<>();
     }
 
     /**
-     * Tenta di registrare un nuovo utente.
-     * @param nickname Il nome scelto dall'utente
-     * @return L'oggetto User appena creato
-     * @throws IllegalArgumentException se il nickname è già in uso
+     * Attempts to register a new user with the specified nickname.
+     * * @param nickname the unique nickname chosen by the user
+     * @return the newly created {@code User} object
+     * @throws IllegalArgumentException if the chosen nickname is already taken by another user
      */
     public User registerUser(String nickname) {
         if (usersByNickname.containsKey(nickname)) {
-            // Qui potresti anche lanciare un'eccezione personalizzata, es. NicknameAlreadyTakenException
-            throw new IllegalArgumentException("Nickname già in uso: " + nickname);
+            throw new IllegalArgumentException("Nickname already taken: " + nickname);
         }
 
         User newUser = new User(nickname);
         usersByNickname.put(newUser.getNickname(), newUser);
-        usersByToken.put(newUser.getSessionToken(), newUser);
 
         return newUser;
     }
 
     /**
-     * Recupera un utente tramite il suo token di sessione (usato per la riconnessione).
-     */
-    public Optional<User> getUserByToken(String token) {
-        return Optional.ofNullable(usersByToken.get(token));
-    }
-
-    /**
-     * Recupera un utente tramite il suo nickname.
+     * Retrieves an existing user by their nickname.
+     * * @param nickname the nickname of the user to search for
+     * @return an {@code Optional} containing the user if found, or an empty {@code Optional} otherwise
      */
     public Optional<User> getUserByNickname(String nickname) {
         return Optional.ofNullable(usersByNickname.get(nickname));
     }
 
-    /**
-     * Segna un utente come offline (es. quando cade la connessione).
-     * NON lo rimuove dalle mappe, così può riconnettersi in seguito.
-     */
-    public void disconnectUser(String token) {
-        User user = usersByToken.get(token);
-        if (user != null) {
-            user.setOnline(false);
-        }
-    }
 }

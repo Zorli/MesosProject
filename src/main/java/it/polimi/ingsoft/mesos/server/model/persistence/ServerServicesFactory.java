@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.NoOpRankingService;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresRankingSchemaModule;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresRankingService;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingService;
 import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.PostgresSavedMatchSchemaModule;

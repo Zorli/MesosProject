@@ -1,10 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.postgres;
 
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresRankingSchemaModule;
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseHealthException;
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresSchemaModule;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

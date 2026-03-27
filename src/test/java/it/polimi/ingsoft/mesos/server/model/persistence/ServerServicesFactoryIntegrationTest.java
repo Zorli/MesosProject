@@ -1,9 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.controller.ranking.PostgresRankingService;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.PostgresSavedMatchService;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Tag;

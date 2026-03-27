@@ -47,8 +47,7 @@ public final class MesosTestFixtures {
         TotemColor[] colors = TotemColor.values();
 
         for (int index = 0; index < nicknames.length; index++) {
-            Player player = new Player(nicknames[index], 0, 0, colors[index], null);
-            player.initializeGameAttributes();
+            Player player = new Player(nicknames[index], 0, 0, colors[index]);
             players.add(player);
         }
 
