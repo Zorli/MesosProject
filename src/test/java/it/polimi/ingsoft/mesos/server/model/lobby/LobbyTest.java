@@ -1,10 +1,12 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.user.User;
 import org.junit.jupiter.api.Test;
 
-import static it.polimi.ingsoft.mesos.server.model.lobby.LobbyTestPlayers.playerWithNickname;
+import java.util.List;
+
+import static it.polimi.ingsoft.mesos.server.model.lobby.LobbyTestUsers.userWithNickname;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -13,193 +15,134 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LobbyTest {
 
-//    @Test
-//    void constructorAddsHostAndKeepsLobbyWaiting() {
-//        Player host = playerWithNickname("Alice");
-//
-//        Lobby lobby = new Lobby(1, host);
-//
-//        assertEquals(1, lobby.getId());
-//        assertEquals("Alice", lobby.getHostNickname());
-//        assertEquals(LobbyStatus.WAITING, lobby.getStatus());
-//        assertEquals(1, lobby.getPlayers().size());
-//        assertEquals(host, lobby.getPlayers().get(0));
-//    }
+    @Test
+    void constructorAddsHostAndStoresChosenCapacity() {
+        User host = userWithNickname("Alice");
 
-//    @Test
-//    void constructorThrowsWhenHostIsNull() {
-//        assertThrows(IllegalArgumentException.class, () -> new Lobby(1, null));
-//    }
+        Lobby lobby = new Lobby(1, host, 3);
 
-//    @Test
-//    void constructorThrowsWhenHostNicknameIsBlank() {
-//        Player host = playerWithNickname("   ");
-//
-//        assertThrows(IllegalArgumentException.class, () -> new Lobby(1, host));
-//    }
+        assertEquals(1, lobby.getId());
+        assertEquals("Alice", lobby.getHostNickname());
+        assertEquals(LobbyStatus.WAITING, lobby.getStatus());
+        assertEquals(3, lobby.getChosenCapacity());
+        assertEquals(List.of(host), lobby.getUsers());
+        assertFalse(lobby.canStart());
+    }
 
-//    @Test
-//    void addPlayerThrowsWhenNicknameAlreadyExists() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//
-//        assertThrows(IllegalStateException.class, () -> lobby.addPlayer(playerWithNickname("Alice")));
-//    }
+    @Test
+    void constructorRejectsNullHostAndInvalidCapacity() {
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(1, null, 2));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(1, userWithNickname("Alice"), 1));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(1, userWithNickname("Alice"), 6));
+    }
 
-//    @Test
-//    void addPlayerThrowsWhenLobbyIsFull() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("P1"));
-//        lobby.addPlayer(playerWithNickname("P2"));
-//        lobby.addPlayer(playerWithNickname("P3"));
-//        lobby.addPlayer(playerWithNickname("P4"));
-//        lobby.addPlayer(playerWithNickname("P5"));
-//
-//        assertTrue(lobby.isFull());
-//        assertThrows(IllegalStateException.class, () -> lobby.addPlayer(playerWithNickname("P6")));
-//    }
+    @Test
+    void addUserRejectsDuplicateNicknameAndLobbyOverflow() {
+        Lobby lobby = new Lobby(1, userWithNickname("Alice"), 2);
 
-    //@Test
-//    void canStartIsTrueWhenAtLeastTwoPlayersArePresent() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//
-//        assertFalse(lobby.canStart());
-//
-//        lobby.addPlayer(playerWithNickname("Bob"));
-//
-//        assertTrue(lobby.canStart());
-//    }
+        assertThrows(IllegalStateException.class, () -> lobby.addUser(userWithNickname("Alice")));
 
-//    @Test
-//    void removePlayerThrowsWhenPlayerIsNotInLobby() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//
-//        assertThrows(IllegalStateException.class, () -> lobby.removePlayer(playerWithNickname("Bob")));
-//    }
+        lobby.addUser(userWithNickname("Bob"));
 
-//    @Test
-//    void transferHostAssignsFirstRemainingPlayer() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//        Player bob = playerWithNickname("Bob");
-//        Player carol = playerWithNickname("Carol");
-//
-//        lobby.addPlayer(bob);
-//        lobby.addPlayer(carol);
-//        lobby.removePlayer(playerWithNickname("Alice"));
-//
-//        assertEquals("Bob", lobby.getHostNickname());
-//    }
+        assertTrue(lobby.isFull());
+        assertThrows(IllegalStateException.class, () -> lobby.addUser(userWithNickname("Carol")));
+    }
 
-//    @Test
-//    void removeLastPlayerClearsHostNickname() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//
-//        lobby.removePlayer(playerWithNickname("Alice"));
-//
-//        assertNull(lobby.getHostNickname());
-//    }
+    @Test
+    void canStartBecomesTrueOnlyWhenChosenCapacityIsReached() {
+        Lobby lobby = new Lobby(1, userWithNickname("Alice"), 3);
 
-//    @Test
-//    void resumableLobbyStartsWithoutConnectedPlayersAndTracksReservedRoster() {
-//        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob", "Carol"));
-//
-//        assertTrue(lobby.isResumable());
-//        assertEquals("game-42", lobby.getResumableGameId());
-//        assertEquals(LobbyStatus.RESUMABLE, lobby.getStatus());
-//        assertTrue(lobby.getPlayers().isEmpty());
-//        assertEquals(java.util.List.of("Alice", "Bob", "Carol"), lobby.getReservedPlayerNicknames());
-//    }
+        lobby.addUser(userWithNickname("Bob"));
+        assertFalse(lobby.canStart());
 
-//    @Test
-//    void resumableLobbyAcceptsOnlyOriginalPlayers() {
-//        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob"));
-//
-//        lobby.addPlayer(playerWithNickname("Alice"));
-//
-//        assertThrows(IllegalStateException.class, () -> lobby.addPlayer(playerWithNickname("Carol")));
-//    }
+        lobby.addUser(userWithNickname("Carol"));
+        assertTrue(lobby.canStart());
+    }
 
-//    @Test
-//    void resumableLobbyCanStartOnlyWhenAllOriginalPlayersReturned() {
-//        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob", "Carol"));
-//
-//        lobby.addPlayer(playerWithNickname("Alice"));
-//        lobby.addPlayer(playerWithNickname("Bob"));
-//        assertFalse(lobby.canStart());
-//
-//        lobby.addPlayer(playerWithNickname("Carol"));
-//        assertTrue(lobby.canStart());
-//    }
+    @Test
+    void removeUserTransfersHostAndClearsHostWhenLobbyBecomesEmpty() {
+        Lobby lobby = new Lobby(1, userWithNickname("Alice"), 2);
+        User bob = userWithNickname("Bob");
+
+        lobby.addUser(bob);
+        lobby.removeUser(userWithNickname("Alice"));
+
+        assertEquals("Bob", lobby.getHostNickname());
+
+        lobby.removeUser(bob);
+
+        assertNull(lobby.getHostNickname());
+        assertTrue(lobby.getUsers().isEmpty());
+    }
+
+    @Test
+    void resumableLobbyStartsWithoutConnectedUsersAndTracksReservedRoster() {
+        Lobby lobby = Lobby.resumable(4, "game-42", List.of("Alice", "Bob", "Carol"));
+
+        assertTrue(lobby.isResumable());
+        assertEquals("game-42", lobby.getResumableGameId());
+        assertEquals(LobbyStatus.RESUMABLE, lobby.getStatus());
+        assertTrue(lobby.getUsers().isEmpty());
+        assertEquals(List.of("Alice", "Bob", "Carol"), lobby.getReservedNicknames());
+        assertEquals(3, lobby.getChosenCapacity());
+    }
 
     @Test
     void resumableLobbyValidationRejectsInvalidInputs() {
-        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, " ", java.util.List.of("Alice", "Bob")));
-        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", java.util.List.of("Alice")));
-        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", java.util.List.of("Alice", "Alice")));
-        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", java.util.List.of("A", "B", "C", "D", "E", "F")));
+        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, " ", List.of("Alice", "Bob")));
+        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", List.of("Alice")));
+        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", List.of("Alice", "Alice")));
+        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", List.of("Alice", " ")));
+        assertThrows(IllegalArgumentException.class, () -> Lobby.resumable(1, "game-42", List.of("A", "B", "C", "D", "E", "F")));
     }
 
-//    @Test
-//    void setStatusRejectsNullAndIsHostHandlesNullValues() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//
-//        assertFalse(lobby.isHost(null));
-//        assertFalse(lobby.isHost(playerWithNickname("Bob")));
-//        assertTrue(lobby.isHost(playerWithNickname("Alice")));
-//        assertThrows(IllegalArgumentException.class, () -> lobby.setStatus(null));
-//    }
+    @Test
+    void resumableLobbyAcceptsOnlyOriginalUsersAndAssignsHostOnFirstReconnect() {
+        Lobby lobby = Lobby.resumable(4, "game-42", List.of("Alice", "Bob"));
 
-//    @Test
-//    void getPlayersReturnsImmutableSnapshot() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//        java.util.List<Player> players = lobby.getPlayers();
-//
-//        assertThrows(UnsupportedOperationException.class, () -> players.add(playerWithNickname("Bob")));
-//    }
+        lobby.addUser(userWithNickname("Alice"));
 
-//    @Test
-//    void transferHostThrowsWhenLobbyIsEmpty() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//        lobby.removePlayer(playerWithNickname("Alice"));
-//
-//        assertThrows(IllegalStateException.class, lobby::transferHostToSecondPlayer);
-//    }
+        assertEquals("Alice", lobby.getHostNickname());
+        assertThrows(IllegalStateException.class, () -> lobby.addUser(userWithNickname("Carol")));
+    }
 
-//    @Test
-//    void addPlayerAssignsHostWhenResumableLobbyReconnectsFirstPlayer() {
-//        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("Alice", "Bob"));
-//
-//        lobby.addPlayer(playerWithNickname("Alice"));
-//
-//        assertEquals("Alice", lobby.getHostNickname());
-//    }
+    @Test
+    void resumableLobbyCanStartOnlyWhenAllOriginalUsersReturned() {
+        Lobby lobby = Lobby.resumable(4, "game-42", List.of("Alice", "Bob", "Carol"));
 
-//    @Test
-//    void gettersExposeConfiguredLobbyBounds() {
-//        Lobby lobby = new Lobby(1, playerWithNickname("Alice"));
-//
-//        assertEquals(2, lobby.getMinPlayers());
-//        assertEquals(5, lobby.getMaxPlayers());
-//    }
+        lobby.addUser(userWithNickname("Alice"));
+        lobby.addUser(userWithNickname("Bob"));
+        assertFalse(lobby.canStart());
 
-//    @Test
-//    void resumableLobbyAllowsExactlyFiveReservedPlayersAndBecomesFullAtBoundary() {
-//        Lobby lobby = Lobby.resumable(4, "game-42", java.util.List.of("A", "B", "C", "D", "E"));
-//
-//        assertFalse(lobby.isFull());
-//        lobby.addPlayer(playerWithNickname("A"));
-//        lobby.addPlayer(playerWithNickname("B"));
-//        lobby.addPlayer(playerWithNickname("C"));
-//        lobby.addPlayer(playerWithNickname("D"));
-//        assertFalse(lobby.isFull());
-//
-//        lobby.addPlayer(playerWithNickname("E"));
-//
-//        assertTrue(lobby.isFull());
-//        assertTrue(lobby.canStart());
-//    }
+        lobby.addUser(userWithNickname("Carol"));
+        assertTrue(lobby.canStart());
+    }
+
+    @Test
+    void setStatusRejectsNullAndGetUsersReturnsImmutableSnapshot() {
+        Lobby lobby = new Lobby(1, userWithNickname("Alice"), 2);
+        List<User> users = lobby.getUsers();
+
+        assertThrows(UnsupportedOperationException.class, () -> users.add(userWithNickname("Bob")));
+        assertThrows(IllegalArgumentException.class, () -> lobby.setStatus(null));
+    }
+
+    @Test
+    void isHostAndTransferHostHandleNullAndEmptyLobby() {
+        Lobby lobby = new Lobby(1, userWithNickname("Alice"), 2);
+
+        assertFalse(lobby.isHost(null));
+        assertFalse(lobby.isHost(userWithNickname("Bob")));
+        assertTrue(lobby.isHost(userWithNickname("Alice")));
+
+        lobby.removeUser(userWithNickname("Alice"));
+
+        assertThrows(IllegalStateException.class, lobby::transferHostToSecondUser);
+    }
 
     @Test
     void toStringContainsLobbyIdentityAndStatus() {
-        Lobby lobby = Lobby.resumable(8, "game-42", java.util.List.of("Alice", "Bob"));
+        Lobby lobby = Lobby.resumable(8, "game-42", List.of("Alice", "Bob"));
 
         String description = lobby.toString();
 

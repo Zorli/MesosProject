@@ -56,6 +56,15 @@ public final class MatchPersistenceCoordinator {
     }
 
     /**
+     * Persists an explicit turn-started checkpoint for a freshly reset round.
+     *
+     * @param game current game aggregate
+     */
+    public void recordTurnStarted(Game game) {
+        this.savedMatchService.saveTurnStarted(game, this.hostNickname);
+    }
+
+    /**
      * Persists an explicit turn-finished checkpoint.
      *
      * @param game current game aggregate

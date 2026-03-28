@@ -49,8 +49,6 @@ public final class ScriptedGameFactory implements GameFactory {
      */
     @Override
     public Game createGame(List<Player> players) {
-        players.forEach(Player::initializeGameAttributes);
-
         TribeDeck tribeDeck = TribeDeck.fromOrderedCards(this.instantiateCardsById(
                 ParserJson.parseTribeDeck(5).getCardsInOrder(),
                 this.tribeDeckCardIds

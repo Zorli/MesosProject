@@ -55,6 +55,36 @@ public final class MesosTestFixtures {
     }
 
     /**
+     * Creates users for the provided nicknames preserving order.
+     *
+     * @param nicknames user nicknames in lobby order
+     * @return mutable list of users
+     */
+    public static ArrayList<User> createUsers(String... nicknames) {
+        ArrayList<User> users = new ArrayList<>();
+        for (String nickname : nicknames) {
+            users.add(new User(nickname));
+        }
+        return users;
+    }
+
+    /**
+     * Creates users using the default test nicknames preserving order.
+     *
+     * @param userCount number of users to build
+     * @return mutable list of users
+     */
+    public static ArrayList<User> createUsers(int userCount) {
+        if (userCount < 1 || userCount > DEFAULT_NICKNAMES.length) {
+            throw new IllegalArgumentException("Unsupported user count: " + userCount);
+        }
+
+        String[] selectedNicknames = new String[userCount];
+        System.arraycopy(DEFAULT_NICKNAMES, 0, selectedNicknames, 0, userCount);
+        return createUsers(selectedNicknames);
+    }
+
+    /**
      * Returns the canonical placement sequence used by the existing test suite for each player count.
      *
      * @param playerCount number of players in the match

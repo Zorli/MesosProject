@@ -8,6 +8,7 @@ import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.board.Board;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
@@ -19,6 +20,7 @@ import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatc
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import org.junit.jupiter.api.Test;
 
@@ -122,6 +124,106 @@ class GameOrchestratorTest {
     }
 
     @Test
+    void chooseCardPersistsTurnFinishedWhenDrawTurnEnds() {
+        ArrayList<Player> players = createPlayers(2);
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                MesosTestFixtures.createTwoPlayerGameplayFactory(),
+                players,
+                "Alice",
+                savedMatchService
+        );
+        moveGameToDrawPhase(orchestrator);
+
+        Card chosenCard = MesosTestFixtures.findLowerRowCard(orchestrator.getGame(), 10);
+        orchestrator.chooseCard(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), chosenCard);
+
+        assertEquals(1, savedMatchService.turnFinishedCalls);
+        assertEquals("Alice", savedMatchService.lastHostNickname);
+        assertEquals("Bob", orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname());
+        assertEquals(RoundPhase.PLAYER_DRAWS, orchestrator.getGame().getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    @Test
+    void extraDrawnPersistsTurnFinishedWhenExtraDrawFlowAdvances() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        Game game = AdvancedGameStateFixtures.createExtraDrawScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        orchestrator.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), MesosTestFixtures.findUpperRowCard(game, 66));
+
+        assertEquals(1, savedMatchService.turnFinishedCalls);
+        assertEquals(RoundPhase.RESOLVING_EFFECTS, game.getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    @Test
+    void resolveEffectsPersistsTurnFinishedWhenRoundMovesToResettingBoard() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        Game game = createResolvingEffectsGame(4);
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        orchestrator.resolveEffects();
+
+        assertEquals(1, savedMatchService.turnFinishedCalls);
+        assertEquals(0, savedMatchService.completedCalls);
+        assertEquals(RoundPhase.RESETTING_BOARD, game.getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    @Test
+    void resolveEffectsPersistsMatchCompletedWhenEnteringFinalScoring() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        Game game = createResolvingEffectsGame(10);
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        orchestrator.resolveEffects();
+
+        assertEquals(1, savedMatchService.completedCalls);
+        assertEquals(0, savedMatchService.turnFinishedCalls);
+        assertEquals(RoundPhase.FINAL_SCORING, game.getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    @Test
+    void resetBoardPersistsTurnStartedWhenEraDoesNotChange() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        Game game = createResettingBoardGame(false);
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        orchestrator.resetBoard();
+
+        assertEquals(1, savedMatchService.turnStartedCalls);
+        assertEquals(0, savedMatchService.eraChangedCalls);
+        assertEquals(RoundPhase.PLACING_TOTEMS, game.getTurnOrderTrack().getCurrentRoundPhase());
+        assertEquals(2, game.getTurnOrderTrack().getRoundNumber());
+    }
+
+    @Test
+    void resetBoardPersistsEraChangedWhenBoardOpensNewEra() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        Game game = createResettingBoardGame(true);
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        orchestrator.resetBoard();
+
+        assertEquals(0, savedMatchService.turnStartedCalls);
+        assertEquals(1, savedMatchService.eraChangedCalls);
+        assertEquals(Era.second, game.getCurrentEra());
+        assertEquals(RoundPhase.PLACING_TOTEMS, game.getTurnOrderTrack().getCurrentRoundPhase());
+    }
+
+    @Test
+    void calculateFinalScorePersistsMatchCompleted() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        orchestrator.calculateFinalScore();
+
+        assertEquals(1, savedMatchService.completedCalls);
+        assertEquals(GameStatus.FINISHED, game.getStatus());
+    }
+
+    @Test
     void setupMatchFreezesMatchWhenInitialCheckpointSaveFails() {
         ArrayList<Player> players = createPlayers(2);
         RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
@@ -177,6 +279,76 @@ class GameOrchestratorTest {
     }
 
     @Test
+    void chooseCardFreezesMatchWhenTurnFinishedSaveFails() {
+        ArrayList<Player> players = createPlayers(2);
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        savedMatchService.turnFinishedFailure = new IllegalStateException("turn-finished save failed");
+
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                MesosTestFixtures.createTwoPlayerGameplayFactory(),
+                players,
+                "Alice",
+                savedMatchService
+        );
+        moveGameToDrawPhase(orchestrator);
+
+        MatchPersistenceFailureException exception = assertThrows(
+                MatchPersistenceFailureException.class,
+                () -> orchestrator.chooseCard(
+                        orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
+                        MesosTestFixtures.findLowerRowCard(orchestrator.getGame(), 10)
+                )
+        );
+
+        assertEquals("Failed to persist checkpoint TURN_FINISHED; match is now frozen", exception.getMessage());
+        assertEquals("turn-finished save failed", exception.getCause().getMessage());
+        assertTrue(orchestrator.isFrozen());
+        assertThrows(
+                MatchFrozenException.class,
+                () -> orchestrator.chooseCard(
+                        orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
+                        MesosTestFixtures.findUpperRowCard(orchestrator.getGame(), 3)
+                )
+        );
+    }
+
+    @Test
+    void resetBoardFreezesMatchWhenEraChangedSaveFails() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        savedMatchService.eraChangedFailure = new IllegalStateException("era save failed");
+        Game game = createResettingBoardGame(true);
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        MatchPersistenceFailureException exception = assertThrows(
+                MatchPersistenceFailureException.class,
+                orchestrator::resetBoard
+        );
+
+        assertEquals("Failed to persist checkpoint ERA_CHANGED; match is now frozen", exception.getMessage());
+        assertEquals("era save failed", exception.getCause().getMessage());
+        assertTrue(orchestrator.isFrozen());
+        assertThrows(MatchFrozenException.class, orchestrator::resetBoard);
+    }
+
+    @Test
+    void calculateFinalScoreFreezesMatchWhenCompletedCheckpointSaveFails() {
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
+        savedMatchService.completedFailure = new IllegalStateException("completion save failed");
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        MatchPersistenceFailureException exception = assertThrows(
+                MatchPersistenceFailureException.class,
+                orchestrator::calculateFinalScore
+        );
+
+        assertEquals("Failed to persist checkpoint MATCH_COMPLETED; match is now frozen", exception.getMessage());
+        assertEquals("completion save failed", exception.getCause().getMessage());
+        assertTrue(orchestrator.isFrozen());
+        assertThrows(MatchFrozenException.class, orchestrator::calculateFinalScore);
+    }
+
+    @Test
     void constructorsRejectInvalidFactoryPlayersAndRestoredRoster() {
         ArrayList<Player> validPlayers = createPlayers(2);
         assertThrows(NullPointerException.class, () -> new GameOrchestrator(null, validPlayers, "Alice", NoOpSavedMatchService.INSTANCE));
@@ -228,8 +400,40 @@ class GameOrchestratorTest {
         return MesosTestFixtures.createPlayers(playerCount);
     }
 
+    private static void moveGameToDrawPhase(GameOrchestrator orchestrator) {
+        orchestrator.setupMatch();
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C");
+    }
+
     private static Player player(String nickname, TotemColor color) {
         return new Player(nickname, 0, 0, color, new Tribe());
+    }
+
+    private static Game createResolvingEffectsGame(int roundNumber) {
+        Player alice = player("Alice", TotemColor.RED);
+        return new Game(
+                roundNumber,
+                new ArrayList<>(List.of(alice)),
+                new TurnState(),
+                new TurnOrderTrack(List.of(alice), 0, roundNumber, RoundPhase.RESOLVING_EFFECTS),
+                new ResolveEffectsBoard(),
+                Era.first,
+                GameStatus.IN_PROGRESS
+        );
+    }
+
+    private static Game createResettingBoardGame(boolean eraChanged) {
+        Player alice = player("Alice", TotemColor.RED);
+        return new Game(
+                eraChanged ? 20 : 21,
+                new ArrayList<>(List.of(alice)),
+                new TurnState(),
+                new TurnOrderTrack(List.of(alice), 0, 1, RoundPhase.RESETTING_BOARD),
+                new ResetBoardRecordingBoard(eraChanged),
+                Era.first,
+                GameStatus.IN_PROGRESS
+        );
     }
 
     private static final class RecordingGameFactory implements GameFactory {
@@ -259,10 +463,16 @@ class GameOrchestratorTest {
     private static final class RecordingSavedMatchService implements SavedMatchService {
         private int initializeCalls;
         private int turnStartedCalls;
+        private int turnFinishedCalls;
+        private int eraChangedCalls;
+        private int completedCalls;
         private Game lastGame;
         private String lastHostNickname;
         private RuntimeException initializeFailure;
         private RuntimeException turnStartedFailure;
+        private RuntimeException turnFinishedFailure;
+        private RuntimeException eraChangedFailure;
+        private RuntimeException completedFailure;
 
         @Override
         public boolean isPersistenceEnabled() {
@@ -291,14 +501,32 @@ class GameOrchestratorTest {
 
         @Override
         public void saveEraChanged(Game game, String hostNickname) {
+            this.eraChangedCalls++;
+            this.lastGame = game;
+            this.lastHostNickname = hostNickname;
+            if (this.eraChangedFailure != null) {
+                throw this.eraChangedFailure;
+            }
         }
 
         @Override
         public void saveTurnFinished(Game game, String hostNickname) {
+            this.turnFinishedCalls++;
+            this.lastGame = game;
+            this.lastHostNickname = hostNickname;
+            if (this.turnFinishedFailure != null) {
+                throw this.turnFinishedFailure;
+            }
         }
 
         @Override
         public void completeMatch(Game game, String hostNickname) {
+            this.completedCalls++;
+            this.lastGame = game;
+            this.lastHostNickname = hostNickname;
+            if (this.completedFailure != null) {
+                throw this.completedFailure;
+            }
         }
 
         @Override
@@ -321,6 +549,30 @@ class GameOrchestratorTest {
         @Override
         public int deleteExpiredInProgressMatches() {
             return 0;
+        }
+    }
+
+    private static final class ResolveEffectsBoard extends Board {
+        private ResolveEffectsBoard() {
+            super(null, null, new ArrayList<>());
+        }
+
+        @Override
+        public void resolveLowerEvents() {
+        }
+    }
+
+    private static final class ResetBoardRecordingBoard extends Board {
+        private final boolean eraChanged;
+
+        private ResetBoardRecordingBoard(boolean eraChanged) {
+            super(null, null, new ArrayList<>());
+            this.eraChanged = eraChanged;
+        }
+
+        @Override
+        public boolean resetBoardAfterRound(Era currentEra) {
+            return this.eraChanged;
         }
     }
 }

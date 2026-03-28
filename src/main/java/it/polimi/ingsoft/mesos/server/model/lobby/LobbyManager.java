@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
@@ -216,9 +217,13 @@ public class LobbyManager {
         }
 
         // Qui avviene la trasformazione da User a Player
-        List<Player> gamePlayers = lobby.getUsers().stream()
-                .map(user -> new Player(user.getNickname(), 0, 0, null))
-                .toList();
+        TotemColor[] totemColors = TotemColor.values();
+        List<User> lobbyUsers = lobby.getUsers();
+        List<Player> gamePlayers = new ArrayList<>(lobbyUsers.size());
+        for (int index = 0; index < lobbyUsers.size(); index++) {
+            User user = lobbyUsers.get(index);
+            gamePlayers.add(new Player(user.getNickname(), 0, 0, totemColors[index]));
+        }
 
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 this.gameFactory,

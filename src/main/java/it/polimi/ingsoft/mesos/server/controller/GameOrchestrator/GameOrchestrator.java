@@ -4,6 +4,7 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
@@ -20,15 +21,8 @@ import java.util.Objects;
  * game-specific requests through this class so that access checks and orchestration logic stay
  * centralized.
  *
- * <p>Implementation note for the remaining public game actions that still need to be exposed here:
- * the orchestrator must stay the single controller entrypoint for the match. When {@code chooseCard},
- * {@code extraDrawn}, {@code resolveEffects}, {@code resetBoard} and {@code calculateFinalScore}
- * are added, they should:
- * validate that the requesting player belongs to this match when applicable;
- * delegate the actual state mutation to {@link Game};
- * detect whether the mutation crossed a durable checkpoint;
- * call {@link MatchPersistenceCoordinator} only after the domain mutation succeeds;
- * avoid pushing persistence logic down into {@link Game} or lower-level model classes.
+ * <p>All durable gameplay transitions must flow through this class so checkpoint timing remains in
+ * the application layer rather than leaking into callers or domain objects.
  */
 public class GameOrchestrator {
     private final Game game;
@@ -163,17 +157,85 @@ public class GameOrchestrator {
         );
     }
 
-    /*
-     * Future controller methods must follow these checkpoint rules:
-     * - chooseCard(...): persist TURN_FINISHED when the draw phase of the current player or round ends.
-     * - extraDrawn(...): persist only if the extra draw changes the last durable state before effect resolution.
-     * - resolveEffects(): persist TURN_FINISHED or ERA_CHANGED depending on the resulting round transition.
-     * - resetBoard(): persist TURN_STARTED for the next round, or ERA_CHANGED when a new era begins.
-     * - calculateFinalScore(): update ranking first according to the final agreed flow, then persist MATCH_COMPLETED.
+    /**
+     * Delegates one standard card draw and persists a turn-finished checkpoint when the draw turn
+     * advances to another player or phase.
      *
-     * If a persistence call fails, the orchestrator-level policy must be applied here rather than ignored.
-     * See issue #58 for the remaining checkpoint wiring and issue #57 for the save-failure policy.
+     * @param player acting player
+     * @param card chosen card
      */
+    public void chooseCard(Player player, Card card) {
+        this.ensureMatchIsWritable();
+        Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
+        RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
+        this.game.chooseCard(player, card);
+
+        if (this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
+            this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
+        }
+    }
+
+    /**
+     * Delegates one extra draw and persists a turn-finished checkpoint when the bonus-draw flow
+     * advances to a new player or phase.
+     *
+     * @param player acting player
+     * @param card chosen extra-draw card
+     */
+    public void extraDrawn(Player player, Card card) {
+        this.ensureMatchIsWritable();
+        Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
+        RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
+        this.game.extraDrawn(player, card);
+
+        if (this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
+            this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
+        }
+    }
+
+    /**
+     * Resolves round effects and persists the checkpoint implied by the resulting phase.
+     */
+    public void resolveEffects() {
+        this.ensureMatchIsWritable();
+        this.game.resolveEffects();
+        RoundPhase currentRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
+
+        if (currentRoundPhase == RoundPhase.FINAL_SCORING) {
+            this.persistOrFreeze("MATCH_COMPLETED", () -> this.persistenceCoordinator.recordMatchCompleted(this.game));
+            return;
+        }
+
+        if (currentRoundPhase == RoundPhase.RESETTING_BOARD) {
+            this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
+        }
+    }
+
+    /**
+     * Resets the board for the next round and persists either an era-changed or turn-started
+     * checkpoint depending on the resulting era.
+     */
+    public void resetBoard() {
+        this.ensureMatchIsWritable();
+        var previousEra = this.game.getCurrentEra();
+        this.game.resetBoard();
+
+        if (this.game.getCurrentEra() != previousEra) {
+            this.persistOrFreeze("ERA_CHANGED", () -> this.persistenceCoordinator.recordEraChanged(this.game));
+            return;
+        }
+
+        this.persistOrFreeze("TURN_STARTED", () -> this.persistenceCoordinator.recordTurnStarted(this.game));
+    }
+
+    /**
+     * Applies final scoring and persists the completed-match checkpoint.
+     */
+    public void calculateFinalScore() {
+        this.ensureMatchIsWritable();
+        this.game.calculateFinalScore();
+        this.persistOrFreeze("MATCH_COMPLETED", () -> this.persistenceCoordinator.recordMatchCompleted(this.game));
+    }
 
     private static String resolveDefaultHostNickname(List<Player> players) {
         if (players == null || players.isEmpty()) {
@@ -201,5 +263,10 @@ public class GameOrchestrator {
             this.frozen = true;
             throw new MatchPersistenceFailureException(checkpointName, exception);
         }
+    }
+
+    private boolean didTurnAdvance(Player previousPlayer, RoundPhase previousRoundPhase) {
+        return !this.game.getTurnOrderTrack().getCurrentPlayer().equals(previousPlayer)
+                || previousRoundPhase != this.game.getTurnOrderTrack().getCurrentRoundPhase();
     }
 }
