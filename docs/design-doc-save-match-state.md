@@ -273,6 +273,18 @@ Poi il match persistito puo' essere eliminato in una transazione finale separata
 - Un `SavedMatchMapper` traduce `Game` in record persistibili e viceversa.
 - Un `SavedMatchConsistencyChecker` valida invarianti prima di confermare il save o dopo il restore.
 
+## Stato implementazione del boundary
+Una parte del boundary e' stata introdotta:
+- `GameOrchestrator` persiste gia' `GAME_INITIALIZED` e `TURN_STARTED`
+- `MatchPersistenceCoordinator` espone anche `TURN_FINISHED`, `ERA_CHANGED` e `MATCH_COMPLETED`
+- `Game` ora contiene i metodi di dominio per draw, extra draw, resolve effects, reset board e final scoring
+
+Questo non basta ancora a chiudere il tema architetturale, perche' i flow successivi a
+`moveTotem(...)` non sono ancora tutti esposti dall'orchestrator come entry point applicativi
+completi.
+
+Per una spiegazione mirata del gap residuo, dei rischi nascosti e del criterio di chiusura della
+issue, vedere [design-doc-orchestrator-persistence-gap.md](/Users/tommaso/Developer/ing-sw-2026-Vaccari-Zorloni-Viggiano-Zanatta/docs/design-doc-orchestrator-persistence-gap.md).
 Per la policy applicativa sui fallimenti di persistenza, il contratto di ack verso il client e la
 test matrix da fissare, vedere [design-doc-save-failure-policy.md](/Users/tommaso/Developer/ing-sw-2026-Vaccari-Zorloni-Viggiano-Zanatta/docs/design-doc-save-failure-policy.md).
 
