@@ -50,16 +50,20 @@ public class Lobby {
             throw new IllegalArgumentException("Reserved nicknames must contain at least two players");
         }
 
-        if (reservedNicknames.stream().distinct().count() != reservedNicknames.size()) {
+        List<String> validatedNicknames = reservedNicknames.stream()
+                .map(Lobby::validateNickname)
+                .toList();
+
+        if (validatedNicknames.stream().distinct().count() != validatedNicknames.size()) {
             throw new IllegalArgumentException("Reserved nicknames must be unique");
         }
 
-        if (reservedNicknames.size() > MAX_PLAYERS) {
+        if (validatedNicknames.size() > MAX_PLAYERS) {
             throw new IllegalArgumentException("Reserved nicknames exceed maximum lobby size");
         }
 
-        int capacity = reservedNicknames.size();
-        return new Lobby(id, null, resumableGameId, reservedNicknames, LobbyStatus.RESUMABLE, capacity);
+        int capacity = validatedNicknames.size();
+        return new Lobby(id, null, resumableGameId, validatedNicknames, LobbyStatus.RESUMABLE, capacity);
     }
 
     /**
@@ -193,12 +197,10 @@ public class Lobby {
      * @param user user to add
      */
     public void addUser(User user) {
-        if (user == null) {
-            throw new IllegalArgumentException("User cannot be null");
-        }
+        String nickname = this.resolveNickname(user);
 
-        if (this.isResumable() && !this.reservedNicknames.contains(user.getNickname())) {
-            throw new IllegalStateException("User cannot join resumable lobby: " + user.getNickname());
+        if (this.isResumable() && !this.reservedNicknames.contains(nickname)) {
+            throw new IllegalStateException("User cannot join resumable lobby: " + nickname);
         }
 
         if (this.isFull()) {
@@ -206,13 +208,13 @@ public class Lobby {
         }
 
         if (this.users.contains(user)) {
-            throw new IllegalStateException("User already present in lobby: " + user.getNickname());
+            throw new IllegalStateException("User already present in lobby: " + nickname);
         }
 
         this.users.add(user);
 
         if (this.hostNickname == null) {
-            this.hostNickname = user.getNickname();
+            this.hostNickname = nickname;
         }
     }
 
@@ -222,17 +224,15 @@ public class Lobby {
      * @param user user to remove
      */
     public void removeUser(User user) {
-        if (user == null) {
-            throw new IllegalArgumentException("User cannot be null");
-        }
+        String nickname = this.resolveNickname(user);
 
         boolean wasRemoved = this.users.remove(user);
 
         if (!wasRemoved) {
-            throw new IllegalStateException("User not present in lobby: " + user.getNickname());
+            throw new IllegalStateException("User not present in lobby: " + nickname);
         }
 
-        boolean removingHost = user.getNickname().equals(this.hostNickname);
+        boolean removingHost = nickname.equals(this.hostNickname);
 
         if (removingHost) {
             if (this.users.isEmpty()) {
@@ -265,7 +265,7 @@ public class Lobby {
             throw new IllegalStateException("Cannot assign host in an empty lobby");
         }
 
-        this.hostNickname = this.users.get(0).getNickname();
+        this.hostNickname = this.resolveNickname(this.users.get(0));
     }
 
     /**
@@ -293,6 +293,22 @@ public class Lobby {
      */
     public List<User> getUsers() {
         return List.copyOf(this.users);
+    }
+
+    private String resolveNickname(User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
+
+        return validateNickname(user.getNickname());
+    }
+
+    private static String validateNickname(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            throw new IllegalArgumentException("User nickname cannot be null or blank");
+        }
+
+        return nickname;
     }
 
     /**

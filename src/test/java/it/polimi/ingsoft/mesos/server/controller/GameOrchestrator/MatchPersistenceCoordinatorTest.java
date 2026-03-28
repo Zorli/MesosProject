@@ -42,11 +42,13 @@ class MatchPersistenceCoordinatorTest {
         MatchPersistenceCoordinator coordinator = new MatchPersistenceCoordinator(service, "Alice");
         Game game = createSetupGame();
 
+        coordinator.recordTurnStarted(game);
         coordinator.recordMatchInitialized(game);
         coordinator.recordTurnFinished(game);
         coordinator.recordEraChanged(game);
         coordinator.recordMatchCompleted(game);
 
+        assertEquals(1, service.turnStartedCalls);
         assertEquals(1, service.initializeCalls);
         assertEquals(1, service.turnFinishedCalls);
         assertEquals(1, service.eraChangedCalls);

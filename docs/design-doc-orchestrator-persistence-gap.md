@@ -2,18 +2,20 @@
 L'obiettivo della persistenza runtime del match e' avere un solo entry point applicativo per ogni
 transizione durevole della partita: `GameOrchestrator`.
 
-Ad oggi questo obiettivo e' solo parzialmente raggiunto:
-- `setupMatch()` persiste `GAME_INITIALIZED`
-- `moveTotem()` persiste `TURN_STARTED` quando il piazzamento termina e si entra in draw phase
-- i metodi di dominio per draw, extra draw, resolve effects, reset board e final score esistono
-- i checkpoint applicativi `TURN_FINISHED`, `ERA_CHANGED` e `MATCH_COMPLETED` esistono nel
-  `MatchPersistenceCoordinator`
+Questo documento descrive il gap che esisteva prima di estendere davvero l'orchestrator.
 
-Il gap aperto e' che l'orchestrator non espone ancora i metodi controller per le fasi successive,
-quindi la persistenza di quelle transizioni non e' ancora centralizzata davvero.
+Sul branch corrente il punto principale e' stato chiuso:
+- `GameOrchestrator` espone ora anche `chooseCard(...)`, `extraDrawn(...)`, `resolveEffects()`,
+  `resetBoard()` e `calculateFinalScore()`
+- i checkpoint `TURN_FINISHED`, `ERA_CHANGED` e `MATCH_COMPLETED` vengono emessi dal boundary
+  applicativo, non piu' lasciati alla disciplina del chiamante
+- il resume da lobby ricostruisce un orchestrator che preserva l'host persistito del match
 
-## Stato attuale dell'implementazione
-Il codice oggi e' in questa situazione:
+Resta utile tenere questo design doc come motivazione storica della scelta architetturale e come
+promemoria dei rischi che si volevano eliminare.
+
+## Stato originario del problema
+Prima dell'estensione il codice era in questa situazione:
 
 ### Gia' cablato nell'orchestrator
 - `setupMatch()` -> `recordMatchInitialized(...)`
@@ -76,8 +78,8 @@ In pratica oggi il sistema e':
 Questa differenza e' importante: "funziona nei test attuali" non equivale a "abbiamo davvero un solo
 entry point di persistenza".
 
-## Criterio di chiusura dell'issue
-L'issue puo' considerarsi chiusa solo quando tutte queste condizioni sono vere:
+## Esito dello slice applicativo
+Lo slice applicativo puo' considerarsi riuscito quando tutte queste condizioni sono vere:
 
 1. `GameOrchestrator` espone i metodi pubblici per:
    - `chooseCard(...)`
@@ -88,7 +90,8 @@ L'issue puo' considerarsi chiusa solo quando tutte queste condizioni sono vere:
 2. Ogni metodo applica il checkpoint corretto solo dopo il successo della mutazione di dominio.
 3. Il dominio resta persistence-agnostic: niente save in `Game`, `Board`, `TurnState`, `TurnOrderTrack`.
 4. I caller non devono piu' conoscere il timing dei checkpoint per i flow standard.
-5. I test contrattuali estesi di save/restore vengono abilitati e passano.
+5. I test contrattuali estesi di save/restore vengono almeno coperti a livello unit/boundary e,
+   quando l'ambiente PostgreSQL e' disponibile, anche a livello integration.
 6. Il flow finale allinea in modo esplicito ranking, `MATCH_COMPLETED` e cleanup.
 
 ## Indicazione per la PR applicativa futura

@@ -19,7 +19,7 @@ public class Player {
     private Tribe tribe;
 
     /**
-     * Creates a player with the provided identity, resources, and tribe.
+     * Creates a player with the provided identity, resources, and a fresh empty tribe.
      *
      * @param nickname player's nickname
      * @param food starting food amount
@@ -27,11 +27,28 @@ public class Player {
      * @param totemColor totem color assigned to the player
      */
     public Player(String nickname, int food, int prestigePoints, TotemColor totemColor) {
+        this(nickname, food, prestigePoints, totemColor, null);
+    }
+
+    /**
+     * Creates a player with the provided identity, resources, and tribe aggregate.
+     *
+     * <p>This overload is used by restore paths and tests that need to inject a pre-populated tribe.
+     * Passing {@code null} creates a fresh empty tribe so newly created players are immediately ready
+     * to collect cards.
+     *
+     * @param nickname player's nickname
+     * @param food starting food amount
+     * @param prestigePoints starting prestige points amount
+     * @param totemColor totem color assigned to the player
+     * @param tribe tribe aggregate owned by the player, or {@code null} to create a new one
+     */
+    public Player(String nickname, int food, int prestigePoints, TotemColor totemColor, Tribe tribe) {
         this.nickname = nickname;
         this.food = food;
         this.prestigePoints = prestigePoints;
         this.totem = totemColor;
-        this.tribe = new Tribe();
+        this.tribe = tribe == null ? new Tribe() : tribe;
     }
 
     /**
@@ -117,6 +134,18 @@ public class Player {
      */
     public Tribe getTribe() {
         return this.tribe;
+    }
+
+    /**
+     * Ensures the player has an initialized tribe aggregate before entering a match.
+     *
+     * <p>The method is idempotent so factories and restore paths can call it defensively without
+     * changing already initialized state.
+     */
+    public void initializeGameAttributes() {
+        if (this.tribe == null) {
+            this.tribe = new Tribe();
+        }
     }
 
     /**

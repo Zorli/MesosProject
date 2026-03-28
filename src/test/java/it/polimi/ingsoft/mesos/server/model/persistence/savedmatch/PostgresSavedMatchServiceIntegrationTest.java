@@ -261,7 +261,6 @@ class PostgresSavedMatchServiceIntegrationTest extends PostgresIntegrationTestSu
         ArrayList<Player> players = new ArrayList<>();
         players.add(new Player("Alice", 0, 0, TotemColor.RED, null));
         players.add(new Player("Bob", 0, 0, TotemColor.BLUE, null));
-        players.forEach(Player::initializeGameAttributes);
 
         for (BuildingCard ownedBuilding : ownedBuildings) {
             players.getFirst().getTribe().addBuilding(ownedBuilding);
