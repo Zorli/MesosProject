@@ -1,5 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
+import it.polimi.ingsoft.mesos.server.model.ranking.LeaderboardEntry;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.testing;
 
-import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
-import it.polimi.ingsoft.mesos.server.model.Factory.ParserJson;
+import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.ParserJson;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;

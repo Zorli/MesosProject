@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.persistence.postgres.PostgresSchemaModule;
+import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresSchemaModule;
 
 import java.util.List;
 

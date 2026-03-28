@@ -18,4 +18,5 @@
       exports it.polimi.ingsoft.mesos.server.model.enums;
       exports it.polimi.ingsoft.mesos.server.model.player;
       exports it.polimi.ingsoft.mesos.server.model.ranking;
+        exports it.polimi.ingsoft.mesos.server.model.persistence;
   }

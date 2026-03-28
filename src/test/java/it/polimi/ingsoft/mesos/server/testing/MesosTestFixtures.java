@@ -1,10 +1,11 @@
 package it.polimi.ingsoft.mesos.server.testing;
 
-import it.polimi.ingsoft.mesos.server.model.Factory.ParserJson;
+import it.polimi.ingsoft.mesos.server.controller.Factory.ParserJson;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.user.User;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,8 +47,7 @@ public final class MesosTestFixtures {
         TotemColor[] colors = TotemColor.values();
 
         for (int index = 0; index < nicknames.length; index++) {
-            Player player = new Player(nicknames[index], 0, 0, colors[index], null);
-            player.initializeGameAttributes();
+            Player player = new Player(nicknames[index], 0, 0, colors[index]);
             players.add(player);
         }
 

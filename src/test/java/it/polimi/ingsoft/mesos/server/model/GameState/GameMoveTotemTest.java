@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.GameState;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
-import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.Test;

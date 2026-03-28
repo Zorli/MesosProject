@@ -84,9 +84,9 @@ Quindi:
   Coperto, ma si possono aggiungere più test negativi e di consistenza.
 - `it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack`
   Coperto, ma mancano alcuni casi di invalid constructor state e boundary order.
-- `it.polimi.ingsoft.mesos.server.ServerRuntimeConfig`
+- `it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig`
   Parzialmente coperto; utile completare casi edge di configurazione.
-- `it.polimi.ingsoft.mesos.server.ServerServicesFactory`
+- `it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory`
   Copertura bassa ma rischio moderato.
 
 ### Priorità bassa o non necessaria

@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.player;
 
+import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;

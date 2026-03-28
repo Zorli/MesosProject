@@ -1,14 +1,14 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.user.User;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents a pre-game lobby where players gather before a match starts.
- * A lobby keeps track of its host, participating players and current lifecycle status.
+ * Represents a pre-game lobby where users gather before a match starts.
+ * A lobby keeps track of its host, participating users, chosen capacity, and current lifecycle status.
  */
 public class Lobby {
     private static final int MIN_PLAYERS = 2;
@@ -16,74 +16,80 @@ public class Lobby {
 
     private final int id;
     private final String resumableGameId;
-    private final List<String> reservedPlayerNicknames;
+    private final List<String> reservedNicknames;
+    private final int chosenCapacity;
     private String hostNickname;
-    private final List<Player> players;
+    private final List<User> users;
     private LobbyStatus status;
 
     /**
-     * Creates a new lobby and assigns the creator as first player and host.
+     * Creates a new lobby and assigns the creator as first user and host.
      *
      * @param id unique lobby identifier
-     * @param host player creating the lobby
+     * @param host user creating the lobby
+     * @param chosenCapacity number of users chosen by the host to start the game
      */
-    public Lobby(int id, Player host) {
-        this(id, host, null, List.of(), LobbyStatus.WAITING);
+    public Lobby(int id, User host, int chosenCapacity) {
+        this(id, host, null, List.of(), LobbyStatus.WAITING, chosenCapacity);
     }
 
     /**
-     * Creates a resumable lobby for a suspended match. No player is connected yet.
+     * Creates a resumable lobby for a suspended match. No user is connected yet.
      *
      * @param id unique lobby identifier
      * @param resumableGameId persisted match identifier
-     * @param reservedPlayerNicknames nicknames allowed to rejoin this suspended match
-     * @return lobby waiting for the original players to reconnect
+     * @param reservedNicknames nicknames allowed to rejoin this suspended match
+     * @return lobby waiting for the original users to reconnect
      */
-    public static Lobby resumable(int id, String resumableGameId, List<String> reservedPlayerNicknames) {
+    public static Lobby resumable(int id, String resumableGameId, List<String> reservedNicknames) {
         if (resumableGameId == null || resumableGameId.isBlank()) {
             throw new IllegalArgumentException("Resumable game id cannot be null or blank");
         }
 
-        if (reservedPlayerNicknames == null || reservedPlayerNicknames.size() < MIN_PLAYERS) {
-            throw new IllegalArgumentException("Reserved player nicknames must contain at least two players");
+        if (reservedNicknames == null || reservedNicknames.size() < MIN_PLAYERS) {
+            throw new IllegalArgumentException("Reserved nicknames must contain at least two players");
         }
 
-        List<String> normalizedNicknames = reservedPlayerNicknames.stream()
-                .map(Lobby::validateNickname)
-                .toList();
-
-        if (normalizedNicknames.stream().distinct().count() != normalizedNicknames.size()) {
-            throw new IllegalArgumentException("Reserved player nicknames must be unique");
+        if (reservedNicknames.stream().distinct().count() != reservedNicknames.size()) {
+            throw new IllegalArgumentException("Reserved nicknames must be unique");
         }
 
-        if (normalizedNicknames.size() > MAX_PLAYERS) {
-            throw new IllegalArgumentException("Reserved player nicknames exceed maximum lobby size");
+        if (reservedNicknames.size() > MAX_PLAYERS) {
+            throw new IllegalArgumentException("Reserved nicknames exceed maximum lobby size");
         }
 
-        return new Lobby(id, null, resumableGameId, normalizedNicknames, LobbyStatus.RESUMABLE);
+        int capacity = reservedNicknames.size();
+        return new Lobby(id, null, resumableGameId, reservedNicknames, LobbyStatus.RESUMABLE, capacity);
     }
 
     /**
      * Internal constructor used by both standard and resumable lobbies.
      */
     private Lobby(int id,
-                  Player host,
+                  User host,
                   String resumableGameId,
-                  List<String> reservedPlayerNicknames,
-                  LobbyStatus status) {
+                  List<String> reservedNicknames,
+                  LobbyStatus status,
+                  int chosenCapacity) {
+
         if (host == null && status != LobbyStatus.RESUMABLE) {
-            throw new IllegalArgumentException("Host player cannot be null");
+            throw new IllegalArgumentException("Host user cannot be null");
+        }
+
+        if (chosenCapacity < MIN_PLAYERS || chosenCapacity > MAX_PLAYERS) {
+            throw new IllegalArgumentException("Capacity must be between " + MIN_PLAYERS + " and " + MAX_PLAYERS);
         }
 
         this.id = id;
         this.resumableGameId = resumableGameId;
-        this.reservedPlayerNicknames = List.copyOf(reservedPlayerNicknames);
-        this.hostNickname = host == null ? null : this.resolveNickname(host);
-        this.players = new ArrayList<>();
+        this.reservedNicknames = List.copyOf(reservedNicknames);
+        this.chosenCapacity = chosenCapacity;
+        this.hostNickname = host == null ? null : host.getNickname();
+        this.users = new ArrayList<>();
         this.status = status;
 
         if (host != null) {
-            this.addPlayer(host);
+            this.addUser(host);
         }
     }
 
@@ -124,30 +130,39 @@ public class Lobby {
     }
 
     /**
-     * Returns the original player roster reserved for this resumable lobby.
+     * Returns the original user roster reserved for this resumable lobby.
      *
      * @return immutable list of reserved nicknames
      */
-    public List<String> getReservedPlayerNicknames() {
-        return this.reservedPlayerNicknames;
+    public List<String> getReservedNicknames() {
+        return this.reservedNicknames;
     }
 
     /**
-     * Returns the minimum number of players required to start a game.
+     * Returns the minimum number of users required to start a game.
      *
-     * @return minimum number of players
+     * @return minimum number of users
      */
     public int getMinPlayers() {
         return MIN_PLAYERS;
     }
 
     /**
-     * Returns the maximum number of players allowed in the lobby.
+     * Returns the maximum number of users allowed in the lobby.
      *
-     * @return maximum number of players
+     * @return maximum number of users
      */
     public int getMaxPlayers() {
         return MAX_PLAYERS;
+    }
+
+    /**
+     * Returns the target capacity chosen for this lobby.
+     *
+     * @return chosen capacity
+     */
+    public int getChosenCapacity() {
+        return this.chosenCapacity;
     }
 
     /**
@@ -173,155 +188,122 @@ public class Lobby {
     }
 
     /**
-     * Adds a player to the lobby if there is space and the player is not already present.
+     * Adds a user to the lobby if there is space and the user is not already present.
      *
-     * @param player player to add
+     * @param user user to add
      */
-    public void addPlayer(Player player) {
-        String nickname = this.resolveNickname(player);
+    public void addUser(User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
 
-        if (this.isResumable() && !this.reservedPlayerNicknames.contains(nickname)) {
-            throw new IllegalStateException("Player cannot join resumable lobby: " + nickname);
+        if (this.isResumable() && !this.reservedNicknames.contains(user.getNickname())) {
+            throw new IllegalStateException("User cannot join resumable lobby: " + user.getNickname());
         }
 
         if (this.isFull()) {
             throw new IllegalStateException("Lobby is full");
         }
 
-        boolean playerAlreadyInLobby = this.players.stream()
-                .map(Player::getNickname)
-                .anyMatch(nickname::equals);
-
-        if (playerAlreadyInLobby) {
-            throw new IllegalStateException("Player already present in lobby: " + nickname);
+        if (this.users.contains(user)) {
+            throw new IllegalStateException("User already present in lobby: " + user.getNickname());
         }
 
-        this.players.add(player);
+        this.users.add(user);
 
         if (this.hostNickname == null) {
-            this.hostNickname = nickname;
+            this.hostNickname = user.getNickname();
         }
     }
 
     /**
-     * Removes a player from the lobby.
+     * Removes a user from the lobby.
      *
-     * @param player player to remove
+     * @param user user to remove
      */
-    public void removePlayer(Player player) {
-        String nickname = this.resolveNickname(player);
+    public void removeUser(User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
 
-        Player playerToRemove = this.players.stream()
-                .filter(currentPlayer -> nickname.equals(currentPlayer.getNickname()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Player not present in lobby: " + nickname));
+        boolean wasRemoved = this.users.remove(user);
 
-        boolean removingHost = nickname.equals(this.hostNickname);
-        this.players.remove(playerToRemove);
+        if (!wasRemoved) {
+            throw new IllegalStateException("User not present in lobby: " + user.getNickname());
+        }
+
+        boolean removingHost = user.getNickname().equals(this.hostNickname);
 
         if (removingHost) {
-            if (this.players.isEmpty()) {
+            if (this.users.isEmpty()) {
                 this.hostNickname = null;
             } else {
-                this.transferHostToSecondPlayer();
+                this.transferHostToSecondUser();
             }
         }
     }
 
     /**
-     * Checks whether the given player is the current host.
+     * Checks whether the given user is the current host.
      *
-     * @param player player to check
-     * @return {@code true} if the player is the host, {@code false} otherwise
+     * @param user user to check
+     * @return {@code true} if the user is the host, {@code false} otherwise
      */
-    public boolean isHost(Player player) {
-        if (player == null || this.hostNickname == null) {
+    public boolean isHost(User user) {
+        if (user == null || this.hostNickname == null) {
             return false;
         }
 
-        return this.hostNickname.equals(player.getNickname());
+        return this.hostNickname.equals(user.getNickname());
     }
 
     /**
-     * Transfers host ownership to the first remaining player in the lobby.
+     * Transfers host ownership to the first remaining user in the lobby.
      */
-    public void transferHostToSecondPlayer() {
-        if (this.players.isEmpty()) {
+    public void transferHostToSecondUser() {
+        if (this.users.isEmpty()) {
             throw new IllegalStateException("Cannot assign host in an empty lobby");
         }
 
-        this.hostNickname = this.resolveNickname(this.players.get(0));
+        this.hostNickname = this.users.get(0).getNickname();
     }
 
     /**
-     * Checks whether the lobby has enough players to start a game.
+     * Checks whether the lobby has reached the chosen capacity to start a game.
      *
      * @return {@code true} if the lobby can start, {@code false} otherwise
      */
     public boolean canStart() {
-        if (this.isResumable()) {
-            return this.players.size() == this.reservedPlayerNicknames.size();
-        }
-
-        return this.players.size() >= MIN_PLAYERS;
+        return this.users.size() == this.chosenCapacity;
     }
 
     /**
-     * Checks whether the lobby has reached maximum capacity.
+     * Checks whether the lobby has reached its chosen capacity.
      *
      * @return {@code true} if the lobby is full, {@code false} otherwise
      */
     public boolean isFull() {
-        if (this.isResumable()) {
-            return this.players.size() >= this.reservedPlayerNicknames.size();
-        }
-
-        return this.players.size() >= MAX_PLAYERS;
+        return this.users.size() >= this.chosenCapacity;
     }
 
     /**
-     * Returns an immutable snapshot of the players currently in the lobby.
+     * Returns an immutable snapshot of the users currently in the lobby.
      *
-     * @return immutable player list
+     * @return immutable user list
      */
-    public List<Player> getPlayers() {
-        return List.copyOf(this.players);
-    }
-
-    /**
-     * Extracts and validates the nickname of a player used in lobby membership checks.
-     *
-     * @param player player whose nickname must be resolved
-     * @return validated non-blank nickname
-     */
-    private String resolveNickname(Player player) {
-        if (player == null) {
-            throw new IllegalArgumentException("Player cannot be null");
-        }
-
-        return validateNickname(player.getNickname());
-    }
-
-    /**
-     * Validates and returns one nickname string.
-     */
-    private static String validateNickname(String nickname) {
-        if (nickname == null || nickname.isBlank()) {
-            throw new IllegalArgumentException("Player nickname cannot be null or blank");
-        }
-
-        return nickname;
+    public List<User> getUsers() {
+        return List.copyOf(this.users);
     }
 
     /**
      * Returns a debug-friendly textual representation of the lobby.
      *
-     * @return string containing the main lobby fields and player nicknames
+     * @return string containing the main lobby fields and user nicknames
      */
     @Override
     public String toString() {
-        List<String> playerNicknames = this.players.stream()
-                .map(Player::getNickname)
+        List<String> userNicknames = this.users.stream()
+                .map(User::getNickname)
                 .toList();
 
         return "Lobby{" +
@@ -329,10 +311,10 @@ public class Lobby {
                 ", resumableGameId='" + this.resumableGameId + '\'' +
                 ", hostNickname='" + this.hostNickname + '\'' +
                 ", status=" + this.status +
-                ", playersCount=" + this.players.size() +
-                ", maxPlayers=" + MAX_PLAYERS +
-                ", reservedPlayerNicknames=" + this.reservedPlayerNicknames +
-                ", playerNicknames=" + playerNicknames +
+                ", usersCount=" + this.users.size() +
+                ", chosenCapacity=" + this.chosenCapacity +
+                ", reservedNicknames=" + this.reservedNicknames +
+                ", userNicknames=" + userNicknames +
                 '}';
     }
 }

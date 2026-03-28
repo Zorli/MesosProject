@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
+import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingQueries;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

@@ -1,13 +1,15 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.Factory.DefaultGameFactory;
-import it.polimi.ingsoft.mesos.server.model.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.Orchestration.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.NoOpSavedMatchService;
-import it.polimi.ingsoft.mesos.server.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.user.User;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,7 +22,7 @@ import java.util.Set;
 
 /**
  * Coordinates the lifecycle of all active lobbies.
- * It is responsible for creating lobbies, adding and removing players,
+ * It is responsible for creating lobbies, adding and removing users,
  * exposing open lobbies and starting a game from a ready lobby.
  */
 public class LobbyManager {
@@ -53,15 +55,19 @@ public class LobbyManager {
     /**
      * Creates a new lobby and registers its host.
      *
-     * @param host player creating the lobby
+     * @param host user creating the lobby
+     * @param chosenCapacity the number of players chosen for this match
      * @return created lobby
      */
-    public Lobby createLobby(Player host) {
+    public Lobby createLobby(User host, int chosenCapacity) {
         if (host == null) {
-            throw new IllegalArgumentException("Host player cannot be null");
+            throw new IllegalArgumentException("Host user cannot be null");
+        }
+        if(isUserInAnyLobby(host)) {
+            throw new IllegalStateException("Host already in a lobby");
         }
 
-        Lobby lobby = new Lobby(this.nextLobbyId++, host);
+        Lobby lobby = new Lobby(this.nextLobbyId++, host, chosenCapacity);
         this.lobbies.put(lobby.getId(), lobby);
         return lobby;
     }
@@ -70,29 +76,32 @@ public class LobbyManager {
      * Creates a resumable lobby for a suspended match waiting to be restored.
      *
      * @param resumableGameId persisted match identifier
-     * @param reservedPlayerNicknames original player nicknames that are allowed to rejoin
+     * @param reservedNicknames original user nicknames that are allowed to rejoin
      * @return created resumable lobby
      */
-    public Lobby createResumeLobby(String resumableGameId, List<String> reservedPlayerNicknames) {
-        Lobby lobby = Lobby.resumable(this.nextLobbyId++, resumableGameId, reservedPlayerNicknames);
+    public Lobby createResumeLobby(String resumableGameId, List<String> reservedNicknames) {
+        Lobby lobby = Lobby.resumable(this.nextLobbyId++, resumableGameId, reservedNicknames);
         this.lobbies.put(lobby.getId(), lobby);
         return lobby;
     }
 
     /**
-     * Adds a player to an existing lobby if its status still allows joins.
+     * Adds a user to an existing lobby if its status still allows joins.
      *
      * @param lobbyId target lobby identifier
-     * @param player player joining the lobby
+     * @param user user joining the lobby
      */
-    public void joinLobby(int lobbyId, Player player) {
-        if (player == null) {
-            throw new IllegalArgumentException("Player cannot be null");
+    public void joinLobby(int lobbyId, User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
+        if(isUserInAnyLobby(user)) {
+            throw new IllegalStateException("User already in a lobby");
         }
 
         Lobby lobby = this.resolveLobby(lobbyId);
-        this.ensureLobbyAcceptsPlayers(lobby);
-        lobby.addPlayer(player);
+        this.ensureLobbyAcceptsUsers(lobby);
+        lobby.addUser(user);
 
         if (lobby.canStart()
                 && (lobby.getStatus() == LobbyStatus.WAITING || lobby.getStatus() == LobbyStatus.RESUMABLE)) {
@@ -101,31 +110,31 @@ public class LobbyManager {
     }
 
     /**
-     * Removes a player from a lobby.
+     * Removes a user from a lobby.
      *
      * @param lobbyId target lobby identifier
-     * @param player player leaving the lobby
+     * @param user user leaving the lobby
      */
-    public void exitLobby(int lobbyId, Player player) {
-        this.removePlayer(lobbyId, player);
+    public void exitLobby(int lobbyId, User user) {
+        this.removeUser(lobbyId, user);
     }
 
     /**
-     * Removes a player from a lobby and updates host or lobby state if needed.
-     * If the last player leaves, the lobby is closed and removed.
+     * Removes a user from a lobby and updates host or lobby state if needed.
+     * If the last user leaves, the lobby is closed and removed.
      *
      * @param lobbyId target lobby identifier
-     * @param player player to remove
+     * @param user user to remove
      */
-    public void removePlayer(int lobbyId, Player player) {
-        if (player == null) {
-            throw new IllegalArgumentException("Player cannot be null");
+    public void removeUser(int lobbyId, User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
         }
 
         Lobby lobby = this.resolveLobby(lobbyId);
-        lobby.removePlayer(player);
+        lobby.removeUser(user);
 
-        if (lobby.getPlayers().isEmpty() && !lobby.isResumable()) {
+        if (lobby.getUsers().isEmpty() && !lobby.isResumable()) {
             lobby.setStatus(LobbyStatus.CLOSED);
             this.lobbies.remove(lobbyId);
             return;
@@ -137,7 +146,7 @@ public class LobbyManager {
     }
 
     /**
-     * Checks whether a lobby has enough players to start.
+     * Checks whether a lobby has reached its chosen capacity.
      *
      * @param lobbyId target lobby identifier
      * @return {@code true} if the lobby can start, {@code false} otherwise
@@ -206,9 +215,14 @@ public class LobbyManager {
             throw new IllegalStateException("Resumable lobbies must restore a saved match instead of creating a new one");
         }
 
+        // Qui avviene la trasformazione da User a Player
+        List<Player> gamePlayers = lobby.getUsers().stream()
+                .map(user -> new Player(user.getNickname(), 0, 0, null))
+                .toList();
+
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 this.gameFactory,
-                new ArrayList<>(lobby.getPlayers()),
+                new ArrayList<>(gamePlayers),
                 lobby.getHostNickname(),
                 savedMatchService
         );
@@ -220,7 +234,7 @@ public class LobbyManager {
      * Restores a previously persisted match from a ready resumable lobby.
      *
      * @param lobbyId resumable lobby identifier
-     * @param restoreService application service able to rebuild the match aggregate
+     * @param savedMatchService application service able to rebuild the match aggregate
      * @return created game orchestrator
      */
     public GameOrchestrator resumeGameFromLobby(int lobbyId, SavedMatchService savedMatchService) {
@@ -242,12 +256,13 @@ public class LobbyManager {
             throw new IllegalStateException("Cannot resume game from lobby that cannot start");
         }
 
-        Game restoredGame = savedMatchService.restoreGame(lobby.getResumableGameId());
+        SavedMatchRestoreResult restoredMatch = savedMatchService.restoreMatch(lobby.getResumableGameId());
+        Game restoredGame = restoredMatch.game();
         this.ensureRestoredRosterMatchesLobby(lobby, restoredGame);
 
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 restoredGame,
-                lobby.getHostNickname(),
+                restoredMatch.hostNickname(),
                 savedMatchService
         );
         lobby.setStatus(LobbyStatus.STARTED);
@@ -271,11 +286,11 @@ public class LobbyManager {
     }
 
     /**
-     * Verifies that a lobby still accepts new players.
+     * Verifies that a lobby still accepts new users.
      *
      * @param lobby lobby to validate
      */
-    private void ensureLobbyAcceptsPlayers(Lobby lobby) {
+    private void ensureLobbyAcceptsUsers(Lobby lobby) {
         if (lobby.getStatus() == LobbyStatus.CLOSED || lobby.getStatus() == LobbyStatus.STARTED) {
             throw new IllegalStateException("Cannot join lobby with status: " + lobby.getStatus());
         }
@@ -285,7 +300,7 @@ public class LobbyManager {
      * Verifies that the restored match roster matches the reserved resumable lobby roster.
      */
     private void ensureRestoredRosterMatchesLobby(Lobby lobby, Game restoredGame) {
-        Set<String> reservedNicknames = new HashSet<>(lobby.getReservedPlayerNicknames());
+        Set<String> reservedNicknames = new HashSet<>(lobby.getReservedNicknames());
         Set<String> restoredNicknames = restoredGame.getPlayers().stream()
                 .map(Player::getNickname)
                 .collect(java.util.stream.Collectors.toSet());
@@ -293,6 +308,17 @@ public class LobbyManager {
         if (!reservedNicknames.equals(restoredNicknames)) {
             throw new IllegalStateException("Restored match roster does not match resumable lobby roster");
         }
+    }
+
+    /**
+     * Checks whether the specified user is currently present in any active lobby.
+     *
+     * @param user the user to check for presence
+     * @return {@code true} if the user is found in at least one lobby, {@code false} otherwise
+     */
+    private boolean isUserInAnyLobby(User user) {
+        return this.lobbies.values().stream()
+                .anyMatch(lobby -> lobby.getUsers().contains(user));
     }
 
     /**

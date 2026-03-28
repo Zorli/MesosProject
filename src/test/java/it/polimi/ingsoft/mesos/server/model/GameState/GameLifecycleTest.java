@@ -369,8 +369,7 @@ class GameLifecycleTest {
     }
 
     private static Player player(String nickname, TotemColor color) {
-        Player player = new Player(nickname, 5, 0, color, null);
-        player.initializeGameAttributes();
+        Player player = new Player(nickname, 5, 0, color);
         return player;
     }
 
