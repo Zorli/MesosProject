@@ -283,6 +283,167 @@ Poi il match persistito puo' essere eliminato in una transazione finale separata
 - Un `SavedMatchMapper` traduce `Game` in record persistibili e viceversa.
 - Un `SavedMatchConsistencyChecker` valida invarianti prima di confermare il save o dopo il restore.
 
+## Flusso dei processi di salvataggio
+
+### Classi coinvolte
+Il salvataggio segue una catena di responsabilita' ben definita:
+
+```
+Client
+   │
+   ▼
+GameOrchestrator          (coordina gameplay e decide quando salvare)
+   │
+   ▼
+MatchPersistenceCoordinator   (traduce eventi di gioco in checkpoint)
+   │
+   ▼
+SavedMatchService         (interfaccia applicativa di persistenza)
+   │
+   ▼
+PostgresSavedMatchRepository  (transazione atomica multi-tabella)
+   │
+   ▼
+PostgreSQL
+```
+
+### Ruolo di ogni classe
+
+| Classe | Responsabilita' |
+|--------|-----------------|
+| `GameOrchestrator` | Esegue la mutazione sul domain, poi chiama `persistOrFreeze()` |
+| `MatchPersistenceCoordinator` | Decide quale checkpoint salvare in base alla transizione |
+| `SavedMatchService` | Mappa il `Game` in `SavedMatchAggregate` e chiama il repository |
+| `PostgresSavedMatchRepository` | Esegue upsert/replace su tutte le tabelle in una transazione |
+
+### Trigger dei checkpoint per metodo
+
+| Metodo in GameOrchestrator | Checkpoint salvato | Condizione |
+|----------------------------|-------------------|------------|
+| `setupMatch()` | `GAME_INITIALIZED` | Sempre dopo `game.setup()` |
+| `moveTotem(player, tile)` | `TURN_STARTED` | Solo se la fase cambia a `PLAYER_DRAWS` |
+| `chooseCard(player, card)` | `TURN_FINISHED` | Solo se il turno avanza (player o fase cambiano) |
+| `extraDrawn(player, card)` | `TURN_FINISHED` | Solo se il turno avanza |
+| `resolveEffects()` | `MATCH_COMPLETED` | Se la fase diventa `FINAL_SCORING` |
+| `resolveEffects()` | `TURN_FINISHED` | Se la fase diventa `RESETTING_BOARD` |
+| `resetBoard()` | `ERA_CHANGED` | Se l'era cambia |
+| `resetBoard()` | `TURN_STARTED` | Se l'era non cambia |
+| `calculateFinalScore()` | `MATCH_COMPLETED` | Sempre dopo scoring finale |
+
+### Flusso dettagliato di un salvataggio
+
+Esempio: `chooseCard()` che avanza il turno:
+
+```
+1. GameOrchestrator.chooseCard(player, card)
+   │
+   ├─► ensureMatchIsWritable()          // Verifica che il match non sia frozen
+   │
+   ├─► Salva stato precedente
+   │   └─► previousPlayer = game.getTurnOrderTrack().getCurrentPlayer()
+   │   └─► previousRoundPhase = game.getTurnOrderTrack().getCurrentRoundPhase()
+   │
+   ├─► game.chooseCard(player, card)    // Mutazione in-memory
+   │
+   └─► if (didTurnAdvance(...))
+       └─► persistOrFreeze("TURN_FINISHED", () -> ...)
+           │
+           └─► coordinator.recordTurnFinished(game)
+               │
+               └─► savedMatchService.saveTurnFinished(game, hostNickname)
+                   │
+                   └─► saveMatch(game, hostNickname, TURN_FINISHED)
+                       │
+                       ├─► SavedMatchMapper.fromGame(game, ...)  // Crea aggregate
+                       ├─► SavedMatchConsistencyChecker.validate(aggregate)
+                       └─► repository.save(aggregate)
+                           │
+                           └─► executeWithRetry(() -> {
+                               connection.setAutoCommit(false);
+                               upsertMatch(...);
+                               upsertPlayers(...);
+                               replaceTurnOrder(...);
+                               replaceTurnChoices(...);
+                               replaceOfferSpaces(...);
+                               replaceStartingBlocks(...);
+                               replaceBoardCards(...);
+                               replacePlayerCards(...);
+                               connection.commit();  // Atomico
+                           })
+```
+
+### Atomicita' e gestione fallimenti
+
+**Atomicita' nel DB:** Il metodo `repository.save()` esegue tutte le operazioni in una singola transazione PostgreSQL. O tutte le tabelle vengono aggiornate, o nessuna (rollback).
+
+**Gestione fallimenti:** Se il salvataggio fallisce dopo la mutazione in-memory:
+
+```java
+private void persistOrFreeze(String checkpointName, Runnable saveAction) {
+    try {
+        saveAction.run();
+    } catch (RuntimeException exception) {
+        this.frozen = true;  // Match congelato
+        throw new MatchPersistenceFailureException(checkpointName, exception);
+    }
+}
+```
+
+Dopo il freeze:
+- Il match non accetta piu' comandi gameplay
+- L'ultimo checkpoint valido nel DB rimane disponibile per il resume
+- Il client riceve un errore e puo' riconnettersi per riprendere dal checkpoint precedente
+
+### MatchPersistenceCoordinator in dettaglio
+
+Il coordinator e' un wrapper leggero che isola la logica di "quando salvare" dall'orchestrator:
+
+```java
+public final class MatchPersistenceCoordinator {
+    private final SavedMatchService savedMatchService;
+    private final String hostNickname;
+
+    // Chiamato da setupMatch()
+    public void recordMatchInitialized(Game game) {
+        savedMatchService.initializeMatch(game, hostNickname);
+    }
+
+    // Chiamato da moveTotem() - salva solo se cambia fase
+    public void recordAfterMoveTotem(Game game, RoundPhase previousRoundPhase) {
+        RoundPhase currentRoundPhase = game.getTurnOrderTrack().getCurrentRoundPhase();
+        if (previousRoundPhase != currentRoundPhase
+            && currentRoundPhase == RoundPhase.PLAYER_DRAWS) {
+            savedMatchService.saveTurnStarted(game, hostNickname);
+        }
+    }
+
+    // Chiamato da chooseCard(), extraDrawn(), resolveEffects()
+    public void recordTurnFinished(Game game) {
+        savedMatchService.saveTurnFinished(game, hostNickname);
+    }
+
+    // Chiamato da resetBoard() quando l'era cambia
+    public void recordEraChanged(Game game) {
+        savedMatchService.saveEraChanged(game, hostNickname);
+    }
+
+    // Chiamato da resetBoard() quando l'era non cambia
+    public void recordTurnStarted(Game game) {
+        savedMatchService.saveTurnStarted(game, hostNickname);
+    }
+
+    // Chiamato da resolveEffects() e calculateFinalScore()
+    public void recordMatchCompleted(Game game) {
+        savedMatchService.completeMatch(game, hostNickname);
+    }
+}
+```
+
+Questo pattern permette di:
+- Testare l'orchestrator mockando il coordinator
+- Cambiare la policy di persistenza senza toccare la logica di gioco
+- Mantenere `Game` completamente persistence-agnostic
+
 ## Stato implementazione del boundary
 Il boundary applicativo copre ora i checkpoint gameplay principali:
 - `GameOrchestrator` persiste `GAME_INITIALIZED`, `TURN_STARTED`, `TURN_FINISHED`, `ERA_CHANGED` e `MATCH_COMPLETED`
