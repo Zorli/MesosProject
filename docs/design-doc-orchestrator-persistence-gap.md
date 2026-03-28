@@ -57,14 +57,15 @@ disabilitati. Quindi i checkpoint tardi non sono ancora protetti da regressioni 
 Se una mutazione di dominio riesce e il save fallisce subito dopo, oggi non esiste ancora un punto
 unico dove definire con chiarezza la policy applicativa del fallimento.
 
-### 5. Il flow finale ranking + completamento match non e' ancora orchestrato end-to-end
-La chiusura della partita deve coordinare almeno:
-- aggiornamento ranking
+### 5. Il flow finale ranking + completamento match era incompleto
+La chiusura della partita doveva coordinare almeno:
 - persistenza `MATCH_COMPLETED`
+- aggiornamento ranking
 - eventuale cleanup finale
 
-Finche' questo flow non vive nell'orchestrator, il rischio e' avere allineamenti parziali tra stato
-del match, checkpoint persistito e ranking.
+Questo punto e' stato chiuso per i primi due step: l'orchestrator ora salva prima lo snapshot
+finale `FINISHED` e aggiorna il ranking subito dopo. Il cleanup resta una decisione applicativa
+separata.
 
 ## Effetto pratico sul codice
 Il problema nascosto non e' che il model sia sbagliato nel calcolo delle fasi. Il problema e' che la
@@ -92,7 +93,8 @@ Lo slice applicativo puo' considerarsi riuscito quando tutte queste condizioni s
 4. I caller non devono piu' conoscere il timing dei checkpoint per i flow standard.
 5. I test contrattuali estesi di save/restore vengono almeno coperti a livello unit/boundary e,
    quando l'ambiente PostgreSQL e' disponibile, anche a livello integration.
-6. Il flow finale allinea in modo esplicito ranking, `MATCH_COMPLETED` e cleanup.
+6. Il flow finale allinea in modo esplicito `MATCH_COMPLETED` e ranking, lasciando il cleanup come
+   policy successiva separata.
 
 ## Indicazione per la PR applicativa futura
 La futura PR che chiude davvero il problema deve essere valutata soprattutto su questi punti:

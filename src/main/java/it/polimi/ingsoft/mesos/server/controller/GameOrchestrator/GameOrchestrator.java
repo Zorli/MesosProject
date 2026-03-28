@@ -8,10 +8,15 @@ import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -27,6 +32,8 @@ import java.util.Objects;
 public class GameOrchestrator {
     private final Game game;
     private final List<Player> players;
+    private final String hostNickname;
+    private final RankingService rankingService;
     private final MatchPersistenceCoordinator persistenceCoordinator;
     private boolean frozen;
 
@@ -57,6 +64,25 @@ public class GameOrchestrator {
                             ArrayList<Player> players,
                             String hostNickname,
                             SavedMatchService savedMatchService) {
+        this(gameFactory, players, hostNickname, savedMatchService, null);
+    }
+
+    /**
+     * Creates an orchestrator for a new match and wires both save-match persistence and final
+     * ranking registration.
+     *
+     * @param gameFactory factory used to bootstrap the underlying game aggregate
+     * @param players players transferred from the lobby into the match
+     * @param hostNickname original host nickname associated with the match
+     * @param savedMatchService persistence service selected for the current runtime mode
+     * @param rankingService ranking service used to register completed matches; nullable when the
+     *                       runtime does not expose ranking persistence
+     */
+    public GameOrchestrator(GameFactory gameFactory,
+                            ArrayList<Player> players,
+                            String hostNickname,
+                            SavedMatchService savedMatchService,
+                            RankingService rankingService) {
         Objects.requireNonNull(gameFactory, "Game factory cannot be null");
         if (players == null || players.isEmpty()) {
             throw new IllegalArgumentException("Players cannot be null or empty");
@@ -64,7 +90,9 @@ public class GameOrchestrator {
 
         this.game = gameFactory.createGame(players);
         this.players = List.copyOf(players);
-        this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, hostNickname);
+        this.hostNickname = requireHostNickname(hostNickname);
+        this.rankingService = rankingService;
+        this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, this.hostNickname);
     }
 
     /**
@@ -88,12 +116,31 @@ public class GameOrchestrator {
      * @param savedMatchService persistence service selected for the current runtime mode
      */
     public GameOrchestrator(Game restoredGame, String hostNickname, SavedMatchService savedMatchService) {
+        this(restoredGame, hostNickname, savedMatchService, null);
+    }
+
+    /**
+     * Creates an orchestrator starting from an already restored game aggregate and wires both
+     * save-match persistence and final ranking registration.
+     *
+     * @param restoredGame previously persisted game state reconstructed from storage
+     * @param hostNickname original host nickname associated with the match
+     * @param savedMatchService persistence service selected for the current runtime mode
+     * @param rankingService ranking service used to register completed matches; nullable when the
+     *                       runtime does not expose ranking persistence
+     */
+    public GameOrchestrator(Game restoredGame,
+                            String hostNickname,
+                            SavedMatchService savedMatchService,
+                            RankingService rankingService) {
         this.game = Objects.requireNonNull(restoredGame, "Restored game cannot be null");
         this.players = restoredGame.getPlayers();
         if (this.players.isEmpty()) {
             throw new IllegalArgumentException("Restored game must contain at least one player");
         }
-        this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, hostNickname);
+        this.hostNickname = requireHostNickname(hostNickname);
+        this.rankingService = rankingService;
+        this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, this.hostNickname);
     }
 
     /**
@@ -229,12 +276,19 @@ public class GameOrchestrator {
     }
 
     /**
-     * Applies final scoring and persists the completed-match checkpoint.
+     * Applies final scoring and then executes the application-level completion flow.
+     *
+     * <p>The completed-match snapshot is persisted first so the finished match remains recoverable
+     * even if a later ranking update fails. When a ranking service is configured, the method also
+     * records the completed match and returns the resulting ranking payload.
+     *
+     * @return ranking payload when the runtime is configured to register completed matches;
+     *         {@link Optional#empty()} otherwise
      */
-    public void calculateFinalScore() {
+    public Optional<RankingResult> calculateFinalScore() {
         this.ensureMatchIsWritable();
         this.game.calculateFinalScore();
-        this.persistOrFreeze("MATCH_COMPLETED", () -> this.persistenceCoordinator.recordMatchCompleted(this.game));
+        return this.finalizeCompletedMatchOrFreeze();
     }
 
     private static String resolveDefaultHostNickname(List<Player> players) {
@@ -247,7 +301,14 @@ public class GameOrchestrator {
             throw new IllegalArgumentException("Match host nickname cannot be null or blank");
         }
 
-        return host.getNickname();
+        return requireHostNickname(host.getNickname());
+    }
+
+    private static String requireHostNickname(String hostNickname) {
+        if (hostNickname == null || hostNickname.isBlank()) {
+            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
+        }
+        return hostNickname;
     }
 
     private void ensureMatchIsWritable() {
@@ -263,6 +324,33 @@ public class GameOrchestrator {
             this.frozen = true;
             throw new MatchPersistenceFailureException(checkpointName, exception);
         }
+    }
+
+    private Optional<RankingResult> finalizeCompletedMatchOrFreeze() {
+        try {
+            this.persistenceCoordinator.recordMatchCompleted(this.game);
+            if (this.rankingService == null) {
+                return Optional.empty();
+            }
+
+            RankingResult rankingResult = this.rankingService.recordMatchAndGetRanking(
+                    String.valueOf(this.game.getId()),
+                    this.players.size(),
+                    Instant.now(),
+                    this.hostNickname,
+                    this.buildFinalScores()
+            );
+            return Optional.of(rankingResult);
+        } catch (RuntimeException exception) {
+            this.frozen = true;
+            throw new MatchFinalizationFailureException(exception);
+        }
+    }
+
+    private List<MatchScore> buildFinalScores() {
+        return this.players.stream()
+                .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
+                .toList();
     }
 
     private boolean didTurnAdvance(Player previousPlayer, RoundPhase previousRoundPhase) {

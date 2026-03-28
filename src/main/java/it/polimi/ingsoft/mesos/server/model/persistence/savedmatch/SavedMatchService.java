@@ -46,7 +46,10 @@ public interface SavedMatchService {
     void saveTurnFinished(Game game, String hostNickname);
 
     /**
-     * Persists the final completed-match state.
+     * Persists the final-scoring boundary snapshot.
+     *
+     * <p>This checkpoint is reused for both snapshots that are still in {@code FINAL_SCORING} and
+     * snapshots already marked as finished after final score calculation.
      *
      * @param game game to persist
      * @param hostNickname original host nickname
