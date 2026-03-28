@@ -2,8 +2,11 @@ package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -44,6 +47,33 @@ class PostgresSavedMatchServiceTest {
         PostgresSavedMatchService service = new PostgresSavedMatchService(new RecordingSavedMatchRepository());
 
         assertTrue(service.isPersistenceEnabled());
+    }
+
+    @Test
+    void completeMatchPersistsMatchCompletedForPreScoringFinalScoringSnapshot() {
+        RecordingSavedMatchRepository repository = new RecordingSavedMatchRepository();
+        PostgresSavedMatchService service = new PostgresSavedMatchService(repository);
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+
+        service.completeMatch(game, "Alice");
+
+        assertEquals(SavedMatchCheckpointType.MATCH_COMPLETED, repository.lastSavedAggregate.lastCheckpointType());
+        assertEquals(GameStatus.IN_PROGRESS, repository.lastSavedAggregate.gameStatus());
+        assertEquals(RoundPhase.FINAL_SCORING, repository.lastSavedAggregate.roundPhase());
+    }
+
+    @Test
+    void completeMatchPersistsMatchCompletedForFinishedPostScoringSnapshot() {
+        RecordingSavedMatchRepository repository = new RecordingSavedMatchRepository();
+        PostgresSavedMatchService service = new PostgresSavedMatchService(repository);
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+        game.calculateFinalScore();
+
+        service.completeMatch(game, "Alice");
+
+        assertEquals(SavedMatchCheckpointType.MATCH_COMPLETED, repository.lastSavedAggregate.lastCheckpointType());
+        assertEquals(GameStatus.FINISHED, repository.lastSavedAggregate.gameStatus());
+        assertEquals(RoundPhase.FINAL_SCORING, repository.lastSavedAggregate.roundPhase());
     }
 
     private static Game createGame() {

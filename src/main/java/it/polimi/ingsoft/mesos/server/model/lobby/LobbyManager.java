@@ -10,6 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 
 import java.util.ArrayList;
@@ -198,6 +199,21 @@ public class LobbyManager {
      * @return created game orchestrator
      */
     public GameOrchestrator createGameFromLobby(int lobbyId, SavedMatchService savedMatchService) {
+        return this.createGameFromLobby(lobbyId, savedMatchService, null);
+    }
+
+    /**
+     * Creates a game orchestrator from a ready lobby and wires both save-match persistence and
+     * final ranking registration for that match.
+     *
+     * @param lobbyId lobby identifier
+     * @param savedMatchService persistence service selected for the current runtime mode
+     * @param rankingService ranking service used at match completion; nullable when unavailable
+     * @return created game orchestrator
+     */
+    public GameOrchestrator createGameFromLobby(int lobbyId,
+                                                SavedMatchService savedMatchService,
+                                                RankingService rankingService) {
         if (savedMatchService == null) {
             throw new IllegalArgumentException("Saved-match service cannot be null");
         }
@@ -229,7 +245,8 @@ public class LobbyManager {
                 this.gameFactory,
                 new ArrayList<>(gamePlayers),
                 lobby.getHostNickname(),
-                savedMatchService
+                savedMatchService,
+                rankingService
         );
         lobby.setStatus(LobbyStatus.STARTED);
         return gameOrchestrator;
@@ -243,6 +260,21 @@ public class LobbyManager {
      * @return created game orchestrator
      */
     public GameOrchestrator resumeGameFromLobby(int lobbyId, SavedMatchService savedMatchService) {
+        return this.resumeGameFromLobby(lobbyId, savedMatchService, null);
+    }
+
+    /**
+     * Restores a previously persisted match from a ready resumable lobby and wires both save-match
+     * persistence and final ranking registration.
+     *
+     * @param lobbyId resumable lobby identifier
+     * @param savedMatchService application service able to rebuild the match aggregate
+     * @param rankingService ranking service used at match completion; nullable when unavailable
+     * @return created game orchestrator
+     */
+    public GameOrchestrator resumeGameFromLobby(int lobbyId,
+                                                SavedMatchService savedMatchService,
+                                                RankingService rankingService) {
         if (savedMatchService == null) {
             throw new IllegalArgumentException("Saved-match service cannot be null");
         }
@@ -268,7 +300,8 @@ public class LobbyManager {
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 restoredGame,
                 restoredMatch.hostNickname(),
-                savedMatchService
+                savedMatchService,
+                rankingService
         );
         lobby.setStatus(LobbyStatus.STARTED);
         return gameOrchestrator;

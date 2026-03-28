@@ -8,14 +8,23 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.ranking.LeaderboardEntry;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchHistory;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.user.User;
+import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LobbyManagerResumeFlowTest {
 
@@ -56,6 +65,28 @@ class LobbyManagerResumeFlowTest {
         );
 
         assertEquals("Restored match roster does not match resumable lobby roster", exception.getMessage());
+    }
+
+    @Test
+    void resumeGameFromLobbyWiresRankingServiceIntoFinalMatchFlow() {
+        LobbyManager manager = new LobbyManager();
+        Lobby lobby = manager.createResumeLobby("game-901", List.of("Alice", "Bob"));
+        manager.joinLobby(lobby.getId(), user("Alice"));
+        manager.joinLobby(lobby.getId(), user("Bob"));
+
+        RecordingRestoreService restoreService = new RecordingRestoreService(
+                AdvancedGameStateFixtures.createFinalScoringScenario(),
+                "Alice"
+        );
+        RecordingRankingService rankingService = new RecordingRankingService();
+
+        GameOrchestrator orchestrator = manager.resumeGameFromLobby(lobby.getId(), restoreService, rankingService);
+        Optional<RankingResult> rankingResult = orchestrator.calculateFinalScore();
+
+        assertTrue(rankingResult.isPresent());
+        assertEquals(1, rankingService.recordCalls);
+        assertEquals("901", rankingService.gameId);
+        assertEquals("Alice", rankingService.requestingNickname);
     }
 
     private static User user(String nickname) {
@@ -137,6 +168,52 @@ class LobbyManagerResumeFlowTest {
         @Override
         public int deleteExpiredInProgressMatches() {
             return 0;
+        }
+    }
+
+    private static final class RecordingRankingService implements RankingService {
+        private int recordCalls;
+        private String gameId;
+        private String requestingNickname;
+
+        @Override
+        public boolean registerUser(String nickname) {
+            return true;
+        }
+
+        @Override
+        public boolean isNicknameAvailable(String nickname) {
+            return true;
+        }
+
+        @Override
+        public RankingResult recordMatchAndGetRanking(String gameId,
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
+            this.recordCalls++;
+            this.gameId = gameId;
+            this.requestingNickname = requestingNickname;
+            return new RankingResult(
+                    1,
+                    List.of(new LeaderboardEntry(requestingNickname, 1500, 1, 1, 1))
+            );
+        }
+
+        @Override
+        public List<LeaderboardEntry> getLeaderboard() {
+            return List.of();
+        }
+
+        @Override
+        public List<MatchHistory> getMatchHistory() {
+            return List.of();
+        }
+
+        @Override
+        public List<MatchHistory> getMatchHistory(int playerCount) {
+            return List.of();
         }
     }
 }

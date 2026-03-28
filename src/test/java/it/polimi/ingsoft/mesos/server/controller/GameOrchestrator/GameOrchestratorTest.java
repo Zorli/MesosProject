@@ -16,6 +16,11 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.ranking.LeaderboardEntry;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchHistory;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
@@ -24,8 +29,10 @@ import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -224,6 +231,46 @@ class GameOrchestratorTest {
     }
 
     @Test
+    void calculateFinalScorePersistsFinalSnapshotBeforeRecordingRanking() {
+        List<String> events = new ArrayList<>();
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService(events);
+        RecordingRankingService rankingService = new RecordingRankingService(events);
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService, rankingService);
+
+        Optional<RankingResult> rankingResult = orchestrator.calculateFinalScore();
+
+        assertEquals(List.of("save:completed", "ranking:recorded"), events);
+        assertTrue(rankingResult.isPresent());
+        assertEquals(1, savedMatchService.completedCalls);
+        assertEquals(1, rankingService.recordCalls);
+        assertEquals("901", rankingService.gameId);
+        assertEquals(2, rankingService.playerCount);
+        assertEquals("Alice", rankingService.requestingNickname);
+        assertEquals(
+                game.getPlayers().stream()
+                        .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
+                        .toList(),
+                rankingService.finalScores
+        );
+        assertEquals(1, rankingResult.orElseThrow().playerRank());
+    }
+
+    @Test
+    void calculateFinalScoreReturnsEmptyRankingResultWhenRankingServiceIsNotConfigured() {
+        List<String> events = new ArrayList<>();
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService(events);
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
+
+        Optional<RankingResult> rankingResult = orchestrator.calculateFinalScore();
+
+        assertTrue(rankingResult.isEmpty());
+        assertEquals(List.of("save:completed"), events);
+        assertEquals(1, savedMatchService.completedCalls);
+    }
+
+    @Test
     void setupMatchFreezesMatchWhenInitialCheckpointSaveFails() {
         ArrayList<Player> players = createPlayers(2);
         RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService();
@@ -337,13 +384,36 @@ class GameOrchestratorTest {
         Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
         GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
 
-        MatchPersistenceFailureException exception = assertThrows(
-                MatchPersistenceFailureException.class,
+        MatchFinalizationFailureException exception = assertThrows(
+                MatchFinalizationFailureException.class,
                 orchestrator::calculateFinalScore
         );
 
-        assertEquals("Failed to persist checkpoint MATCH_COMPLETED; match is now frozen", exception.getMessage());
+        assertEquals("Failed to finalize completed match; match is now frozen", exception.getMessage());
         assertEquals("completion save failed", exception.getCause().getMessage());
+        assertTrue(orchestrator.isFrozen());
+        assertThrows(MatchFrozenException.class, orchestrator::calculateFinalScore);
+    }
+
+    @Test
+    void calculateFinalScoreFreezesMatchWhenRankingRecordingFailsAfterSavingFinalSnapshot() {
+        List<String> events = new ArrayList<>();
+        RecordingSavedMatchService savedMatchService = new RecordingSavedMatchService(events);
+        RecordingRankingService rankingService = new RecordingRankingService(events);
+        rankingService.failure = new IllegalStateException("ranking write failed");
+        Game game = AdvancedGameStateFixtures.createFinalScoringScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService, rankingService);
+
+        MatchFinalizationFailureException exception = assertThrows(
+                MatchFinalizationFailureException.class,
+                orchestrator::calculateFinalScore
+        );
+
+        assertEquals("Failed to finalize completed match; match is now frozen", exception.getMessage());
+        assertEquals("ranking write failed", exception.getCause().getMessage());
+        assertEquals(List.of("save:completed", "ranking:recorded"), events);
+        assertEquals(1, savedMatchService.completedCalls);
+        assertEquals(1, rankingService.recordCalls);
         assertTrue(orchestrator.isFrozen());
         assertThrows(MatchFrozenException.class, orchestrator::calculateFinalScore);
     }
@@ -461,6 +531,7 @@ class GameOrchestratorTest {
      * Saved-match service spy capturing the checkpoints emitted by the orchestrator.
      */
     private static final class RecordingSavedMatchService implements SavedMatchService {
+        private final List<String> events;
         private int initializeCalls;
         private int turnStartedCalls;
         private int turnFinishedCalls;
@@ -474,6 +545,14 @@ class GameOrchestratorTest {
         private RuntimeException eraChangedFailure;
         private RuntimeException completedFailure;
 
+        private RecordingSavedMatchService() {
+            this(new ArrayList<>());
+        }
+
+        private RecordingSavedMatchService(List<String> events) {
+            this.events = events;
+        }
+
         @Override
         public boolean isPersistenceEnabled() {
             return true;
@@ -482,6 +561,7 @@ class GameOrchestratorTest {
         @Override
         public void initializeMatch(Game game, String hostNickname) {
             this.initializeCalls++;
+            this.events.add("save:initialized");
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
             if (this.initializeFailure != null) {
@@ -492,6 +572,7 @@ class GameOrchestratorTest {
         @Override
         public void saveTurnStarted(Game game, String hostNickname) {
             this.turnStartedCalls++;
+            this.events.add("save:turn-started");
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
             if (this.turnStartedFailure != null) {
@@ -502,6 +583,7 @@ class GameOrchestratorTest {
         @Override
         public void saveEraChanged(Game game, String hostNickname) {
             this.eraChangedCalls++;
+            this.events.add("save:era-changed");
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
             if (this.eraChangedFailure != null) {
@@ -512,6 +594,7 @@ class GameOrchestratorTest {
         @Override
         public void saveTurnFinished(Game game, String hostNickname) {
             this.turnFinishedCalls++;
+            this.events.add("save:turn-finished");
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
             if (this.turnFinishedFailure != null) {
@@ -522,6 +605,7 @@ class GameOrchestratorTest {
         @Override
         public void completeMatch(Game game, String hostNickname) {
             this.completedCalls++;
+            this.events.add("save:completed");
             this.lastGame = game;
             this.lastHostNickname = hostNickname;
             if (this.completedFailure != null) {
@@ -549,6 +633,74 @@ class GameOrchestratorTest {
         @Override
         public int deleteExpiredInProgressMatches() {
             return 0;
+        }
+    }
+
+    private static final class RecordingRankingService implements RankingService {
+        private final List<String> events;
+        private int recordCalls;
+        private String gameId;
+        private int playerCount;
+        private Instant playedAtUtc;
+        private String requestingNickname;
+        private List<MatchScore> finalScores = List.of();
+        private RuntimeException failure;
+
+        private RecordingRankingService() {
+            this(new ArrayList<>());
+        }
+
+        private RecordingRankingService(List<String> events) {
+            this.events = events;
+        }
+
+        @Override
+        public boolean registerUser(String nickname) {
+            return true;
+        }
+
+        @Override
+        public boolean isNicknameAvailable(String nickname) {
+            return true;
+        }
+
+        @Override
+        public RankingResult recordMatchAndGetRanking(String gameId,
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
+            this.recordCalls++;
+            this.gameId = gameId;
+            this.playerCount = playerCount;
+            this.playedAtUtc = playedAtUtc;
+            this.requestingNickname = requestingNickname;
+            this.finalScores = List.copyOf(finalScores);
+            this.events.add("ranking:recorded");
+
+            if (this.failure != null) {
+                throw this.failure;
+            }
+
+            return new RankingResult(
+                    1,
+                    List.of(new LeaderboardEntry(requestingNickname, 1500, 1, 1, 1))
+            );
+        }
+
+        @Override
+        public List<LeaderboardEntry> getLeaderboard() {
+            return List.of();
+        }
+
+        @Override
+        public List<MatchHistory> getMatchHistory() {
+            return List.of();
+        }
+
+        @Override
+        public List<MatchHistory> getMatchHistory(int playerCount) {
+            return List.of();
         }
     }
 

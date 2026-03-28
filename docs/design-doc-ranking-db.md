@@ -203,7 +203,7 @@ Test di servizio e integrazione:
 
 Il package e' progettato per essere usato dal flusso applicativo principale, ma restano da consolidare i collegamenti con il resto del server:
 - verifica disponibilita' nickname nel flusso di login o join;
-- chiamata a `recordMatchAndGetRanking(...)` a fine partita;
+- propagazione al client del risultato ritornato da `GameOrchestrator#calculateFinalScore()`;
 - propagazione al client di leaderboard e ranking finale.
 
 ## Miglioramenti possibili

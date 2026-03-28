@@ -250,9 +250,19 @@ Salva:
 
 ### `MATCH_COMPLETED`
 Salva:
-- punteggi finali
-- ranking aggiornato
-- stato match `COMPLETED`
+- snapshot all'ingresso di `FINAL_SCORING`, prima del calcolo finale, per avere un ultimo checkpoint
+  durevole coerente della partita ancora `IN_PROGRESS`
+- snapshot finale dopo `calculateFinalScore()`, con stato dominio `FINISHED`
+- in entrambi i casi il checkpoint resta `MATCH_COMPLETED`; la differenza semantica e' data da
+  `game_status` e `round_phase`, non da un enum separato
+
+Nota:
+- l'aggiornamento ranking e l'eventuale cleanup finale restano responsabilita' applicative
+  coordinate dall'orchestrator o dal service superiore, non del repository di saved match
+- il flow finale scelto nel boundary applicativo e':
+  1. `calculateFinalScore()`
+  2. persistenza dello snapshot `MATCH_COMPLETED` con `GameStatus.FINISHED`
+  3. aggiornamento ranking sulla base dei punteggi finali ormai durevoli
 
 Poi il match persistito puo' essere eliminato in una transazione finale separata, dopo che ranking e chiusura sono andati a buon fine.
 
@@ -283,7 +293,7 @@ Il tema architetturale principale chiuso da questa estensione e' la centralizzaz
 checkpoint nel solo orchestrator, lasciando `Game` e il resto del dominio persistence-agnostic.
 
 Restano comunque due aree da considerare separate da questo slice:
-- il flow finale ranking + cleanup non e' ancora descritto come transazione applicativa completa
+- il cleanup finale del match completato non e' ancora descritto come policy definitiva
 - i test PostgreSQL/Testcontainers richiedono un ambiente DB disponibile per imporre il contratto in CI
 
 Per il contesto storico del gap originario vedere

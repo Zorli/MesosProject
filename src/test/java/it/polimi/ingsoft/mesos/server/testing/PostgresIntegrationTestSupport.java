@@ -18,11 +18,12 @@ import java.util.UUID;
 
  * Shared PostgreSQL backend and isolated test-database lifecycle for integration tests.
  *
- * <p>The support prefers a transient Testcontainers PostgreSQL instance when Docker is available.
- * If Testcontainers cannot start in the current JVM, it falls back to an external PostgreSQL
- * instance using {@code MESOS_DB_*} environment variables or the local development defaults
- * ({@code localhost:5432}, {@code postgres}/{@code postgres}). This keeps integration tests
- * executable in environments where Docker CLI works but Testcontainers socket detection does not.
+ * <p>The support prefers an already reachable PostgreSQL instance configured via
+ * {@code MESOS_DB_*} environment variables or the local development defaults
+ * ({@code localhost:5432}, {@code postgres}/{@code postgres}). When no external backend is
+ * reachable, it falls back to a transient Testcontainers PostgreSQL instance. This keeps
+ * integration tests stable in local environments where the repository already provides PostgreSQL
+ * through {@code docker-compose.yml}, while still supporting clean ephemeral execution in CI.
 
  */
 public abstract class PostgresIntegrationTestSupport {
@@ -148,33 +149,38 @@ public abstract class PostgresIntegrationTestSupport {
                                        String defaultJdbcUrl,
                                        String username,
                                        String password) {
+        private static final String BACKEND_MODE_PROPERTY = "mesos.test.postgres.backend";
+        private static final String BACKEND_MODE_ENV = "MESOS_TEST_POSTGRES_BACKEND";
         private static final String DEFAULT_JDBC_URL = "jdbc:postgresql://localhost:5432/mesos";
         private static final String DEFAULT_ADMIN_JDBC_URL = "jdbc:postgresql://localhost:5432/postgres";
         private static final String DEFAULT_USERNAME = "postgres";
         private static final String DEFAULT_PASSWORD = "postgres";
 
         private static PostgresTestBackend detect() {
+            BackendMode backendMode = BackendMode.resolve();
+            PostgresTestBackend externalBackend = fromEnvironment();
             RuntimeException containerFailure = null;
 
-            try {
-                PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-                        .withDatabaseName("mesos")
-                        .withUsername(DEFAULT_USERNAME)
-                        .withPassword(DEFAULT_PASSWORD);
-                postgres.start();
-                return new PostgresTestBackend(
-                        jdbcUrlForDatabase(postgres.getJdbcUrl(), "postgres"),
-                        postgres.getJdbcUrl(),
-                        postgres.getUsername(),
-                        postgres.getPassword()
-                );
-            } catch (RuntimeException exception) {
-                containerFailure = exception;
+            if (backendMode != BackendMode.TESTCONTAINERS && externalBackend.isReachable()) {
+                return externalBackend;
             }
 
-            PostgresTestBackend externalBackend = fromEnvironment();
-            if (externalBackend.isReachable()) {
-                return externalBackend;
+            if (backendMode != BackendMode.EXTERNAL) {
+                try {
+                    PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+                            .withDatabaseName("mesos")
+                            .withUsername(DEFAULT_USERNAME)
+                            .withPassword(DEFAULT_PASSWORD);
+                    postgres.start();
+                    return new PostgresTestBackend(
+                            jdbcUrlForDatabase(postgres.getJdbcUrl(), "postgres"),
+                            postgres.getJdbcUrl(),
+                            postgres.getUsername(),
+                            postgres.getPassword()
+                    );
+                } catch (RuntimeException exception) {
+                    containerFailure = exception;
+                }
             }
 
             throw new IllegalStateException(
@@ -224,6 +230,32 @@ public abstract class PostgresIntegrationTestSupport {
             int queryIndex = databaseAndQuery.indexOf('?');
             String querySuffix = queryIndex >= 0 ? databaseAndQuery.substring(queryIndex) : "";
             return prefix + hostAndPort + "/" + databaseName + querySuffix;
+        }
+
+        private enum BackendMode {
+            AUTO,
+            EXTERNAL,
+            TESTCONTAINERS;
+
+            private static BackendMode resolve() {
+                String rawValue = System.getProperty(BACKEND_MODE_PROPERTY);
+                if (rawValue == null || rawValue.isBlank()) {
+                    rawValue = System.getenv(BACKEND_MODE_ENV);
+                }
+
+                if (rawValue == null || rawValue.isBlank()) {
+                    return AUTO;
+                }
+
+                return switch (rawValue.trim().toLowerCase(Locale.ROOT)) {
+                    case "auto" -> AUTO;
+                    case "external", "local" -> EXTERNAL;
+                    case "testcontainers", "container" -> TESTCONTAINERS;
+                    default -> throw new IllegalArgumentException(
+                            "Unsupported PostgreSQL test backend mode: " + rawValue
+                    );
+                };
+            }
         }
     }
 }
