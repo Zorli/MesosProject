@@ -24,7 +24,6 @@ class UpperPileTest {
     void setUp() {
         upperPile = new UpperPile();
 
-        // Creiamo carte fittizie usando le tue classi concrete
         tribeCard1 = new Gatherer(1, Era.first, TribeCardType.GATHERER);
         tribeCard2 = new Gatherer(2, Era.first, TribeCardType.GATHERER);
         buildingCard1 = new BuildingCard(3, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD);
@@ -32,14 +31,11 @@ class UpperPileTest {
 
     @Test
     void addCard_And_removeCard_RouteToCorrectLists() {
-        // Aggiungiamo una tribù e un edificio
         upperPile.addCard(tribeCard1);
         upperPile.addCard(buildingCard1);
 
-        // La rimozione di una tribù NON deve intaccare gli edifici
         upperPile.removeCard(tribeCard1);
 
-        // Rimuoviamo la carta, ma controlliamo se l'edificio è ancora lì
         List<BuildingCard> remainingBuildings = upperPile.removeAndReturnAllBuildingCards();
         List<Gatherer> remainingTribes = (List<Gatherer>)(List<?>) upperPile.removeAndReturnAllTribeCards();
 
@@ -52,22 +48,17 @@ class UpperPileTest {
     void removeCard_EdgeCase_CardNotInPile_DoesNothing() {
         upperPile.addCard(tribeCard1);
 
-        // EDGE CASE: proviamo a rimuovere una carta che non è nella pila (tribeCard2)
-        // Il test passa se non viene lanciata nessuna eccezione (es. NullPointerException)
         assertDoesNotThrow(() -> upperPile.removeCard(tribeCard2), "Rimuovere una carta inesistente non deve far crashare il gioco");
 
-        // Verifichiamo che la carta originale sia ancora lì
         assertEquals(1, upperPile.removeAndReturnAllTribeCards().size(), "La carta presente non deve essere stata alterata");
     }
 
     @Test
     void removeAndReturnAllCards_EmptiesThePile_AndHandlesEmptyCase() {
-        // Aggiungiamo carte
         upperPile.addCard(tribeCard1);
         upperPile.addCard(tribeCard2);
         upperPile.addCard(buildingCard1);
 
-        // 1. Estraiamo e svuotiamo
         List<?> returnedTribes = upperPile.removeAndReturnAllTribeCards();
         List<BuildingCard> returnedBuildings = upperPile.removeAndReturnAllBuildingCards();
 

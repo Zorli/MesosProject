@@ -8,6 +8,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -102,24 +103,31 @@ public class LowerPile {
 
     /**
      * Resolves all event cards currently present in the lower row.
-     * Ensures that the Sustenance Event is always resolved last,
-     * as strictly dictated by the game rules.
+     * If multiple regular events of the exact same class are present, they are resolved
+     * in chronological order based on their {Era} (oldest to newest).
+     * Ensures that any Sustenance Event is always resolved strictly after all
+     * regular events, also adhering to the chronological Era order if multiple are present.
      *
      * @param players The list of players affected by the events.
      */
     public void resolveLowerRowEvents(ArrayList<Player> players) {
-        SustenanceEventCard sustenanceEvent = null;
+        List<SustenanceEventCard> sustenanceEvents = new ArrayList<>();
+        List<EventCard> regularEvents = new ArrayList<>();
 
         for (TribeCard card : this.tribeCards) {
             if (card instanceof SustenanceEventCard) {
-                sustenanceEvent = (SustenanceEventCard) card;
+                sustenanceEvents.add((SustenanceEventCard) card);
             } else if (card instanceof EventCard) {
-                ((EventCard) card).applyEffect(players);
+                regularEvents.add((EventCard) card);
             }
         }
-
-        if (sustenanceEvent != null) {
-            sustenanceEvent.applyEffect(players);
+        regularEvents.sort(Comparator.comparing(EventCard::getEra));
+        sustenanceEvents.sort(Comparator.comparing(SustenanceEventCard::getEra));
+        for (EventCard event : regularEvents) {
+            event.applyEffect(players);
+        }
+        for (SustenanceEventCard event : sustenanceEvents) {
+            event.applyEffect(players);
         }
     }
 
