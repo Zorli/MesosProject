@@ -16,7 +16,6 @@ class StartingBlockTest {
 
     @Test
     void resolveEffect_PositiveFood_GainsFood() {
-        // Blocco che dà 2 cibo
         StartingBlock block = new StartingBlock(1, 2, 0, player);
         block.resolveEffect();
 
@@ -25,7 +24,6 @@ class StartingBlockTest {
 
     @Test
     void resolveEffect_NegativeFood_CanAfford_PaysFood() {
-        // Blocco che costa 1 cibo
         StartingBlock block = new StartingBlock(1, -1, -5, player);
         block.resolveEffect();
 
@@ -35,7 +33,6 @@ class StartingBlockTest {
 
     @Test
     void resolveEffect_NegativeFood_CannotAfford_LosesPrestige() {
-        // Il player ha solo 1 cibo, ma il blocco ne chiede 5 (malus -2 prestigio)
         StartingBlock block = new StartingBlock(1, -5, -2, player);
         block.resolveEffect();
 

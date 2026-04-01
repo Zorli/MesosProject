@@ -129,15 +129,12 @@ class BoardTest {
         );
         board.setupInitialRows();
 
-        // Verifichiamo che all'inizio ci siano
         assertEquals(CardRow.LOWER, board.getCardRow(lowerCard));
         assertEquals(CardRow.UPPER, board.getCardRow(upperBuilding));
 
-        // Azione: Il giocatore "pesca" le carte (le rimuoviamo dalla plancia)
         board.removeLowerCard(lowerCard);
         board.removeUpperCard(upperBuilding);
 
-        // Asserzione: Le carte non devono più essere sulla plancia
         assertEquals(CardRow.NOT_PRESENT, board.getCardRow(lowerCard), "La carta inferiore pescata non deve essere più sulla board");
         assertEquals(CardRow.NOT_PRESENT, board.getCardRow(upperBuilding), "L'edificio pescato non deve essere più sulla board");
 
@@ -158,10 +155,8 @@ class BoardTest {
         );
         board.setupInitialRows();
 
-        // Alice può pescare la carta sulla plancia (presumendo che isDrawable sia true per carte base)
         assertTrue(board.canPlayerDrawCard(alice, boardCard), "Alice dovrebbe poter pescare una carta base presente sulla plancia");
 
-        // EDGE CASE: Alice chiede di pescare una carta che NON è sulla plancia
         assertFalse(board.canPlayerDrawCard(alice, missingCard), "Non si può pescare una carta inesistente sulla plancia, anche se si hanno i requisiti");
     }
 
@@ -174,21 +169,16 @@ class BoardTest {
                 dummyPlayers
         );
 
-        // Inizializziamo l'OfferPath tramite la Board
         board.buildOfferPath();
 
         Player alice = dummyPlayers.get(0);
 
-        // Verifichiamo che lo spazio B sia inizialmente disponibile
         assertTrue(board.isSpaceAvailable("B"), "Lo spazio B deve essere libero all'inizio");
 
-        // Piazziamo Alice sullo spazio B passando per la Board
         board.placePlayerOnOfferSpace(alice, "B");
 
-        // Verifichiamo che la Board abbia delegato correttamente l'occupazione
         assertFalse(board.isSpaceAvailable("B"), "Lo spazio B non deve più essere disponibile dopo averci piazzato Alice");
 
-        // Verifichiamo la delega per recuperare le regole di pescaggio (Spazio B dà [0, 1])
         int[] draftRules = board.returnNumberDrawableCard(alice);
         assertEquals(0, draftRules[0], "Lo spazio B dà 0 carte top");
         assertEquals(1, draftRules[1], "Lo spazio B dà 1 carta bottom");

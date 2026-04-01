@@ -34,14 +34,12 @@ class LowerPileTest {
         lowerPile.addCard(basicTribe);
         lowerPile.addCard(basicBuilding);
 
-        // Svuotiamo la riga bassa (le tribù) a fine round
         lowerPile.discardLowerRow();
 
         assertEquals(0, lowerPile.getTribeCardsSize(), "Le tribù dovrebbero essere state scartate");
         assertEquals(1, lowerPile.getAllCards().size(), "L'edificio deve sopravvivere al fine round");
         assertTrue(lowerPile.getAllCards().contains(basicBuilding), "La carta rimanente deve essere l'edificio");
 
-        // Ora simuliamo il fine Era (scartiamo gli edifici)
         lowerPile.discardLowerBuildings();
         assertEquals(0, lowerPile.getAllCards().size(), "La pila ora deve essere completamente vuota");
     }
@@ -60,11 +58,11 @@ class LowerPileTest {
 
     @Test
     void resolveLowerRowEvents_ExecutesSustenanceLast_RegardlessOfInsertionOrder() {
-        // Creiamo un log per tracciare in che ordine "sparano" gli eventi
+
         List<String> executionLog = new ArrayList<>();
         ArrayList<Player> dummyPlayers = new ArrayList<>();
 
-        // 1. Creiamo un HuntEventCard che scrive "HUNT" nel log quando viene risolto
+
         HuntEventCard huntEvent = new HuntEventCard(4, Era.first, TribeCardType.EVENT, 1, 1) {
             @Override
             public void applyEffect(ArrayList<Player> players) {
@@ -72,8 +70,8 @@ class LowerPileTest {
             }
         };
 
-        // 2. Creiamo un SustenanceEventCard che scrive "SUSTENANCE" nel log
-        // (NOTA: Adatta i parametri del costruttore se il tuo SustenanceEventCard ne richiede di diversi)
+
+
         SustenanceEventCard sustenanceEvent = new SustenanceEventCard(5, Era.first, TribeCardType.EVENT, 1) {
             @Override
             public void applyEffect(ArrayList<Player> players) {
@@ -81,18 +79,14 @@ class LowerPileTest {
             }
         };
 
-        // Inseriamo APPOSITAMENTE prima il Sustenance e poi l'Hunt per testare la forzatura dell'ordine
         lowerPile.addCard(sustenanceEvent);
         lowerPile.addCard(huntEvent);
-        lowerPile.addCard(basicTribe); // Mettiamo in mezzo un Gatherer (che non è un evento e verrà ignorato)
+        lowerPile.addCard(basicTribe);
 
-        // Risolviamo gli eventi!
         lowerPile.resolveLowerRowEvents(dummyPlayers);
 
-        // Verifiche:
         assertEquals(2, executionLog.size(), "Dovrebbero essersi attivati esattamente 2 eventi");
 
-        // La prova del nove: nonostante il Sustenance sia stato aggiunto per PRIMO, deve aver agito per ULTIMO.
         assertEquals("HUNT", executionLog.get(0), "L'evento normale (Hunt) deve agire per primo");
         assertEquals("SUSTENANCE", executionLog.get(1), "Il Sustenance DEVE agire rigorosamente per ultimo");
     }
@@ -148,5 +142,92 @@ class LowerPileTest {
         lowerPile.resolveLowerRowEvents(dummyPlayers);
 
         assertEquals(List.of("HUNT"), executionLog, "Senza Sustenance va risolto solo l'evento presente");
+    }
+    @Test
+    void resolveLowerRowEvents_TwoSustenanceEvents_ResolvesInEraOrder() {
+        List<String> executionLog = new ArrayList<>();
+        ArrayList<Player> dummyPlayers = new ArrayList<>();
+
+        SustenanceEventCard sustEra3 = new SustenanceEventCard(10, Era.third, TribeCardType.EVENT, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("SUST_ERA3"); }
+        };
+
+        SustenanceEventCard sustEra1 = new SustenanceEventCard(11, Era.first, TribeCardType.EVENT, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("SUST_ERA1"); }
+        };
+
+        lowerPile.addCard(sustEra3);
+        lowerPile.addCard(sustEra1);
+
+        lowerPile.resolveLowerRowEvents(dummyPlayers);
+
+        assertEquals(2, executionLog.size(), "Entrambi gli eventi devono essere risolti");
+        assertEquals("SUST_ERA1", executionLog.get(0), "Il Sustenance della prima Era deve agire per primo");
+        assertEquals("SUST_ERA3", executionLog.get(1), "Il Sustenance della terza Era deve agire per secondo");
+    }
+
+    @Test
+    void resolveLowerRowEvents_TwoRegularEventsOfSameType_ResolvesInEraOrder() {
+        List<String> executionLog = new ArrayList<>();
+        ArrayList<Player> dummyPlayers = new ArrayList<>();
+
+        HuntEventCard huntEra2 = new HuntEventCard(12, Era.second, TribeCardType.EVENT, 1, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("HUNT_ERA2"); }
+        };
+
+        HuntEventCard huntEra1 = new HuntEventCard(13, Era.first, TribeCardType.EVENT, 1, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("HUNT_ERA1"); }
+        };
+
+        lowerPile.addCard(huntEra2);
+        lowerPile.addCard(huntEra1);
+
+        lowerPile.resolveLowerRowEvents(dummyPlayers);
+
+        assertEquals(2, executionLog.size(), "Entrambi gli eventi devono essere risolti");
+        assertEquals("HUNT_ERA1", executionLog.get(0), "L'evento Hunt della prima Era deve agire per primo");
+        assertEquals("HUNT_ERA2", executionLog.get(1), "L'evento Hunt della seconda Era deve agire per secondo");
+    }
+
+    @Test
+    void resolveLowerRowEvents_MixedEventsAndEras_ResolvesEverythingInCorrectOrder() {
+        List<String> executionLog = new ArrayList<>();
+        ArrayList<Player> dummyPlayers = new ArrayList<>();
+
+        SustenanceEventCard sustEra3 = new SustenanceEventCard(20, Era.third, TribeCardType.EVENT, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("SUST_ERA3"); }
+        };
+        HuntEventCard huntEra3 = new HuntEventCard(21, Era.third, TribeCardType.EVENT, 1, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("HUNT_ERA3"); }
+        };
+        SustenanceEventCard sustEra1 = new SustenanceEventCard(22, Era.first, TribeCardType.EVENT, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("SUST_ERA1"); }
+        };
+        HuntEventCard huntEra1 = new HuntEventCard(23, Era.first, TribeCardType.EVENT, 1, 1) {
+            @Override
+            public void applyEffect(ArrayList<Player> players) { executionLog.add("HUNT_ERA1"); }
+        };
+
+        lowerPile.addCard(sustEra3);
+        lowerPile.addCard(huntEra3);
+        lowerPile.addCard(sustEra1);
+        lowerPile.addCard(huntEra1);
+
+        lowerPile.resolveLowerRowEvents(dummyPlayers);
+
+        assertEquals(4, executionLog.size());
+
+        assertEquals("HUNT_ERA1", executionLog.get(0));
+        assertEquals("HUNT_ERA3", executionLog.get(1));
+
+        assertEquals("SUST_ERA1", executionLog.get(2));
+        assertEquals("SUST_ERA3", executionLog.get(3));
     }
 }
