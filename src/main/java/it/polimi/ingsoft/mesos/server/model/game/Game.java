@@ -179,27 +179,20 @@ public class Game {
         this.board.buildOfferPath();
 
         this.board.setupInitialRows();
+        applyInitialBenefit();
 
         this.turnOrderTrack.setNewOrder(players);
         this.turnOrderTrack.advanceRoundNumber();
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
 
         this.turnState.resetForNewRound();
-
         this.status = GameStatus.IN_PROGRESS;
-//        for (int i = 0; i < players.size(); i++) {
-//            Player currentPlayer = players.get(i);
-//            int initialFood;
-//            if (i == 0) {
-//                initialFood = 2;
-//            } else if (i == 1 || i == 2) {
-//                initialFood = 3;
-//            } else {
-//                initialFood = 4;
-//            }
-//            currentPlayer.gainFood(initialFood);
-//        }
     }
+
+    //TODO : Add method for choosing the starting tile, as now they are placed as subscribed in lobby
+    //From rules sheet:
+//    Piazzate casualmente i Totem negli spazi della tessera Ordine
+//    di Turno. Questo definirà l’ordine di turno del primo round.
 
     /**
      * Places the current player's totem on the requested offer-path space.
@@ -598,6 +591,29 @@ public class Game {
 
         if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.RESETTING_BOARD) {
             throw new InvalidGamePhaseException("resetBoard", this.turnOrderTrack.getCurrentRoundPhase());
+        }
+    }
+
+
+//    Infine, indipendentemente dal numero di giocatori,
+//    il 1° giocatore riceve 2 Cibo, il 2° e il 3° giocatore ricevono
+//     3 Cibo, mentre il 4° e il 5° giocatore ricevono 4 Cibo.
+    private void applyInitialBenefit(){
+        if (this.status != GameStatus.SETUP) {
+            throw new InvalidGameStatusException("setup", this.status);
+        }
+        for (int i = 0; i < players.size(); i++) {
+            Player currentPlayer = players.get(i);
+            int initialFood;
+            if (i == 0) {
+                initialFood = 2;
+            } else if (i == 1 || i == 2) {
+                initialFood = 3;
+            } else {
+                initialFood = 4;
+            }
+            currentPlayer.gainFood(initialFood);
+
         }
     }
 }
