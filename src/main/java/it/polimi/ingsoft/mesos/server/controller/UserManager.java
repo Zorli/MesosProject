@@ -1,4 +1,6 @@
-package it.polimi.ingsoft.mesos.server.model.user;
+package it.polimi.ingsoft.mesos.server.controller;
+
+import it.polimi.ingsoft.mesos.server.model.user.User;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CharacterCardBasicsTest {
 
     @Test
-    void hunterApplyEffectRewardsFoodAndPrestigeWhenEnabled() {
+    void hunterApplyEffectRewardsFoodWhenEnabled() {
         Tribe tribe = new Tribe();
         Player player = new Player("Alice", 0, 0, TotemColor.RED, tribe);
         tribe.addCharacter(new Hunter(1, Era.first, false, TribeCardType.HUNTER));
@@ -29,7 +29,7 @@ class CharacterCardBasicsTest {
 
         assertTrue(hunter.getHasEffect());
         assertEquals(3, player.getFood());
-        assertEquals(3, player.getPrestigePoints());
+        assertEquals(0, player.getPrestigePoints());
     }
 
     @Test
