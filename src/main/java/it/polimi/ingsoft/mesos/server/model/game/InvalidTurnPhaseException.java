@@ -1,0 +1,19 @@
+package it.polimi.ingsoft.mesos.server.model.game;
+
+import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
+
+/**
+ * Signals that a requested action is not compatible with the current turn phase.
+ */
+public class InvalidTurnPhaseException extends IllegalStateException {
+
+    /**
+     * Creates the exception for an action that is incompatible with the current FSM phase.
+     *
+     * @param actionName attempted action name
+     * @param currentPhase current turn phase
+     */
+    public InvalidTurnPhaseException(String actionName, TurnPhase currentPhase) {
+        super("Action " + actionName + " is not allowed during phase " + currentPhase);
+    }
+}

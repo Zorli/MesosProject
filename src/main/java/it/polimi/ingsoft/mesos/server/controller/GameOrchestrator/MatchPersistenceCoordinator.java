@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 
 import java.util.Objects;

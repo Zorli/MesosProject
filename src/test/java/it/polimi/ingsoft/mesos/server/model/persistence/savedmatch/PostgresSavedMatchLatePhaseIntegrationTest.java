@@ -1,12 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.PostgresSavedMatchSchemaModule;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.PostgresSavedMatchService;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
 import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
 import it.polimi.ingsoft.mesos.server.testing.GameStateAssertions;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;

@@ -2,10 +2,10 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.controller.Factory.LobbyPlayerFactory;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
@@ -31,6 +31,7 @@ public class LobbyManager {
     private int nextLobbyId;
     private final Map<Integer, Lobby> lobbies;
     private final GameFactory gameFactory;
+    private final LobbyPlayerFactory lobbyPlayerFactory;
 
     /**
      * Creates an empty lobby manager with progressive lobby identifiers.
@@ -52,6 +53,7 @@ public class LobbyManager {
         this.nextLobbyId = 1;
         this.lobbies = new HashMap<>();
         this.gameFactory = gameFactory;
+        this.lobbyPlayerFactory = new LobbyPlayerFactory();
     }
 
     /**
@@ -232,14 +234,7 @@ public class LobbyManager {
             throw new IllegalStateException("Resumable lobbies must restore a saved match instead of creating a new one");
         }
 
-        // Qui avviene la trasformazione da User a Player
-        TotemColor[] totemColors = TotemColor.values();
-        List<User> lobbyUsers = lobby.getUsers();
-        List<Player> gamePlayers = new ArrayList<>(lobbyUsers.size());
-        for (int index = 0; index < lobbyUsers.size(); index++) {
-            User user = lobbyUsers.get(index);
-            gamePlayers.add(new Player(user.getNickname(), 0, 0, totemColors[index]));
-        }
+        List<Player> gamePlayers = this.lobbyPlayerFactory.createPlayers(lobby.getUsers());
 
         GameOrchestrator gameOrchestrator = new GameOrchestrator(
                 this.gameFactory,

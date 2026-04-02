@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.testing;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.ParserJson;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;

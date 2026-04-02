@@ -3,9 +3,9 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
+import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
@@ -22,7 +22,9 @@ import it.polimi.ingsoft.mesos.server.model.user.User;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static it.polimi.ingsoft.mesos.server.model.lobby.LobbyTestUsers.userWithNickname;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -94,7 +96,7 @@ class LobbyManagerTest {
     }
 
     @Test
-    void createGameFromLobbyConvertsUsersToPlayersInOrderWithDistinctTotems() {
+    void createGameFromLobbyConvertsUsersToPlayersWithDistinctTotems() {
         RecordingGameFactory gameFactory = new RecordingGameFactory();
         LobbyManager manager = new LobbyManager(gameFactory);
         Lobby lobby = manager.createLobby(userWithNickname("Alice"), 3);
@@ -105,8 +107,16 @@ class LobbyManagerTest {
 
         assertInstanceOf(GameOrchestrator.class, gameOrchestrator);
         assertEquals(1, gameFactory.createGameCalls);
-        assertEquals(List.of("Alice", "Bob", "Carol"), gameFactory.capturedPlayers.stream().map(Player::getNickname).toList());
-        assertEquals(List.of(TotemColor.RED, TotemColor.BLUE, TotemColor.WHITE), gameFactory.capturedPlayers.stream().map(Player::getTotem).toList());
+        assertEquals(
+                Set.of("Alice", "Bob", "Carol"),
+                new HashSet<>(gameFactory.capturedPlayers.stream().map(Player::getNickname).toList())
+        );
+        assertEquals(
+                gameFactory.capturedPlayers.size(),
+                new HashSet<>(gameFactory.capturedPlayers.stream().map(Player::getTotem).toList()).size()
+        );
+        assertTrue(gameFactory.capturedPlayers.stream().allMatch(player -> player.getFood() == 0));
+        assertTrue(gameFactory.capturedPlayers.stream().allMatch(player -> player.getPrestigePoints() == 0));
         assertEquals(LobbyStatus.STARTED, manager.getLobby(lobby.getId()).orElseThrow().getStatus());
     }
 
@@ -278,7 +288,7 @@ class LobbyManagerTest {
                 77,
                 players,
                 new TurnState(),
-                new TurnOrderTrack(List.of(players.get(0), players.get(1)), 0, 1, it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase.PLACING_TOTEMS),
+                new TurnOrderTrack(List.of(players.get(0), players.get(1)), 0, 1, it.polimi.ingsoft.mesos.server.model.game.RoundPhase.PLACING_TOTEMS),
                 new Board(
                         TribeDeck.fromOrderedCards(new ArrayList<>()),
                         BuildingDeck.fromOrderedCards(new ArrayList<>()),

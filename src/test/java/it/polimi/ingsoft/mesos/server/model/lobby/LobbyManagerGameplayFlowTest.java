@@ -1,10 +1,10 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.model.GameState.CardRowSelectionNotAllowedException;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.NotPlayersTurnException;
-import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.game.CardRowSelectionNotAllowedException;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.NotPlayersTurnException;
+import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
@@ -31,26 +31,34 @@ class LobbyManagerGameplayFlowTest {
         orchestrator.setupMatch();
         Game game = orchestrator.getGame();
         List<Player> players = orchestrator.getPlayers();
-        Player alice = players.getFirst();
-        Player bob = players.get(1);
+        Player firstRoundLeader = game.getTurnOrderTrack().getCurrentPlayer();
+        Player secondPlayer = players.stream()
+                .filter(player -> !player.equals(firstRoundLeader))
+                .findFirst()
+                .orElseThrow();
 
-        assertThrows(NotPlayersTurnException.class, () -> game.moveTotem(bob, "B"));
+        assertThrows(NotPlayersTurnException.class, () -> game.moveTotem(secondPlayer, "B"));
 
         orchestrator.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), "B");
         orchestrator.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), "C");
 
         assertEquals(RoundPhase.PLAYER_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
+        Player drawPhaseLeader = game.getTurnOrderTrack().getCurrentPlayer();
+        Player waitingPlayer = players.stream()
+                .filter(player -> !player.equals(drawPhaseLeader))
+                .findFirst()
+                .orElseThrow();
         assertThrows(
                 CardRowSelectionNotAllowedException.class,
-                () -> game.chooseCard(alice, MesosTestFixtures.findUpperRowCard(game, 3))
+                () -> game.chooseCard(drawPhaseLeader, MesosTestFixtures.findUpperRowCard(game, 3))
         );
         assertThrows(
                 NotPlayersTurnException.class,
-                () -> game.chooseCard(bob, MesosTestFixtures.findUpperRowCard(game, 3))
+                () -> game.chooseCard(waitingPlayer, MesosTestFixtures.findUpperRowCard(game, 3))
         );
 
-        game.chooseCard(alice, MesosTestFixtures.findLowerRowCard(game, 10));
-        game.chooseCard(bob, MesosTestFixtures.findUpperRowCard(game, 3));
+        game.chooseCard(drawPhaseLeader, MesosTestFixtures.findLowerRowCard(game, 10));
+        game.chooseCard(waitingPlayer, MesosTestFixtures.findUpperRowCard(game, 3));
 
         assertEquals(RoundPhase.RESOLVING_EFFECTS, game.getTurnOrderTrack().getCurrentRoundPhase());
         game.resolveEffects();
@@ -58,8 +66,9 @@ class LobbyManagerGameplayFlowTest {
 
         assertEquals(RoundPhase.PLACING_TOTEMS, game.getTurnOrderTrack().getCurrentRoundPhase());
         assertEquals(2, game.getTurnOrderTrack().getRoundNumber());
-        assertEquals(1, alice.getFood());
-        assertEquals(-2, bob.getPrestigePoints());
+        assertEquals(3, drawPhaseLeader.getFood());
+        assertEquals(2, waitingPlayer.getFood());
+        assertEquals(0, waitingPlayer.getPrestigePoints());
         assertIterableEquals(
                 List.of(85, 86, 11, 15, 27),
                 game.getBoard().getLowerRowCards().stream().map(card -> card.getId()).toList()
@@ -88,12 +97,12 @@ class LobbyManagerGameplayFlowTest {
 
         assertEquals(RoundPhase.PLAYER_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
         assertIterableEquals(
-                List.of("Alice", "Bob", "Carol", "Dave"),
+                players.subList(0, 4).stream().map(Player::getNickname).toList(),
                 game.getTurnOrderTrack().getTurnOrder().stream().map(Player::getNickname).toList()
         );
-        assertEquals("Alice", game.getTurnOrderTrack().getCurrentPlayer().getNickname());
-        assertEquals(6, players.get(4).getFood());
-        assertEquals("Eve", game.getBoard().getStartingBlocks().getFirst().getOccupiedBy().getNickname());
+        assertEquals(players.getFirst().getNickname(), game.getTurnOrderTrack().getCurrentPlayer().getNickname());
+        assertEquals(10, players.get(4).getFood());
+        assertEquals(players.get(4).getNickname(), game.getBoard().getStartingBlocks().getFirst().getOccupiedBy().getNickname());
         assertTrue(
                 game.getBoard().getAvailableOfferSpaces().stream()
                         .noneMatch(space -> "A".equals(space.getCode()) && space.getOccupiedBy() != null)

@@ -2,9 +2,9 @@ package it.polimi.ingsoft.mesos.server.testing;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.ParserJson;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
+import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;

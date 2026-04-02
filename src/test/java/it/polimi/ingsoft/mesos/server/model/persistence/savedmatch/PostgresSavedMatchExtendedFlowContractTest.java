@@ -2,8 +2,8 @@ package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;

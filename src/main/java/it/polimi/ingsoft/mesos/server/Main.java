@@ -17,6 +17,7 @@ import java.util.Map;
  * that ranking access is available, and prints a concise startup summary for operators.
  */
 
+//From this class we should create all the server
 public final class Main {
     /**
      * Prevents instantiation of the utility entry-point class.
@@ -38,6 +39,12 @@ public final class Main {
 
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
+            //I need to instantiate the server controller and the relative network
+
+
+
+
+
             ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(environment);
             ServerServices serverServices = ServerServicesFactory.create(runtimeConfig);
             RankingService rankingService = serverServices.rankingService();

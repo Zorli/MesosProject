@@ -3,7 +3,7 @@
 ## Contesto
 
 ### Package di riferimento
-`it.polimi.ingsoft.mesos.server.model.GameState`
+`it.polimi.ingsoft.mesos.server.model.game`
 
 ### Obiettivo 
 Descrivere il package `game-state` come contenitore dello stato della partita, chiarendo:
