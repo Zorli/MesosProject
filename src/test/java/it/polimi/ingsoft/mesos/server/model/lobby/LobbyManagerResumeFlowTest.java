@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;

@@ -205,14 +205,14 @@
                         </dependencies>
                         <configuration>
                             <targetClasses>
-                                <param>it.polimi.ingsoft.mesos.server.model.GameState.*</param>
+                                <param>it.polimi.ingsoft.mesos.server.model.game.*</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.board.*</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.Orchestration.*</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.player.*</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.lobby.*</param>
                             </targetClasses>
                             <targetTests>
-                                <param>it.polimi.ingsoft.mesos.server.model.GameState.*Test</param>
+                                <param>it.polimi.ingsoft.mesos.server.model.game.*Test</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.board.*Test</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.Orchestration.*Test</param>
                                 <param>it.polimi.ingsoft.mesos.server.model.player.*Test</param>

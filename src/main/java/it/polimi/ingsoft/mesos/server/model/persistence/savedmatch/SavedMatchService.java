@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 
 /**
  * Application-service contract for match persistence, restore and player presence tracking.

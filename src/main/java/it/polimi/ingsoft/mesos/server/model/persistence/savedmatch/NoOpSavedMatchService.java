@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 
 /**
  * Naive no-database implementation used when match persistence is explicitly disabled.

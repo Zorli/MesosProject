@@ -1,22 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.MatchFrozenException;
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.MatchPersistenceFailureException;
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.lobby.LobbyManager;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
-import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

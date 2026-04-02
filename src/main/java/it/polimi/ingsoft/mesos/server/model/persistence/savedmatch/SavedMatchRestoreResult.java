@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 
 /**
  * Result of one saved-match restore, including the rebuilt game aggregate and original ownership metadata.

@@ -1,10 +1,10 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.model.GameState.CardRowSelectionNotAllowedException;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.NotPlayersTurnException;
-import it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.game.CardRowSelectionNotAllowedException;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.NotPlayersTurnException;
+import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;

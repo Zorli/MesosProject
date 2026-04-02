@@ -3,9 +3,9 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
-import it.polimi.ingsoft.mesos.server.model.GameState.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.GameState.TurnState;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
+import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
@@ -278,7 +278,7 @@ class LobbyManagerTest {
                 77,
                 players,
                 new TurnState(),
-                new TurnOrderTrack(List.of(players.get(0), players.get(1)), 0, 1, it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase.PLACING_TOTEMS),
+                new TurnOrderTrack(List.of(players.get(0), players.get(1)), 0, 1, it.polimi.ingsoft.mesos.server.model.game.RoundPhase.PLACING_TOTEMS),
                 new Board(
                         TribeDeck.fromOrderedCards(new ArrayList<>()),
                         BuildingDeck.fromOrderedCards(new ArrayList<>()),

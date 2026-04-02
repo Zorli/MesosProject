@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence.savedmatch;
 
-import it.polimi.ingsoft.mesos.server.model.GameState.Game;
+import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.buildings.SetForFood;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
@@ -87,7 +87,7 @@ class SavedMatchRestoreFactoryTest {
                 it.polimi.ingsoft.mesos.server.model.enums.Era.first,
                 it.polimi.ingsoft.mesos.server.model.enums.GameStatus.IN_PROGRESS,
                 1,
-                it.polimi.ingsoft.mesos.server.model.GameState.RoundPhase.PLACING_TOTEMS,
+                it.polimi.ingsoft.mesos.server.model.game.RoundPhase.PLACING_TOTEMS,
                 it.polimi.ingsoft.mesos.server.model.enums.TurnPhase.TURN_COMPLETED,
                 null,
                 0,
