@@ -38,7 +38,7 @@ public class Hunter extends CharacterCard {
     // TODO: We first have to add the card to the player and then call apply the effect !
 
     /**
-     * Applies the hunter immediate effect, rewarding food and prestige points based on the current
+     * Applies the hunter immediate effect, rewarding food points based on the current
      * number of hunters in the player's tribe.
      *
      * @param player player receiving the hunter effect
@@ -47,7 +47,6 @@ public class Hunter extends CharacterCard {
         if (this.hasEffect) {
             int count = player.getTribe().countHunters();
             player.gainFood(count);
-            player.gainPrestigePoints(count);
         }
     }
 }
