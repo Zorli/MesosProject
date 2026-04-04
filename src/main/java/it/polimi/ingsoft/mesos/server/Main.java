@@ -18,6 +18,11 @@ import java.util.Map;
  */
 
 //From this class we should create all the server
+//Client → TCP → VirtualView.receiveCmd()
+//             → GameController.processCmd()   ← parsing + validazione
+//             → Model.evolve()                ← stato cambia
+//             → Observer notify → VirtualView.sendUpdate()  ← diretto
+//             → TCP → Client
 public final class Main {
     /**
      * Prevents instantiation of the utility entry-point class.
