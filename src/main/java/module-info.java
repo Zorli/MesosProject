@@ -5,9 +5,13 @@
 
       requires org.controlsfx.controls;
       requires com.fasterxml.jackson.databind;
+      requires com.google.gson;
       //requires it.polimi.ingsoft.mesos;
 
       opens it.polimi.ingsoft.mesos.client.controller to javafx.fxml;
+      opens it.polimi.ingsoft.mesos.server to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload to com.google.gson;
+      exports it.polimi.ingsoft.mesos.shared.payload;
       exports it.polimi.ingsoft.mesos.client;
       exports it.polimi.ingsoft.mesos.client.view;
       exports it.polimi.ingsoft.mesos.server;
