@@ -5,10 +5,12 @@ import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.cards.*;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.EventCard;
+import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -349,6 +351,40 @@ public class Board {
      */
     public boolean canPlayerDrawCard(Player player, Card card) {
         return this.getCardRow(card) != CardRow.NOT_PRESENT && card.isDrawable(player);
+    }
+
+    /**
+     * Resolves all event cards currently present on the board (both upper and lower rows).
+     * Events are resolved in chronological order based on their {@link Era} (oldest to newest).
+     * Ensures that any Sustenance Event is always resolved strictly after all
+     * regular events, also adhering to the chronological Era order if multiple are present.
+     */
+    public void resolveAllEvents() {
+        List<SustenanceEventCard> sustenanceEvents = new ArrayList<>();
+        List<EventCard> regularEvents = new ArrayList<>();
+
+        List<Card> allVisibleCards = new ArrayList<>();
+        allVisibleCards.addAll(this.getUpperRowCards());
+        allVisibleCards.addAll(this.getLowerRowCards());
+
+        for (Card card : allVisibleCards) {
+            if (card instanceof SustenanceEventCard) {
+                sustenanceEvents.add((SustenanceEventCard) card);
+            } else if (card instanceof EventCard) {
+                regularEvents.add((EventCard) card);
+            }
+        }
+
+        regularEvents.sort(Comparator.comparing(EventCard::getEra));
+        sustenanceEvents.sort(Comparator.comparing(SustenanceEventCard::getEra));
+
+        ArrayList<Player> arrayListPlayers = new ArrayList<>(this.players);
+        for (EventCard event : regularEvents) {
+            event.applyEffect(arrayListPlayers);
+        }
+        for (SustenanceEventCard event : sustenanceEvents) {
+            event.applyEffect(arrayListPlayers);
+        }
     }
 
     /**
