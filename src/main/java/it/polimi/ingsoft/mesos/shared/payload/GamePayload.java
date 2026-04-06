@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.shared.payload;
 
 import java.util.List;
-
+//Upper class of the payload
 public class GamePayload {
     public final int id;
     public final String status;
