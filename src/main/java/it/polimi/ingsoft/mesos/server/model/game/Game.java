@@ -285,11 +285,13 @@ public class Game {
      */
     public void resolveEffects(){
         this.validateResolveEffectsRequest();
-        this.board.resolveLowerEvents();
+
         if (this.turnOrderTrack.getRoundNumber() == 10) {
+            this.board.resolveAllEvents();
             this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
             return;
         }
+        this.board.resolveLowerEvents();
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
 
     }
