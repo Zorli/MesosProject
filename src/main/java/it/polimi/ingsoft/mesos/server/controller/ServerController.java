@@ -4,10 +4,7 @@ package it.polimi.ingsoft.mesos.server.controller;
 import java.net.Socket;
 
 public class ServerController {
-    Socket socket;
-    public ServerController(Socket socket) {
-        this.socket = socket;
-    }
+
     
 
 

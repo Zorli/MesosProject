@@ -2,15 +2,26 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
+import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
-import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
+import it.polimi.ingsoft.mesos.shared.payload.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.StartingBlockPayload;
+import it.polimi.ingsoft.mesos.shared.payload.TribePayload;
+import it.polimi.ingsoft.mesos.shared.payload.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.TurnStatePayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -345,6 +356,110 @@ public class GameOrchestrator {
             this.frozen = true;
             throw new MatchFinalizationFailureException(exception);
         }
+    }
+
+    public GamePayload buildPayload() {
+        TurnOrderPayload turnOrder = buildTurnOrderPayload();
+        TurnStatePayload turnState = new TurnStatePayload(
+                this.game.getTurnState().getPhase().name()
+        );
+        List<PlayerPayload> players = this.game.getPlayers().stream()
+                .map(this::toPlayerPayload)
+                .toList();
+        BoardPayload board = buildBoardPayload();
+
+        return new GamePayload(
+                this.game.getId(),
+                this.game.getStatus().name(),
+                this.game.getCurrentEra().ordinal(),
+                turnOrder,
+                turnState,
+                players,
+                board
+        );
+    }
+
+    private TurnOrderPayload buildTurnOrderPayload() {
+        List<Player> order;
+        try {
+            order = this.game.getTurnOrderTrack().getTurnOrder();
+        } catch (IllegalStateException e) {
+            order = List.of();
+        }
+
+        String currentPlayerNickname = order.isEmpty()
+                ? null
+                : this.game.getTurnOrderTrack().getCurrentPlayer().getNickname();
+
+        return new TurnOrderPayload(
+                this.game.getTurnOrderTrack().getRoundNumber(),
+                this.game.getTurnOrderTrack().getCurrentRoundPhase().name(),
+                currentPlayerNickname,
+                order.stream().map(Player::getNickname).toList()
+        );
+    }
+
+    private PlayerPayload toPlayerPayload(Player player) {
+        List<CardPayload> characters = player.getTribe().getCharacters().stream()
+                .map(this::toCardPayload)
+                .toList();
+        List<CardPayload> buildings = player.getTribe().getBuildings().stream()
+                .map(this::toCardPayload)
+                .toList();
+        TribePayload tribe = new TribePayload(characters, buildings);
+
+        return new PlayerPayload(
+                player.getNickname(),
+                player.getFood(),
+                player.getPrestigePoints(),
+                player.getTotem().name(),
+                tribe
+        );
+    }
+
+    private CardPayload toCardPayload(Card card) {
+        return new CardPayload(
+                card.getId(),
+                card.getClass().getSimpleName(),
+                card.getEra().ordinal()
+        );
+    }
+
+    private BoardPayload buildBoardPayload() {
+        List<CardPayload> upperRow = this.game.getBoard().getUpperRowCards().stream()
+                .map(this::toCardPayload)
+                .toList();
+        List<CardPayload> lowerRow = this.game.getBoard().getLowerRowCards().stream()
+                .map(this::toCardPayload)
+                .toList();
+        List<OfferSpacePayload> offerSpaces = this.game.getBoard().getOfferSpaces().stream()
+                .map(this::toOfferSpacePayload)
+                .toList();
+        List<StartingBlockPayload> startingBlocks = this.game.getBoard().getStartingBlocks().stream()
+                .map(this::toStartingBlockPayload)
+                .toList();
+
+        return new BoardPayload(upperRow, lowerRow, offerSpaces, startingBlocks);
+    }
+
+    private OfferSpacePayload toOfferSpacePayload(OfferSpace space) {
+        String occupiedBy = space.getOccupiedBy() == null ? null : space.getOccupiedBy().getNickname();
+        return new OfferSpacePayload(
+                space.getCode(),
+                space.getTopRowCardsToTake(),
+                space.getBottomRowCardsToTake(),
+                occupiedBy
+        );
+    }
+
+    private StartingBlockPayload toStartingBlockPayload(StartingBlock block) {
+        String occupiedBy = block.getOccupiedBy() == null ? null : block.getOccupiedBy().getNickname();
+        return new StartingBlockPayload(
+                block.getPosition(),
+                block.getFoodModifier(),
+                block.getPrestigeModifier(),
+                occupiedBy
+        );
     }
 
     private List<MatchScore> buildFinalScores() {

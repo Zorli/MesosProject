@@ -1,5 +1,9 @@
 package it.polimi.ingsoft.mesos.server;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
@@ -28,10 +32,13 @@ import java.util.stream.Collectors;
 
 //Stub used to test the model + some controller functionalities from a server perspective
 public final class GameCliMain {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
     private final LobbyManager lobbyManager;
     private final BufferedReader reader;
     private final PrintStream out;
     private final Map<String, User> usersByNickname;
+    private boolean printJson;
 
     private Integer currentLobbyId;
     private GameOrchestrator orchestrator;
@@ -50,6 +57,7 @@ public final class GameCliMain {
 
     private void run() throws IOException {
         this.printBanner();
+        this.askOutputMode();
         this.printState();
 
         while (true) {
@@ -120,42 +128,49 @@ public final class GameCliMain {
                     this.ensureGameStarted();
                     this.orchestrator.setupMatch();
                     this.printState();
+                    this.printSerializedMessage();
                 }
                 case "move" -> {
                     this.expectArgCount(parts, 3, "move <player> <space>");
                     this.ensureGameStarted();
                     this.orchestrator.moveTotem(this.findPlayer(parts.get(1)), parts.get(2).toUpperCase(Locale.ROOT));
                     this.printState();
+                    this.printSerializedMessage();
                 }
                 case "choose" -> {
                     this.expectArgCount(parts, 3, "choose <player> <cardId>");
                     this.ensureGameStarted();
                     this.orchestrator.chooseCard(this.findPlayer(parts.get(1)), this.findBoardCardById(parts.get(2)));
                     this.printState();
+                    this.printSerializedMessage();
                 }
                 case "extra" -> {
                     this.expectArgCount(parts, 3, "extra <player> <cardId>");
                     this.ensureGameStarted();
                     this.orchestrator.extraDrawn(this.findPlayer(parts.get(1)), this.findBoardCardById(parts.get(2)));
                     this.printState();
+                    this.printSerializedMessage();
                 }
                 case "resolve" -> {
                     this.expectArgCount(parts, 1, "resolve");
                     this.ensureGameStarted();
                     this.orchestrator.resolveEffects();
                     this.printState();
+                    this.printSerializedMessage();
                 }
                 case "reset" -> {
                     this.expectArgCount(parts, 1, "reset");
                     this.ensureGameStarted();
                     this.orchestrator.resetBoard();
                     this.printState();
+                    this.printSerializedMessage();
                 }
                 case "final" -> {
                     this.expectArgCount(parts, 1, "final");
                     this.ensureGameStarted();
                     Optional<?> rankingResult = this.orchestrator.calculateFinalScore();
                     this.printState();
+                    this.printSerializedMessage();
                     if (rankingResult.isEmpty()) {
                         this.out.println("Ranking non configurato per questa sessione.");
                     } else {
@@ -469,5 +484,20 @@ public final class GameCliMain {
         if (parts.size() != expectedCount) {
             throw new IllegalArgumentException("Uso: " + usage);
         }
+    }
+
+    private void askOutputMode() throws IOException {
+        this.out.println("Output mode: [1] human-readable  [2] JSON payload");
+        this.out.print("Scelta: ");
+        String choice = this.reader.readLine();
+        this.printJson = "2".equals(choice != null ? choice.trim() : "");
+    }
+
+    private void printSerializedMessage() {
+        if (!this.printJson) return;
+        ServerMessage msg = new ServerMessage(MessageType.GAME_UPDATE, this.orchestrator.buildPayload());
+        this.out.println("--- ServerMessage JSON ---");
+        this.out.println(GSON.toJson(msg));
+        this.out.println("-------------------------");
     }
 }
