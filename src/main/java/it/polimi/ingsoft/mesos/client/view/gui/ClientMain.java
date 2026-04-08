@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.client;
+package it.polimi.ingsoft.mesos.client.view.gui;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -11,12 +11,6 @@ import java.io.IOException;
  * JavaFX entry point for the Mesos client application.
  */
 public class ClientMain extends Application {
-    /**
-     * Loads the initial JavaFX scene and shows the primary application window.
-     *
-     * @param stage primary stage created by the JavaFX runtime
-     * @throws IOException if the FXML view cannot be loaded
-     */
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(ClientMain.class.getResource("hello-view.fxml"));
@@ -26,11 +20,6 @@ public class ClientMain extends Application {
         stage.show();
     }
 
-    /**
-     * Launches the JavaFX client application.
-     *
-     * @param args command-line arguments forwarded to JavaFX
-     */
     public static void main(String[] args) {
         launch(args);
     }
