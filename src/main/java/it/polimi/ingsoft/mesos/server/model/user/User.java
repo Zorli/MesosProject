@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  * Represents a globally recognized user connected to the server.
- * This class handles the network identity and connection status of a client,
+ * This class handles the virtualview identity and connection status of a client,
  * keeping it strictly separated from the in-game player state.
  */
 public class User {

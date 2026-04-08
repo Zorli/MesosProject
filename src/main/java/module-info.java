@@ -23,4 +23,8 @@
       exports it.polimi.ingsoft.mesos.server.model.player;
       exports it.polimi.ingsoft.mesos.server.model.ranking;
         exports it.polimi.ingsoft.mesos.server.model.persistence;
+      exports it.polimi.ingsoft.mesos.server.stubs;
+      opens it.polimi.ingsoft.mesos.server.stubs to com.google.gson;
+        exports it.polimi.ingsoft.mesos.server.messages;
+        opens it.polimi.ingsoft.mesos.server.messages to com.google.gson;
   }

@@ -186,7 +186,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <mainClass>it.polimi.ingsoft.mesos.client.Main</mainClass>
+                    <mainClass>it.polimi.ingsoft.mesos.client.ClientMain</mainClass>
                 </configuration>
             </plugin>
         </plugins>

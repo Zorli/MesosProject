@@ -10,14 +10,14 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class MainTest {
+class ServerMainTest {
 
     @Test
     void runPrintsNoDbStartupSummaryAndReturnsZero() {
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
-        int exitCode = Main.run(
+        int exitCode = ServerMain.run(
                 Map.of("MESOS_NO_DB", "true"),
                 new PrintStream(stdout, true, StandardCharsets.UTF_8),
                 new PrintStream(stderr, true, StandardCharsets.UTF_8)
@@ -38,7 +38,7 @@ class MainTest {
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
-        int exitCode = Main.run(
+        int exitCode = ServerMain.run(
                 Map.of("MESOS_DB_MAX_BUSY_RETRIES", "not-a-number"),
                 new PrintStream(stdout, true, StandardCharsets.UTF_8),
                 new PrintStream(stderr, true, StandardCharsets.UTF_8)

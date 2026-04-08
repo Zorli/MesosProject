@@ -19,15 +19,15 @@ import java.util.Map;
 
 //From this class we should create all the server
 //Client → TCP → VirtualView.receiveCmd()
-//             → GameController.processCmd()   ← parsing + validazione
-//             → Model.evolve()                ← stato cambia
-//             → Observer notify → VirtualView.sendUpdate()  ← diretto
+//             → GameController.processCmd()
+//             → Model.evolve()
+//             → Observer notify → VirtualView.sendUpdate()
 //             → TCP → Client
-public final class Main {
+public final class ServerMain {
     /**
      * Prevents instantiation of the utility entry-point class.
      */
-    private Main() {
+    private ServerMain() {
     }
 
     /**
@@ -44,7 +44,7 @@ public final class Main {
 
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
-            //I need to instantiate the server controller and the relative network
+            //I need to instantiate the server controller and the relative virtualview
 
 
 

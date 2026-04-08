@@ -97,7 +97,7 @@ public class OfferSpace {
 
     /**
      * Retrieves the unique string code identifying this space.
-     * Useful for UI rendering, network messages, or API mapping.
+     * Useful for UI rendering, virtualview messages, or API mapping.
      *
      * @return The string code of the space.
      */

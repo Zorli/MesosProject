@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server;
+package it.polimi.ingsoft.mesos.server.messages;
 
 import java.util.Objects;
 

@@ -1,9 +1,9 @@
-package it.polimi.ingsoft.mesos.server;
+package it.polimi.ingsoft.mesos.server.stubs;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import it.polimi.ingsoft.mesos.server.messages.MessageType;
+import it.polimi.ingsoft.mesos.server.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
