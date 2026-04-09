@@ -16,17 +16,17 @@ public class VirtualServerTCP implements VirtualServer {
 
     private final Socket socket;
     private final PrintWriter writer;
-    private final ClientHandler clientHandler;
-    private final Thread clientHandlerThread;
+    private final TcpServerMessageReceiver messageReceiver;
+    private final Thread messageReceiverThread;
 
     public VirtualServerTCP(String host, int port, ServerMessageListener listener) throws IOException {
         Objects.requireNonNull(host, "host cannot be null");
         Objects.requireNonNull(listener, "listener cannot be null");
         this.socket = new Socket(host, port);
         this.writer = new PrintWriter(this.socket.getOutputStream(), true);
-        this.clientHandler = new ClientHandler(this.socket, listener);
-        this.clientHandlerThread = new Thread(this.clientHandler, "mesos-client-handler");
-        this.clientHandlerThread.start();
+        this.messageReceiver = new TcpServerMessageReceiver(this.socket, listener);
+        this.messageReceiverThread = new Thread(this.messageReceiver, "mesos-client-server-message-receiver");
+        this.messageReceiverThread.start();
     }
 
     @Override

@@ -24,19 +24,20 @@ public class TuiController implements ServerMessageListener {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Mesos TUI started.");
         System.out.println("TCP connected: " + this.virtualServer.isConnected());
+        System.out.println("Type 'help' to list commands.");
+        this.printPrompt();
         while (true) {
-            this.printMenu();
-            System.out.print("Select command: ");
             if (!scanner.hasNextLine()) {
                 return;
             }
 
-            String command = scanner.nextLine().trim();
+            String commandLine = scanner.nextLine().trim();
             try {
-                switch (command) {
-                    case "1" -> this.handleAuthentication(scanner);
-                    case "2" -> this.handleRawMessage(scanner);
-                    case "0" -> {
+                switch (this.readCommand(commandLine)) {
+                    case "help" -> this.printHelp();
+                    case "auth" -> this.handleAuthentication(commandLine);
+                    case "raw" -> this.handleRawMessage(commandLine);
+                    case "quit" -> {
                         this.virtualServer.close();
                         System.out.println("Client closed.");
                         return;
@@ -46,34 +47,54 @@ public class TuiController implements ServerMessageListener {
             } catch (Exception exception) {
                 System.out.println("Client error: " + exception.getMessage());
             }
+            this.printPrompt();
         }
     }
 
-    private void printMenu() {
-        System.out.println();
-        System.out.println("Available commands:");
-        System.out.println("1) authenticate");
-        System.out.println("2) send raw json");
-        System.out.println("0) quit");
+    private String readCommand(String commandLine) {
+        if (commandLine.isBlank()) {
+            return "";
+        }
+        return commandLine.split("\\s+", 2)[0].toLowerCase();
     }
 
-    private void handleAuthentication(Scanner scanner) throws Exception {
-        System.out.print("Nickname: ");
-        String nickname = scanner.nextLine().trim();
+    private void printHelp() {
+        System.out.println("Available commands:");
+        System.out.println("  help");
+        System.out.println("  auth <nickname>");
+        System.out.println("  raw <json>");
+        System.out.println("  quit");
+    }
+
+    private void handleAuthentication(String commandLine) throws Exception {
+        String nickname = this.extractArgument(commandLine, "auth");
         this.virtualServer.authenticate(nickname);
         System.out.println("Authentication request sent.");
     }
 
-    private void handleRawMessage(Scanner scanner) throws Exception {
-        System.out.print("Raw JSON: ");
-        String rawMessage = scanner.nextLine();
+    private void handleRawMessage(String commandLine) throws Exception {
+        String rawMessage = this.extractArgument(commandLine, "raw");
         this.virtualServer.sendRaw(rawMessage);
         System.out.println("Raw message sent.");
+    }
+
+    private String extractArgument(String commandLine, String command) {
+        String prefix = command + " ";
+        if (!commandLine.startsWith(prefix) || commandLine.length() <= prefix.length()) {
+            throw new IllegalArgumentException("Usage: " + command + " <argument>");
+        }
+        return commandLine.substring(prefix.length()).trim();
+    }
+
+    private synchronized void printPrompt() {
+        System.out.print("> ");
+        System.out.flush();
     }
 
     @Override
     public synchronized void onServerMessage(String message) {
         System.out.println();
         System.out.println(message);
+        this.printPrompt();
     }
 }

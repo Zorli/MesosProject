@@ -2,15 +2,12 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
 import it.polimi.ingsoft.mesos.server.network.ConnectionContext;
-import it.polimi.ingsoft.mesos.server.model.user.User;
-import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.io.BufferedReader;
@@ -27,10 +24,11 @@ public class VirtualViewTCP implements VirtualView, Runnable {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket clientSocket;
-    private final ConnectionContext connectionContext;
-    private final ClientCommandHandler commandHandler;
+    private final ServerController serverController;
     private final PrintStream out;
     private final PrintWriter writer;
+    private final ConnectionContext connectionContext;
+    private final ClientCommandHandler commandHandler;
 
     public VirtualViewTCP(Socket clientSocket, ServerController serverController) {
         this(clientSocket, serverController, System.out);
@@ -38,9 +36,9 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     public VirtualViewTCP(Socket clientSocket, ServerController serverController, PrintStream out) {
         this.clientSocket = Objects.requireNonNull(clientSocket, "clientSocket cannot be null");
-        Objects.requireNonNull(serverController, "serverController cannot be null");
-        this.connectionContext = new ConnectionContext(serverController);
+        this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
         this.out = Objects.requireNonNull(out, "out cannot be null");
+        this.connectionContext = new ConnectionContext(this.serverController);
         this.commandHandler = new ClientCommandHandler(this.out);
         try {
             this.writer = new PrintWriter(
@@ -57,13 +55,16 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(this.clientSocket.getInputStream(), StandardCharsets.UTF_8)
         )) {
-            if (!this.awaitAuthentication(reader)) {
-                return;
-            }
-
             String rawMessage;
             while ((rawMessage = reader.readLine()) != null) {
-                this.commandHandler.handle(rawMessage, this.connectionContext);
+                try {
+                    ServerMessage response = this.commandHandler.handle(rawMessage, this.connectionContext);
+                    if (response != null) {
+                        this.sendServerMessage(response);
+                    }
+                } catch (RuntimeException exception) {
+                    this.sendError(exception);
+                }
             }
         } catch (IOException exception) {
             throw new IllegalStateException("TCP virtual view failed", exception);
@@ -81,54 +82,30 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         this.clientSocket.close();
     }
 
-    private boolean awaitAuthentication(BufferedReader reader) throws IOException {
-        while (!this.connectionContext.isAuthenticated()) {
-            String rawMessage = reader.readLine();
-            if (rawMessage == null) {
-                return false;
-            }
-
-            this.handleAuthenticationMessage(rawMessage);
-        }
-        return true;
+    //This is the low level call to send out a server message on the socket
+    public void sendServerMessage(ServerMessage message) {
+        Objects.requireNonNull(message, "message cannot be null");
+        this.writer.println(GSON.toJson(message));
     }
 
-    private void handleAuthenticationMessage(String rawMessage) {
-        try {
-            JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
-            ClientMessageType type = ClientMessageType.valueOf(root.get("type").getAsString());
-
-            if (type != ClientMessageType.AUTHENTICATE) {
-                this.out.println("[TCP] Ignored pre-authentication message of type " + type);
-                return;
-            }
-
-            AuthenticationPayload authenticationPayload =
-                    GSON.fromJson(root.get("payload"), AuthenticationPayload.class);
-            String nickname = this.extractNickname(authenticationPayload);
-            User authenticatedUser = this.connectionContext.getServerController().authenticate(nickname);
-            this.connectionContext.setUser(authenticatedUser);
-            this.connectionContext.setNickname(nickname);
-            this.out.println("[TCP] Authentication successful for nickname=" + nickname);
-        } catch (RuntimeException exception) {
-            this.out.println("[TCP] Authentication failed: " + exception.getMessage());
-            this.sendError("AUTHENTICATION_FAILED", exception.getMessage());
-        }
+    //This method must be used to communicate excpetion to the client
+    public void sendError(Exception exception) {
+        Objects.requireNonNull(exception, "exception cannot be null");
+        ErrorPayload errorPayload = this.mapExceptionToErrorPayload(exception);
+        this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
     }
 
-    private String extractNickname(AuthenticationPayload payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("Authentication payload cannot be null");
+    //Here we have tha mapping between the exception and the respective payload
+    private ErrorPayload mapExceptionToErrorPayload(Exception exception) {
+        if (exception instanceof AuthenticationException) {
+            return new ErrorPayload("AUTHENTICATION_FAILED", exception.getMessage());
         }
-        if (payload.nickname == null || payload.nickname.isBlank()) {
-            throw new IllegalArgumentException("Authentication payload must contain nickname");
+        if (exception instanceof IllegalArgumentException) {
+            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
         }
-        return payload.nickname;
-    }
-
-    private void sendError(String code, String message) {
-        ErrorPayload errorPayload = new ErrorPayload(code, message);
-        ServerMessage serverMessage = new ServerMessage(ServerMessageType.ERROR, errorPayload);
-        this.writer.println(GSON.toJson(serverMessage));
+        if (exception instanceof UnsupportedOperationException) {
+            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
+        }
+        return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
     }
 }
