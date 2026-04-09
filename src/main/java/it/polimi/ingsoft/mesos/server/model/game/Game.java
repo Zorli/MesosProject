@@ -26,6 +26,7 @@ public class Game {
     private final List<Player> players;
     private Era currentEra; //Mutable
     private GameStatus status;  //Mutable
+    private long stateVersion;
     private final Board board;
     private final TurnOrderTrack turnOrderTrack;
     private final TurnState turnState;
@@ -49,6 +50,7 @@ public class Game {
         this.board = board;
         this.currentEra = Era.first;
         this.status = GameStatus.SETUP;
+        this.stateVersion = 0L;
     }
 
     /**
@@ -76,6 +78,7 @@ public class Game {
         this.board = board;
         this.currentEra = currentEra;
         this.status = status;
+        this.stateVersion = 0L;
     }
 
     // Getters
@@ -117,6 +120,15 @@ public class Game {
     }
 
     /**
+     * Returns the monotonically increasing version of the mutable game state.
+     *
+     * @return current state version
+     */
+    public long getStateVersion() {
+        return this.stateVersion;
+    }
+
+    /**
      * Returns the board currently owned by the game.
      *
      * @return current board
@@ -152,6 +164,7 @@ public class Game {
      */
     public void setCurrentEra(Era currentEra) {
         this.currentEra = currentEra;
+        this.markStateChanged();
     }
 
     /**
@@ -161,6 +174,7 @@ public class Game {
      */
     public void setStatus(GameStatus newstatus){
         this.status = newstatus;
+        this.markStateChanged();
     }
 
     // Public methods
@@ -187,6 +201,7 @@ public class Game {
 
         this.turnState.resetForNewRound();
         this.status = GameStatus.IN_PROGRESS;
+        this.markStateChanged();
     }
 
     //TODO : Add method for choosing the starting tile, as now they are placed as subscribed in lobby
@@ -238,6 +253,7 @@ public class Game {
         } else {
             this.turnOrderTrack.advanceToNextPlayer();
         }
+        this.markStateChanged();
 
     }
     /**
@@ -262,6 +278,7 @@ public class Game {
         if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) { //Check if the player has still drawable cards from the board
             this.completeDrawTurn(player);
         }
+        this.markStateChanged();
 
     }
     /**
@@ -276,6 +293,7 @@ public class Game {
         CardRow cardRow = this.validateAndRemoveExtraDrawCard(player, card);
         this.applyChosenCardToPlayer(player, card);
         this.completeExtraDrawTurn();
+        this.markStateChanged();
     }
     /**
      * Resolves lower-row events after all standard and bonus draws are completed.
@@ -289,10 +307,12 @@ public class Game {
         if (this.turnOrderTrack.getRoundNumber() == 10) {
             this.board.resolveAllEvents();
             this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
+            this.markStateChanged();
             return;
         }
         this.board.resolveLowerEvents();
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
+        this.markStateChanged();
 
     }
     /**
@@ -313,6 +333,7 @@ public class Game {
         this.turnOrderTrack.advanceRoundNumber();
         this.turnState.resetForNewRound();
         this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+        this.markStateChanged();
 
 
     }
@@ -340,6 +361,7 @@ public class Game {
         }
 
         this.status = GameStatus.FINISHED;
+        this.markStateChanged();
     }
 
     // Private methods
@@ -617,5 +639,9 @@ public class Game {
             currentPlayer.gainFood(initialFood);
 
         }
+    }
+
+    private void markStateChanged() {
+        this.stateVersion++;
     }
 }

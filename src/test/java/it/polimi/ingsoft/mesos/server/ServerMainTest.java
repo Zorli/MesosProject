@@ -17,7 +17,7 @@ class ServerMainTest {
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
-        int exitCode = ServerMain.run(
+        int exitCode = LaunchServer.run(
                 Map.of("MESOS_NO_DB", "true"),
                 new PrintStream(stdout, true, StandardCharsets.UTF_8),
                 new PrintStream(stderr, true, StandardCharsets.UTF_8)
@@ -38,7 +38,7 @@ class ServerMainTest {
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
-        int exitCode = ServerMain.run(
+        int exitCode = LaunchServer.run(
                 Map.of("MESOS_DB_MAX_BUSY_RETRIES", "not-a-number"),
                 new PrintStream(stdout, true, StandardCharsets.UTF_8),
                 new PrintStream(stderr, true, StandardCharsets.UTF_8)

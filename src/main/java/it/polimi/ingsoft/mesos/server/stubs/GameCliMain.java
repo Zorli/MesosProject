@@ -2,8 +2,10 @@ package it.polimi.ingsoft.mesos.server.stubs;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import it.polimi.ingsoft.mesos.server.messages.MessageType;
-import it.polimi.ingsoft.mesos.server.messages.ServerMessage;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
@@ -14,6 +16,12 @@ import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.LobbyManager;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.user.User;
+import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -58,6 +66,7 @@ public final class GameCliMain {
     private void run() throws IOException {
         this.printBanner();
         this.askOutputMode();
+        this.bootstrapTwoPlayerLobby();
         this.printState();
 
         while (true) {
@@ -77,6 +86,12 @@ public final class GameCliMain {
                 return;
             }
         }
+    }
+
+    private void bootstrapTwoPlayerLobby() {
+        this.createLobby("Alice", "2");
+        this.joinLobby("Bob");
+        this.startLobby();
     }
 
     private boolean executeCommand(String input) {
@@ -495,9 +510,82 @@ public final class GameCliMain {
 
     private void printSerializedMessage() {
         if (!this.printJson) return;
-        ServerMessage msg = new ServerMessage(MessageType.GAME_UPDATE, this.orchestrator.buildPayload());
+        ServerMessage msg = new ServerMessage(ServerMessageType.GAME_UPDATE, this.orchestrator.getCurrentPayload());
+        this.handleSerializedMessage(GSON.toJson(msg));
+    }
+
+    private void handleSerializedMessage(String serializedMessage) {
         this.out.println("--- ServerMessage JSON ---");
-        this.out.println(GSON.toJson(msg));
+        this.out.println(serializedMessage);
         this.out.println("-------------------------");
+        //Ho ricevutuo un server message devo prima capire se è un error o un game update cosi posso deserializzare
+        //Correttamente
+        JsonObject root = GSON.fromJson(serializedMessage, JsonObject.class);
+        ServerMessageType type = ServerMessageType.valueOf(root.get("type").getAsString());
+        JsonElement payload = root.get("payload"); //Ricevo payload
+
+        //Decido come de serializzare
+        switch (type) {
+            case GAME_UPDATE -> this.handleGameUpdate(GSON.fromJson(payload, GamePayload.class));
+            case ERROR -> this.handleError(GSON.fromJson(payload, ErrorPayload.class));
+        }
+    }
+
+    private void handleGameUpdate(GamePayload payload) {
+        this.out.println("=== DESERIALIZED GAME_UPDATE ===");
+        this.out.println("Game #" + payload.id
+                + " status=" + payload.status
+                + " era=" + payload.currentEra);
+        this.out.println("Turn order: round=" + payload.turnOrder.roundNumber
+                + " phase=" + payload.turnOrder.currentRoundPhase
+                + " currentPlayer=" + payload.turnOrder.currentPlayerNickname
+                + " order=" + payload.turnOrder.turnOrder);
+        this.out.println("Turn state: phase=" + payload.turnState.phase);
+
+        this.out.println("Players:");
+        for (PlayerPayload player : payload.players) {
+            this.out.println("  - " + player.nickname
+                    + " food=" + player.food
+                    + " prestige=" + player.prestigePoints
+                    + " totem=" + player.totem
+                    + " characters=" + this.describePayloadCards(player.tribe.characters)
+                    + " buildings=" + this.describePayloadCards(player.tribe.buildings));
+        }
+
+        this.out.println("Board upper row: " + this.describePayloadCards(payload.board.upperRow));
+        this.out.println("Board lower row: " + this.describePayloadCards(payload.board.lowerRow));
+        this.out.println("Offer spaces: " + payload.board.offerSpaces.stream()
+                .map(this::describeOfferSpacePayload)
+                .collect(Collectors.joining(", ", "[", "]")));
+        this.out.println("Starting blocks: " + payload.board.startingBlocks.stream()
+                .map(this::describeStartingBlockPayload)
+                .collect(Collectors.joining(", ", "[", "]")));
+        this.out.println("================================");
+    }
+
+    private void handleError(ErrorPayload payload) {
+        this.out.println("=== DESERIALIZED ERROR ===");
+        this.out.println("code=" + payload.code + " message=" + payload.message);
+        this.out.println("==========================");
+    }
+
+    private String describePayloadCards(List<CardPayload> cards) {
+        return cards.stream()
+                .map(card -> "#" + card.id + ":" + card.type + "(era=" + card.era + ")")
+                .collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    private String describeOfferSpacePayload(OfferSpacePayload payload) {
+        return payload.code
+                + "(" + payload.topRowCardsToTake + "U/" + payload.bottomRowCardsToTake + "L)="
+                + (payload.occupiedByNickname == null ? "-" : payload.occupiedByNickname);
+    }
+
+    private String describeStartingBlockPayload(StartingBlockPayload payload) {
+        return "#" + payload.position
+                + "(food=" + payload.foodModifier
+                + ", prestige=" + payload.prestigeModifier
+                + ")="
+                + (payload.occupiedByNickname == null ? "-" : payload.occupiedByNickname);
     }
 }

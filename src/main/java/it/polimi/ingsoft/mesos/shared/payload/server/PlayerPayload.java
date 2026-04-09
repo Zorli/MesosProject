@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload;
+package it.polimi.ingsoft.mesos.shared.payload.server;
 
 public class PlayerPayload {
     public final String nickname;

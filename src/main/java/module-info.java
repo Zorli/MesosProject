@@ -8,12 +8,14 @@
       requires com.google.gson;
       //requires it.polimi.ingsoft.mesos;
 
-      opens it.polimi.ingsoft.mesos.client.controller to javafx.fxml;
+      opens it.polimi.ingsoft.mesos.client.view.gui to javafx.fxml, javafx.graphics;
       opens it.polimi.ingsoft.mesos.server to com.google.gson;
-      opens it.polimi.ingsoft.mesos.shared.payload to com.google.gson;
-      exports it.polimi.ingsoft.mesos.shared.payload;
+      opens it.polimi.ingsoft.mesos.shared.payload.client to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.server to com.google.gson;
+      exports it.polimi.ingsoft.mesos.shared.payload.client;
+      exports it.polimi.ingsoft.mesos.shared.payload.server;
       exports it.polimi.ingsoft.mesos.client;
-      exports it.polimi.ingsoft.mesos.client.view;
+      exports it.polimi.ingsoft.mesos.client.view.gui;
       exports it.polimi.ingsoft.mesos.server;
       exports it.polimi.ingsoft.mesos.server.model.cards;
       exports it.polimi.ingsoft.mesos.server.model.cards.buildings;
@@ -25,6 +27,6 @@
         exports it.polimi.ingsoft.mesos.server.model.persistence;
       exports it.polimi.ingsoft.mesos.server.stubs;
       opens it.polimi.ingsoft.mesos.server.stubs to com.google.gson;
-        exports it.polimi.ingsoft.mesos.server.messages;
-        opens it.polimi.ingsoft.mesos.server.messages to com.google.gson;
+        exports it.polimi.ingsoft.mesos.shared.messages;
+        opens it.polimi.ingsoft.mesos.shared.messages to com.google.gson;
   }

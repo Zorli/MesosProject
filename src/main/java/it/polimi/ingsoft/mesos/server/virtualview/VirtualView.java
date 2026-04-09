@@ -1,4 +1,6 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
-public interface VirtualView {
+import java.io.Closeable;
+
+public interface VirtualView extends Closeable {
 }
