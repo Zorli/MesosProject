@@ -57,12 +57,12 @@ MESOS_DB_URL=jdbc:postgresql://localhost:5432/mesos \
 MESOS_DB_ADMIN_URL=jdbc:postgresql://localhost:5432/postgres \
 MESOS_DB_USER=postgres \
 MESOS_DB_PASSWORD=postgres \
-./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.Main exec:java
+./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
 ```
 
 Per avvio naive senza PostgreSQL:
 ```bash
-MESOS_NO_DB=true ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.Main exec:java
+MESOS_NO_DB=true ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
 ```
 
 All'avvio il server crea il database se manca, inizializza lo schema ranking, verifica la connettivita' verso PostgreSQL e fallisce con un errore esplicito se il DB e' irraggiungibile o non healthy.

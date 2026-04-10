@@ -25,6 +25,7 @@ import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatc
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchCheckpointType;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.server.testing.AdvancedGameStateFixtures;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,30 @@ class GameOrchestratorTest {
         assertSame(restoredGame, orchestrator.getGame());
         assertIterableEquals(restoredGame.getPlayers(), orchestrator.getPlayers());
         assertTrue(orchestrator.isPersistenceEnabled());
+    }
+
+    @Test
+    void currentPayloadIsCachedUntilGameStateChanges() {
+        ArrayList<Player> players = createPlayers(2);
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                DefaultGameFactory.getInstance(),
+                players,
+                "Alice",
+                NoOpSavedMatchService.INSTANCE
+        );
+
+        GamePayload initialPayload = orchestrator.getCurrentPayload();
+        GamePayload cachedPayload = orchestrator.getCurrentPayload();
+
+        assertSame(initialPayload, cachedPayload);
+
+        orchestrator.setupMatch();
+
+        GamePayload updatedPayload = orchestrator.getCurrentPayload();
+        GamePayload updatedCachedPayload = orchestrator.getCurrentPayload();
+
+        assertNotSame(initialPayload, updatedPayload);
+        assertSame(updatedPayload, updatedCachedPayload);
     }
 
     @Test

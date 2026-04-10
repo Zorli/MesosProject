@@ -13,15 +13,15 @@ import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchSer
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.TribePayload;
-import it.polimi.ingsoft.mesos.shared.payload.TurnOrderPayload;
-import it.polimi.ingsoft.mesos.shared.payload.TurnStatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -46,6 +46,8 @@ public class GameOrchestrator {
     private final String hostNickname;
     private final RankingService rankingService;
     private final MatchPersistenceCoordinator persistenceCoordinator;
+    private long cachedPayloadVersion = -1L;
+    private GamePayload cachedPayload;
     private boolean frozen;
 
     /**
@@ -356,6 +358,15 @@ public class GameOrchestrator {
             this.frozen = true;
             throw new MatchFinalizationFailureException(exception);
         }
+    }
+
+    public synchronized GamePayload getCurrentPayload() {
+        long currentVersion = this.game.getStateVersion();
+        if (this.cachedPayload == null || this.cachedPayloadVersion != currentVersion) {
+            this.cachedPayload = this.buildPayload();
+            this.cachedPayloadVersion = currentVersion;
+        }
+        return this.cachedPayload;
     }
 
     public GamePayload buildPayload() {

@@ -1,0 +1,31 @@
+package it.polimi.ingsoft.mesos.shared.payload.server;
+
+import java.util.List;
+
+public class PreMatchUpdatePayload {
+    public final PreMatchEventType event;
+    public final String nickname;
+    public final String message;
+    public final String lobbyId;
+    public final List<String> players;
+    public final String hostNickname;
+    public final Integer maxPlayers;
+
+    public PreMatchUpdatePayload(
+            PreMatchEventType event,
+            String nickname,
+            String message,
+            String lobbyId,
+            List<String> players,
+            String hostNickname,
+            Integer maxPlayers
+    ) {
+        this.event = event;
+        this.nickname = nickname;
+        this.message = message;
+        this.lobbyId = lobbyId;
+        this.players = players;
+        this.hostNickname = hostNickname;
+        this.maxPlayers = maxPlayers;
+    }
+}

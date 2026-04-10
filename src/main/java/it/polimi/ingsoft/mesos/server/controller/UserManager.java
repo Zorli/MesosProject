@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * Manages the registry of all users currently registered or connected to the server.
- * This class acts as the single source of truth for user network identities,
+ * This class acts as the single source of truth for user virtualview identities,
  * ensuring that all connected users have unique nicknames.
  */
 public class UserManager {
