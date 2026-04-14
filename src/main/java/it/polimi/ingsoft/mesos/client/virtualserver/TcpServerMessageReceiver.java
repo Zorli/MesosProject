@@ -10,7 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.BufferedReader;
@@ -24,11 +24,11 @@ public class TcpServerMessageReceiver implements Runnable {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket socket;
-    private final ServerMessageListener listener;
+    private final VirtualServer virtualServer;
 
-    public TcpServerMessageReceiver(Socket socket, ServerMessageListener listener) {
+    public TcpServerMessageReceiver(Socket socket, VirtualServer virtualServer) {
         this.socket = Objects.requireNonNull(socket, "socket cannot be null");
-        this.listener = Objects.requireNonNull(listener, "listener cannot be null");
+        this.virtualServer = Objects.requireNonNull(virtualServer, "virtualServer cannot be null");
     }
 
     @Override
@@ -41,7 +41,7 @@ public class TcpServerMessageReceiver implements Runnable {
                 this.handleServerMessage(serverMessage);
             }
         } catch (IOException exception) {
-            this.listener.onServerMessage("[SERVER] connection closed: " + exception.getMessage());
+            this.virtualServer.handleError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
         }
     }
 
@@ -54,42 +54,27 @@ public class TcpServerMessageReceiver implements Runnable {
             switch (type) {
                 case ERROR -> this.handleError(payload);
                 case PRE_MATCH_UPDATE -> this.handlePreMatchUpdate(payload);
-                case GAME_UPDATE -> this.listener.onServerMessage("[SERVER] " + serializedMessage);
+                case GAME_UPDATE -> this.handleGameUpdate(payload);
             }
         } catch (RuntimeException exception) {
-            this.listener.onServerMessage("[SERVER] " + serializedMessage);
+            this.virtualServer.handleError(new ErrorPayload("INVALID_SERVER_MESSAGE", serializedMessage));
         }
     }
 
+
+    //Helper to handle here---
     private void handleError(JsonElement payload) {
         ErrorPayload errorPayload = GSON.fromJson(payload, ErrorPayload.class);
-        this.listener.onServerMessage("[SERVER][ERROR] " + errorPayload.code + ": " + errorPayload.message);
+        this.virtualServer.handleError(errorPayload);
     }
 
     private void handlePreMatchUpdate(JsonElement payload) {
         PreMatchUpdatePayload updatePayload = GSON.fromJson(payload, PreMatchUpdatePayload.class);
-        StringBuilder messageBuilder = new StringBuilder("[SERVER][PRE-MATCH] ")
-                .append(updatePayload.event);
+        this.virtualServer.handlePreMatchUpdate(updatePayload);
+    }
 
-        if (updatePayload.nickname != null) {
-            messageBuilder.append(" nickname=").append(updatePayload.nickname);
-        }
-        if (updatePayload.message != null) {
-            messageBuilder.append(" message=").append(updatePayload.message);
-        }
-        if (updatePayload.lobbyId != null) {
-            messageBuilder.append(" lobbyId=").append(updatePayload.lobbyId);
-        }
-        if (updatePayload.hostNickname != null) {
-            messageBuilder.append(" host=").append(updatePayload.hostNickname);
-        }
-        if (updatePayload.maxPlayers != null) {
-            messageBuilder.append(" maxPlayers=").append(updatePayload.maxPlayers);
-        }
-        if (updatePayload.players != null && !updatePayload.players.isEmpty()) {
-            messageBuilder.append(" players=").append(updatePayload.players);
-        }
-
-        this.listener.onServerMessage(messageBuilder.toString());
+    private void handleGameUpdate(JsonElement payload) {
+        GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
+        this.virtualServer.handleGameUpdate(gamePayload);
     }
 }

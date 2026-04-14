@@ -1,7 +1,10 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
-import it.polimi.ingsoft.mesos.client.virtualserver.ServerMessageListener;
+import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServer;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.util.Objects;
 import java.util.Scanner;
@@ -10,7 +13,7 @@ import java.util.Scanner;
  * Text-based user interface controller for the Mesos client.
  * Handles terminal input parsing and output rendering.
  */
-public class TuiController implements ServerMessageListener {
+public class TuiController implements ClientView {
     private VirtualServer virtualServer;
 
     public void attachVirtualServer(VirtualServer virtualServer) {
@@ -92,9 +95,45 @@ public class TuiController implements ServerMessageListener {
     }
 
     @Override
-    public synchronized void onServerMessage(String message) {
+    public synchronized void showError(ErrorPayload payload) {
         System.out.println();
-        System.out.println(message);
+        System.out.println("[SERVER][ERROR] " + payload.code + ": " + payload.message);
+        this.printPrompt();
+    }
+
+    @Override
+    public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+        StringBuilder messageBuilder = new StringBuilder("[SERVER][PRE-MATCH] ")
+                .append(payload.event);
+
+        if (payload.nickname != null) {
+            messageBuilder.append(" nickname=").append(payload.nickname);
+        }
+        if (payload.message != null) {
+            messageBuilder.append(" message=").append(payload.message);
+        }
+        if (payload.lobbyId != null) {
+            messageBuilder.append(" lobbyId=").append(payload.lobbyId);
+        }
+        if (payload.hostNickname != null) {
+            messageBuilder.append(" host=").append(payload.hostNickname);
+        }
+        if (payload.maxPlayers != null) {
+            messageBuilder.append(" maxPlayers=").append(payload.maxPlayers);
+        }
+        if (payload.players != null && !payload.players.isEmpty()) {
+            messageBuilder.append(" players=").append(payload.players);
+        }
+
+        System.out.println();
+        System.out.println(messageBuilder);
+        this.printPrompt();
+    }
+
+    @Override
+    public synchronized void showGameUpdate(GamePayload payload) {
+        System.out.println();
+        System.out.println("[SERVER][GAME] update received for gameId=" + payload.id);
         this.printPrompt();
     }
 }
