@@ -8,6 +8,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.FinalScorePayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ResolveEffectsPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ResetBoardPayload;
@@ -15,10 +16,15 @@ import it.polimi.ingsoft.mesos.shared.payload.client.SetupMatchPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 
 import java.io.Closeable;
-
+// Here we expose the services that the client can request to the server.
+// This interface defines the common contract shared by TCP and RMI: with TCP these
+// operations are reached through message deserialization and dispatch, while with RMI
+// the same methods will be invoked directly as remote calls.
+// On the client side, the concrete transport object acts as a proxy toward this contract.
 public interface VirtualView extends Closeable {
     // Pre-match
     ServerMessage authenticate(AuthenticationPayload payload);
+    ServerMessage listLobbies(ListLobbiesPayload payload);
     ServerMessage createLobby(CreateLobbyPayload payload);
     ServerMessage joinLobby(JoinLobbyPayload payload);
     ServerMessage exitLobby(ExitLobbyPayload payload);

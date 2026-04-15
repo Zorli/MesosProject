@@ -6,6 +6,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.server.virtualview.VirtualView;
 
@@ -61,6 +66,11 @@ public class ClientCommandHandler {
         // Command dispatch
         return switch (type) {
             case AUTHENTICATE -> this.handleAuthentication(payload, context);
+            case LIST_LOBBIES -> this.handleListLobbies(payload, context);
+            case CREATE_LOBBY -> this.handleCreateLobby(payload, context);
+            case JOIN_LOBBY -> this.handleJoinLobby(payload, context);
+            case EXIT_LOBBY -> this.handleExitLobby(payload, context);
+            case START_LOBBY -> this.handleStartLobby(payload, context);
             default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
         };
     }
@@ -78,6 +88,84 @@ public class ClientCommandHandler {
         }
 
         return this.virtualView.authenticate(authenticationPayload);
+    }
+
+    private ServerMessage handleCreateLobby(JsonElement payload, ConnectionContext context) {
+        CreateLobbyPayload createLobbyPayload;
+        try {
+            createLobbyPayload = GSON.fromJson(payload, CreateLobbyPayload.class);
+            if (createLobbyPayload == null) {
+                throw new IllegalArgumentException("Malformed create-lobby payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed create-lobby payload", exception);
+        }
+
+        return this.virtualView.createLobby(createLobbyPayload);
+    }
+
+    private ServerMessage handleListLobbies(JsonElement payload, ConnectionContext context) {
+        ListLobbiesPayload listLobbiesPayload;
+        try {
+            listLobbiesPayload = GSON.fromJson(payload, ListLobbiesPayload.class);
+            if (listLobbiesPayload == null) {
+                throw new IllegalArgumentException("Malformed list-lobbies payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed list-lobbies payload", exception);
+        }
+
+        return this.virtualView.listLobbies(listLobbiesPayload);
+    }
+
+    private ServerMessage handleJoinLobby(JsonElement payload, ConnectionContext context) {
+        JoinLobbyPayload joinLobbyPayload;
+        try {
+            joinLobbyPayload = GSON.fromJson(payload, JoinLobbyPayload.class);
+            if (joinLobbyPayload == null) {
+                throw new IllegalArgumentException("Malformed join-lobby payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed join-lobby payload", exception);
+        }
+
+        if (joinLobbyPayload.lobbyId <= 0) {
+            throw new IllegalArgumentException("Join-lobby payload must contain a valid lobbyId");
+        }
+
+        return this.virtualView.joinLobby(joinLobbyPayload);
+    }
+
+    private ServerMessage handleExitLobby(JsonElement payload, ConnectionContext context) {
+        ExitLobbyPayload exitLobbyPayload;
+        try {
+            exitLobbyPayload = GSON.fromJson(payload, ExitLobbyPayload.class);
+            if (exitLobbyPayload == null) {
+                throw new IllegalArgumentException("Malformed exit-lobby payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed exit-lobby payload", exception);
+        }
+
+        if (exitLobbyPayload.lobbyId <= 0) {
+            throw new IllegalArgumentException("Exit-lobby payload must contain a valid lobbyId");
+        }
+
+        return this.virtualView.exitLobby(exitLobbyPayload);
+    }
+
+    private ServerMessage handleStartLobby(JsonElement payload, ConnectionContext context) {
+        StartLobbyPayload startLobbyPayload;
+        try {
+            startLobbyPayload = GSON.fromJson(payload, StartLobbyPayload.class);
+            if (startLobbyPayload == null) {
+                throw new IllegalArgumentException("Malformed start-lobby payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed start-lobby payload", exception);
+        }
+
+        return this.virtualView.startLobby(startLobbyPayload);
     }
 
     // Helper methods section

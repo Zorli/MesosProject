@@ -6,8 +6,13 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.IOException;
@@ -15,7 +20,10 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Objects;
 
-public class VirtualServerTCP implements VirtualServer {
+//TCP implementation of the client-side proxy/callback layer.
+//Outbound client calls are translated into serialized TCP messages toward the server-side VirtualView,
+//while inbound server messages are deserialized and forwarded to the client-side view contract.
+public class VirtualServerTCP implements VirtualServer, ServerProxy {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket socket;
@@ -40,21 +48,35 @@ public class VirtualServerTCP implements VirtualServer {
         return this.socket.isConnected() && !this.socket.isClosed();
     }
 
-    @Override
+
     public void send(ClientMessage message) {
         Objects.requireNonNull(message, "message cannot be null");
         this.writer.println(GSON.toJson(message));
     }
 
     @Override
-    public void sendRaw(String serializedMessage) {
-        Objects.requireNonNull(serializedMessage, "serializedMessage cannot be null");
-        this.writer.println(serializedMessage);
+    public void authenticate(String nickname) {
+        this.send(new ClientMessage(ClientMessageType.AUTHENTICATE, new AuthenticationPayload(nickname)));
     }
 
     @Override
-    public void authenticate(String nickname) {
-        this.send(new ClientMessage(ClientMessageType.AUTHENTICATE, new AuthenticationPayload(nickname)));
+    public void listLobbies() {
+        this.send(new ClientMessage(ClientMessageType.LIST_LOBBIES, new ListLobbiesPayload()));
+    }
+
+    @Override
+    public void createLobby(int chosenCapacity) {
+        this.send(new ClientMessage(ClientMessageType.CREATE_LOBBY, new CreateLobbyPayload(chosenCapacity)));
+    }
+
+    @Override
+    public void joinLobby(int lobbyId) {
+        this.send(new ClientMessage(ClientMessageType.JOIN_LOBBY, new JoinLobbyPayload(lobbyId)));
+    }
+
+    @Override
+    public void exitLobby(int lobbyId) {
+        this.send(new ClientMessage(ClientMessageType.EXIT_LOBBY, new ExitLobbyPayload(lobbyId)));
     }
 
     @Override
@@ -65,6 +87,11 @@ public class VirtualServerTCP implements VirtualServer {
     @Override
     public void handlePreMatchUpdate(PreMatchUpdatePayload payload) {
         this.clientView.showPreMatchUpdate(payload);
+    }
+
+    @Override
+    public void handleLobbyList(LobbyListPayload payload) {
+        this.clientView.showLobbyList(payload);
     }
 
     @Override

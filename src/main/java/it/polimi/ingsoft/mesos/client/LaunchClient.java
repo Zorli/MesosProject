@@ -42,7 +42,7 @@ public class LaunchClient {
                         DEFAULT_TCP_PORT,
                         tuiController
                 );
-                tuiController.attachVirtualServer(virtualServerTCP);
+                tuiController.attachServerProxy(virtualServerTCP);
                 tuiController.start();
             } catch (IOException exception) {
                 throw new RuntimeException("Failed to connect to TCP server", exception);
