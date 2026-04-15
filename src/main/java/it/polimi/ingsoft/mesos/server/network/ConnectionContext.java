@@ -17,6 +17,7 @@ public class ConnectionContext {
     private GameOrchestrator gameOrchestrator;
     private User user;
     private String nickname;
+    private Integer currentLobbyId;
     private ConnectionPhase phase;
 
     public ConnectionContext(ServerController serverController) {
@@ -84,6 +85,14 @@ public class ConnectionContext {
 
     public boolean isInPreMatchPhase() {
         return this.phase == ConnectionPhase.PRE_MATCH;
+    }
+
+    public Integer getCurrentLobbyId() {
+        return this.currentLobbyId;
+    }
+
+    public void setCurrentLobbyId(Integer currentLobbyId) {
+        this.currentLobbyId = currentLobbyId;
     }
 
     public void authenticate(User user) {
