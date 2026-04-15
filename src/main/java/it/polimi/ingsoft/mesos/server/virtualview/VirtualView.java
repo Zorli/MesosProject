@@ -15,7 +15,11 @@ import it.polimi.ingsoft.mesos.shared.payload.client.SetupMatchPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 
 import java.io.Closeable;
-
+// Here we expose the services that the client can request to the server.
+// This interface defines the common contract shared by TCP and RMI: with TCP these
+// operations are reached through message deserialization and dispatch, while with RMI
+// the same methods will be invoked directly as remote calls.
+// On the client side, the concrete transport object acts as a proxy toward this contract.
 public interface VirtualView extends Closeable {
     // Pre-match
     ServerMessage authenticate(AuthenticationPayload payload);

@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.BufferedReader;
@@ -54,6 +55,7 @@ public class TcpServerMessageReceiver implements Runnable {
             switch (type) {
                 case ERROR -> this.handleError(payload);
                 case PRE_MATCH_UPDATE -> this.handlePreMatchUpdate(payload);
+                case LOBBY_LIST -> this.handleLobbyList(payload);
                 case GAME_UPDATE -> this.handleGameUpdate(payload);
             }
         } catch (RuntimeException exception) {
@@ -71,6 +73,11 @@ public class TcpServerMessageReceiver implements Runnable {
     private void handlePreMatchUpdate(JsonElement payload) {
         PreMatchUpdatePayload updatePayload = GSON.fromJson(payload, PreMatchUpdatePayload.class);
         this.virtualServer.handlePreMatchUpdate(updatePayload);
+    }
+
+    private void handleLobbyList(JsonElement payload) {
+        LobbyListPayload lobbyListPayload = GSON.fromJson(payload, LobbyListPayload.class);
+        this.virtualServer.handleLobbyList(lobbyListPayload);
     }
 
     private void handleGameUpdate(JsonElement payload) {

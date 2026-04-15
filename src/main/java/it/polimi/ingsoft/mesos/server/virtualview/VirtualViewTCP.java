@@ -35,6 +35,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
+//TCP implementation of the VirtualView contract.
+//It acts as the network boundary on the server side: it reads raw client messages,
+//delegates parsing/dispatch, and serializes the structured server response back on the socket.
 public class VirtualViewTCP implements VirtualView, Runnable {
     private static final Gson GSON = new GsonBuilder().create();
 
