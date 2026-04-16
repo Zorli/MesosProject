@@ -7,25 +7,21 @@ import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 public interface RmiServerFacade extends Remote {
-    // PRE-MATCH
-    // ATTENZIONE QUI: Il client, quando si autentica, "regala" al server il suo ricevitore!
-    ServerMessage authenticate(AuthenticationPayload payload, VirtualServerRMI clientCallback) throws RemoteException;
 
-    ServerMessage listLobbies(ListLobbiesPayload payload) throws RemoteException;
-    ServerMessage createLobby(CreateLobbyPayload payload) throws RemoteException;
-    ServerMessage joinLobby(JoinLobbyPayload payload) throws RemoteException;
-    ServerMessage exitLobby(ExitLobbyPayload payload) throws RemoteException;
-    ServerMessage startLobby(StartLobbyPayload payload) throws RemoteException;
+    void listLobbies(ListLobbiesPayload payload) throws RemoteException;
+    void createLobby(CreateLobbyPayload payload) throws RemoteException;
+    void joinLobby(JoinLobbyPayload payload) throws RemoteException;
+    void exitLobby(ExitLobbyPayload payload) throws RemoteException;
+    void startLobby(StartLobbyPayload payload) throws RemoteException;
 
     // IN-MATCH
-    ServerMessage setupMatch(SetupMatchPayload payload) throws RemoteException;
-    ServerMessage moveTotem(MoveTotemPayload payload) throws RemoteException;
-    ServerMessage chooseCard(ChooseCardPayload payload) throws RemoteException;
-    ServerMessage extraDraw(ExtraDrawPayload payload) throws RemoteException;
-    ServerMessage resolveEffects(ResolveEffectsPayload payload) throws RemoteException;
-    ServerMessage resetBoard(ResetBoardPayload payload) throws RemoteException;
-    ServerMessage finalScore(FinalScorePayload payload) throws RemoteException;
+    void setupMatch(SetupMatchPayload payload) throws RemoteException;
+    void moveTotem(MoveTotemPayload payload) throws RemoteException;
+    void chooseCard(ChooseCardPayload payload) throws RemoteException;
+    void extraDraw(ExtraDrawPayload payload) throws RemoteException;
+    void resolveEffects(ResolveEffectsPayload payload) throws RemoteException;
+    void resetBoard(ResetBoardPayload payload) throws RemoteException;
+    void finalScore(FinalScorePayload payload) throws RemoteException;
 
-    // Metodo bonus per gestire la disconnessione pulita (il close() del client)
-    void disconnect(String nickname) throws RemoteException;
+    void closeSession() throws RemoteException;
 }

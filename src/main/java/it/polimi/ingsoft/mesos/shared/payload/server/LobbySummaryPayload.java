@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
-public class LobbySummaryPayload {
+import java.io.Serializable;
+public class LobbySummaryPayload  implements Serializable {
     public final int lobbyId;
     public final String hostNickname;
     public final int currentPlayers;

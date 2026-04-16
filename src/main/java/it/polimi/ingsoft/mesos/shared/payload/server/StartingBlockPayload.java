@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
-public class StartingBlockPayload {
+import java.io.Serializable;
+public class StartingBlockPayload implements Serializable {
     public final int position;
     public final int foodModifier;
     public final int prestigeModifier;

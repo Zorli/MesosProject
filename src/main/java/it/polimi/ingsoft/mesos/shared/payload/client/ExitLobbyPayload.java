@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class ExitLobbyPayload {
+import java.io.Serializable;
+public class ExitLobbyPayload implements Serializable {
     public final int lobbyId;
 
     public ExitLobbyPayload(int lobbyId) {

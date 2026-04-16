@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class ListLobbiesPayload {
+import java.io.Serializable;
+public class ListLobbiesPayload implements Serializable {
     public ListLobbiesPayload() {
     }
 }

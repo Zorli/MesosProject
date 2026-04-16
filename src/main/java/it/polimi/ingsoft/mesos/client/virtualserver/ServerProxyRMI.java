@@ -1,7 +1,10 @@
 package it.polimi.ingsoft.mesos.client.virtualserver;
 
+import it.polimi.ingsoft.mesos.client.view.ClientView;
+import it.polimi.ingsoft.mesos.shared.RmiLoginFacade;
 import it.polimi.ingsoft.mesos.shared.RmiServerFacade;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.io.IOException;
 import java.rmi.NoSuchObjectException;
@@ -19,13 +22,14 @@ import java.rmi.server.UnicastRemoteObject;
  * prevent background thread leaks.
  */
 public class ServerProxyRMI implements ServerProxy{
-    private final RmiServerFacade serverStub;
+    private final RmiLoginFacade loginFacade;
+    private  RmiServerFacade serverStub;
     private final VirtualServerRMI callbackReceiver;
     private volatile boolean connected;
 
-    public ServerProxyRMI(RmiServerFacade serverStub, VirtualServer localViewUpdater) throws RemoteException {
-        this.serverStub = serverStub;
-        this.callbackReceiver = new VirtualServerRMI(localViewUpdater);
+    public ServerProxyRMI(RmiLoginFacade loginFacade, ClientView clientView) throws RemoteException {
+        this.loginFacade = loginFacade;
+        this.callbackReceiver = new VirtualServerRMI(clientView);
 
         this.connected = true;
     }
@@ -36,17 +40,27 @@ public class ServerProxyRMI implements ServerProxy{
     @Override
     public void authenticate(String nickname) {
         if (!this.connected) return;
-
+        if (this.serverStub != null) {
+            try {
+                this.callbackReceiver.handleError(new ErrorPayload("AUTH_ERROR", "client already Authenticated"));
+            } catch (RemoteException ignored) {
+            }
+            return;
+        }
         try {
-            this.serverStub.authenticate(new AuthenticationPayload(nickname),this.callbackReceiver);
+            this.serverStub = this.loginFacade.authenticate(new AuthenticationPayload(nickname), this.callbackReceiver);
+
         } catch (RemoteException e) {
-            this.handleDisconnection(e);
+            if(this.serverStub == null) {
+            } else {
+                this.handleDisconnection(e);
+            }
         }
     }
 
     @Override
     public void listLobbies() {
-        if (!this.connected) return;
+        if (!this.connected|| this.serverStub == null) return;
 
         try {
             this.serverStub.listLobbies(new ListLobbiesPayload());
@@ -57,7 +71,7 @@ public class ServerProxyRMI implements ServerProxy{
     }
     @Override
     public void createLobby(int chosenCapacity){
-        if (!this.connected) return;
+        if (!this.connected|| this.serverStub == null) return;
         try {
             this.serverStub.createLobby(new CreateLobbyPayload(chosenCapacity));
         } catch (RemoteException e) {
@@ -67,7 +81,7 @@ public class ServerProxyRMI implements ServerProxy{
 
     @Override
     public void joinLobby(int lobbyId) {
-        if (!this.connected) return;
+        if (!this.connected|| this.serverStub == null) return;
 
         try {
             this.serverStub.joinLobby(new JoinLobbyPayload(lobbyId));
@@ -78,7 +92,7 @@ public class ServerProxyRMI implements ServerProxy{
     }
     @Override
     public void exitLobby(int lobbyId) {
-        if (!this.connected) return;
+        if (!this.connected|| this.serverStub == null) return;
         try {
             this.serverStub.exitLobby(new ExitLobbyPayload(lobbyId));
 
@@ -88,7 +102,6 @@ public class ServerProxyRMI implements ServerProxy{
     }
 
     // to continue on reference of RmiServerFacade
-    // Metodo helper interno per gestire la caduta di rete
     private void handleDisconnection(RemoteException e) {
         this.connected = false;
         System.err.println("Connessione RMI persa con il server!");

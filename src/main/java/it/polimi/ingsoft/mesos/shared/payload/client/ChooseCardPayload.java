@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class ChooseCardPayload {
+import java.io.Serializable;
+public class ChooseCardPayload implements Serializable {
 }

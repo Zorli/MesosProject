@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class FinalScorePayload {
+import java.io.Serializable;
+public class FinalScorePayload implements Serializable {
 }

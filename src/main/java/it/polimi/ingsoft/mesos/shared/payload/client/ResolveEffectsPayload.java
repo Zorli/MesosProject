@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class ResolveEffectsPayload {
+import java.io.Serializable;
+public class ResolveEffectsPayload implements Serializable {
 }

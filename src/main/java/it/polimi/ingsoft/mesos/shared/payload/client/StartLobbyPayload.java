@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class StartLobbyPayload {
+import java.io.Serializable;
+public class StartLobbyPayload implements Serializable {
 }

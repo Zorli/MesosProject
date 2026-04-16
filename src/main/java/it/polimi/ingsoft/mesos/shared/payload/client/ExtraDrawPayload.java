@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class ExtraDrawPayload {
+import java.io.Serializable;
+public class ExtraDrawPayload implements Serializable {
 }

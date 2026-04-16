@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
-public class OfferSpacePayload {
+import java.io.Serializable;
+public class OfferSpacePayload implements Serializable {
     public final String code;
     public final int topRowCardsToTake;
     public final int bottomRowCardsToTake;

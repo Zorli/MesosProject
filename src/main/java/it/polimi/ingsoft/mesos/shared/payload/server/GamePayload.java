@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
+import java.io.Serializable;
 import java.util.List;
 //Upper class of the payload
-public class GamePayload {
+public class GamePayload implements Serializable {
     public final int id;
     public final String status;
     public final int currentEra;
