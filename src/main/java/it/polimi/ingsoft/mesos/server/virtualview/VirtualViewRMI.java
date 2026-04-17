@@ -4,7 +4,6 @@ import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrat
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
-import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ConnectionContext;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
@@ -42,28 +41,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public ConnectionContext getConnectionContext() {
         return this.connectionContext;
     }
-    
-    private void requireAuthenticated() {
-        if (this.connectionContext.isInAuthenticationPhase()) {
-            throw new AuthenticationException("Authentication required before this operation");
-        }
-    }
-
-    private ErrorPayload mapExceptionToErrorPayload(Exception exception) {
-        if (exception instanceof AuthenticationException) {
-            return new ErrorPayload("AUTHENTICATION_FAILED", exception.getMessage());
-        }
-        if (exception instanceof IllegalArgumentException) {
-            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
-        }
-        if (exception instanceof UnsupportedOperationException) {
-            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
-        }
-        if (exception instanceof IllegalStateException) {
-            return new ErrorPayload("INVALID_STATE", exception.getMessage());
-        }
-        return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
-    }
     @Override
     public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
         try {
@@ -79,7 +56,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
 
             this.clientCallback.handlePreMatchUpdate(update);
         } catch (Exception e) {
-            this.clientCallback.handleError(mapExceptionToErrorPayload(e));
+            //this.clientCallback.handleError(new ErrorPayload("JOIN_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -96,7 +73,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
 
             this.clientCallback.handlePreMatchUpdate(update);
         } catch (Exception e) {
-            this.clientCallback.handleError(mapExceptionToErrorPayload(e));
+            //this.clientCallback.handleError(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -116,7 +93,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
 
             this.clientCallback.handlePreMatchUpdate(update);
         } catch (Exception e) {
-            this.clientCallback.handleError(mapExceptionToErrorPayload(e));
+            //this.clientCallback.handleError(new ErrorPayload("EXIT_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -127,7 +104,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                     .toList();
             this.clientCallback.handleLobbyList(new LobbyListPayload(lobbies));
         } catch (Exception e) {
-            this.clientCallback.handleError(mapExceptionToErrorPayload(e));
+            //this.clientCallback.handleError(new ErrorPayload("LIST_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override

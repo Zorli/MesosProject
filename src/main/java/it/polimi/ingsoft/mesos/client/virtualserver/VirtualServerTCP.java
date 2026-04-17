@@ -55,33 +55,28 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
     }
 
     @Override
-    public boolean authenticate(String nickname) {
+    public void authenticate(String nickname) {
         this.send(new ClientMessage(ClientMessageType.AUTHENTICATE, new AuthenticationPayload(nickname)));
-        return true;
     }
 
     @Override
-    public boolean listLobbies() {
+    public void listLobbies() {
         this.send(new ClientMessage(ClientMessageType.LIST_LOBBIES, new ListLobbiesPayload()));
-        return true;
     }
 
     @Override
-    public boolean createLobby(int chosenCapacity) {
+    public void createLobby(int chosenCapacity) {
         this.send(new ClientMessage(ClientMessageType.CREATE_LOBBY, new CreateLobbyPayload(chosenCapacity)));
-        return true;
     }
 
     @Override
-    public boolean joinLobby(int lobbyId) {
+    public void joinLobby(int lobbyId) {
         this.send(new ClientMessage(ClientMessageType.JOIN_LOBBY, new JoinLobbyPayload(lobbyId)));
-        return true;
     }
 
     @Override
-    public boolean exitLobby(int lobbyId) {
+    public void exitLobby(int lobbyId) {
         this.send(new ClientMessage(ClientMessageType.EXIT_LOBBY, new ExitLobbyPayload(lobbyId)));
-        return true;
     }
 
     @Override

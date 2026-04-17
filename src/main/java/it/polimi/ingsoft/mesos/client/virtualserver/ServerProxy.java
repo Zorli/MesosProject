@@ -10,15 +10,15 @@ import java.io.IOException;
 public interface ServerProxy extends AutoCloseable {
     boolean isConnected();
 
-    boolean authenticate(String nickname);
+    void authenticate(String nickname);
 
-    boolean listLobbies();
+    void listLobbies();
 
-    boolean createLobby(int chosenCapacity);
+    void createLobby(int chosenCapacity);
 
-    boolean joinLobby(int lobbyId);
+    void joinLobby(int lobbyId);
 
-    boolean exitLobby(int lobbyId);
+    void exitLobby(int lobbyId);
 
     @Override
     void close() throws IOException;

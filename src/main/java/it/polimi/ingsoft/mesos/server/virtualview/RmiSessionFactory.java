@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
@@ -62,51 +62,6 @@ public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnect
             session.closeSession();
             clientCallback.handleError(new ErrorPayload("AUTH_ERROR", e.getMessage()));
             throw new RemoteException("Authentication failed: " + e.getMessage());
-        }
-    }
-    
-    @Override
-    public void listLobbies(ListLobbiesPayload payload, RmiClientService clientCallback) throws RemoteException {
-        System.out.println("[RMI Gateway] listLobbies called, sending error callback...");
-        try {
-            clientCallback.handleError(new ErrorPayload("AUTHENTICATION_FAILED", "Authentication required before this operation"));
-            System.out.println("[RMI Gateway] Error callback sent successfully");
-        } catch (RemoteException e) {
-            System.err.println("[RMI Gateway] Error sending authentication error to client: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    @Override
-    public void createLobby(CreateLobbyPayload payload, RmiClientService clientCallback) throws RemoteException {
-        System.out.println("[RMI Gateway] createLobby called, sending error callback...");
-        try {
-            clientCallback.handleError(new ErrorPayload("AUTHENTICATION_FAILED", "Authentication required before this operation"));
-            System.out.println("[RMI Gateway] Error callback sent successfully");
-        } catch (RemoteException e) {
-            System.err.println("[RMI Gateway] Error sending authentication error to client: " + e.getMessage());
-        }
-    }
-    
-    @Override
-    public void joinLobby(JoinLobbyPayload payload, RmiClientService clientCallback) throws RemoteException {
-        System.out.println("[RMI Gateway] joinLobby called, sending error callback...");
-        try {
-            clientCallback.handleError(new ErrorPayload("AUTHENTICATION_FAILED", "Authentication required before this operation"));
-            System.out.println("[RMI Gateway] Error callback sent successfully");
-        } catch (RemoteException e) {
-            System.err.println("[RMI Gateway] Error sending authentication error to client: " + e.getMessage());
-        }
-    }
-    
-    @Override
-    public void exitLobby(ExitLobbyPayload payload, RmiClientService clientCallback) throws RemoteException {
-        System.out.println("[RMI Gateway] exitLobby called, sending error callback...");
-        try {
-            clientCallback.handleError(new ErrorPayload("AUTHENTICATION_FAILED", "Authentication required before this operation"));
-            System.out.println("[RMI Gateway] Error callback sent successfully");
-        } catch (RemoteException e) {
-            System.err.println("[RMI Gateway] Error sending authentication error to client: " + e.getMessage());
         }
     }
 }
