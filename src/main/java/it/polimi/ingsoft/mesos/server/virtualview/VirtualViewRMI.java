@@ -5,8 +5,8 @@ import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.network.ConnectionContext;
-import it.polimi.ingsoft.mesos.shared.RmiClientFacade;
-import it.polimi.ingsoft.mesos.shared.RmiServerFacade;
+import it.polimi.ingsoft.mesos.shared.RmiClientService;
+import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.*;
 
@@ -17,22 +17,22 @@ import java.util.List;
 /**
  * Dedicated RMI remote session for a single authenticated client.
  * <p>
- * Instances of this class are dynamically created by the {@link VirtualRmiViewFactory}
+ * Instances of this class are dynamically created by the {@link RmiSessionFactory}
  * upon successful login. This class acts as a private proxy for the client on the server,
  * maintaining their specific {@link ConnectionContext} and holding the remote reference
- * to their personal callback receiver ({@link RmiClientFacade}).
+ * to their personal callback receiver ({@link RmiClientService}).
  * <p>
  * It is responsible for intercepting inbound gameplay commands from the client,
  * delegating the domain logic to the central {@link ServerController}, and dispatching
  * outbound server updates back to the client via asynchronous RMI callbacks.
  */
-public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerFacade {
+public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService {
     private final ServerController serverController;
     private final ConnectionContext connectionContext;
-    private final RmiClientFacade clientCallback; // Per mandare gli update al client
+    private final RmiClientService clientCallback; // Per mandare gli update al client
     private GameOrchestrator gameOrchestrator;
 
-    public VirtualViewRMI(ServerController serverController, RmiClientFacade clientCallback) throws RemoteException {
+    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback) throws RemoteException {
         super();
         this.serverController = serverController;
         this.clientCallback = clientCallback;

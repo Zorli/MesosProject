@@ -2,9 +2,9 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.user.User;
-import it.polimi.ingsoft.mesos.shared.RmiClientFacade;
-import it.polimi.ingsoft.mesos.shared.RmiLoginFacade;
-import it.polimi.ingsoft.mesos.shared.RmiServerFacade;
+import it.polimi.ingsoft.mesos.shared.RmiClientService;
+import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
@@ -23,16 +23,16 @@ import java.rmi.server.UnicastRemoteObject;
  * This "Session Factory" pattern ensures that unauthenticated clients cannot access
  * core game logic and that each connected client maintains a strictly isolated connection context.
  */
-public class VirtualRmiViewFactory extends UnicastRemoteObject implements RmiLoginFacade {
+public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnectionService {
     private final ServerController serverController;
 
-    public VirtualRmiViewFactory(ServerController serverController) throws RemoteException {
+    public RmiSessionFactory(ServerController serverController) throws RemoteException {
         super();
         this.serverController = serverController;
     }
 
     @Override
-    public RmiServerFacade authenticate(AuthenticationPayload payload, RmiClientFacade clientCallback) throws RemoteException {
+    public RmiServerService authenticate(AuthenticationPayload payload, RmiClientService clientCallback) throws RemoteException {
         if (payload == null || payload.nickname == null || payload.nickname.isBlank()) {
             System.err.println("[RMI] Tentativo di login con nickname vuoto o nullo.");
             clientCallback.handleError(new ErrorPayload("AUTH_ERROR", "Il nickname non puo' essere vuoto."));

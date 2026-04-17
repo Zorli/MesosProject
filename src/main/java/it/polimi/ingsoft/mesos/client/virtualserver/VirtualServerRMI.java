@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.shared.RmiClientFacade;
+import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -22,7 +22,7 @@ import java.rmi.server.UnicastRemoteObject;
  * network-level payload to the local {@link ClientView} (e.g., TUI or GUI) for rendering,
  * ensuring strict decoupling between the network transport and the user interface.
  */
-public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientFacade {
+public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientService {
 
     private final ClientView clientView;
 

@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.shared.RmiLoginFacade;
-import it.polimi.ingsoft.mesos.shared.RmiServerFacade;
+import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
@@ -22,12 +22,12 @@ import java.rmi.server.UnicastRemoteObject;
  * prevent background thread leaks.
  */
 public class ServerProxyRMI implements ServerProxy{
-    private final RmiLoginFacade loginFacade;
-    private  RmiServerFacade serverStub;
+    private final RmiConnectionService loginFacade;
+    private RmiServerService serverStub;
     private final VirtualServerRMI callbackReceiver;
     private volatile boolean connected;
 
-    public ServerProxyRMI(RmiLoginFacade loginFacade, ClientView clientView) throws RemoteException {
+    public ServerProxyRMI(RmiConnectionService loginFacade, ClientView clientView) throws RemoteException {
         this.loginFacade = loginFacade;
         this.callbackReceiver = new VirtualServerRMI(clientView);
 
@@ -39,7 +39,10 @@ public class ServerProxyRMI implements ServerProxy{
     }
     @Override
     public void authenticate(String nickname) {
-        if (!this.connected) return;
+        if (!this.connected) {
+            this.notifyLocalError("AUTH_ERROR", "client already Authenticated");
+            return;
+        }
         if (this.serverStub != null) {
             try {
                 this.callbackReceiver.handleError(new ErrorPayload("AUTH_ERROR", "client already Authenticated"));
@@ -115,6 +118,12 @@ public class ServerProxyRMI implements ServerProxy{
         try {
             UnicastRemoteObject.unexportObject(this.callbackReceiver, true);
         } catch (NoSuchObjectException ignored) {
+        }
+    }
+    private void notifyLocalError(String code, String message) {
+        try {
+            this.callbackReceiver.handleError(new ErrorPayload(code, message));
+        } catch (RemoteException ignored) {
         }
     }
 }

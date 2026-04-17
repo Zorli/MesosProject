@@ -6,7 +6,7 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.view.gui.ClientMain;
 import it.polimi.ingsoft.mesos.client.view.tui.TuiController;
 import it.polimi.ingsoft.mesos.client.virtualserver.ServerProxy;
-import it.polimi.ingsoft.mesos.shared.RmiLoginFacade;
+import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import java.rmi.Naming;
 import java.util.Scanner;
 
@@ -54,7 +54,7 @@ public class LaunchClient {
 
 
                     String registryUrl = "rmi://" + DEFAULT_HOST + ":" + DEFAULT_RMI_PORT + "/MesosServer";
-                    RmiLoginFacade loginFacade = (RmiLoginFacade) Naming.lookup(registryUrl);
+                    RmiConnectionService loginFacade = (RmiConnectionService) Naming.lookup(registryUrl);
 
 
                     serverProxy = new ServerProxyRMI(loginFacade, clientView);

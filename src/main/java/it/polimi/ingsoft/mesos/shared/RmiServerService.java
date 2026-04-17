@@ -1,12 +1,10 @@
 package it.polimi.ingsoft.mesos.shared;
 
-import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
-import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-public interface RmiServerFacade extends Remote {
+public interface RmiServerService extends Remote {
 
     void listLobbies(ListLobbiesPayload payload) throws RemoteException;
     void createLobby(CreateLobbyPayload payload) throws RemoteException;

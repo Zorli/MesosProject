@@ -14,7 +14,7 @@ import java.rmi.RemoteException;
  * (extending java.rmi.Remote and declaring RemoteExceptions).
  * It must reside in the shared module as the server needs it to hold client references.
  */
-public interface RmiClientFacade extends Remote{
+public interface RmiClientService extends Remote{
     void handleError(ErrorPayload payload) throws RemoteException;
     void handlePreMatchUpdate(PreMatchUpdatePayload payload) throws RemoteException;
     void handleLobbyList(LobbyListPayload payload) throws RemoteException;
