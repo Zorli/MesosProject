@@ -38,69 +38,96 @@ public class ServerProxyRMI implements ServerProxy{
         return this.connected;
     }
     @Override
-    public void authenticate(String nickname) {
+    public boolean authenticate(String nickname) {
         if (!this.connected) {
-            this.notifyLocalError("AUTH_ERROR", "client already Authenticated");
-            return;
-        }
-        if (this.serverStub != null) {
-            try {
-                this.callbackReceiver.handleError(new ErrorPayload("AUTH_ERROR", "client already Authenticated"));
-            } catch (RemoteException ignored) {
-            }
-            return;
+            return false;
         }
         try {
+            System.out.println("[RMI] Authenticating with nickname: " + nickname);
             this.serverStub = this.loginFacade.authenticate(new AuthenticationPayload(nickname), this.callbackReceiver);
-
+            return true;
         } catch (RemoteException e) {
-            if(this.serverStub == null) {
+            System.err.println("[RMI] Authentication failed: " + e.getMessage());
+            this.handleDisconnection(e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean listLobbies() {
+        if (!this.connected) {
+            return false;
+        }
+
+        try {
+            System.out.println("[RMI DEBUG] ServerProxyRMI.listLobbies() - serverStub is null: " + (this.serverStub == null));
+            if (this.serverStub != null) {
+                System.out.println("[RMI DEBUG] Calling serverStub.listLobbies()");
+                this.serverStub.listLobbies(new ListLobbiesPayload());
             } else {
-                this.handleDisconnection(e);
+                System.out.println("[RMI DEBUG] Calling loginFacade.listLobbies()");
+                this.loginFacade.listLobbies(new ListLobbiesPayload(), this.callbackReceiver);
             }
-        }
-    }
-
-    @Override
-    public void listLobbies() {
-        if (!this.connected|| this.serverStub == null) return;
-
-        try {
-            this.serverStub.listLobbies(new ListLobbiesPayload());
+            return true;
         } catch (RemoteException e) {
+            System.err.println("[RMI DEBUG] RemoteException in listLobbies: " + e.getMessage());
+            e.printStackTrace();
             this.handleDisconnection(e);
+            return false;
         }
 
     }
     @Override
-    public void createLobby(int chosenCapacity){
-        if (!this.connected|| this.serverStub == null) return;
+    public boolean createLobby(int chosenCapacity){
+        if (!this.connected) {
+            return false;
+        }
         try {
-            this.serverStub.createLobby(new CreateLobbyPayload(chosenCapacity));
+            if (this.serverStub != null) {
+                this.serverStub.createLobby(new CreateLobbyPayload(chosenCapacity));
+            } else {
+                this.loginFacade.createLobby(new CreateLobbyPayload(chosenCapacity), this.callbackReceiver);
+            }
+            return true;
         } catch (RemoteException e) {
             this.handleDisconnection(e);
+            return false;
         }
     }
 
     @Override
-    public void joinLobby(int lobbyId) {
-        if (!this.connected|| this.serverStub == null) return;
+    public boolean joinLobby(int lobbyId) {
+        if (!this.connected) {
+            return false;
+        }
 
         try {
-            this.serverStub.joinLobby(new JoinLobbyPayload(lobbyId));
-
+            if (this.serverStub != null) {
+                this.serverStub.joinLobby(new JoinLobbyPayload(lobbyId));
+            } else {
+                this.loginFacade.joinLobby(new JoinLobbyPayload(lobbyId), this.callbackReceiver);
+            }
+            return true;
         } catch (RemoteException e) {
             this.handleDisconnection(e);
+            return false;
         }
     }
     @Override
-    public void exitLobby(int lobbyId) {
-        if (!this.connected|| this.serverStub == null) return;
+    public boolean exitLobby(int lobbyId) {
+        if (!this.connected) {
+            return false;
+        }
         try {
-            this.serverStub.exitLobby(new ExitLobbyPayload(lobbyId));
-
+            if (this.serverStub != null) {
+                this.serverStub.exitLobby(new ExitLobbyPayload(lobbyId));
+            } else {
+                this.loginFacade.exitLobby(new ExitLobbyPayload(lobbyId), this.callbackReceiver);
+            }
+            return true;
         } catch (RemoteException e) {
             this.handleDisconnection(e);
+            return false;
         }
     }
 

@@ -88,31 +88,36 @@ public class TuiController implements ClientView {
     //Methods to handle the Commands call, forward to the virtualserver!-----
     private void handleAuthentication(String commandLine) throws Exception {
         String nickname = this.extractArgument(commandLine, "auth");
-        this.serverProxy.authenticate(nickname);
-        System.out.println("Authentication request sent.");
+        if (this.serverProxy.authenticate(nickname)) {
+            System.out.println("Authentication request sent.");
+        }
     }
 
     private void handleListLobbies() {
-        this.serverProxy.listLobbies();
-        System.out.println("List-lobbies request sent.");
+        if (this.serverProxy.listLobbies()) {
+            System.out.println("List-lobbies request sent.");
+        }
     }
 
     private void handleCreateLobby(String commandLine) {
         int chosenCapacity = this.extractIntArgument(commandLine, "create-lobby");
-        this.serverProxy.createLobby(chosenCapacity);
-        System.out.println("Create-lobby request sent.");
+        if (this.serverProxy.createLobby(chosenCapacity)) {
+            System.out.println("Create-lobby request sent.");
+        }
     }
 
     private void handleJoinLobby(String commandLine) {
         int lobbyId = this.extractIntArgument(commandLine, "join-lobby");
-        this.serverProxy.joinLobby(lobbyId);
-        System.out.println("Join-lobby request sent.");
+        if (this.serverProxy.joinLobby(lobbyId)) {
+            System.out.println("Join-lobby request sent.");
+        }
     }
 
     private void handleExitLobby(String commandLine) {
         int lobbyId = this.extractIntArgument(commandLine, "quit-lobby");
-        this.serverProxy.exitLobby(lobbyId);
-        System.out.println("Quit-lobby request sent.");
+        if (this.serverProxy.exitLobby(lobbyId)) {
+            System.out.println("Quit-lobby request sent.");
+        }
     }
 
     //Helper to parse-----

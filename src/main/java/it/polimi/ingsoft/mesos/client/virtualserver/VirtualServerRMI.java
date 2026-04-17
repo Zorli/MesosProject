@@ -33,6 +33,7 @@ public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientSe
 
     @Override
     public void handleError(ErrorPayload payload) throws RemoteException {
+        System.out.println("[RMI Client] handleError received: " + payload.code + " - " + payload.message);
         this.clientView.showError(payload);
     }
 

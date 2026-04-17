@@ -120,14 +120,12 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         if (payload == null || payload.nickname == null || payload.nickname.isBlank()) {
             throw new IllegalArgumentException("Authentication payload must contain a nickname");
         }
-
         try {
             User authenticatedUser = this.serverController.authenticate(payload.nickname);
             this.connectionContext.authenticate(authenticatedUser);
         } catch (IllegalArgumentException exception) {
             throw new AuthenticationException(exception.getMessage(), exception);
         }
-
         PreMatchUpdatePayload updatePayload = new PreMatchUpdatePayload(
                 PreMatchEventType.AUTHENTICATED,
                 this.connectionContext.getNickname(),
@@ -142,6 +140,7 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     @Override
     public ServerMessage listLobbies(ListLobbiesPayload payload) {
+        requireAuthenticated();
         List<LobbySummaryPayload> lobbies = this.serverController.listOpenLobbies().stream()
                 .map(this::toLobbySummaryPayload)
                 .toList();
@@ -150,6 +149,13 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     @Override
     public ServerMessage createLobby(CreateLobbyPayload payload) {
+        requireAuthenticated();
+        if (payload == null) {
+            throw new IllegalArgumentException("CreateLobby payload cannot be null");
+        }
+        if (this.connectionContext.getCurrentLobbyId() != null) {
+            throw new IllegalStateException("Client is already in a lobby");
+        }
         Lobby lobby = this.serverController.createLobby(this.connectionContext.getUser(), payload.chosenCapacity);
         this.connectionContext.setCurrentLobbyId(lobby.getId());
         return this.buildPreMatchUpdate(
@@ -162,6 +168,14 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     @Override
     public ServerMessage joinLobby(JoinLobbyPayload payload) {
+        requireAuthenticated();
+        //payload.lobbyId è un int  -> Gson lo deserializza a 0
+        if (payload == null || payload.lobbyId <= 0) {
+            throw new IllegalArgumentException("JoinLobby payload must contain a lobbyId");
+        }
+        if (this.connectionContext.getCurrentLobbyId() != null) {
+            throw new IllegalStateException("Client is already in a lobby");
+        }
         this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
         this.connectionContext.setCurrentLobbyId(payload.lobbyId);
         Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
@@ -175,6 +189,14 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     @Override
     public ServerMessage exitLobby(ExitLobbyPayload payload) {
+        requireAuthenticated();
+        //payload.lobbyId è un int  -> Gson lo deserializza a 0
+        if (payload == null || payload.lobbyId <= 0) {
+            throw new IllegalArgumentException("ExitLobby payload must contain a lobbyId");
+        }
+        if (this.connectionContext.getCurrentLobbyId() == null) {
+            throw new IllegalStateException("Client is not in any lobby");
+        }
         this.serverController.exitLobby(payload.lobbyId, this.connectionContext.getUser());
         Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
         this.connectionContext.setCurrentLobbyId(null);
@@ -189,7 +211,11 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     @Override
     public ServerMessage startLobby(StartLobbyPayload payload) {
+        requireAuthenticated();
         Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+        if (lobbyId == null) {
+            throw new IllegalStateException("Client is not in a lobby");
+        }
         this.gameOrchestrator = this.serverController.createGameFromLobby(lobbyId);
         this.connectionContext.enterMatch(this.gameOrchestrator);
         Lobby lobby = this.serverController.getLobby(lobbyId).orElse(null);
@@ -251,6 +277,12 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
     }
 
+    private void requireAuthenticated() {
+        if (this.connectionContext.isInAuthenticationPhase()) {
+            throw new AuthenticationException("Authentication required before this operation");
+        }
+    }
+
     private ErrorPayload mapExceptionToErrorPayload(Exception exception) {
         if (exception instanceof AuthenticationException) {
             return new ErrorPayload("AUTHENTICATION_FAILED", exception.getMessage());
@@ -260,6 +292,9 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         }
         if (exception instanceof UnsupportedOperationException) {
             return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
+        }
+        if (exception instanceof IllegalStateException) {
+            return new ErrorPayload("INVALID_STATE", exception.getMessage());
         }
         return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
     }
