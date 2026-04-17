@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
+import java.io.Serializable;
 import java.util.List;
 
-public class TurnOrderPayload {
+public class TurnOrderPayload implements Serializable {
     public final int roundNumber;
     public final String currentRoundPhase;
     public final String currentPlayerNickname;

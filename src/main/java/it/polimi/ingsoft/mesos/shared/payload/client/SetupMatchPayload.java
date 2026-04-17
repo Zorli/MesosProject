@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class SetupMatchPayload {
+import java.io.Serializable;
+public class SetupMatchPayload implements Serializable {
 }

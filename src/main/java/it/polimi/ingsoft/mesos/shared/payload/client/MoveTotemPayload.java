@@ -1,4 +1,4 @@
 package it.polimi.ingsoft.mesos.shared.payload.client;
-
-public class MoveTotemPayload {
+import java.io.Serializable;
+public class MoveTotemPayload implements Serializable {
 }

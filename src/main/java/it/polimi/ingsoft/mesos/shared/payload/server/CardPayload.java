@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
-public class CardPayload {
+import java.io.Serializable;
+public class CardPayload implements Serializable {
     public final int id;
     public final String type;
     public final int era;

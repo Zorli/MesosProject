@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
+import java.io.Serializable;
 import java.util.List;
 
-public class BoardPayload {
+public class BoardPayload implements Serializable {
     public final List<CardPayload> upperRow;
     public final List<CardPayload> lowerRow;
     public final List<OfferSpacePayload> offerSpaces;

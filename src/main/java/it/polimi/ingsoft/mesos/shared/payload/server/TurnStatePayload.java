@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.server;
-
-public class TurnStatePayload {
+import java.io.Serializable;
+public class TurnStatePayload implements Serializable {
     public final String phase;
 
     public TurnStatePayload(String phase) {
