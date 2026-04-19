@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.InvalidGamePhaseException;
 import it.polimi.ingsoft.mesos.server.model.game.InvalidGameStatusException;
 import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.game.TurnState;
@@ -47,6 +48,224 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests orchestration behavior around setup and persistence checkpoints.
  */
 class GameOrchestratorTest {
+
+    @Test
+    void addObserverRejectsNullPreventsDuplicatesAndRemoveObserverIsSafe() {
+        ArrayList<Player> players = createPlayers(2);
+        GameOrchestrator orchestrator = new GameOrchestrator(DefaultGameFactory.getInstance(), players);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+
+        assertThrows(NullPointerException.class, () -> orchestrator.addObserver(null));
+
+        orchestrator.addObserver(observer);
+        orchestrator.addObserver(observer);
+        orchestrator.removeObserver(observer);
+        orchestrator.removeObserver(observer);
+
+        orchestrator.setupMatch();
+
+        assertEquals(0, observer.updates);
+    }
+
+    @Test
+    void setupMatchNotifiesObserversAfterSuccessfulMutationOnly() {
+        ArrayList<Player> players = createPlayers(2);
+        GameOrchestrator orchestrator = new GameOrchestrator(DefaultGameFactory.getInstance(), players);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        orchestrator.setupMatch();
+
+        assertEquals(1, observer.updates);
+
+        assertThrows(InvalidGameStatusException.class, orchestrator::setupMatch);
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void moveTotemNotifiesObserversAfterSuccessfulMutationOnly() {
+        ArrayList<Player> players = createPlayers(2);
+        GameOrchestrator orchestrator = new GameOrchestrator(DefaultGameFactory.getInstance(), players);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        assertThrows(InvalidGameStatusException.class, () -> orchestrator.moveTotem(players.getFirst(), "B"));
+        assertEquals(0, observer.updates);
+
+        orchestrator.setupMatch();
+        observer.reset();
+
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void chooseCardNotifiesObserversAfterSuccessfulMutationOnly() {
+        ArrayList<Player> players = createPlayers(2);
+        GameOrchestrator invalidOrchestrator = new GameOrchestrator(
+                MesosTestFixtures.createTwoPlayerGameplayFactory(),
+                players,
+                "Alice",
+                NoOpSavedMatchService.INSTANCE
+        );
+        RecordingMatchObserver invalidObserver = new RecordingMatchObserver();
+        invalidOrchestrator.addObserver(invalidObserver);
+        invalidOrchestrator.setupMatch();
+        invalidObserver.reset();
+
+        assertThrows(
+                InvalidGamePhaseException.class,
+                () -> invalidOrchestrator.chooseCard(
+                        invalidOrchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
+                        null
+                )
+        );
+        assertEquals(0, invalidObserver.updates);
+
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                MesosTestFixtures.createTwoPlayerGameplayFactory(),
+                createPlayers(2),
+                "Alice",
+                NoOpSavedMatchService.INSTANCE
+        );
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        moveGameToDrawPhase(orchestrator);
+        observer.reset();
+
+        orchestrator.chooseCard(
+                orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
+                MesosTestFixtures.findLowerRowCard(orchestrator.getGame(), 10)
+        );
+
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void extraDrawnNotifiesObserversAfterSuccessfulMutationOnly() {
+        GameOrchestrator invalidOrchestrator = new GameOrchestrator(
+                MesosTestFixtures.createTwoPlayerGameplayFactory(),
+                createPlayers(2),
+                "Alice",
+                NoOpSavedMatchService.INSTANCE
+        );
+        RecordingMatchObserver invalidObserver = new RecordingMatchObserver();
+        invalidOrchestrator.addObserver(invalidObserver);
+        moveGameToDrawPhase(invalidOrchestrator);
+        invalidObserver.reset();
+
+        assertThrows(
+                InvalidGamePhaseException.class,
+                () -> invalidOrchestrator.extraDrawn(
+                        invalidOrchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
+                        null
+                )
+        );
+        assertEquals(0, invalidObserver.updates);
+
+        Game extraDrawGame = AdvancedGameStateFixtures.createExtraDrawScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(extraDrawGame);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        orchestrator.extraDrawn(
+                extraDrawGame.getTurnOrderTrack().getCurrentPlayer(),
+                MesosTestFixtures.findUpperRowCard(extraDrawGame, 66)
+        );
+
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void resolveEffectsNotifiesObserversAfterSuccessfulMutationOnly() {
+        Game invalidGame = DefaultGameFactory.getInstance().createGame(createPlayers(2));
+        GameOrchestrator invalidOrchestrator = new GameOrchestrator(invalidGame);
+        RecordingMatchObserver invalidObserver = new RecordingMatchObserver();
+        invalidOrchestrator.addObserver(invalidObserver);
+
+        assertThrows(InvalidGameStatusException.class, invalidOrchestrator::resolveEffects);
+        assertEquals(0, invalidObserver.updates);
+
+        Game resolvingGame = createResolvingEffectsGame(4);
+        GameOrchestrator orchestrator = new GameOrchestrator(resolvingGame);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        orchestrator.resolveEffects();
+
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void resetBoardNotifiesObserversAfterSuccessfulMutationOnly() {
+        Game invalidGame = DefaultGameFactory.getInstance().createGame(createPlayers(2));
+        GameOrchestrator invalidOrchestrator = new GameOrchestrator(invalidGame);
+        RecordingMatchObserver invalidObserver = new RecordingMatchObserver();
+        invalidOrchestrator.addObserver(invalidObserver);
+
+        assertThrows(InvalidGameStatusException.class, invalidOrchestrator::resetBoard);
+        assertEquals(0, invalidObserver.updates);
+
+        Game resettingGame = createResettingBoardGame(false);
+        GameOrchestrator orchestrator = new GameOrchestrator(resettingGame);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        orchestrator.resetBoard();
+
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void calculateFinalScoreNotifiesObserversAfterSuccessfulMutationOnly() {
+        Game invalidGame = DefaultGameFactory.getInstance().createGame(createPlayers(2));
+        GameOrchestrator invalidOrchestrator = new GameOrchestrator(invalidGame);
+        RecordingMatchObserver invalidObserver = new RecordingMatchObserver();
+        invalidOrchestrator.addObserver(invalidObserver);
+
+        assertThrows(InvalidGameStatusException.class, invalidOrchestrator::calculateFinalScore);
+        assertEquals(0, invalidObserver.updates);
+
+        Game finalScoringGame = AdvancedGameStateFixtures.createFinalScoringScenario();
+        GameOrchestrator orchestrator = new GameOrchestrator(finalScoringGame);
+        RecordingMatchObserver observer = new RecordingMatchObserver();
+        orchestrator.addObserver(observer);
+
+        orchestrator.calculateFinalScore();
+
+        assertEquals(1, observer.updates);
+    }
+
+    @Test
+    void failingObserverDoesNotPreventNotificationsToOtherObservers() {
+        GameOrchestrator orchestrator = new GameOrchestrator(DefaultGameFactory.getInstance(), createPlayers(2));
+        ThrowingMatchObserver failingObserver = new ThrowingMatchObserver();
+        RecordingMatchObserver successfulObserver = new RecordingMatchObserver();
+        orchestrator.addObserver(failingObserver);
+        orchestrator.addObserver(successfulObserver);
+
+        orchestrator.setupMatch();
+
+        assertEquals(1, failingObserver.updates);
+        assertEquals(1, successfulObserver.updates);
+    }
+
+    @Test
+    void failingObserverIsRemovedAfterTheFirstDeliveryFailure() {
+        GameOrchestrator orchestrator = new GameOrchestrator(DefaultGameFactory.getInstance(), createPlayers(2));
+        ThrowingMatchObserver failingObserver = new ThrowingMatchObserver();
+        RecordingMatchObserver successfulObserver = new RecordingMatchObserver();
+        orchestrator.addObserver(failingObserver);
+        orchestrator.addObserver(successfulObserver);
+
+        orchestrator.setupMatch();
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+
+        assertEquals(1, failingObserver.updates);
+        assertEquals(2, successfulObserver.updates);
+    }
 
     @Test
     void constructorWithFactoryAndPlayersUsesDefaultHostAndNoOpPersistence() {
@@ -658,6 +877,33 @@ class GameOrchestratorTest {
         @Override
         public int deleteExpiredInProgressMatches() {
             return 0;
+        }
+    }
+
+    /**
+     * Observer spy used to verify broadcast behavior.
+     */
+    private static class RecordingMatchObserver implements MatchObserver {
+        protected int updates;
+
+        @Override
+        public void onMatchUpdated() {
+            this.updates++;
+        }
+
+        private void reset() {
+            this.updates = 0;
+        }
+    }
+
+    /**
+     * Observer double that fails after recording the notification attempt.
+     */
+    private static final class ThrowingMatchObserver extends RecordingMatchObserver {
+        @Override
+        public void onMatchUpdated() {
+            super.onMatchUpdated();
+            throw new IllegalStateException("observer delivery failed");
         }
     }
 

@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.MatchObserver;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
@@ -44,7 +45,7 @@ import java.util.Objects;
 //TCP implementation of the VirtualView contract.
 //It acts as the network boundary on the server side: it reads raw client messages,
 //delegates parsing/dispatch, and serializes the structured server response back on the socket.
-public class VirtualViewTCP implements VirtualView, Runnable {
+public class VirtualViewTCP implements VirtualView, Runnable, MatchObserver {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket clientSocket;
@@ -106,6 +107,7 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     @Override
     public void close() throws IOException {
+        this.detachFromMatch();
         this.clientSocket.close();
     }
 
@@ -190,8 +192,7 @@ public class VirtualViewTCP implements VirtualView, Runnable {
     @Override
     public ServerMessage startLobby(StartLobbyPayload payload) {
         Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-        this.gameOrchestrator = this.serverController.createGameFromLobby(lobbyId);
-        this.connectionContext.enterMatch(this.gameOrchestrator);
+        this.attachToMatch(this.serverController.enterMatchFromLobby(lobbyId));
         Lobby lobby = this.serverController.getLobby(lobbyId).orElse(null);
         return this.buildPreMatchUpdate(
                 PreMatchEventType.LOBBY_STARTED,
@@ -237,11 +238,25 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
+    /**
+     * Forwards the current match snapshot to the connected TCP client.
+     */
+    @Override
+    public void onMatchUpdated() {
+        if (this.gameOrchestrator == null) {
+            throw new IllegalStateException("Cannot forward a match update without an attached orchestrator");
+        }
+        this.sendServerMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, this.gameOrchestrator.getCurrentPayload()));
+    }
+
 
     // I/O methods section---------------
     public void sendServerMessage(ServerMessage message) {//low level call
         Objects.requireNonNull(message, "message cannot be null");
         this.writer.println(GSON.toJson(message));
+        if (this.writer.checkError()) {
+            throw new IllegalStateException("Cannot deliver TCP server message to client");
+        }
     }
 
     // Error handling methods section
@@ -265,7 +280,7 @@ public class VirtualViewTCP implements VirtualView, Runnable {
     }
 
     public void setGameOrchestrator(GameOrchestrator gameOrchestrator) {
-        this.gameOrchestrator = gameOrchestrator;
+        this.attachToMatch(gameOrchestrator);
     }
 
     private ServerMessage buildPreMatchUpdate(PreMatchEventType event, String nickname, String message, Lobby lobby) {
@@ -305,6 +320,28 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         return lobby.getUsers().stream()
                 .map(User::getNickname)
                 .toList();
+    }
+
+    private void attachToMatch(GameOrchestrator orchestrator) {
+        Objects.requireNonNull(orchestrator, "orchestrator cannot be null");
+        if (this.gameOrchestrator == orchestrator) {
+            this.connectionContext.enterMatch(orchestrator);
+            this.gameOrchestrator.addObserver(this);
+            return;
+        }
+
+        this.detachFromMatch();
+        this.gameOrchestrator = orchestrator;
+        this.connectionContext.enterMatch(orchestrator);
+        this.gameOrchestrator.addObserver(this);
+    }
+
+    private void detachFromMatch() {
+        if (this.gameOrchestrator != null) {
+            this.gameOrchestrator.removeObserver(this);
+            this.gameOrchestrator = null;
+        }
+        this.connectionContext.leaveMatch();
     }
 
 }

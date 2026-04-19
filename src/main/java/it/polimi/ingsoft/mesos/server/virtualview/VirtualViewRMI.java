@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.MatchObserver;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
@@ -26,7 +27,7 @@ import java.util.List;
  * delegating the domain logic to the central {@link ServerController}, and dispatching
  * outbound server updates back to the client via asynchronous RMI callbacks.
  */
-public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService {
+public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, MatchObserver {
     private final ServerController serverController;
     private final ConnectionContext connectionContext;
     private final RmiClientService clientCallback; // Per mandare gli update al client
@@ -110,8 +111,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void startLobby(StartLobbyPayload payload) throws RemoteException {
         Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-        this.gameOrchestrator = this.serverController.createGameFromLobby(lobbyId);
-        this.connectionContext.enterMatch(this.gameOrchestrator);
+        this.attachToMatch(this.serverController.enterMatchFromLobby(lobbyId));
         Lobby lobby = this.serverController.getLobby(lobbyId).orElse(null);
         PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
                 PreMatchEventType.LOBBY_STARTED,
@@ -156,8 +156,26 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void finalScore(FinalScorePayload payload)  throws RemoteException {
         throw new UnsupportedOperationException("Not implemented yet");
     }
+
+    /**
+     * Forwards the current match snapshot to the connected RMI client.
+     */
+    @Override
+    public void onMatchUpdated() {
+        if (this.gameOrchestrator == null) {
+            throw new IllegalStateException("Cannot forward a match update without an attached orchestrator");
+        }
+
+        try {
+            this.clientCallback.handleGameUpdate(this.gameOrchestrator.getCurrentPayload());
+        } catch (RemoteException exception) {
+            throw new IllegalStateException("Cannot deliver match update through RMI callback", exception);
+        }
+    }
+
     @Override
     public void closeSession() throws RemoteException {
+        this.detachFromMatch();
         try {
             UnicastRemoteObject.unexportObject(this, true);
         } catch (NoSuchObjectException ignored) {}
@@ -200,5 +218,30 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 lobby.getChosenCapacity(),
                 lobby.getStatus().name()
         );
+    }
+
+    private void attachToMatch(GameOrchestrator orchestrator) {
+        if (orchestrator == null) {
+            throw new IllegalArgumentException("orchestrator cannot be null");
+        }
+
+        if (this.gameOrchestrator == orchestrator) {
+            this.connectionContext.enterMatch(orchestrator);
+            this.gameOrchestrator.addObserver(this);
+            return;
+        }
+
+        this.detachFromMatch();
+        this.gameOrchestrator = orchestrator;
+        this.connectionContext.enterMatch(orchestrator);
+        this.gameOrchestrator.addObserver(this);
+    }
+
+    private void detachFromMatch() {
+        if (this.gameOrchestrator != null) {
+            this.gameOrchestrator.removeObserver(this);
+            this.gameOrchestrator = null;
+        }
+        this.connectionContext.leaveMatch();
     }
 }

@@ -25,9 +25,11 @@ import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -46,6 +48,7 @@ public class GameOrchestrator {
     private final String hostNickname;
     private final RankingService rankingService;
     private final MatchPersistenceCoordinator persistenceCoordinator;
+    private final Set<MatchObserver> observers = new LinkedHashSet<>();
     private long cachedPayloadVersion = -1L;
     private GamePayload cachedPayload;
     private boolean frozen;
@@ -193,12 +196,39 @@ public class GameOrchestrator {
     }
 
     /**
+     * Registers one observer for this active match.
+     *
+     * <p>Duplicate registrations are ignored so the same transport session is notified at most
+     * once per successful mutation.
+     *
+     * @param observer observer interested in match updates
+     */
+    public synchronized void addObserver(MatchObserver observer) {
+        this.observers.add(Objects.requireNonNull(observer, "observer cannot be null"));
+    }
+
+    /**
+     * Removes one observer from this active match.
+     *
+     * <p>The operation is safe to call even when the observer is not currently registered.
+     *
+     * @param observer observer to remove
+     */
+    public synchronized void removeObserver(MatchObserver observer) {
+        if (observer == null) {
+            return;
+        }
+        this.observers.remove(observer);
+    }
+
+    /**
      * Performs match setup and persists the initial checkpoint when configured.
      */
     public void setupMatch() {
         this.ensureMatchIsWritable();
         this.game.setup();
         this.persistOrFreeze("GAME_INITIALIZED", () -> this.persistenceCoordinator.recordMatchInitialized(this.game));
+        this.notifyObservers();
     }
 
     /**
@@ -215,6 +245,7 @@ public class GameOrchestrator {
                 "TURN_STARTED",
                 () -> this.persistenceCoordinator.recordAfterMoveTotem(this.game, previousRoundPhase)
         );
+        this.notifyObservers();
     }
 
     /**
@@ -233,6 +264,7 @@ public class GameOrchestrator {
         if (this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
         }
+        this.notifyObservers();
     }
 
     /**
@@ -251,6 +283,7 @@ public class GameOrchestrator {
         if (this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
         }
+        this.notifyObservers();
     }
 
     /**
@@ -263,12 +296,14 @@ public class GameOrchestrator {
 
         if (currentRoundPhase == RoundPhase.FINAL_SCORING) {
             this.persistOrFreeze("MATCH_COMPLETED", () -> this.persistenceCoordinator.recordMatchCompleted(this.game));
+            this.notifyObservers();
             return;
         }
 
         if (currentRoundPhase == RoundPhase.RESETTING_BOARD) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
         }
+        this.notifyObservers();
     }
 
     /**
@@ -282,10 +317,12 @@ public class GameOrchestrator {
 
         if (this.game.getCurrentEra() != previousEra) {
             this.persistOrFreeze("ERA_CHANGED", () -> this.persistenceCoordinator.recordEraChanged(this.game));
+            this.notifyObservers();
             return;
         }
 
         this.persistOrFreeze("TURN_STARTED", () -> this.persistenceCoordinator.recordTurnStarted(this.game));
+        this.notifyObservers();
     }
 
     /**
@@ -301,7 +338,9 @@ public class GameOrchestrator {
     public Optional<RankingResult> calculateFinalScore() {
         this.ensureMatchIsWritable();
         this.game.calculateFinalScore();
-        return this.finalizeCompletedMatchOrFreeze();
+        Optional<RankingResult> rankingResult = this.finalizeCompletedMatchOrFreeze();
+        this.notifyObservers();
+        return rankingResult;
     }
 
     private static String resolveDefaultHostNickname(List<Player> players) {
@@ -482,5 +521,31 @@ public class GameOrchestrator {
     private boolean didTurnAdvance(Player previousPlayer, RoundPhase previousRoundPhase) {
         return !this.game.getTurnOrderTrack().getCurrentPlayer().equals(previousPlayer)
                 || previousRoundPhase != this.game.getTurnOrderTrack().getCurrentRoundPhase();
+    }
+
+    private void notifyObservers() {
+        List<MatchObserver> observersSnapshot;
+        List<MatchObserver> failedObservers = new ArrayList<>();
+        synchronized (this) {
+            observersSnapshot = new ArrayList<>(this.observers);
+        }
+
+        for (MatchObserver observer : observersSnapshot) {
+            try {
+                observer.onMatchUpdated();
+            } catch (RuntimeException exception) {
+                System.err.println("Failed to deliver match update to observer "
+                        + observer.getClass().getSimpleName()
+                        + ": "
+                        + exception.getMessage());
+                failedObservers.add(observer);
+            }
+        }
+
+        if (!failedObservers.isEmpty()) {
+            synchronized (this) {
+                this.observers.removeAll(failedObservers);
+            }
+        }
     }
 }
