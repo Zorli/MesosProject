@@ -28,7 +28,7 @@ public class TuiController implements ClientView {
         }
         Scanner scanner = new Scanner(System.in);
         System.out.println("Mesos TUI started.");
-        System.out.println("TCP connected: " + this.serverProxy.isConnected());
+        System.out.println("Connected: " + this.serverProxy.isConnected());
         System.out.println("Type 'help' to list commands.");
         this.printPrompt();
         while (true) {
@@ -45,6 +45,7 @@ public class TuiController implements ClientView {
                     case "create-lobby" -> this.handleCreateLobby(commandLine);
                     case "join-lobby" -> this.handleJoinLobby(commandLine);
                     case "quit-lobby" -> this.handleExitLobby(commandLine);
+                    case "start-lobby" -> this.handleStartLobby(commandLine);
 
                     case "quit" -> {
                         this.serverProxy.close();
@@ -113,6 +114,12 @@ public class TuiController implements ClientView {
         int lobbyId = this.extractIntArgument(commandLine, "quit-lobby");
         this.serverProxy.exitLobby(lobbyId);
         System.out.println("Quit-lobby request sent.");
+    }
+
+    private void handleStartLobby(String commandLine) {
+        this.extractIntArgument(commandLine, "start-lobby");
+        this.serverProxy.startLobby();
+        System.out.println("Start-lobby request sent.");
     }
 
     //Helper to parse-----

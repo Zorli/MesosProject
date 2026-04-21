@@ -2,13 +2,27 @@ package it.polimi.ingsoft.mesos.server.model.game;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.board.CardRow;
+import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
+import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,6 +44,7 @@ public class Game {
     private final Board board;
     private final TurnOrderTrack turnOrderTrack;
     private final TurnState turnState;
+    private final List<Listener> listeners;
 
     // Constructors
 
@@ -51,6 +66,7 @@ public class Game {
         this.currentEra = Era.first;
         this.status = GameStatus.SETUP;
         this.stateVersion = 0L;
+        this.listeners = new ArrayList<>();
     }
 
     /**
@@ -79,6 +95,7 @@ public class Game {
         this.currentEra = currentEra;
         this.status = status;
         this.stateVersion = 0L;
+        this.listeners = new ArrayList<>();
     }
 
     // Getters
@@ -155,6 +172,17 @@ public class Game {
         return this.turnState;
     }
 
+    public void addListener(Listener listener) {
+        Objects.requireNonNull(listener, "listener cannot be null");
+        if (!this.listeners.contains(listener)) {
+            this.listeners.add(listener);
+        }
+    }
+
+    public void removeListener(Listener listener) {
+        this.listeners.remove(listener);
+    }
+
     // Setters
 
     /**
@@ -187,21 +215,23 @@ public class Game {
      * game from {@code SETUP} to {@code IN_PROGRESS}.
      */
     public void setup(){
-        if (this.status != GameStatus.SETUP) {
-            throw new InvalidGameStatusException("setup", this.status);
-        }
-        this.board.buildOfferPath();
+        this.executeGameAction(() -> {
+            if (this.status != GameStatus.SETUP) {
+                throw new InvalidGameStatusException("setup", this.status);
+            }
+            this.board.buildOfferPath();
 
-        this.board.setupInitialRows();
-        applyInitialBenefit();
+            this.board.setupInitialRows();
+            applyInitialBenefit();
 
-        this.turnOrderTrack.setNewOrder(players);
-        this.turnOrderTrack.advanceRoundNumber();
-        this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+            this.turnOrderTrack.setNewOrder(players);
+            this.turnOrderTrack.advanceRoundNumber();
+            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
 
-        this.turnState.resetForNewRound();
-        this.status = GameStatus.IN_PROGRESS;
-        this.markStateChanged();
+            this.turnState.resetForNewRound();
+            this.status = GameStatus.IN_PROGRESS;
+            this.markStateChanged();
+        });
     }
 
     //TODO : Add method for choosing the starting tile, as now they are placed as subscribed in lobby
@@ -221,40 +251,41 @@ public class Game {
      * @param tile board-space identifier selected by the player
      */
     public void moveTotem(Player player, String tile){
-        if (this.status != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("moveTotem", this.status);
-        }
+        this.executeGameAction(() -> {
+            if (this.status != GameStatus.IN_PROGRESS) {
+                throw new InvalidGameStatusException("moveTotem", this.status);
+            }
 
-        if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.PLACING_TOTEMS) {
-            throw new InvalidGamePhaseException("moveTotem", this.turnOrderTrack.getCurrentRoundPhase());
-        }
+            if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.PLACING_TOTEMS) {
+                throw new InvalidGamePhaseException("moveTotem", this.turnOrderTrack.getCurrentRoundPhase());
+            }
 
-        if (!this.turnOrderTrack.getCurrentPlayer().equals(player)) {
-            throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
-        }
+            if (!this.turnOrderTrack.getCurrentPlayer().equals(player)) {
+                throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
+            }
 
-        if (tile == null || !this.board.isSpaceAvailable(tile)) {
-            throw new TileNotAvailableException(tile);
-        }
+            if (tile == null || !this.board.isSpaceAvailable(tile)) {
+                throw new TileNotAvailableException(tile);
+            }
 
-        this.board.placePlayerOnOfferSpace(player, tile);
+            this.board.placePlayerOnOfferSpace(player, tile);
 
-        int[] drawableCards = this.board.returnNumberDrawableCard(player);
-        this.turnState.registerDrawableCards(player, drawableCards[0], drawableCards[1]);
+            int[] drawableCards = this.board.returnNumberDrawableCard(player);
+            this.turnState.registerDrawableCards(player, drawableCards[0], drawableCards[1]);
 
-        if (this.turnOrderTrack.isLastPlayer()) {
-            this.board.resolveEventA();
-            this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
-            while (!this.turnState.hasDrawableCards(this.turnOrderTrack.getCurrentPlayer())
-                    && !this.turnOrderTrack.isLastPlayer()) {
+            if (this.turnOrderTrack.isLastPlayer()) {
+                this.board.resolveEventA();
+                this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
+                while (!this.turnState.hasDrawableCards(this.turnOrderTrack.getCurrentPlayer())
+                        && !this.turnOrderTrack.isLastPlayer()) {
+                    this.turnOrderTrack.advanceToNextPlayer();
+                }
+                this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
+            } else {
                 this.turnOrderTrack.advanceToNextPlayer();
             }
-            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
-        } else {
-            this.turnOrderTrack.advanceToNextPlayer();
-        }
-        this.markStateChanged();
-
+            this.markStateChanged();
+        });
     }
     /**
      * Makes the active player draw one card from the board.
@@ -267,19 +298,20 @@ public class Game {
      * @param card card to draw from the board
      */
     public void chooseCard(Player player, Card card){
-        this.validateChooseCardRequest(player);
-        this.ensureDrawStateStarted(player);
+        this.executeGameAction(() -> {
+            this.validateChooseCardRequest(player);
+            this.ensureDrawStateStarted(player);
 
-        CardRow cardRow = this.validateAndRemoveChosenCard(player, card);
-        this.applyChosenCardToPlayer(player, card);
+            CardRow cardRow = this.validateAndRemoveChosenCard(player, card);
+            this.applyChosenCardToPlayer(player, card);
 
-        this.turnState.onCardChosen(player, cardRow);
+            this.turnState.onCardChosen(player, cardRow);
 
-        if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) { //Check if the player has still drawable cards from the board
-            this.completeDrawTurn(player);
-        }
-        this.markStateChanged();
-
+            if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) {
+                this.completeDrawTurn(player);
+            }
+            this.markStateChanged();
+        });
     }
     /**
      * Resolves an extra card draw granted by a previously acquired building effect.
@@ -288,12 +320,14 @@ public class Game {
      * @param card extra card chosen from the board
      */
     public void extraDrawn(Player player, Card card){
-        this.validateExtraDrawRequest(player);
+        this.executeGameAction(() -> {
+            this.validateExtraDrawRequest(player);
 
-        CardRow cardRow = this.validateAndRemoveExtraDrawCard(player, card);
-        this.applyChosenCardToPlayer(player, card);
-        this.completeExtraDrawTurn();
-        this.markStateChanged();
+            CardRow cardRow = this.validateAndRemoveExtraDrawCard(player, card);
+            this.applyChosenCardToPlayer(player, card);
+            this.completeExtraDrawTurn();
+            this.markStateChanged();
+        });
     }
     /**
      * Resolves lower-row events after all standard and bonus draws are completed.
@@ -302,18 +336,19 @@ public class Game {
      * otherwise it advances the round flow to board reset.
      */
     public void resolveEffects(){
-        this.validateResolveEffectsRequest();
+        this.executeGameAction(() -> {
+            this.validateResolveEffectsRequest();
 
-        if (this.turnOrderTrack.getRoundNumber() == 10) {
-            this.board.resolveAllEvents();
-            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
+            if (this.turnOrderTrack.getRoundNumber() == 10) {
+                this.board.resolveAllEvents();
+                this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
+                this.markStateChanged();
+                return;
+            }
+            this.board.resolveLowerEvents();
+            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
             this.markStateChanged();
-            return;
-        }
-        this.board.resolveLowerEvents();
-        this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
-        this.markStateChanged();
-
+        });
     }
     /**
      * Resets the board after event resolution and prepares the next round.
@@ -323,19 +358,19 @@ public class Game {
      * placement sequence.
      */
     public void resetBoard(){
-        this.validateResetBoardRequest();
+        this.executeGameAction(() -> {
+            this.validateResetBoardRequest();
 
-        boolean eraChanged = this.board.resetBoardAfterRound(this.currentEra);
-        if (eraChanged) {
-            this.currentEra = this.currentEra.next();
-        }
+            boolean eraChanged = this.board.resetBoardAfterRound(this.currentEra);
+            if (eraChanged) {
+                this.currentEra = this.currentEra.next();
+            }
 
-        this.turnOrderTrack.advanceRoundNumber();
-        this.turnState.resetForNewRound();
-        this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
-        this.markStateChanged();
-
-
+            this.turnOrderTrack.advanceRoundNumber();
+            this.turnState.resetForNewRound();
+            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+            this.markStateChanged();
+        });
     }
     /**
      * Applies final-scoring rules to every player and closes the match.
@@ -344,24 +379,26 @@ public class Game {
      * the match status to {@code FINISHED}.
      */
     public void calculateFinalScore(){
-        if (this.status != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("calculateFinalScore", this.status);
-        }
-
-        if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.FINAL_SCORING) {
-            throw new InvalidGamePhaseException("calculateFinalScore", this.turnOrderTrack.getCurrentRoundPhase());
-        }
-
-        for (Player player : this.players) {
-            for (BuildingCard building : player.getTribe().getBuildings()) {
-                building.increaseFinalPrestigePoints(player);
-                building.applyEffect(player);
+        this.executeGameAction(() -> {
+            if (this.status != GameStatus.IN_PROGRESS) {
+                throw new InvalidGameStatusException("calculateFinalScore", this.status);
             }
-            player.gainPrestigePoints(player.getTribe().getPrestigePointsForBuilderInFinalPhase());
-        }
 
-        this.status = GameStatus.FINISHED;
-        this.markStateChanged();
+            if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.FINAL_SCORING) {
+                throw new InvalidGamePhaseException("calculateFinalScore", this.turnOrderTrack.getCurrentRoundPhase());
+            }
+
+            for (Player player : this.players) {
+                for (BuildingCard building : player.getTribe().getBuildings()) {
+                    building.increaseFinalPrestigePoints(player);
+                    building.applyEffect(player);
+                }
+                player.gainPrestigePoints(player.getTribe().getPrestigePointsForBuilderInFinalPhase());
+            }
+
+            this.status = GameStatus.FINISHED;
+            this.markStateChanged();
+        });
     }
 
     // Private methods
@@ -643,5 +680,129 @@ public class Game {
 
     private void markStateChanged() {
         this.stateVersion++;
+    }
+
+    public GamePayload buildPayload() {
+        TurnOrderPayload turnOrder = this.buildTurnOrderPayload();
+        TurnStatePayload turnState = new TurnStatePayload(this.turnState.getPhase().name());
+        List<PlayerPayload> players = this.players.stream()
+                .map(this::toPlayerPayload)
+                .toList();
+        BoardPayload board = this.buildBoardPayload();
+
+        return new GamePayload(
+                this.id,
+                this.status.name(),
+                this.currentEra.ordinal(),
+                turnOrder,
+                turnState,
+                players,
+                board
+        );
+    }
+
+    //Praticamente le azioni diventanto dei runnable , delle lambda che runniamo qua dentro
+    //Cosi unifichiamo dove e come vengono gestiti gli update in happy path
+    //sia broadcast di errori
+    private void executeGameAction(Runnable action) {
+        long previousVersion = this.stateVersion;
+        try {
+            action.run();
+            if (this.stateVersion != previousVersion) {
+                this.notifyListeners(this.buildPayload());
+            }
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            this.notifyListeners(new ErrorPayload(exception.getClass().getSimpleName(), exception.getMessage()));
+        }
+    }
+
+    private void notifyListeners(Object payload) {
+        List<Listener> currentListeners = List.copyOf(this.listeners);
+        for (Listener listener : currentListeners) {
+            listener.notifyUpdate(payload);
+        }
+    }
+
+    private TurnOrderPayload buildTurnOrderPayload() {
+        List<Player> order;
+        try {
+            order = this.turnOrderTrack.getTurnOrder();
+        } catch (IllegalStateException e) {
+            order = List.of();
+        }
+
+        String currentPlayerNickname = order.isEmpty()
+                ? null
+                : this.turnOrderTrack.getCurrentPlayer().getNickname();
+
+        return new TurnOrderPayload(
+                this.turnOrderTrack.getRoundNumber(),
+                this.turnOrderTrack.getCurrentRoundPhase().name(),
+                currentPlayerNickname,
+                order.stream().map(Player::getNickname).toList()
+        );
+    }
+
+    private PlayerPayload toPlayerPayload(Player player) {
+        List<CardPayload> characters = player.getTribe().getCharacters().stream()
+                .map(this::toCardPayload)
+                .toList();
+        List<CardPayload> buildings = player.getTribe().getBuildings().stream()
+                .map(this::toCardPayload)
+                .toList();
+        TribePayload tribe = new TribePayload(characters, buildings);
+
+        return new PlayerPayload(
+                player.getNickname(),
+                player.getFood(),
+                player.getPrestigePoints(),
+                player.getTotem().name(),
+                tribe
+        );
+    }
+
+    private CardPayload toCardPayload(Card card) {
+        return new CardPayload(
+                card.getId(),
+                card.getClass().getSimpleName(),
+                card.getEra().ordinal()
+        );
+    }
+
+    private BoardPayload buildBoardPayload() {
+        List<CardPayload> upperRow = this.board.getUpperRowCards().stream()
+                .map(this::toCardPayload)
+                .toList();
+        List<CardPayload> lowerRow = this.board.getLowerRowCards().stream()
+                .map(this::toCardPayload)
+                .toList();
+        List<OfferSpacePayload> offerSpaces = this.board.getOfferSpaces().stream()
+                .map(this::toOfferSpacePayload)
+                .toList();
+        List<StartingBlockPayload> startingBlocks = this.board.getStartingBlocks().stream()
+                .map(this::toStartingBlockPayload)
+                .toList();
+
+        return new BoardPayload(upperRow, lowerRow, offerSpaces, startingBlocks);
+    }
+
+    private OfferSpacePayload toOfferSpacePayload(OfferSpace space) {
+        String occupiedBy = space.getOccupiedBy() == null ? null : space.getOccupiedBy().getNickname();
+        return new OfferSpacePayload(
+                space.getCode(),
+                space.getTopRowCardsToTake(),
+                space.getBottomRowCardsToTake(),
+                occupiedBy
+        );
+    }
+
+    private StartingBlockPayload toStartingBlockPayload(StartingBlock block) {
+        String occupiedBy = block.getOccupiedBy() == null ? null : block.getOccupiedBy().getNickname();
+        return new StartingBlockPayload(
+                block.getPosition(),
+                block.getFoodModifier(),
+                block.getPrestigeModifier(),
+                occupiedBy
+        );
     }
 }

@@ -63,6 +63,10 @@ public class ClientCommandHandler {
                 + " from " + this.describeConnection(context)
                 + " payload=" + (payload == null ? "null" : payload));
 
+        if (type != ClientMessageType.AUTHENTICATE && !context.isAuthenticated()) {
+            throw new AuthenticationException("Client is not authenticated");
+        }
+
         // Command dispatch
         return switch (type) {
             case AUTHENTICATE -> this.handleAuthentication(payload, context);

@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
 import it.polimi.ingsoft.mesos.server.network.ConnectionContext;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
@@ -25,6 +26,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ResetBoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.SetupMatchPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
@@ -44,7 +46,7 @@ import java.util.Objects;
 //TCP implementation of the VirtualView contract.
 //It acts as the network boundary on the server side: it reads raw client messages,
 //delegates parsing/dispatch, and serializes the structured server response back on the socket.
-public class VirtualViewTCP implements VirtualView, Runnable {
+public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket clientSocket;
@@ -152,6 +154,7 @@ public class VirtualViewTCP implements VirtualView, Runnable {
     public ServerMessage createLobby(CreateLobbyPayload payload) {
         Lobby lobby = this.serverController.createLobby(this.connectionContext.getUser(), payload.chosenCapacity);
         this.connectionContext.setCurrentLobbyId(lobby.getId());
+        this.serverController.getLobbyManager().addLobbyListener(lobby.getId(), this);
         return this.buildPreMatchUpdate(
                 PreMatchEventType.LOBBY_CREATED,
                 this.connectionContext.getNickname(),
@@ -164,13 +167,16 @@ public class VirtualViewTCP implements VirtualView, Runnable {
     public ServerMessage joinLobby(JoinLobbyPayload payload) {
         this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
         this.connectionContext.setCurrentLobbyId(payload.lobbyId);
+        this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
         Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
-        return this.buildPreMatchUpdate(
+        ServerMessage update = this.buildPreMatchUpdate(
                 PreMatchEventType.LOBBY_JOINED,
                 this.connectionContext.getNickname(),
                 "Lobby joined successfully",
                 lobby
         );
+        this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update.payload);
+        return null;
     }
 
     @Override
@@ -178,13 +184,20 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         this.serverController.exitLobby(payload.lobbyId, this.connectionContext.getUser());
         Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
         this.connectionContext.setCurrentLobbyId(null);
-        return this.buildPreMatchUpdate(
+        ServerMessage update = this.buildPreMatchUpdate(
                 PreMatchEventType.LOBBY_LEFT,
                 this.connectionContext.getNickname(),
                 lobby == null ? "Lobby closed" : "Lobby left successfully",
                 lobby,
                 payload.lobbyId
         );
+        if (lobby == null) {
+            return update;
+        }
+
+        this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update.payload);
+        this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
+        return null;
     }
 
     @Override
@@ -193,13 +206,15 @@ public class VirtualViewTCP implements VirtualView, Runnable {
         this.gameOrchestrator = this.serverController.createGameFromLobby(lobbyId);
         this.connectionContext.enterMatch(this.gameOrchestrator);
         Lobby lobby = this.serverController.getLobby(lobbyId).orElse(null);
-        return this.buildPreMatchUpdate(
+        ServerMessage update = this.buildPreMatchUpdate(
                 PreMatchEventType.LOBBY_STARTED,
                 this.connectionContext.getNickname(),
                 "Lobby started successfully",
                 lobby,
                 lobbyId
         );
+        this.serverController.getLobbyManager().notifyLobbyListeners(lobbyId, update.payload);
+        return null;
     }
 
     @Override
@@ -253,7 +268,7 @@ public class VirtualViewTCP implements VirtualView, Runnable {
 
     private ErrorPayload mapExceptionToErrorPayload(Exception exception) {
         if (exception instanceof AuthenticationException) {
-            return new ErrorPayload("AUTHENTICATION_FAILED", exception.getMessage());
+            return new ErrorPayload("AUTH_ERROR", exception.getMessage());
         }
         if (exception instanceof IllegalArgumentException) {
             return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
@@ -307,4 +322,19 @@ public class VirtualViewTCP implements VirtualView, Runnable {
                 .toList();
     }
 
+
+    @Override
+    public void notifyUpdate(Object payload) {
+        if (payload instanceof GamePayload gamePayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
+            return;
+        }
+        if (payload instanceof ErrorPayload errorPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+            return;
+        }
+        if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
+        }
+    }
 }

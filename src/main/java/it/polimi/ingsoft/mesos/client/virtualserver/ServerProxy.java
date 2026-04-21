@@ -20,6 +20,8 @@ public interface ServerProxy extends AutoCloseable {
 
     void exitLobby(int lobbyId);
 
+    void startLobby();
+
     @Override
     void close() throws IOException;
 }

@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.network.ConnectionContext;
@@ -26,7 +27,7 @@ import java.util.List;
  * delegating the domain logic to the central {@link ServerController}, and dispatching
  * outbound server updates back to the client via asynchronous RMI callbacks.
  */
-public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService {
+public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, Listener {
     private final ServerController serverController;
     private final ConnectionContext connectionContext;
     private final RmiClientService clientCallback; // Per mandare gli update al client
@@ -46,6 +47,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         try {
             this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
             this.connectionContext.setCurrentLobbyId(payload.lobbyId);
+            this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
             Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
             PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
                     PreMatchEventType.LOBBY_JOINED,
@@ -54,9 +56,9 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                     lobby
             );
 
-            this.clientCallback.handlePreMatchUpdate(update);
+            this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update);
         } catch (Exception e) {
-            //this.clientCallback.handleError(new ErrorPayload("JOIN_LOBBY_ERROR", e.getMessage()));
+            this.clientCallback.handleError(new ErrorPayload("JOIN_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -64,6 +66,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         try {
             Lobby lobby = this.serverController.createLobby(this.connectionContext.getUser(), payload.chosenCapacity);
             this.connectionContext.setCurrentLobbyId(lobby.getId());
+            this.serverController.getLobbyManager().addLobbyListener(lobby.getId(), this);
             PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
                     PreMatchEventType.LOBBY_CREATED,
                     this.connectionContext.getNickname(),
@@ -73,7 +76,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
 
             this.clientCallback.handlePreMatchUpdate(update);
         } catch (Exception e) {
-            //this.clientCallback.handleError(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
+            this.clientCallback.handleError(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -91,9 +94,14 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                     payload.lobbyId
             );
 
-            this.clientCallback.handlePreMatchUpdate(update);
+            if (lobby == null) {
+                this.clientCallback.handlePreMatchUpdate(update);
+            } else {
+                this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update);
+                this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
+            }
         } catch (Exception e) {
-            //this.clientCallback.handleError(new ErrorPayload("EXIT_LOBBY_ERROR", e.getMessage()));
+            this.clientCallback.handleError(new ErrorPayload("EXIT_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -104,7 +112,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                     .toList();
             this.clientCallback.handleLobbyList(new LobbyListPayload(lobbies));
         } catch (Exception e) {
-            //this.clientCallback.handleError(new ErrorPayload("LIST_LOBBY_ERROR", e.getMessage()));
+            this.clientCallback.handleError(new ErrorPayload("LIST_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
@@ -120,7 +128,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 lobby,
                 lobbyId
         );
-        this.clientCallback.handlePreMatchUpdate(update);
+        this.serverController.getLobbyManager().notifyLobbyListeners(lobbyId, update);
     }
     @Override
     public void setupMatch(SetupMatchPayload payload) throws RemoteException {
@@ -200,5 +208,24 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 lobby.getChosenCapacity(),
                 lobby.getStatus().name()
         );
+    }
+
+
+    @Override
+    public void notifyUpdate(Object payload) {
+        try {
+            if (payload instanceof GamePayload gamePayload) {
+                this.clientCallback.handleGameUpdate(gamePayload);
+                return;
+            }
+            if (payload instanceof ErrorPayload errorPayload) {
+                this.clientCallback.handleError(errorPayload);
+                return;
+            }
+            if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
+                this.clientCallback.handlePreMatchUpdate(preMatchUpdatePayload);
+            }
+        } catch (RemoteException ignored) {
+        }
     }
 }

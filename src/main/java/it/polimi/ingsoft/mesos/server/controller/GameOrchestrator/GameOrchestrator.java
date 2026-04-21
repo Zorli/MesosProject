@@ -2,8 +2,6 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
-import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
-import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
@@ -13,15 +11,6 @@ import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchSer
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -46,8 +35,6 @@ public class GameOrchestrator {
     private final String hostNickname;
     private final RankingService rankingService;
     private final MatchPersistenceCoordinator persistenceCoordinator;
-    private long cachedPayloadVersion = -1L;
-    private GamePayload cachedPayload;
     private boolean frozen;
 
     /**
@@ -197,8 +184,11 @@ public class GameOrchestrator {
      */
     public void setupMatch() {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         this.game.setup();
-        this.persistOrFreeze("GAME_INITIALIZED", () -> this.persistenceCoordinator.recordMatchInitialized(this.game));
+        if (this.didGameStateChange(previousVersion)) {
+            this.persistOrFreeze("GAME_INITIALIZED", () -> this.persistenceCoordinator.recordMatchInitialized(this.game));
+        }
     }
 
     /**
@@ -209,8 +199,12 @@ public class GameOrchestrator {
      */
     public void moveTotem(Player player, String tile) {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.moveTotem(player, tile);
+        if (!this.didGameStateChange(previousVersion)) {
+            return;
+        }
         this.persistOrFreeze(
                 "TURN_STARTED",
                 () -> this.persistenceCoordinator.recordAfterMoveTotem(this.game, previousRoundPhase)
@@ -226,11 +220,12 @@ public class GameOrchestrator {
      */
     public void chooseCard(Player player, Card card) {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.chooseCard(player, card);
 
-        if (this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
+        if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
         }
     }
@@ -244,11 +239,12 @@ public class GameOrchestrator {
      */
     public void extraDrawn(Player player, Card card) {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.extraDrawn(player, card);
 
-        if (this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
+        if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
         }
     }
@@ -258,7 +254,11 @@ public class GameOrchestrator {
      */
     public void resolveEffects() {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         this.game.resolveEffects();
+        if (!this.didGameStateChange(previousVersion)) {
+            return;
+        }
         RoundPhase currentRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
 
         if (currentRoundPhase == RoundPhase.FINAL_SCORING) {
@@ -277,8 +277,12 @@ public class GameOrchestrator {
      */
     public void resetBoard() {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         var previousEra = this.game.getCurrentEra();
         this.game.resetBoard();
+        if (!this.didGameStateChange(previousVersion)) {
+            return;
+        }
 
         if (this.game.getCurrentEra() != previousEra) {
             this.persistOrFreeze("ERA_CHANGED", () -> this.persistenceCoordinator.recordEraChanged(this.game));
@@ -300,7 +304,11 @@ public class GameOrchestrator {
      */
     public Optional<RankingResult> calculateFinalScore() {
         this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
         this.game.calculateFinalScore();
+        if (!this.didGameStateChange(previousVersion)) {
+            return Optional.empty();
+        }
         return this.finalizeCompletedMatchOrFreeze();
     }
 
@@ -360,119 +368,6 @@ public class GameOrchestrator {
         }
     }
 
-    public synchronized GamePayload getCurrentPayload() {
-        long currentVersion = this.game.getStateVersion();
-        if (this.cachedPayload == null || this.cachedPayloadVersion != currentVersion) {
-            this.cachedPayload = this.buildPayload();
-            this.cachedPayloadVersion = currentVersion;
-        }
-        return this.cachedPayload;
-    }
-
-    public GamePayload buildPayload() {
-        TurnOrderPayload turnOrder = buildTurnOrderPayload();
-        TurnStatePayload turnState = new TurnStatePayload(
-                this.game.getTurnState().getPhase().name()
-        );
-        List<PlayerPayload> players = this.game.getPlayers().stream()
-                .map(this::toPlayerPayload)
-                .toList();
-        BoardPayload board = buildBoardPayload();
-
-        return new GamePayload(
-                this.game.getId(),
-                this.game.getStatus().name(),
-                this.game.getCurrentEra().ordinal(),
-                turnOrder,
-                turnState,
-                players,
-                board
-        );
-    }
-
-    private TurnOrderPayload buildTurnOrderPayload() {
-        List<Player> order;
-        try {
-            order = this.game.getTurnOrderTrack().getTurnOrder();
-        } catch (IllegalStateException e) {
-            order = List.of();
-        }
-
-        String currentPlayerNickname = order.isEmpty()
-                ? null
-                : this.game.getTurnOrderTrack().getCurrentPlayer().getNickname();
-
-        return new TurnOrderPayload(
-                this.game.getTurnOrderTrack().getRoundNumber(),
-                this.game.getTurnOrderTrack().getCurrentRoundPhase().name(),
-                currentPlayerNickname,
-                order.stream().map(Player::getNickname).toList()
-        );
-    }
-
-    private PlayerPayload toPlayerPayload(Player player) {
-        List<CardPayload> characters = player.getTribe().getCharacters().stream()
-                .map(this::toCardPayload)
-                .toList();
-        List<CardPayload> buildings = player.getTribe().getBuildings().stream()
-                .map(this::toCardPayload)
-                .toList();
-        TribePayload tribe = new TribePayload(characters, buildings);
-
-        return new PlayerPayload(
-                player.getNickname(),
-                player.getFood(),
-                player.getPrestigePoints(),
-                player.getTotem().name(),
-                tribe
-        );
-    }
-
-    private CardPayload toCardPayload(Card card) {
-        return new CardPayload(
-                card.getId(),
-                card.getClass().getSimpleName(),
-                card.getEra().ordinal()
-        );
-    }
-
-    private BoardPayload buildBoardPayload() {
-        List<CardPayload> upperRow = this.game.getBoard().getUpperRowCards().stream()
-                .map(this::toCardPayload)
-                .toList();
-        List<CardPayload> lowerRow = this.game.getBoard().getLowerRowCards().stream()
-                .map(this::toCardPayload)
-                .toList();
-        List<OfferSpacePayload> offerSpaces = this.game.getBoard().getOfferSpaces().stream()
-                .map(this::toOfferSpacePayload)
-                .toList();
-        List<StartingBlockPayload> startingBlocks = this.game.getBoard().getStartingBlocks().stream()
-                .map(this::toStartingBlockPayload)
-                .toList();
-
-        return new BoardPayload(upperRow, lowerRow, offerSpaces, startingBlocks);
-    }
-
-    private OfferSpacePayload toOfferSpacePayload(OfferSpace space) {
-        String occupiedBy = space.getOccupiedBy() == null ? null : space.getOccupiedBy().getNickname();
-        return new OfferSpacePayload(
-                space.getCode(),
-                space.getTopRowCardsToTake(),
-                space.getBottomRowCardsToTake(),
-                occupiedBy
-        );
-    }
-
-    private StartingBlockPayload toStartingBlockPayload(StartingBlock block) {
-        String occupiedBy = block.getOccupiedBy() == null ? null : block.getOccupiedBy().getNickname();
-        return new StartingBlockPayload(
-                block.getPosition(),
-                block.getFoodModifier(),
-                block.getPrestigeModifier(),
-                occupiedBy
-        );
-    }
-
     private List<MatchScore> buildFinalScores() {
         return this.players.stream()
                 .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
@@ -482,5 +377,9 @@ public class GameOrchestrator {
     private boolean didTurnAdvance(Player previousPlayer, RoundPhase previousRoundPhase) {
         return !this.game.getTurnOrderTrack().getCurrentPlayer().equals(previousPlayer)
                 || previousRoundPhase != this.game.getTurnOrderTrack().getCurrentRoundPhase();
+    }
+
+    private boolean didGameStateChange(long previousVersion) {
+        return this.game.getStateVersion() != previousVersion;
     }
 }
