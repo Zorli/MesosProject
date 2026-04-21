@@ -63,7 +63,7 @@ public class ServerProxyRMI implements ServerProxy{
 
     @Override
     public void listLobbies() {
-        if (!this.connected|| this.serverStub == null) return;
+        if (!this.ensureAuthenticated()) return;
 
         try {
             this.serverStub.listLobbies(new ListLobbiesPayload());
@@ -74,7 +74,7 @@ public class ServerProxyRMI implements ServerProxy{
     }
     @Override
     public void createLobby(int chosenCapacity){
-        if (!this.connected|| this.serverStub == null) return;
+        if (!this.ensureAuthenticated()) return;
         try {
             this.serverStub.createLobby(new CreateLobbyPayload(chosenCapacity));
         } catch (RemoteException e) {
@@ -84,7 +84,7 @@ public class ServerProxyRMI implements ServerProxy{
 
     @Override
     public void joinLobby(int lobbyId) {
-        if (!this.connected|| this.serverStub == null) return;
+        if (!this.ensureAuthenticated()) return;
 
         try {
             this.serverStub.joinLobby(new JoinLobbyPayload(lobbyId));
@@ -95,10 +95,20 @@ public class ServerProxyRMI implements ServerProxy{
     }
     @Override
     public void exitLobby(int lobbyId) {
-        if (!this.connected|| this.serverStub == null) return;
+        if (!this.ensureAuthenticated()) return;
         try {
             this.serverStub.exitLobby(new ExitLobbyPayload(lobbyId));
 
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    @Override
+    public void startLobby() {
+        if (!this.ensureAuthenticated()) return;
+        try {
+            this.serverStub.startLobby(new StartLobbyPayload());
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -125,5 +135,17 @@ public class ServerProxyRMI implements ServerProxy{
             this.callbackReceiver.handleError(new ErrorPayload(code, message));
         } catch (RemoteException ignored) {
         }
+    }
+
+    private boolean ensureAuthenticated() {
+        if (!this.connected) {
+            this.notifyLocalError("AUTH_ERROR", "Client is not connected");
+            return false;
+        }
+        if (this.serverStub == null) {
+            this.notifyLocalError("AUTH_ERROR", "Client is not authenticated");
+            return false;
+        }
+        return true;
     }
 }

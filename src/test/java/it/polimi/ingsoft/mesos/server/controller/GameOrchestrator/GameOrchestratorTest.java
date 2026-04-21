@@ -3,7 +3,6 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.InvalidGameStatusException;
 import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
@@ -111,7 +110,7 @@ class GameOrchestratorTest {
     }
 
     @Test
-    void currentPayloadIsCachedUntilGameStateChanges() {
+    void gameBuildsCurrentPayloadAfterStateChanges() {
         ArrayList<Player> players = createPlayers(2);
         GameOrchestrator orchestrator = new GameOrchestrator(
                 DefaultGameFactory.getInstance(),
@@ -120,18 +119,14 @@ class GameOrchestratorTest {
                 NoOpSavedMatchService.INSTANCE
         );
 
-        GamePayload initialPayload = orchestrator.getCurrentPayload();
-        GamePayload cachedPayload = orchestrator.getCurrentPayload();
-
-        assertSame(initialPayload, cachedPayload);
+        GamePayload initialPayload = orchestrator.getGame().buildPayload();
+        assertEquals("SETUP", initialPayload.status);
 
         orchestrator.setupMatch();
 
-        GamePayload updatedPayload = orchestrator.getCurrentPayload();
-        GamePayload updatedCachedPayload = orchestrator.getCurrentPayload();
-
-        assertNotSame(initialPayload, updatedPayload);
-        assertSame(updatedPayload, updatedCachedPayload);
+        GamePayload updatedPayload = orchestrator.getGame().buildPayload();
+        assertEquals("IN_PROGRESS", updatedPayload.status);
+        assertEquals(RoundPhase.PLACING_TOTEMS.name(), updatedPayload.turnOrder.currentRoundPhase);
     }
 
     @Test
@@ -487,7 +482,7 @@ class GameOrchestratorTest {
         Game restoredGame = DefaultGameFactory.getInstance().createGame(players);
         GameOrchestrator orchestrator = new GameOrchestrator(restoredGame, "Alice", savedMatchService);
 
-        assertThrows(InvalidGameStatusException.class, () -> orchestrator.moveTotem(players.getFirst(), "B"));
+        orchestrator.moveTotem(players.getFirst(), "B");
         assertEquals(0, savedMatchService.turnStartedCalls);
     }
 

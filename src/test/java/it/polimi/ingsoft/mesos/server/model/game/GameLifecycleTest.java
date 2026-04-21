@@ -11,7 +11,9 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -73,7 +76,7 @@ class GameLifecycleTest {
         ArrayList<Player> players = new ArrayList<>(List.of(player("Alice", TotemColor.RED)));
         Game game = new Game(1, players, new TurnState(), new TurnOrderTrack(List.of(players.get(0)), 0, 1, RoundPhase.PLACING_TOTEMS), new RecordingBoard(), Era.first, GameStatus.IN_PROGRESS);
 
-        assertThrows(InvalidGameStatusException.class, game::setup);
+        assertGameError(game, InvalidGameStatusException.class, game::setup);
     }
 
     @Test
@@ -81,7 +84,7 @@ class GameLifecycleTest {
         ArrayList<Player> players = new ArrayList<>(List.of(player("Alice", TotemColor.RED)));
         Game game = new Game(1, players, new TurnState(), new TurnOrderTrack(List.of(players.get(0)), 0, 1, RoundPhase.PLACING_TOTEMS), new RecordingBoard(), Era.first, GameStatus.SETUP);
 
-        assertThrows(InvalidGameStatusException.class, () -> game.moveTotem(players.get(0), "A"));
+        assertGameError(game, InvalidGameStatusException.class, () -> game.moveTotem(players.get(0), "A"));
     }
 
     @Test
@@ -90,7 +93,7 @@ class GameLifecycleTest {
         Game game = new Game(1, players, new TurnState(), new TurnOrderTrack(), new RecordingBoard());
         game.setup();
 
-        assertThrows(TileNotAvailableException.class, () -> game.moveTotem(players.get(0), null));
+        assertGameError(game, TileNotAvailableException.class, () -> game.moveTotem(players.get(0), null));
     }
 
     @Test
@@ -111,7 +114,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.SETUP
         );
-        assertThrows(InvalidGameStatusException.class, () -> wrongStatusGame.chooseCard(alice, character));
+        assertGameError(wrongStatusGame, InvalidGameStatusException.class, () -> wrongStatusGame.chooseCard(alice, character));
 
         TurnState phaseTurnState = new TurnState();
         phaseTurnState.registerDrawableCards(alice, 0, 1);
@@ -124,7 +127,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(InvalidGamePhaseException.class, () -> wrongPhaseGame.chooseCard(alice, character));
+        assertGameError(wrongPhaseGame, InvalidGamePhaseException.class, () -> wrongPhaseGame.chooseCard(alice, character));
 
         TurnState wrongPlayerTurnState = new TurnState();
         wrongPlayerTurnState.registerDrawableCards(alice, 0, 1);
@@ -137,7 +140,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(NotPlayersTurnException.class, () -> wrongPlayerGame.chooseCard(bob, character));
+        assertGameError(wrongPlayerGame, NotPlayersTurnException.class, () -> wrongPlayerGame.chooseCard(bob, character));
     }
 
     @Test
@@ -159,7 +162,7 @@ class GameLifecycleTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertThrows(CardNotDrawableException.class, () -> undrawableGame.chooseCard(alice, character));
+        assertGameError(undrawableGame, CardNotDrawableException.class, () -> undrawableGame.chooseCard(alice, character));
 
         FaultyTurnState faultyTurnState = new FaultyTurnState();
         faultyTurnState.registerDrawableCards(alice, 0, 1);
@@ -173,7 +176,7 @@ class GameLifecycleTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertThrows(InvalidTurnPhaseException.class, () -> brokenTurnStateGame.chooseCard(alice, character));
+        assertGameError(brokenTurnStateGame, InvalidTurnPhaseException.class, () -> brokenTurnStateGame.chooseCard(alice, character));
     }
 
     @Test
@@ -195,7 +198,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(CardNotDrawableException.class, () -> undrawableUpperGame.chooseCard(alice, building));
+        assertGameError(undrawableUpperGame, CardNotDrawableException.class, () -> undrawableUpperGame.chooseCard(alice, building));
 
         TurnState blockedLowerTurnState = new TurnState();
         blockedLowerTurnState.registerDrawableCards(alice, 1, 0);
@@ -210,7 +213,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(CardRowSelectionNotAllowedException.class, () -> blockedLowerGame.chooseCard(alice, character));
+        assertGameError(blockedLowerGame, CardRowSelectionNotAllowedException.class, () -> blockedLowerGame.chooseCard(alice, character));
     }
 
     @Test
@@ -230,7 +233,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.SETUP
         );
-        assertThrows(InvalidGameStatusException.class, () -> wrongStatusGame.extraDrawn(alice, character));
+        assertGameError(wrongStatusGame, InvalidGameStatusException.class, () -> wrongStatusGame.extraDrawn(alice, character));
 
         Game wrongPhaseGame = new Game(
                 1,
@@ -241,7 +244,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(InvalidGamePhaseException.class, () -> wrongPhaseGame.extraDrawn(alice, character));
+        assertGameError(wrongPhaseGame, InvalidGamePhaseException.class, () -> wrongPhaseGame.extraDrawn(alice, character));
 
         Game wrongPlayerGame = new Game(
                 1,
@@ -252,7 +255,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(NotPlayersTurnException.class, () -> wrongPlayerGame.extraDrawn(bob, character));
+        assertGameError(wrongPlayerGame, NotPlayersTurnException.class, () -> wrongPlayerGame.extraDrawn(bob, character));
 
         board.cardRow = CardRow.NOT_PRESENT;
         Game missingCardGame = new Game(
@@ -264,7 +267,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(CardNotPresentException.class, () -> missingCardGame.extraDrawn(alice, character));
+        assertGameError(missingCardGame, CardNotPresentException.class, () -> missingCardGame.extraDrawn(alice, character));
     }
 
     @Test
@@ -313,7 +316,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(CardNotDrawableException.class, () -> undrawableUpperGame.extraDrawn(alice, building));
+        assertGameError(undrawableUpperGame, CardNotDrawableException.class, () -> undrawableUpperGame.extraDrawn(alice, building));
 
         board.cardRow = CardRow.LOWER;
         Game undrawableLowerGame = new Game(
@@ -325,7 +328,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertThrows(CardNotDrawableException.class, () -> undrawableLowerGame.extraDrawn(alice, character));
+        assertGameError(undrawableLowerGame, CardNotDrawableException.class, () -> undrawableLowerGame.extraDrawn(alice, character));
     }
 
     @Test
@@ -340,7 +343,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.SETUP
         );
-        assertThrows(InvalidGameStatusException.class, resolveEffectsGame::resolveEffects);
+        assertGameError(resolveEffectsGame, InvalidGameStatusException.class, resolveEffectsGame::resolveEffects);
 
         Game resetBoardGame = new Game(
                 1,
@@ -351,7 +354,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.SETUP
         );
-        assertThrows(InvalidGameStatusException.class, resetBoardGame::resetBoard);
+        assertGameError(resetBoardGame, InvalidGameStatusException.class, resetBoardGame::resetBoard);
     }
 
     @Test
@@ -371,6 +374,27 @@ class GameLifecycleTest {
     private static Player player(String nickname, TotemColor color) {
         Player player = new Player(nickname, 5, 0, color);
         return player;
+    }
+
+    private static void assertGameError(Game game, Class<? extends RuntimeException> expectedError, Runnable action) {
+        RecordingListener listener = new RecordingListener();
+        long previousVersion = game.getStateVersion();
+        game.addListener(listener);
+
+        action.run();
+
+        assertEquals(previousVersion, game.getStateVersion());
+        ErrorPayload errorPayload = assertInstanceOf(ErrorPayload.class, listener.payload);
+        assertEquals(expectedError.getSimpleName(), errorPayload.code);
+    }
+
+    private static final class RecordingListener implements Listener {
+        private Object payload;
+
+        @Override
+        public void notifyUpdate(Object payload) {
+            this.payload = payload;
+        }
     }
 
     private static final class RecordingBoard extends Board {

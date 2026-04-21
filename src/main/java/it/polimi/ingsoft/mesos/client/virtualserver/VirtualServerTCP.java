@@ -10,6 +10,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -77,6 +78,11 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
     @Override
     public void exitLobby(int lobbyId) {
         this.send(new ClientMessage(ClientMessageType.EXIT_LOBBY, new ExitLobbyPayload(lobbyId)));
+    }
+
+    @Override
+    public void startLobby() {
+        this.send(new ClientMessage(ClientMessageType.START_LOBBY, new StartLobbyPayload()));
     }
 
     @Override

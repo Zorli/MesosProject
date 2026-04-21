@@ -2,7 +2,9 @@ package it.polimi.ingsoft.mesos.server.model.game;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * Focused tests for the totem-placement branch of the {@link Game} round flow.
@@ -105,7 +107,7 @@ class GameMoveTotemTest {
         Game game = new Game(1, players, new TurnState(), new TurnOrderTrack(), board);
         game.setup();
 
-        assertThrows(NotPlayersTurnException.class, () -> game.moveTotem(players.get(1), "A"));
+        assertGameError(game, NotPlayersTurnException.class, () -> game.moveTotem(players.get(1), "A"));
     }
 
     @Test
@@ -115,7 +117,7 @@ class GameMoveTotemTest {
         Game game = new Game(1, players, new TurnState(), new TurnOrderTrack(), board);
         game.setup();
 
-        assertThrows(TileNotAvailableException.class, () -> game.moveTotem(players.get(0), "Z"));
+        assertGameError(game, TileNotAvailableException.class, () -> game.moveTotem(players.get(0), "Z"));
     }
 
     @Test
@@ -127,7 +129,7 @@ class GameMoveTotemTest {
         game.moveTotem(players.get(0), "A");
         game.moveTotem(players.get(1), "B");
 
-        assertThrows(InvalidGamePhaseException.class, () -> game.moveTotem(players.get(1), "C"));
+        assertGameError(game, InvalidGamePhaseException.class, () -> game.moveTotem(players.get(1), "C"));
     }
 
     private static ArrayList<Player> players(String... nicknames) {
@@ -139,6 +141,27 @@ class GameMoveTotemTest {
         }
 
         return players;
+    }
+
+    private static void assertGameError(Game game, Class<? extends RuntimeException> expectedError, Runnable action) {
+        RecordingListener listener = new RecordingListener();
+        long previousVersion = game.getStateVersion();
+        game.addListener(listener);
+
+        action.run();
+
+        assertEquals(previousVersion, game.getStateVersion());
+        ErrorPayload errorPayload = assertInstanceOf(ErrorPayload.class, listener.payload);
+        assertEquals(expectedError.getSimpleName(), errorPayload.code);
+    }
+
+    private static final class RecordingListener implements Listener {
+        private Object payload;
+
+        @Override
+        public void notifyUpdate(Object payload) {
+            this.payload = payload;
+        }
     }
 
     /**
