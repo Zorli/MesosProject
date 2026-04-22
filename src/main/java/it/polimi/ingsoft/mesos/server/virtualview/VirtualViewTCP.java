@@ -188,37 +188,46 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
         return null;
     }
-
+    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public ServerMessage setupMatch(SetupMatchPayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        this.gameOrchestrator.setupMatch();
+        return null;
     }
 
     @Override
     public ServerMessage moveTotem(MoveTotemPayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        String nickname = this.connectionContext.getNickname();
+        this.gameOrchestrator.moveTotem(nickname, payload.tile);
+        return null;
     }
 
     @Override
     public ServerMessage chooseCard(ChooseCardPayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        String nickname = this.connectionContext.getNickname();
+        this.gameOrchestrator.chooseCard(nickname, payload.cardId);
+        return null;
     }
 
     @Override
     public ServerMessage extraDraw(ExtraDrawPayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        String nickname = this.connectionContext.getNickname();
+        this.gameOrchestrator.extraDrawn(nickname, payload.cardId);
+        return null;
     }
-
+    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public ServerMessage resolveEffects(ResolveEffectsPayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        this.gameOrchestrator.resolveEffects();
+        return null;
     }
-
+    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public ServerMessage resetBoard(ResetBoardPayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        this.gameOrchestrator.resetBoard();
+        return null;
     }
-
+    // anche questo automatico end_match solo notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public ServerMessage finalScore(FinalScorePayload payload) {
         throw new UnsupportedOperationException("Not implemented yet");

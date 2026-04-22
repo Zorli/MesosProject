@@ -108,36 +108,64 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             this.clientCallback.handleError(new ErrorPayload("START_LOBBY_ERROR", e.getMessage()));
         }
     }
+    //non ha senso, serve solo mettere il notify a ritroso, va gestito lato server (da cancellare relativo payload)
     @Override
     public void setupMatch(SetupMatchPayload payload) throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
+       try{
+           this.gameOrchestrator.setupMatch();
+       } catch (Exception e) {
+           this.clientCallback.handleError(new ErrorPayload("SETUP_MATCH_ERROR", e.getMessage()));
+       }
     }
 
     @Override
     public void moveTotem(MoveTotemPayload payload)  throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
+      try{
+          String nickname = this.connectionContext.getNickname();
+          this.gameOrchestrator.moveTotem(nickname, payload.tile);
+      } catch (Exception e) {
+          this.clientCallback.handleError(new ErrorPayload("MOVE_TOTEM_ERROR", e.getMessage()));
+      }
     }
 
     @Override
     public void chooseCard(ChooseCardPayload payload)  throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
+        try{
+            String nickname = this.connectionContext.getNickname();
+            this.gameOrchestrator.chooseCard(nickname,payload.cardId);
+        } catch (Exception e) {
+            this.clientCallback.handleError(new ErrorPayload("CHOSE_CARD_ERROR", e.getMessage()));
+        }
     }
 
     @Override
     public void extraDraw(ExtraDrawPayload payload)  throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
+        try{
+            String nickname = this.connectionContext.getNickname();
+            this.gameOrchestrator.extraDrawn(nickname,payload.cardId);
+        } catch (Exception e) {
+            this.clientCallback.handleError(new ErrorPayload("EXTRA_DRAW_ERROR", e.getMessage()));
+        }
     }
-
+    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public void resolveEffects(ResolveEffectsPayload payload)  throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
+        try{
+            this.gameOrchestrator.resolveEffects();
+        } catch (Exception e) {
+            this.clientCallback.handleError(new ErrorPayload("RESOLVE_ERROR", e.getMessage()));
+        }
     }
-
+    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public void resetBoard(ResetBoardPayload payload)  throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
+       try{
+           this.gameOrchestrator.resetBoard();
+       } catch (Exception e) {
+           this.clientCallback.handleError(new ErrorPayload("RESET_BOARD_ERROR", e.getMessage()));
+       }
     }
-
+    // anche questo automatico end_match solo notify a ritroso va gestito lato server (da cancellare relativo payload)
     @Override
     public void finalScore(FinalScorePayload payload)  throws RemoteException {
         throw new UnsupportedOperationException("Not implemented yet");
