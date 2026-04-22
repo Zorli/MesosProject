@@ -27,8 +27,8 @@ class PostgresSavedMatchLatePhaseIntegrationTest extends PostgresIntegrationTest
         GameStateAssertions.assertEquivalent(originalGame, restoredGame);
         assertEquals(RoundPhase.EXTRA_DRAWS, restoredGame.getTurnOrderTrack().getCurrentRoundPhase());
 
-        originalGame.extraDrawn(originalGame.getTurnOrderTrack().getCurrentPlayer(), findUpperRowCard(originalGame, 66));
-        restoredGame.extraDrawn(restoredGame.getTurnOrderTrack().getCurrentPlayer(), findUpperRowCard(restoredGame, 66));
+        originalGame.extraDrawn(originalGame.getTurnOrderTrack().getCurrentPlayer(), findUpperRowCard(originalGame, 66).getId());
+        restoredGame.extraDrawn(restoredGame.getTurnOrderTrack().getCurrentPlayer(), findUpperRowCard(restoredGame, 66).getId());
         GameStateAssertions.assertEquivalent(originalGame, restoredGame);
         assertEquals(RoundPhase.RESOLVING_EFFECTS, restoredGame.getTurnOrderTrack().getCurrentRoundPhase());
 

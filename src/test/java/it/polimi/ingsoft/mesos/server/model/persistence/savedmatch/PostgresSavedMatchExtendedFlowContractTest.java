@@ -33,7 +33,7 @@ class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTest
 
         playPlacementPhase(game);
         Card chosenCard = selectDeterministicCard(game);
-        game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), chosenCard);
+        game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), chosenCard.getId());
 
         SavedMatchRestoreResult restoredMatch = saveAndRestore(service, game, SavedMatchCheckpointType.TURN_FINISHED);
         Game restoredGame = restoredMatch.game();
@@ -45,8 +45,8 @@ class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTest
         while (game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
             Card liveCard = selectDeterministicCard(game);
             Card restoredCard = selectDeterministicCard(restoredGame);
-            game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), liveCard);
-            restoredGame.chooseCard(restoredGame.getTurnOrderTrack().getCurrentPlayer(), restoredCard);
+            game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), liveCard.getId());
+            restoredGame.chooseCard(restoredGame.getTurnOrderTrack().getCurrentPlayer(), restoredCard.getId());
             GameStateAssertions.assertEquivalent(game, restoredGame);
         }
     }
@@ -88,8 +88,8 @@ class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTest
 
         Card liveCard = selectDeterministicCard(game);
         Card restoredCard = selectDeterministicCard(restoredGame);
-        game.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), liveCard);
-        restoredGame.extraDrawn(restoredGame.getTurnOrderTrack().getCurrentPlayer(), restoredCard);
+        game.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), liveCard.getId());
+        restoredGame.extraDrawn(restoredGame.getTurnOrderTrack().getCurrentPlayer(), restoredCard.getId());
         GameStateAssertions.assertEquivalent(game, restoredGame);
 
         game.resolveEffects();
@@ -177,13 +177,13 @@ class PostgresSavedMatchExtendedFlowContractTest extends PostgresIntegrationTest
 
     private static void playDrawPhase(Game game) {
         while (game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
-            game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), selectDeterministicCard(game));
+            game.chooseCard(game.getTurnOrderTrack().getCurrentPlayer(), selectDeterministicCard(game).getId());
         }
     }
 
     private static void playExtraDrawPhase(Game game) {
         while (game.getTurnOrderTrack().getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
-            game.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), selectDeterministicCard(game));
+            game.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), selectDeterministicCard(game).getId());
         }
     }
 

@@ -17,13 +17,9 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.FinalScorePayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ResolveEffectsPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ResetBoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.SetupMatchPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
@@ -174,8 +170,12 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     @Override
     public ServerMessage exitLobby(ExitLobbyPayload payload) {
-        this.serverController.exitLobby(payload.lobbyId, this.connectionContext.getUser());
-        this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
+        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+        if (lobbyId == null) {
+            throw new IllegalStateException("Client is not in a lobby");
+        }
+        this.serverController.exitLobby(lobbyId, this.connectionContext.getUser());
+        this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
         this.connectionContext.setCurrentLobbyId(null);
 
         return null;
@@ -184,14 +184,12 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     @Override
     public ServerMessage startLobby(StartLobbyPayload payload) {
         Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-        this.serverController.createGameFromLobby(lobbyId);
+        this.gameOrchestrator = this.serverController.createGameFromLobby(
+                lobbyId,
+                this.connectionContext.getUser()
+        );
+        this.connectionContext.enterMatch(this.gameOrchestrator);
 
-        return null;
-    }
-    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public ServerMessage setupMatch(SetupMatchPayload payload) {
-        this.gameOrchestrator.setupMatch();
         return null;
     }
 
@@ -214,23 +212,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         String nickname = this.connectionContext.getNickname();
         this.gameOrchestrator.extraDrawn(nickname, payload.cardId);
         return null;
-    }
-    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public ServerMessage resolveEffects(ResolveEffectsPayload payload) {
-        this.gameOrchestrator.resolveEffects();
-        return null;
-    }
-    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public ServerMessage resetBoard(ResetBoardPayload payload) {
-        this.gameOrchestrator.resetBoard();
-        return null;
-    }
-    // anche questo automatico end_match solo notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public ServerMessage finalScore(FinalScorePayload payload) {
-        throw new UnsupportedOperationException("Not implemented yet");
     }
 
 
@@ -307,6 +288,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     @Override
     public void notifyUpdate(Object payload) {
         if (payload instanceof GamePayload gamePayload) {
+            this.enterCurrentMatchIfAvailable();
             this.sendServerMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
             return;
         }
@@ -316,15 +298,24 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
         if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
             if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED){
-                try {
-                    this.gameOrchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
-                    this.connectionContext.enterMatch(this.gameOrchestrator);
-                } catch (Exception e) {
-                    this.sendError(e);
-                    return;
-                }
+                this.enterMatchIfAvailable(preMatchUpdatePayload.lobbyId);
             }
             this.sendServerMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
+        }
+    }
+
+    private void enterCurrentMatchIfAvailable() {
+        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+        if (lobbyId != null) {
+            this.enterMatchIfAvailable(lobbyId);
+        }
+    }
+
+    private void enterMatchIfAvailable(int lobbyId) {
+        try {
+            this.gameOrchestrator = this.serverController.getGameOrchestrator(lobbyId);
+            this.connectionContext.enterMatch(this.gameOrchestrator);
+        } catch (Exception ignored) {
         }
     }
 }

@@ -2,7 +2,6 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
-import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
@@ -36,6 +35,8 @@ public class GameOrchestrator {
     private final RankingService rankingService;
     private final MatchPersistenceCoordinator persistenceCoordinator;
     private boolean frozen;
+
+    // Constructors
 
     /**
      * Creates an orchestrator for a new match using the provided game factory and player list.
@@ -143,6 +144,8 @@ public class GameOrchestrator {
         this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, this.hostNickname);
     }
 
+    // Getters
+
     /**
      * Returns the game aggregate coordinated by this orchestrator.
      *
@@ -178,6 +181,8 @@ public class GameOrchestrator {
     public boolean isFrozen() {
         return this.frozen;
     }
+
+    // Public gameplay API
 
     /**
      * Performs match setup and persists the initial checkpoint when configured.
@@ -252,93 +257,13 @@ public class GameOrchestrator {
         }
     }
 
-    /**
-     * Resolves round effects and persists the checkpoint implied by the resulting phase.
-     */
-    public void resolveEffects() {
-        this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
-        this.game.resolveEffects();
-        if (!this.didGameStateChange(previousVersion)) {
-            return;
-        }
-        RoundPhase currentRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
+    // Private methods
 
-        if (currentRoundPhase == RoundPhase.FINAL_SCORING) {
-            this.persistOrFreeze("MATCH_COMPLETED", () -> this.persistenceCoordinator.recordMatchCompleted(this.game));
-            return;
-        }
-
-        if (currentRoundPhase == RoundPhase.RESETTING_BOARD) {
-            this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
-        }
-    }
-
-    /**
-     * Resets the board for the next round and persists either an era-changed or turn-started
-     * checkpoint depending on the resulting era.
-     */
-    public void resetBoard() {
-        this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
-        var previousEra = this.game.getCurrentEra();
-        this.game.resetBoard();
-        if (!this.didGameStateChange(previousVersion)) {
-            return;
-        }
-
-        if (this.game.getCurrentEra() != previousEra) {
-            this.persistOrFreeze("ERA_CHANGED", () -> this.persistenceCoordinator.recordEraChanged(this.game));
-            return;
-        }
-
-        this.persistOrFreeze("TURN_STARTED", () -> this.persistenceCoordinator.recordTurnStarted(this.game));
-    }
-    //per mappare da nickname a player
     private Player resolvePlayer(String nickname) {
         return this.players.stream()
                 .filter(p -> p.getNickname().equals(nickname))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Player not in this match: " + nickname));
-    }
-    /**
-     * Applies final scoring and then executes the application-level completion flow.
-     *
-     * <p>The completed-match snapshot is persisted first so the finished match remains recoverable
-     * even if a later ranking update fails. When a ranking service is configured, the method also
-     * records the completed match and returns the resulting ranking payload.
-     *
-     * @return ranking payload when the runtime is configured to register completed matches;
-     *         {@link Optional#empty()} otherwise
-     */
-    public Optional<RankingResult> calculateFinalScore() {
-        this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
-        this.game.calculateFinalScore();
-        if (!this.didGameStateChange(previousVersion)) {
-            return Optional.empty();
-        }
-        return this.finalizeCompletedMatchOrFreeze();
-    }
-
-    private static String resolveDefaultHostNickname(List<Player> players) {
-        if (players == null || players.isEmpty()) {
-            throw new IllegalArgumentException("Players cannot be null or empty");
-        }
-
-        Player host = players.getFirst();
-        if (host == null || host.getNickname() == null || host.getNickname().isBlank()) {
-            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
-        }
-
-        return requireHostNickname(host.getNickname());
-    }
-
-    private static String requireHostNickname(String hostNickname) {
-        if (hostNickname == null || hostNickname.isBlank()) {
-            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
-        }
-        return hostNickname;
     }
 
     private void ensureMatchIsWritable() {
@@ -390,5 +315,27 @@ public class GameOrchestrator {
 
     private boolean didGameStateChange(long previousVersion) {
         return this.game.getStateVersion() != previousVersion;
+    }
+
+    // Helper methods
+
+    private static String resolveDefaultHostNickname(List<Player> players) {
+        if (players == null || players.isEmpty()) {
+            throw new IllegalArgumentException("Players cannot be null or empty");
+        }
+
+        Player host = players.getFirst();
+        if (host == null || host.getNickname() == null || host.getNickname().isBlank()) {
+            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
+        }
+
+        return requireHostNickname(host.getNickname());
+    }
+
+    private static String requireHostNickname(String hostNickname) {
+        if (hostNickname == null || hostNickname.isBlank()) {
+            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
+        }
+        return hostNickname;
     }
 }

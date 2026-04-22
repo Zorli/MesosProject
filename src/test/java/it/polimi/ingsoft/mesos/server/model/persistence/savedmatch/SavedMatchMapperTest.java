@@ -47,8 +47,8 @@ class SavedMatchMapperTest {
 
         game.moveTotem(players.get(0), "B");
         game.moveTotem(players.get(1), "C");
-        game.chooseCard(players.get(0), MesosTestFixtures.findLowerRowCard(game, 10));
-        game.chooseCard(players.get(1), MesosTestFixtures.findUpperRowCard(game, 97));
+        game.chooseCard(players.get(0), MesosTestFixtures.findLowerRowCard(game, 10).getId());
+        game.chooseCard(players.get(1), MesosTestFixtures.findUpperRowCard(game, 97).getId());
 
         SetForFood setForFood = (SetForFood) players.get(1).getTribe().getBuildings().getFirst();
         setForFood.restoreRuntimeState(Map.of(

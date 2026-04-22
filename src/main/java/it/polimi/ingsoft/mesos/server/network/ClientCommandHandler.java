@@ -6,10 +6,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.server.virtualview.VirtualView;
@@ -75,6 +78,9 @@ public class ClientCommandHandler {
             case JOIN_LOBBY -> this.handleJoinLobby(payload, context);
             case EXIT_LOBBY -> this.handleExitLobby(payload, context);
             case START_LOBBY -> this.handleStartLobby(payload, context);
+            case MOVE_TOTEM -> this.handleMoveTotem(payload, context);
+            case CHOOSE_CARD -> this.handleChooseCard(payload, context);
+            case EXTRA_DRAW -> this.handleExtraDraw(payload, context);
             default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
         };
     }
@@ -151,10 +157,6 @@ public class ClientCommandHandler {
             throw new IllegalArgumentException("Malformed exit-lobby payload", exception);
         }
 
-        if (exitLobbyPayload.lobbyId <= 0) {
-            throw new IllegalArgumentException("Exit-lobby payload must contain a valid lobbyId");
-        }
-
         return this.virtualView.exitLobby(exitLobbyPayload);
     }
 
@@ -170,6 +172,52 @@ public class ClientCommandHandler {
         }
 
         return this.virtualView.startLobby(startLobbyPayload);
+    }
+
+    private ServerMessage handleMoveTotem(JsonElement payload, ConnectionContext context) {
+        MoveTotemPayload moveTotemPayload;
+        try {
+            moveTotemPayload = GSON.fromJson(payload, MoveTotemPayload.class);
+            if (moveTotemPayload == null) {
+                throw new IllegalArgumentException("Malformed move-totem payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed move-totem payload", exception);
+        }
+
+        if (moveTotemPayload.tile == null || moveTotemPayload.tile.isBlank()) {
+            throw new IllegalArgumentException("Move-totem payload must contain a tile");
+        }
+
+        return this.virtualView.moveTotem(moveTotemPayload);
+    }
+
+    private ServerMessage handleChooseCard(JsonElement payload, ConnectionContext context) {
+        ChooseCardPayload chooseCardPayload;
+        try {
+            chooseCardPayload = GSON.fromJson(payload, ChooseCardPayload.class);
+            if (chooseCardPayload == null) {
+                throw new IllegalArgumentException("Malformed choose-card payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed choose-card payload", exception);
+        }
+
+        return this.virtualView.chooseCard(chooseCardPayload);
+    }
+
+    private ServerMessage handleExtraDraw(JsonElement payload, ConnectionContext context) {
+        ExtraDrawPayload extraDrawPayload;
+        try {
+            extraDrawPayload = GSON.fromJson(payload, ExtraDrawPayload.class);
+            if (extraDrawPayload == null) {
+                throw new IllegalArgumentException("Malformed extra-draw payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed extra-draw payload", exception);
+        }
+
+        return this.virtualView.extraDraw(extraDrawPayload);
     }
 
     // Helper methods section

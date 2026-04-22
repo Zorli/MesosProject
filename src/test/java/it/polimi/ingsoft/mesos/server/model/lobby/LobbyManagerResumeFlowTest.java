@@ -42,8 +42,8 @@ class LobbyManagerResumeFlowTest {
         assertEquals("game-77", restoreService.capturedGameId);
         assertEquals("Bob", manager.getLobby(lobby.getId()).orElseThrow().getHostNickname());
 
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "C");
 
         assertEquals("Alice", restoreService.lastSavedHostNickname);
         assertEquals(1, restoreService.turnStartedCalls);

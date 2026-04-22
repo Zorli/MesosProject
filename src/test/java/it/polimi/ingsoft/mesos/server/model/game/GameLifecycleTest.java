@@ -114,7 +114,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.SETUP
         );
-        assertGameError(wrongStatusGame, InvalidGameStatusException.class, () -> wrongStatusGame.chooseCard(alice, character));
+        assertGameError(wrongStatusGame, InvalidGameStatusException.class, () -> wrongStatusGame.chooseCard(alice, character.getId()));
 
         TurnState phaseTurnState = new TurnState();
         phaseTurnState.registerDrawableCards(alice, 0, 1);
@@ -127,7 +127,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(wrongPhaseGame, InvalidGamePhaseException.class, () -> wrongPhaseGame.chooseCard(alice, character));
+        assertGameError(wrongPhaseGame, InvalidGamePhaseException.class, () -> wrongPhaseGame.chooseCard(alice, character.getId()));
 
         TurnState wrongPlayerTurnState = new TurnState();
         wrongPlayerTurnState.registerDrawableCards(alice, 0, 1);
@@ -140,7 +140,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(wrongPlayerGame, NotPlayersTurnException.class, () -> wrongPlayerGame.chooseCard(bob, character));
+        assertGameError(wrongPlayerGame, NotPlayersTurnException.class, () -> wrongPlayerGame.chooseCard(bob, character.getId()));
     }
 
     @Test
@@ -162,7 +162,7 @@ class GameLifecycleTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertGameError(undrawableGame, CardNotDrawableException.class, () -> undrawableGame.chooseCard(alice, character));
+        assertGameError(undrawableGame, CardNotDrawableException.class, () -> undrawableGame.chooseCard(alice, character.getId()));
 
         FaultyTurnState faultyTurnState = new FaultyTurnState();
         faultyTurnState.registerDrawableCards(alice, 0, 1);
@@ -176,7 +176,7 @@ class GameLifecycleTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertGameError(brokenTurnStateGame, InvalidTurnPhaseException.class, () -> brokenTurnStateGame.chooseCard(alice, character));
+        assertGameError(brokenTurnStateGame, InvalidTurnPhaseException.class, () -> brokenTurnStateGame.chooseCard(alice, character.getId()));
     }
 
     @Test
@@ -198,7 +198,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(undrawableUpperGame, CardNotDrawableException.class, () -> undrawableUpperGame.chooseCard(alice, building));
+        assertGameError(undrawableUpperGame, CardNotDrawableException.class, () -> undrawableUpperGame.chooseCard(alice, building.getId()));
 
         TurnState blockedLowerTurnState = new TurnState();
         blockedLowerTurnState.registerDrawableCards(alice, 1, 0);
@@ -213,7 +213,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(blockedLowerGame, CardRowSelectionNotAllowedException.class, () -> blockedLowerGame.chooseCard(alice, character));
+        assertGameError(blockedLowerGame, CardRowSelectionNotAllowedException.class, () -> blockedLowerGame.chooseCard(alice, character.getId()));
     }
 
     @Test
@@ -233,7 +233,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.SETUP
         );
-        assertGameError(wrongStatusGame, InvalidGameStatusException.class, () -> wrongStatusGame.extraDrawn(alice, character));
+        assertGameError(wrongStatusGame, InvalidGameStatusException.class, () -> wrongStatusGame.extraDrawn(alice, character.getId()));
 
         Game wrongPhaseGame = new Game(
                 1,
@@ -244,7 +244,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(wrongPhaseGame, InvalidGamePhaseException.class, () -> wrongPhaseGame.extraDrawn(alice, character));
+        assertGameError(wrongPhaseGame, InvalidGamePhaseException.class, () -> wrongPhaseGame.extraDrawn(alice, character.getId()));
 
         Game wrongPlayerGame = new Game(
                 1,
@@ -255,7 +255,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(wrongPlayerGame, NotPlayersTurnException.class, () -> wrongPlayerGame.extraDrawn(bob, character));
+        assertGameError(wrongPlayerGame, NotPlayersTurnException.class, () -> wrongPlayerGame.extraDrawn(bob, character.getId()));
 
         board.cardRow = CardRow.NOT_PRESENT;
         Game missingCardGame = new Game(
@@ -267,7 +267,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(missingCardGame, CardNotPresentException.class, () -> missingCardGame.extraDrawn(alice, character));
+        assertGameError(missingCardGame, CardNotPresentException.class, () -> missingCardGame.extraDrawn(alice, character.getId()));
     }
 
     @Test
@@ -291,7 +291,7 @@ class GameLifecycleTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.extraDrawn(alice, character);
+        game.extraDrawn(alice, character.getId());
 
         assertEquals(RoundPhase.EXTRA_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
         assertEquals(bob, game.getTurnOrderTrack().getCurrentPlayer());
@@ -316,7 +316,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(undrawableUpperGame, CardNotDrawableException.class, () -> undrawableUpperGame.extraDrawn(alice, building));
+        assertGameError(undrawableUpperGame, CardNotDrawableException.class, () -> undrawableUpperGame.extraDrawn(alice, building.getId()));
 
         board.cardRow = CardRow.LOWER;
         Game undrawableLowerGame = new Game(
@@ -328,7 +328,7 @@ class GameLifecycleTest {
                 Era.first,
                 GameStatus.IN_PROGRESS
         );
-        assertGameError(undrawableLowerGame, CardNotDrawableException.class, () -> undrawableLowerGame.extraDrawn(alice, character));
+        assertGameError(undrawableLowerGame, CardNotDrawableException.class, () -> undrawableLowerGame.extraDrawn(alice, character.getId()));
     }
 
     @Test

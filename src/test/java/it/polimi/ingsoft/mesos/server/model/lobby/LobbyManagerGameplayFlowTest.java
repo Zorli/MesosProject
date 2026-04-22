@@ -39,8 +39,8 @@ class LobbyManagerGameplayFlowTest {
 
         assertThrows(NotPlayersTurnException.class, () -> game.moveTotem(secondPlayer, "B"));
 
-        orchestrator.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), "B");
-        orchestrator.moveTotem(game.getTurnOrderTrack().getCurrentPlayer(), "C");
+        orchestrator.moveTotem(game.getTurnOrderTrack().getCurrentPlayer().getNickname(), "B");
+        orchestrator.moveTotem(game.getTurnOrderTrack().getCurrentPlayer().getNickname(), "C");
 
         assertEquals(RoundPhase.PLAYER_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
         Player drawPhaseLeader = game.getTurnOrderTrack().getCurrentPlayer();
@@ -50,15 +50,15 @@ class LobbyManagerGameplayFlowTest {
                 .orElseThrow();
         assertThrows(
                 CardRowSelectionNotAllowedException.class,
-                () -> game.chooseCard(drawPhaseLeader, MesosTestFixtures.findUpperRowCard(game, 3))
+                () -> game.chooseCard(drawPhaseLeader, MesosTestFixtures.findUpperRowCard(game, 3).getId())
         );
         assertThrows(
                 NotPlayersTurnException.class,
-                () -> game.chooseCard(waitingPlayer, MesosTestFixtures.findUpperRowCard(game, 3))
+                () -> game.chooseCard(waitingPlayer, MesosTestFixtures.findUpperRowCard(game, 3).getId())
         );
 
-        game.chooseCard(drawPhaseLeader, MesosTestFixtures.findLowerRowCard(game, 10));
-        game.chooseCard(waitingPlayer, MesosTestFixtures.findUpperRowCard(game, 3));
+        game.chooseCard(drawPhaseLeader, MesosTestFixtures.findLowerRowCard(game, 10).getId());
+        game.chooseCard(waitingPlayer, MesosTestFixtures.findUpperRowCard(game, 3).getId());
 
         assertEquals(RoundPhase.RESOLVING_EFFECTS, game.getTurnOrderTrack().getCurrentRoundPhase());
         game.resolveEffects();
@@ -89,11 +89,11 @@ class LobbyManagerGameplayFlowTest {
         Game game = orchestrator.getGame();
         List<Player> players = orchestrator.getPlayers();
 
-        orchestrator.moveTotem(players.get(0), "B");
-        orchestrator.moveTotem(players.get(1), "C");
-        orchestrator.moveTotem(players.get(2), "D");
-        orchestrator.moveTotem(players.get(3), "E");
-        orchestrator.moveTotem(players.get(4), "A");
+        orchestrator.moveTotem(players.get(0).getNickname(), "B");
+        orchestrator.moveTotem(players.get(1).getNickname(), "C");
+        orchestrator.moveTotem(players.get(2).getNickname(), "D");
+        orchestrator.moveTotem(players.get(3).getNickname(), "E");
+        orchestrator.moveTotem(players.get(4).getNickname(), "A");
 
         assertEquals(RoundPhase.PLAYER_DRAWS, game.getTurnOrderTrack().getCurrentRoundPhase());
         assertIterableEquals(
