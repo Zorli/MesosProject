@@ -203,8 +203,8 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
                 if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
                     try {
-                        GameOrchestrator orchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
-                        this.connectionContext.enterMatch(orchestrator);
+                      this.gameOrchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
+                      this.connectionContext.enterMatch(this.gameOrchestrator);
                     } catch (Exception e) {
                         this.clientCallback.handleError(new ErrorPayload("TRANSITION_ERROR", e.getMessage()));
                         return;

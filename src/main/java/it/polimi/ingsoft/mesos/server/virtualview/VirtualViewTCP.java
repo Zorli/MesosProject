@@ -308,8 +308,8 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
             if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED){
                 try {
-                    GameOrchestrator orchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
-                    this.connectionContext.enterMatch(orchestrator);
+                    this.gameOrchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
+                    this.connectionContext.enterMatch(this.gameOrchestrator);
                 } catch (Exception e) {
                     this.sendError(e);
                     return;
