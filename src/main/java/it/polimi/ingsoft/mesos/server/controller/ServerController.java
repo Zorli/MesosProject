@@ -2,17 +2,22 @@ package it.polimi.ingsoft.mesos.server.controller;
 //This should be the pre match orchestrator
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.LobbyManager;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ServerController {
     private final UserManager userManager;
     private final LobbyManager lobbyManager;
+    //mappa necessaria nello switch tra lobby e game,campi lobbyId, Gameorchestrator
+    final Map<Integer, GameOrchestrator> activeGames = new ConcurrentHashMap<>();
 
     public ServerController() {
         this(new UserManager(), new LobbyManager());
@@ -52,7 +57,9 @@ public class ServerController {
     }
 
     public GameOrchestrator createGameFromLobby(int lobbyId) {
-        return this.lobbyManager.createGameFromLobby(lobbyId);
+        GameOrchestrator orchestrator = this.lobbyManager.createGameFromLobby(lobbyId);
+        this.activeGames.put(lobbyId, orchestrator);
+        return orchestrator;
     }
 
     public UserManager getUserManager() {
@@ -61,5 +68,13 @@ public class ServerController {
 
     public LobbyManager getLobbyManager() {
         return this.lobbyManager;
+    }
+
+    public GameOrchestrator getGameOrchestrator(int lobbyId) {
+        GameOrchestrator orchestrator = this.activeGames.get(lobbyId);
+        if (orchestrator == null) {
+            throw new IllegalStateException("No Match open for lobby:: " + lobbyId);
+        }
+        return orchestrator;
     }
 }

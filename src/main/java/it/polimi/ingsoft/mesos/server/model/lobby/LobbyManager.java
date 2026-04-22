@@ -13,6 +13,8 @@ import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRes
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.user.User;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -116,6 +118,14 @@ public class LobbyManager {
                 && (lobby.getStatus() == LobbyStatus.WAITING || lobby.getStatus() == LobbyStatus.RESUMABLE)) {
             lobby.setStatus(LobbyStatus.READY);
         }
+        //creazione payload e invio a tutti
+        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
+                PreMatchEventType.LOBBY_JOINED,
+                user.getNickname(),
+                "Lobby joined successfully",
+                lobby
+        );
+        this.notifyLobbyListeners(lobbyId, update);
     }
 
     /**
@@ -142,8 +152,16 @@ public class LobbyManager {
 
         Lobby lobby = this.resolveLobby(lobbyId);
         lobby.removeUser(user);
-
-        if (lobby.getUsers().isEmpty() && !lobby.isResumable()) {
+        boolean isLobbyEmpty = lobby.getUsers().isEmpty() && !lobby.isResumable();
+        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
+                PreMatchEventType.LOBBY_LEFT,
+                user.getNickname(),
+                isLobbyEmpty ? "Lobby closed" : "Lobby left successfully",
+                isLobbyEmpty ? null : lobby,
+                lobbyId
+        );
+        this.notifyLobbyListeners(lobbyId, update);
+        if (isLobbyEmpty) {
             lobby.setStatus(LobbyStatus.CLOSED);
             this.lobbies.remove(lobbyId);
             this.lobbyListeners.remove(lobbyId);
@@ -226,6 +244,7 @@ public class LobbyManager {
      * @return created game orchestrator
      */
     public GameOrchestrator createGameFromLobby(int lobbyId) {
+
         return this.createGameFromLobby(lobbyId, NoOpSavedMatchService.INSTANCE);
     }
 
@@ -281,6 +300,14 @@ public class LobbyManager {
         );
         this.copyLobbyListenersToGame(lobby.getId(), gameOrchestrator.getGame());
         lobby.setStatus(LobbyStatus.STARTED);
+        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
+                PreMatchEventType.LOBBY_STARTED,
+                lobby.getHostNickname(),
+                "Match has started",
+                lobby,
+                lobbyId
+        );
+        this.notifyLobbyListeners(lobbyId, update);
         return gameOrchestrator;
     }
 
@@ -337,6 +364,14 @@ public class LobbyManager {
         );
         this.copyLobbyListenersToGame(lobby.getId(), gameOrchestrator.getGame());
         lobby.setStatus(LobbyStatus.STARTED);
+        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
+                PreMatchEventType.LOBBY_STARTED,
+                lobby.getHostNickname(),
+                "Resumed match has started",
+                lobby,
+                lobbyId
+        );
+        this.notifyLobbyListeners(lobbyId, update);
         return gameOrchestrator;
     }
 
@@ -419,5 +454,32 @@ public class LobbyManager {
                 ", lobbiesCount=" + this.lobbies.size() +
                 ", lobbies=" + orderedLobbies +
                 '}';
+    }
+    //metodi creazione payload pre_match
+    private PreMatchUpdatePayload buildPreMatchUpdatePayload(PreMatchEventType event, String nickname, String message, Lobby lobby) {
+        return this.buildPreMatchUpdatePayload(event, nickname, message, lobby, null);
+    }
+
+    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
+            PreMatchEventType event,
+            String nickname,
+            String message,
+            Lobby lobby,
+            Integer fallbackLobbyId
+    ) {
+        return new PreMatchUpdatePayload(
+                event,
+                nickname,
+                message,
+                lobby != null ? lobby.getId() : fallbackLobbyId,
+                lobby != null ? this.extractPlayers(lobby) : List.of(),
+                lobby != null ? lobby.getHostNickname() : null,
+                lobby != null ? lobby.getChosenCapacity() : null);
+
+    }
+    private List<String> extractPlayers(Lobby lobby) {
+        return lobby.getUsers().stream()
+                .map(User::getNickname)
+                .toList();
     }
 }
