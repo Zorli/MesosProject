@@ -233,8 +233,6 @@ public class Game {
             this.status = GameStatus.IN_PROGRESS;
             this.markStateChanged();
         });
-        GamePayload update = this.buildPayload();
-        notifyListeners(update);
     }
 
     //TODO : Add method for choosing the starting tile, as now they are placed as subscribed in lobby
@@ -289,8 +287,6 @@ public class Game {
             }
             this.markStateChanged();
         });
-        GamePayload update = this.buildPayload();
-        notifyListeners(update);
     }
     /**
      * Makes the active player draw one card from the board.
@@ -317,8 +313,6 @@ public class Game {
             }
             this.markStateChanged();
         });
-        GamePayload update = this.buildPayload();
-        this.notifyListeners(update);
     }
     /**
      * Resolves an extra card draw granted by a previously acquired building effect.
@@ -336,8 +330,6 @@ public class Game {
             this.completeExtraDrawTurn();
             this.markStateChanged();
         });
-        GamePayload update = this.buildPayload();
-        this.notifyListeners(update);
     }
     /**
      * Resolves lower-row events after all standard and bonus draws are completed.
@@ -359,8 +351,6 @@ public class Game {
             this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
             this.markStateChanged();
         });
-        GamePayload update = this.buildPayload();
-        this.notifyListeners(update);
     }
     /**
      * Resets the board after event resolution and prepares the next round.
@@ -383,8 +373,6 @@ public class Game {
             this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
             this.markStateChanged();
         });
-        GamePayload update = this.buildPayload();
-        this.notifyListeners(update);
     }
     /**
      * Applies final-scoring rules to every player and closes the match.
