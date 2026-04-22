@@ -45,18 +45,11 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
         try {
+            //prima lo aggiungo poi chiamo join
+            this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
             this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
             this.connectionContext.setCurrentLobbyId(payload.lobbyId);
-            this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
-            Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
-            PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                    PreMatchEventType.LOBBY_JOINED,
-                    this.connectionContext.getNickname(),
-                    "Lobby joined successfully",
-                    lobby
-            );
-
-            this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update);
+            //nel model (joinLobby ()) sarà creato il payload e mandato a tutti i listener con il notifier
         } catch (Exception e) {
             this.clientCallback.handleError(new ErrorPayload("JOIN_LOBBY_ERROR", e.getMessage()));
         }
@@ -66,6 +59,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         try {
             Lobby lobby = this.serverController.createLobby(this.connectionContext.getUser(), payload.chosenCapacity);
             this.connectionContext.setCurrentLobbyId(lobby.getId());
+            //necessario ordine invertito in creazione lobby, virtual che si avvisa da sola (unica)
             this.serverController.getLobbyManager().addLobbyListener(lobby.getId(), this);
             PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
                     PreMatchEventType.LOBBY_CREATED,
@@ -82,30 +76,20 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void exitLobby(ExitLobbyPayload payload) throws RemoteException {
         try {
+            //qui si chiama exit, leva l'user, manda il payload a tutti, se è l'ultimo listener
+            //ne elimina la lista (lobby cancellata) altrimenti nulla->torno e mi disconnetto come listener
             this.serverController.exitLobby(payload.lobbyId, this.connectionContext.getUser());
-            Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
+            this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
             this.connectionContext.setCurrentLobbyId(null);
 
-            PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                    PreMatchEventType.LOBBY_LEFT,
-                    this.connectionContext.getNickname(),
-                    lobby == null ? "Lobby closed" : "Lobby left successfully",
-                    lobby,
-                    payload.lobbyId
-            );
-
-            if (lobby == null) {
-                this.clientCallback.handlePreMatchUpdate(update);
-            } else {
-                this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update);
-                this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
-            }
         } catch (Exception e) {
+
             this.clientCallback.handleError(new ErrorPayload("EXIT_LOBBY_ERROR", e.getMessage()));
         }
     }
     @Override
     public void listLobbies(ListLobbiesPayload payload) throws RemoteException {
+        //questa è solo una query non modifica niente (non è update) la lasciamo cosi
         try{
             List<LobbySummaryPayload> lobbies = this.serverController.listOpenLobbies().stream()
                     .map(this::toLobbySummaryPayload)
@@ -117,18 +101,12 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
     @Override
     public void startLobby(StartLobbyPayload payload) throws RemoteException {
-        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-        this.gameOrchestrator = this.serverController.createGameFromLobby(lobbyId);
-        this.connectionContext.enterMatch(this.gameOrchestrator);
-        Lobby lobby = this.serverController.getLobby(lobbyId).orElse(null);
-        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_STARTED,
-                this.connectionContext.getNickname(),
-                "Lobby started successfully",
-                lobby,
-                lobbyId
-        );
-        this.serverController.getLobbyManager().notifyLobbyListeners(lobbyId, update);
+        try {
+            Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+            this.serverController.createGameFromLobby(lobbyId);
+        } catch (Exception e) {
+            this.clientCallback.handleError(new ErrorPayload("START_LOBBY_ERROR", e.getMessage()));
+        }
     }
     @Override
     public void setupMatch(SetupMatchPayload payload) throws RemoteException {
@@ -194,7 +172,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 event,
                 nickname,
                 message,
-                lobby != null ? String.valueOf(lobby.getId()) : fallbackLobbyId == null ? null : String.valueOf(fallbackLobbyId),
+                lobby != null ? lobby.getId() : fallbackLobbyId,
                 lobby != null ? this.extractPlayers(lobby) : List.of(),
                 lobby != null ? lobby.getHostNickname() : null,
                 lobby != null ? lobby.getChosenCapacity() : null
@@ -223,6 +201,15 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 return;
             }
             if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
+                if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
+                    try {
+                      this.gameOrchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
+                      this.connectionContext.enterMatch(this.gameOrchestrator);
+                    } catch (Exception e) {
+                        this.clientCallback.handleError(new ErrorPayload("TRANSITION_ERROR", e.getMessage()));
+                        return;
+                    }
+                }
                 this.clientCallback.handlePreMatchUpdate(preMatchUpdatePayload);
             }
         } catch (RemoteException ignored) {

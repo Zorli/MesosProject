@@ -165,55 +165,27 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     @Override
     public ServerMessage joinLobby(JoinLobbyPayload payload) {
+        this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
         this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
         this.connectionContext.setCurrentLobbyId(payload.lobbyId);
-        this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
-        Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
-        ServerMessage update = this.buildPreMatchUpdate(
-                PreMatchEventType.LOBBY_JOINED,
-                this.connectionContext.getNickname(),
-                "Lobby joined successfully",
-                lobby
-        );
-        this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update.payload);
+
         return null;
     }
 
     @Override
     public ServerMessage exitLobby(ExitLobbyPayload payload) {
         this.serverController.exitLobby(payload.lobbyId, this.connectionContext.getUser());
-        Lobby lobby = this.serverController.getLobby(payload.lobbyId).orElse(null);
-        this.connectionContext.setCurrentLobbyId(null);
-        ServerMessage update = this.buildPreMatchUpdate(
-                PreMatchEventType.LOBBY_LEFT,
-                this.connectionContext.getNickname(),
-                lobby == null ? "Lobby closed" : "Lobby left successfully",
-                lobby,
-                payload.lobbyId
-        );
-        if (lobby == null) {
-            return update;
-        }
-
-        this.serverController.getLobbyManager().notifyLobbyListeners(payload.lobbyId, update.payload);
         this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
+        this.connectionContext.setCurrentLobbyId(null);
+
         return null;
     }
 
     @Override
     public ServerMessage startLobby(StartLobbyPayload payload) {
         Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-        this.gameOrchestrator = this.serverController.createGameFromLobby(lobbyId);
-        this.connectionContext.enterMatch(this.gameOrchestrator);
-        Lobby lobby = this.serverController.getLobby(lobbyId).orElse(null);
-        ServerMessage update = this.buildPreMatchUpdate(
-                PreMatchEventType.LOBBY_STARTED,
-                this.connectionContext.getNickname(),
-                "Lobby started successfully",
-                lobby,
-                lobbyId
-        );
-        this.serverController.getLobbyManager().notifyLobbyListeners(lobbyId, update.payload);
+        this.serverController.createGameFromLobby(lobbyId);
+
         return null;
     }
 
@@ -298,7 +270,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
                 event,
                 nickname,
                 message,
-                lobby != null ? String.valueOf(lobby.getId()) : fallbackLobbyId == null ? null : String.valueOf(fallbackLobbyId),
+                lobby != null ? lobby.getId() : fallbackLobbyId,
                 lobby != null ? this.extractPlayers(lobby) : List.of(),
                 lobby != null ? lobby.getHostNickname() : null,
                 lobby != null ? lobby.getChosenCapacity() : null
@@ -334,6 +306,15 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             return;
         }
         if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
+            if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED){
+                try {
+                    this.gameOrchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
+                    this.connectionContext.enterMatch(this.gameOrchestrator);
+                } catch (Exception e) {
+                    this.sendError(e);
+                    return;
+                }
+            }
             this.sendServerMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
         }
     }

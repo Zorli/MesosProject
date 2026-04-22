@@ -7,6 +7,7 @@
       requires com.fasterxml.jackson.databind;
       requires com.google.gson;
       requires java.rmi;
+      requires it.polimi.ingsoft.mesos;
       //requires it.polimi.ingsoft.mesos;
 
       opens it.polimi.ingsoft.mesos.client.view.gui to javafx.fxml, javafx.graphics;
