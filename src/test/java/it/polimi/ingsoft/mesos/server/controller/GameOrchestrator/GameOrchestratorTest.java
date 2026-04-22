@@ -142,10 +142,10 @@ class GameOrchestratorTest {
         );
         orchestrator.setupMatch();
 
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "B");
         assertEquals(0, savedMatchService.turnStartedCalls);
 
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "C");
         assertEquals(1, savedMatchService.turnStartedCalls);
         assertEquals(RoundPhase.PLAYER_DRAWS, orchestrator.getGame().getTurnOrderTrack().getCurrentRoundPhase());
     }
@@ -164,7 +164,7 @@ class GameOrchestratorTest {
         moveGameToDrawPhase(orchestrator);
 
         Card chosenCard = MesosTestFixtures.findLowerRowCard(orchestrator.getGame(), 10);
-        orchestrator.chooseCard(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), chosenCard);
+        orchestrator.chooseCard(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), chosenCard.getId());
 
         assertEquals(1, savedMatchService.turnFinishedCalls);
         assertEquals("Alice", savedMatchService.lastHostNickname);
@@ -178,7 +178,7 @@ class GameOrchestratorTest {
         Game game = AdvancedGameStateFixtures.createExtraDrawScenario();
         GameOrchestrator orchestrator = new GameOrchestrator(game, "Alice", savedMatchService);
 
-        orchestrator.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer(), MesosTestFixtures.findUpperRowCard(game, 66));
+        orchestrator.extraDrawn(game.getTurnOrderTrack().getCurrentPlayer().getNickname(), MesosTestFixtures.findUpperRowCard(game, 66).getId());
 
         assertEquals(1, savedMatchService.turnFinishedCalls);
         assertEquals(RoundPhase.RESOLVING_EFFECTS, game.getTurnOrderTrack().getCurrentRoundPhase());
@@ -313,7 +313,7 @@ class GameOrchestratorTest {
         assertTrue(orchestrator.isFrozen());
         assertEquals(1, savedMatchService.initializeCalls);
         assertThrows(MatchFrozenException.class, orchestrator::setupMatch);
-        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem(players.getFirst(), "B"));
+        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem(players.getFirst().getNickname(), "B"));
     }
 
     @Test
@@ -330,11 +330,11 @@ class GameOrchestratorTest {
         );
         orchestrator.setupMatch();
 
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "B");
 
         MatchPersistenceFailureException exception = assertThrows(
                 MatchPersistenceFailureException.class,
-                () -> orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C")
+                () -> orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "C")
         );
 
         assertEquals("Failed to persist checkpoint TURN_STARTED; match is now frozen", exception.getMessage());
@@ -342,7 +342,7 @@ class GameOrchestratorTest {
         assertTrue(orchestrator.isFrozen());
         assertEquals(1, savedMatchService.turnStartedCalls);
         assertEquals(RoundPhase.PLAYER_DRAWS, orchestrator.getGame().getTurnOrderTrack().getCurrentRoundPhase());
-        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem(players.getFirst(), "D"));
+        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem(players.getFirst().getNickname(), "D"));
     }
 
     @Test
@@ -363,7 +363,7 @@ class GameOrchestratorTest {
                 MatchPersistenceFailureException.class,
                 () -> orchestrator.chooseCard(
                         orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
-                        MesosTestFixtures.findLowerRowCard(orchestrator.getGame(), 10)
+                        MesosTestFixtures.findLowerRowCard(orchestrator.getGame().getId(), 10)
                 )
         );
 
@@ -374,7 +374,7 @@ class GameOrchestratorTest {
                 MatchFrozenException.class,
                 () -> orchestrator.chooseCard(
                         orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(),
-                        MesosTestFixtures.findUpperRowCard(orchestrator.getGame(), 3)
+                        MesosTestFixtures.findUpperRowCard(orchestrator.getGame().getId(), 3)
                 )
         );
     }
@@ -482,7 +482,7 @@ class GameOrchestratorTest {
         Game restoredGame = DefaultGameFactory.getInstance().createGame(players);
         GameOrchestrator orchestrator = new GameOrchestrator(restoredGame, "Alice", savedMatchService);
 
-        orchestrator.moveTotem(players.getFirst(), "B");
+        orchestrator.moveTotem(players.getFirst().getNickname(), "B");
         assertEquals(0, savedMatchService.turnStartedCalls);
     }
 
@@ -492,8 +492,8 @@ class GameOrchestratorTest {
 
     private static void moveGameToDrawPhase(GameOrchestrator orchestrator) {
         orchestrator.setupMatch();
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "B");
-        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer(), "C");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "B");
+        orchestrator.moveTotem(orchestrator.getGame().getTurnOrderTrack().getCurrentPlayer().getNickname(), "C");
     }
 
     private static Player player(String nickname, TotemColor color) {

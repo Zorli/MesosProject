@@ -94,10 +94,10 @@ public class ServerProxyRMI implements ServerProxy{
         }
     }
     @Override
-    public void exitLobby(int lobbyId) {
+    public void exitLobby() {
         if (!this.ensureAuthenticated()) return;
         try {
-            this.serverStub.exitLobby(new ExitLobbyPayload(lobbyId));
+            this.serverStub.exitLobby(new ExitLobbyPayload());
 
         } catch (RemoteException e) {
             this.handleDisconnection(e);
@@ -109,6 +109,36 @@ public class ServerProxyRMI implements ServerProxy{
         if (!this.ensureAuthenticated()) return;
         try {
             this.serverStub.startLobby(new StartLobbyPayload());
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    @Override
+    public void moveTotem(String tile) {
+        if (!this.ensureAuthenticated()) return;
+        try {
+            this.serverStub.moveTotem(new MoveTotemPayload(tile));
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    @Override
+    public void chooseCard(int cardId) {
+        if (!this.ensureAuthenticated()) return;
+        try {
+            this.serverStub.chooseCard(new ChooseCardPayload(cardId));
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    @Override
+    public void extraDraw(int cardId) {
+        if (!this.ensureAuthenticated()) return;
+        try {
+            this.serverStub.extraDraw(new ExtraDrawPayload(cardId));
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }

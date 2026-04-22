@@ -48,7 +48,7 @@ class GameExtraDrawnTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.extraDrawn(alice, chosenBuilding);
+        game.extraDrawn(alice, chosenBuilding.getId());
 
         assertEquals(2, alice.getFood());
         assertTrue(alice.getTribe().getBuildings().contains(chosenBuilding));
@@ -76,7 +76,7 @@ class GameExtraDrawnTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertGameError(game, IllegalStateException.class, () -> game.extraDrawn(alice, character));
+        assertGameError(game, IllegalStateException.class, () -> game.extraDrawn(alice, character.getId()));
     }
 
     private static Player player(String nickname, int food, TotemColor color) {

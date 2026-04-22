@@ -50,7 +50,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.chooseCard(alice, building);
+        game.chooseCard(alice, building.getId());
 
         assertEquals(2, alice.getFood());
         assertTrue(alice.getTribe().getBuildings().contains(building));
@@ -82,7 +82,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertGameError(game, CardNotPresentException.class, () -> game.chooseCard(alice, character));
+        assertGameError(game, CardNotPresentException.class, () -> game.chooseCard(alice, character.getId()));
     }
 
     @Test
@@ -107,7 +107,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        assertGameError(game, CardRowSelectionNotAllowedException.class, () -> game.chooseCard(alice, building));
+        assertGameError(game, CardRowSelectionNotAllowedException.class, () -> game.chooseCard(alice, building.getId()));
     }
 
     @Test
@@ -136,7 +136,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.chooseCard(alice, character);
+        game.chooseCard(alice, character.getId());
 
         assertEquals(bob, turnOrderTrack.getCurrentPlayer());
         assertEquals(RoundPhase.PLAYER_DRAWS, turnOrderTrack.getCurrentRoundPhase());
@@ -174,7 +174,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.chooseCard(alice, character);
+        game.chooseCard(alice, character.getId());
 
         assertEquals(carol, turnOrderTrack.getCurrentPlayer());
         assertEquals(RoundPhase.PLAYER_DRAWS, turnOrderTrack.getCurrentRoundPhase());
@@ -210,7 +210,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.chooseCard(alice, character);
+        game.chooseCard(alice, character.getId());
 
         assertEquals(RoundPhase.EXTRA_DRAWS, turnOrderTrack.getCurrentRoundPhase());
         assertEquals(List.of(alice), turnOrderTrack.getTurnOrder());
@@ -241,7 +241,7 @@ class GameChooseCardTest {
                 GameStatus.IN_PROGRESS
         );
 
-        game.chooseCard(alice, character);
+        game.chooseCard(alice, character.getId());
 
         assertEquals(RoundPhase.RESOLVING_EFFECTS, turnOrderTrack.getCurrentRoundPhase());
         assertEquals(List.of(bob, alice), turnOrderTrack.getTurnOrder());

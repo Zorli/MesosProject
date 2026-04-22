@@ -45,6 +45,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
         try {
+            this.logReceived("JOIN_LOBBY", "lobbyId=" + payload.lobbyId);
             //prima lo aggiungo poi chiamo join
             this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
             this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
@@ -57,6 +58,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void createLobby(CreateLobbyPayload payload) throws RemoteException{
         try {
+            this.logReceived("CREATE_LOBBY", "chosenCapacity=" + payload.chosenCapacity);
             Lobby lobby = this.serverController.createLobby(this.connectionContext.getUser(), payload.chosenCapacity);
             this.connectionContext.setCurrentLobbyId(lobby.getId());
             //necessario ordine invertito in creazione lobby, virtual che si avvisa da sola (unica)
@@ -76,10 +78,15 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void exitLobby(ExitLobbyPayload payload) throws RemoteException {
         try {
+            this.logReceived("EXIT_LOBBY", "{}");
+            Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+            if (lobbyId == null) {
+                throw new IllegalStateException("Client is not in a lobby");
+            }
             //qui si chiama exit, leva l'user, manda il payload a tutti, se è l'ultimo listener
             //ne elimina la lista (lobby cancellata) altrimenti nulla->torno e mi disconnetto come listener
-            this.serverController.exitLobby(payload.lobbyId, this.connectionContext.getUser());
-            this.serverController.getLobbyManager().removeLobbyListener(payload.lobbyId, this);
+            this.serverController.exitLobby(lobbyId, this.connectionContext.getUser());
+            this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
             this.connectionContext.setCurrentLobbyId(null);
 
         } catch (Exception e) {
@@ -91,6 +98,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void listLobbies(ListLobbiesPayload payload) throws RemoteException {
         //questa è solo una query non modifica niente (non è update) la lasciamo cosi
         try{
+            this.logReceived("LIST_LOBBIES", "{}");
             List<LobbySummaryPayload> lobbies = this.serverController.listOpenLobbies().stream()
                     .map(this::toLobbySummaryPayload)
                     .toList();
@@ -102,25 +110,22 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void startLobby(StartLobbyPayload payload) throws RemoteException {
         try {
+            this.logReceived("START_LOBBY", "{}");
             Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-            this.serverController.createGameFromLobby(lobbyId);
+            this.gameOrchestrator = this.serverController.createGameFromLobby(
+                    lobbyId,
+                    this.connectionContext.getUser()
+            );
+            this.connectionContext.enterMatch(this.gameOrchestrator);
         } catch (Exception e) {
             this.clientCallback.handleError(new ErrorPayload("START_LOBBY_ERROR", e.getMessage()));
         }
-    }
-    //non ha senso, serve solo mettere il notify a ritroso, va gestito lato server (da cancellare relativo payload)
-    @Override
-    public void setupMatch(SetupMatchPayload payload) throws RemoteException {
-       try{
-           this.gameOrchestrator.setupMatch();
-       } catch (Exception e) {
-           this.clientCallback.handleError(new ErrorPayload("SETUP_MATCH_ERROR", e.getMessage()));
-       }
     }
 
     @Override
     public void moveTotem(MoveTotemPayload payload)  throws RemoteException {
       try{
+          this.logReceived("MOVE_TOTEM", "tile=" + payload.tile);
           String nickname = this.connectionContext.getNickname();
           this.gameOrchestrator.moveTotem(nickname, payload.tile);
       } catch (Exception e) {
@@ -131,6 +136,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void chooseCard(ChooseCardPayload payload)  throws RemoteException {
         try{
+            this.logReceived("CHOOSE_CARD", "cardId=" + payload.cardId);
             String nickname = this.connectionContext.getNickname();
             this.gameOrchestrator.chooseCard(nickname,payload.cardId);
         } catch (Exception e) {
@@ -141,35 +147,14 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void extraDraw(ExtraDrawPayload payload)  throws RemoteException {
         try{
+            this.logReceived("EXTRA_DRAW", "cardId=" + payload.cardId);
             String nickname = this.connectionContext.getNickname();
             this.gameOrchestrator.extraDrawn(nickname,payload.cardId);
         } catch (Exception e) {
             this.clientCallback.handleError(new ErrorPayload("EXTRA_DRAW_ERROR", e.getMessage()));
         }
     }
-    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public void resolveEffects(ResolveEffectsPayload payload)  throws RemoteException {
-        try{
-            this.gameOrchestrator.resolveEffects();
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("RESOLVE_ERROR", e.getMessage()));
-        }
-    }
-    //non ha senso, serve solo mettere il notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public void resetBoard(ResetBoardPayload payload)  throws RemoteException {
-       try{
-           this.gameOrchestrator.resetBoard();
-       } catch (Exception e) {
-           this.clientCallback.handleError(new ErrorPayload("RESET_BOARD_ERROR", e.getMessage()));
-       }
-    }
-    // anche questo automatico end_match solo notify a ritroso va gestito lato server (da cancellare relativo payload)
-    @Override
-    public void finalScore(FinalScorePayload payload)  throws RemoteException {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
+
     @Override
     public void closeSession() throws RemoteException {
         try {
@@ -216,11 +201,18 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         );
     }
 
+    private void logReceived(String command, String payload) {
+        System.out.println("[RMI] Received " + command
+                + " from " + this.connectionContext.getNickname()
+                + " payload=" + payload);
+    }
+
 
     @Override
     public void notifyUpdate(Object payload) {
         try {
             if (payload instanceof GamePayload gamePayload) {
+                this.enterCurrentMatchIfAvailable();
                 this.clientCallback.handleGameUpdate(gamePayload);
                 return;
             }
@@ -230,17 +222,26 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             }
             if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
                 if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
-                    try {
-                      this.gameOrchestrator = this.serverController.getGameOrchestrator(preMatchUpdatePayload.lobbyId);
-                      this.connectionContext.enterMatch(this.gameOrchestrator);
-                    } catch (Exception e) {
-                        this.clientCallback.handleError(new ErrorPayload("TRANSITION_ERROR", e.getMessage()));
-                        return;
-                    }
+                    this.enterMatchIfAvailable(preMatchUpdatePayload.lobbyId);
                 }
                 this.clientCallback.handlePreMatchUpdate(preMatchUpdatePayload);
             }
         } catch (RemoteException ignored) {
+        }
+    }
+
+    private void enterCurrentMatchIfAvailable() {
+        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+        if (lobbyId != null) {
+            this.enterMatchIfAvailable(lobbyId);
+        }
+    }
+
+    private void enterMatchIfAvailable(int lobbyId) {
+        try {
+            this.gameOrchestrator = this.serverController.getGameOrchestrator(lobbyId);
+            this.connectionContext.enterMatch(this.gameOrchestrator);
+        } catch (Exception ignored) {
         }
     }
 }

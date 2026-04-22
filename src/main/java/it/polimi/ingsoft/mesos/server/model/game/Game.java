@@ -11,7 +11,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
@@ -206,7 +205,13 @@ public class Game {
         this.markStateChanged();
     }
 
-    // Public methods
+    // Public methods(Sono I metodi che esponiamo ai client attraverso orchestrator)
+    //Hanno già le API uniformate per lavorare bene con la rete
+    //Se necessario chiamano metodi interni effetuando una prima conversione con
+    //oggetti propri del model che non possono viaggiare via rete.
+    //Per separare bene questi due livelli tutti i metodi pubblici wrappano il
+    //Corrispondente metodo interno privato con oggetti già eventualmente convertiti
+
     
     /**
      * Performs the initial game setup.
@@ -217,21 +222,7 @@ public class Game {
      */
     public void setup(){
         this.executeGameAction(() -> {
-            if (this.status != GameStatus.SETUP) {
-                throw new InvalidGameStatusException("setup", this.status);
-            }
-            this.board.buildOfferPath();
-
-            this.board.setupInitialRows();
-            applyInitialBenefit();
-
-            this.turnOrderTrack.setNewOrder(players);
-            this.turnOrderTrack.advanceRoundNumber();
-            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
-
-            this.turnState.resetForNewRound();
-            this.status = GameStatus.IN_PROGRESS;
-            this.markStateChanged();
+            this.setupInternal();
         });
     }
 
@@ -253,39 +244,7 @@ public class Game {
      */
     public void moveTotem(Player player, String tile){
         this.executeGameAction(() -> {
-            if (this.status != GameStatus.IN_PROGRESS) {
-                throw new InvalidGameStatusException("moveTotem", this.status);
-            }
-
-            if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.PLACING_TOTEMS) {
-                throw new InvalidGamePhaseException("moveTotem", this.turnOrderTrack.getCurrentRoundPhase());
-            }
-
-            if (!this.turnOrderTrack.getCurrentPlayer().equals(player)) {
-                throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
-            }
-
-            if (tile == null || !this.board.isSpaceAvailable(tile)) {
-                throw new TileNotAvailableException(tile);
-            }
-
-            this.board.placePlayerOnOfferSpace(player, tile);
-
-            int[] drawableCards = this.board.returnNumberDrawableCard(player);
-            this.turnState.registerDrawableCards(player, drawableCards[0], drawableCards[1]);
-
-            if (this.turnOrderTrack.isLastPlayer()) {
-                this.board.resolveEventA();
-                this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
-                while (!this.turnState.hasDrawableCards(this.turnOrderTrack.getCurrentPlayer())
-                        && !this.turnOrderTrack.isLastPlayer()) {
-                    this.turnOrderTrack.advanceToNextPlayer();
-                }
-                this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
-            } else {
-                this.turnOrderTrack.advanceToNextPlayer();
-            }
-            this.markStateChanged();
+            this.moveTotemInternal(player, tile);
         });
     }
     /**
@@ -300,20 +259,10 @@ public class Game {
      */
     public void chooseCard(Player player, int cardId){
         this.executeGameAction(() -> {
-            this.validateChooseCardRequest(player);
-            this.ensureDrawStateStarted(player);
-
-            ChosenCardResult result = this.validateAndRemoveChosenCard(player, cardId);
-            this.applyChosenCardToPlayer(player, result.card);
-
-            this.turnState.onCardChosen(player, result.row);
-
-            if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) {
-                this.completeDrawTurn(player);
-            }
-            this.markStateChanged();
+            this.chooseCardInternal(player, this.board.findCardById(cardId));
         });
     }
+
     /**
      * Resolves an extra card draw granted by a previously acquired building effect.
      *
@@ -322,88 +271,67 @@ public class Game {
      */
     public void extraDrawn(Player player, int cardId){
         this.executeGameAction(() -> {
-            this.validateExtraDrawRequest(player);
-            //extraDrawn e chooseCard devono prendere in ingresso solo il cardId, questa struttura permette di ottenere
-            //tutto ciò che serve dalla board con una chiamata
-            ChosenCardResult result = this.validateAndRemoveExtraDrawCard(player, cardId);
-            this.applyChosenCardToPlayer(player, result.card);
-            this.completeExtraDrawTurn();
-            this.markStateChanged();
-        });
-    }
-    /**
-     * Resolves lower-row events after all standard and bonus draws are completed.
-     *
-     * <p>If the match has reached round ten the method transitions directly to final scoring;
-     * otherwise it advances the round flow to board reset.
-     */
-    public void resolveEffects(){
-        this.executeGameAction(() -> {
-            this.validateResolveEffectsRequest();
-
-            if (this.turnOrderTrack.getRoundNumber() == 10) {
-                this.board.resolveAllEvents();
-                this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
-                this.markStateChanged();
-                return;
-            }
-            this.board.resolveLowerEvents();
-            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
-            this.markStateChanged();
-        });
-    }
-    /**
-     * Resets the board after event resolution and prepares the next round.
-     *
-     * <p>The reset may also advance the era when the board reports an era transition. At the end
-     * of the method the round counter, turn state, and phase tracker are ready for the next totem
-     * placement sequence.
-     */
-    public void resetBoard(){
-        this.executeGameAction(() -> {
-            this.validateResetBoardRequest();
-
-            boolean eraChanged = this.board.resetBoardAfterRound(this.currentEra);
-            if (eraChanged) {
-                this.currentEra = this.currentEra.next();
-            }
-
-            this.turnOrderTrack.advanceRoundNumber();
-            this.turnState.resetForNewRound();
-            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
-            this.markStateChanged();
-        });
-    }
-    /**
-     * Applies final-scoring rules to every player and closes the match.
-     *
-     * <p>The method evaluates final building effects, awards final prestige points, and transitions
-     * the match status to {@code FINISHED}.
-     */
-    public void calculateFinalScore(){
-        this.executeGameAction(() -> {
-            if (this.status != GameStatus.IN_PROGRESS) {
-                throw new InvalidGameStatusException("calculateFinalScore", this.status);
-            }
-
-            if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.FINAL_SCORING) {
-                throw new InvalidGamePhaseException("calculateFinalScore", this.turnOrderTrack.getCurrentRoundPhase());
-            }
-
-            for (Player player : this.players) {
-                for (BuildingCard building : player.getTribe().getBuildings()) {
-                    building.increaseFinalPrestigePoints(player);
-                    building.applyEffect(player);
-                }
-                player.gainPrestigePoints(player.getTribe().getPrestigePointsForBuilderInFinalPhase());
-            }
-
-            this.status = GameStatus.FINISHED;
-            this.markStateChanged();
+            this.extraDrawnInternal(player, this.board.findCardById(cardId));
         });
     }
 
     // Private methods
+    //Qui stanno tutti i metodi che vengono eseguiti wrappati dai metodi
+    //pubblici
+
+    private void setupInternal() {
+        if (this.status != GameStatus.SETUP) {
+            throw new InvalidGameStatusException("setup", this.status);
+        }
+        this.board.buildOfferPath();
+
+        this.board.setupInitialRows();
+        applyInitialBenefit();
+
+        this.turnOrderTrack.setNewOrder(players);
+        this.turnOrderTrack.advanceRoundNumber();
+        this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+
+        this.turnState.resetForNewRound();
+        this.status = GameStatus.IN_PROGRESS;
+        this.markStateChanged();
+    }
+
+    private void moveTotemInternal(Player player, String tile) {
+        if (this.status != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("moveTotem", this.status);
+        }
+
+        if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.PLACING_TOTEMS) {
+            throw new InvalidGamePhaseException("moveTotem", this.turnOrderTrack.getCurrentRoundPhase());
+        }
+
+        if (!this.turnOrderTrack.getCurrentPlayer().equals(player)) {
+            throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
+        }
+
+        if (tile == null || !this.board.isSpaceAvailable(tile)) {
+            throw new TileNotAvailableException(tile);
+        }
+
+        this.board.placePlayerOnOfferSpace(player, tile);
+
+        int[] drawableCards = this.board.returnNumberDrawableCard(player);
+        this.turnState.registerDrawableCards(player, drawableCards[0], drawableCards[1]);
+
+        if (this.turnOrderTrack.isLastPlayer()) {
+            this.board.resolveEventA();
+            this.turnOrderTrack.setNewOrder(this.board.getResolutionOrder());
+            while (!this.turnState.hasDrawableCards(this.turnOrderTrack.getCurrentPlayer())
+                    && !this.turnOrderTrack.isLastPlayer()) {
+                this.turnOrderTrack.advanceToNextPlayer();
+            }
+            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
+        } else {
+            this.turnOrderTrack.advanceToNextPlayer();
+        }
+        this.markStateChanged();
+    }
 
     /**
      * Validates lifecycle status, round phase, and turn ownership for a standard card draw.
@@ -422,6 +350,22 @@ public class Game {
         if (!this.turnOrderTrack.getCurrentPlayer().equals(player)) {
             throw new NotPlayersTurnException(this.turnOrderTrack.getCurrentPlayer(), player);
         }
+    }
+
+    private void chooseCardInternal(Player player, Card card) {
+        this.validateChooseCardRequest(player);
+        this.ensureDrawStateStarted(player);
+
+        ChosenCardResult result = this.validateAndRemoveChosenCard(player, card);
+        this.applyChosenCardToPlayer(player, result.card);
+
+        this.turnState.onCardChosen(player, result.row);
+
+        if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) {
+            this.completeDrawTurn(player);
+        }
+        this.advancePassivePhases();
+        this.markStateChanged();
     }
 
     /**
@@ -446,8 +390,7 @@ public class Game {
      * @param cardId chosen board card
      * @return board row the card was removed from
      */
-    private ChosenCardResult validateAndRemoveChosenCard(Player player, int cardId) {
-        Card card = this.board.findCardById(cardId);
+    private ChosenCardResult validateAndRemoveChosenCard(Player player, Card card) {
         CardRow cardRow = this.board.getCardRow(card);
         if (cardRow == CardRow.NOT_PRESENT) {
             throw new CardNotPresentException(card);
@@ -524,6 +467,15 @@ public class Game {
         }
     }
 
+    private void extraDrawnInternal(Player player, Card card) {
+        this.validateExtraDrawRequest(player);
+        ChosenCardResult result = this.validateAndRemoveExtraDrawCard(player, card);
+        this.applyChosenCardToPlayer(player, result.card);
+        this.completeExtraDrawTurn();
+        this.advancePassivePhases();
+        this.markStateChanged();
+    }
+
     /**
      * Verifies that the requested extra-draw card is present and drawable, then removes it.
      *
@@ -531,8 +483,7 @@ public class Game {
      * @param cardId chosen extra-draw card
      * @return board row the card was removed from
      */
-    private ChosenCardResult validateAndRemoveExtraDrawCard(Player player, int cardId) {
-        Card card = this.board.findCardById(cardId);
+    private ChosenCardResult validateAndRemoveExtraDrawCard(Player player, Card card) {
         CardRow cardRow = this.board.getCardRow(card);
         if (cardRow == CardRow.NOT_PRESENT) {
             throw new CardNotPresentException(card);
@@ -606,6 +557,73 @@ public class Game {
             this.board.returnPlayerToStartingTile(nextPlayer);
             this.turnState.resetForNextPlayer(nextPlayer);
         }
+    }
+
+    //Questo metodo consente al game di avanzare in maniera autonoma
+    //se necessario
+    private void advancePassivePhases() {
+        while (this.status == GameStatus.IN_PROGRESS) {
+            RoundPhase currentPhase = this.turnOrderTrack.getCurrentRoundPhase();
+
+            if (currentPhase == RoundPhase.RESOLVING_EFFECTS) {
+                this.resolveEffectsInternal();
+            } else if (currentPhase == RoundPhase.RESETTING_BOARD) {
+                this.resetBoardInternal();
+            } else if (currentPhase == RoundPhase.FINAL_SCORING) {
+                this.calculateFinalScoreInternal();
+            } else {
+                return;
+            }
+        }
+    }
+
+    private void resolveEffectsInternal() {
+        this.validateResolveEffectsRequest();
+
+        if (this.turnOrderTrack.getRoundNumber() == 10) {
+            this.board.resolveAllEvents();
+            this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.FINAL_SCORING);
+            this.markStateChanged();
+            return;
+        }
+        this.board.resolveLowerEvents();
+        this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
+        this.markStateChanged();
+    }
+
+    private void resetBoardInternal() {
+        this.validateResetBoardRequest();
+
+        boolean eraChanged = this.board.resetBoardAfterRound(this.currentEra);
+        if (eraChanged) {
+            this.currentEra = this.currentEra.next();
+        }
+
+        this.turnOrderTrack.advanceRoundNumber();
+        this.turnState.resetForNewRound();
+        this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+        this.markStateChanged();
+    }
+
+    private void calculateFinalScoreInternal() {
+        if (this.status != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("calculateFinalScore", this.status);
+        }
+
+        if (this.turnOrderTrack.getCurrentRoundPhase() != RoundPhase.FINAL_SCORING) {
+            throw new InvalidGamePhaseException("calculateFinalScore", this.turnOrderTrack.getCurrentRoundPhase());
+        }
+
+        for (Player player : this.players) {
+            for (BuildingCard building : player.getTribe().getBuildings()) {
+                building.increaseFinalPrestigePoints(player);
+                building.applyEffect(player);
+            }
+            player.gainPrestigePoints(player.getTribe().getPrestigePointsForBuilderInFinalPhase());
+        }
+
+        this.status = GameStatus.FINISHED;
+        this.markStateChanged();
     }
 
     private boolean hasAnyAvailableDraw(Player player) {

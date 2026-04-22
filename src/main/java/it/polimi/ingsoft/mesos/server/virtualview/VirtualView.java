@@ -6,13 +6,9 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.FinalScorePayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ResolveEffectsPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ResetBoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.SetupMatchPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 
 import java.io.Closeable;
@@ -31,11 +27,7 @@ public interface VirtualView extends Closeable {
     ServerMessage startLobby(StartLobbyPayload payload);
 
     // In-match
-    ServerMessage setupMatch(SetupMatchPayload payload);
     ServerMessage moveTotem(MoveTotemPayload payload);
     ServerMessage chooseCard(ChooseCardPayload payload);
     ServerMessage extraDraw(ExtraDrawPayload payload);
-    ServerMessage resolveEffects(ResolveEffectsPayload payload);
-    ServerMessage resetBoard(ResetBoardPayload payload);
-    ServerMessage finalScore(FinalScorePayload payload);
 }

@@ -6,10 +6,13 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
@@ -76,13 +79,28 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
     }
 
     @Override
-    public void exitLobby(int lobbyId) {
-        this.send(new ClientMessage(ClientMessageType.EXIT_LOBBY, new ExitLobbyPayload(lobbyId)));
+    public void exitLobby() {
+        this.send(new ClientMessage(ClientMessageType.EXIT_LOBBY, new ExitLobbyPayload()));
     }
 
     @Override
     public void startLobby() {
         this.send(new ClientMessage(ClientMessageType.START_LOBBY, new StartLobbyPayload()));
+    }
+
+    @Override
+    public void moveTotem(String tile) {
+        this.send(new ClientMessage(ClientMessageType.MOVE_TOTEM, new MoveTotemPayload(tile)));
+    }
+
+    @Override
+    public void chooseCard(int cardId) {
+        this.send(new ClientMessage(ClientMessageType.CHOOSE_CARD, new ChooseCardPayload(cardId)));
+    }
+
+    @Override
+    public void extraDraw(int cardId) {
+        this.send(new ClientMessage(ClientMessageType.EXTRA_DRAW, new ExtraDrawPayload(cardId)));
     }
 
     @Override

@@ -44,8 +44,11 @@ public class TuiController implements ClientView {
                     case "list-lobbies" -> this.handleListLobbies();
                     case "create-lobby" -> this.handleCreateLobby(commandLine);
                     case "join-lobby" -> this.handleJoinLobby(commandLine);
-                    case "quit-lobby" -> this.handleExitLobby(commandLine);
-                    case "start-lobby" -> this.handleStartLobby(commandLine);
+                    case "quit-lobby" -> this.handleExitLobby();
+                    case "start-lobby" -> this.handleStartLobby();
+                    case "move-totem" -> this.handleMoveTotem(commandLine);
+                    case "choose-card" -> this.handleChooseCard(commandLine);
+                    case "extra-draw" -> this.handleExtraDraw(commandLine);
 
                     case "quit" -> {
                         this.serverProxy.close();
@@ -75,8 +78,11 @@ public class TuiController implements ClientView {
         System.out.println("  list-lobbies");
         System.out.println("  create-lobby <capacity>");
         System.out.println("  join-lobby <lobby-id>");
-        System.out.println("  quit-lobby <lobby-id>");
-        System.out.println("  start-lobby <lobby-id>");
+        System.out.println("  quit-lobby");
+        System.out.println("  start-lobby");
+        System.out.println("  move-totem <tile>");
+        System.out.println("  choose-card <card-id>");
+        System.out.println("  extra-draw <card-id>");
 //        System.out.println("  stop-lobbys"); //If he host quit a lobby what happens to the other player in the lobby?
 
 
@@ -110,16 +116,32 @@ public class TuiController implements ClientView {
         System.out.println("Join-lobby request sent.");
     }
 
-    private void handleExitLobby(String commandLine) {
-        int lobbyId = this.extractIntArgument(commandLine, "quit-lobby");
-        this.serverProxy.exitLobby(lobbyId);
+    private void handleExitLobby() {
+        this.serverProxy.exitLobby();
         System.out.println("Quit-lobby request sent.");
     }
 
-    private void handleStartLobby(String commandLine) {
-        this.extractIntArgument(commandLine, "start-lobby");
+    private void handleStartLobby() {
         this.serverProxy.startLobby();
         System.out.println("Start-lobby request sent.");
+    }
+
+    private void handleMoveTotem(String commandLine) {
+        String tile = this.extractArgument(commandLine, "move-totem");
+        this.serverProxy.moveTotem(tile);
+        System.out.println("Move-totem request sent.");
+    }
+
+    private void handleChooseCard(String commandLine) {
+        int cardId = this.extractIntArgument(commandLine, "choose-card");
+        this.serverProxy.chooseCard(cardId);
+        System.out.println("Choose-card request sent.");
+    }
+
+    private void handleExtraDraw(String commandLine) {
+        int cardId = this.extractIntArgument(commandLine, "extra-draw");
+        this.serverProxy.extraDraw(cardId);
+        System.out.println("Extra-draw request sent.");
     }
 
     //Helper to parse-----

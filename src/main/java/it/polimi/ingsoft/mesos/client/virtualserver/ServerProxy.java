@@ -18,9 +18,15 @@ public interface ServerProxy extends AutoCloseable {
 
     void joinLobby(int lobbyId);
 
-    void exitLobby(int lobbyId);
+    void exitLobby();
 
     void startLobby();
+
+    void moveTotem(String tile);
+
+    void chooseCard(int cardId);
+
+    void extraDraw(int cardId);
 
     @Override
     void close() throws IOException;
