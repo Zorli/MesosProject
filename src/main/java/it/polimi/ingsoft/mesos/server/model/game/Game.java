@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
@@ -232,6 +233,8 @@ public class Game {
             this.status = GameStatus.IN_PROGRESS;
             this.markStateChanged();
         });
+        GamePayload update = this.buildPayload();
+        notifyListeners(update);
     }
 
     //TODO : Add method for choosing the starting tile, as now they are placed as subscribed in lobby
@@ -286,6 +289,8 @@ public class Game {
             }
             this.markStateChanged();
         });
+        GamePayload update = this.buildPayload();
+        notifyListeners(update);
     }
     /**
      * Makes the active player draw one card from the board.
@@ -295,39 +300,44 @@ public class Game {
      * tribe, and the turn is advanced when no more choices remain.
      *
      * @param player player selecting the card
-     * @param card card to draw from the board
+     * @param cardId cardId of the card to draw from the board
      */
-    public void chooseCard(Player player, Card card){
+    public void chooseCard(Player player, int cardId){
         this.executeGameAction(() -> {
             this.validateChooseCardRequest(player);
             this.ensureDrawStateStarted(player);
 
-            CardRow cardRow = this.validateAndRemoveChosenCard(player, card);
-            this.applyChosenCardToPlayer(player, card);
+            ChosenCardResult result = this.validateAndRemoveChosenCard(player, cardId);
+            this.applyChosenCardToPlayer(player, result.card);
 
-            this.turnState.onCardChosen(player, cardRow);
+            this.turnState.onCardChosen(player, result.row);
 
             if (this.turnState.isTurnCompleted() || !this.hasAnyAvailableDraw(player)) {
                 this.completeDrawTurn(player);
             }
             this.markStateChanged();
         });
+        GamePayload update = this.buildPayload();
+        this.notifyListeners(update);
     }
     /**
      * Resolves an extra card draw granted by a previously acquired building effect.
      *
      * @param player player receiving the extra draw
-     * @param card extra card chosen from the board
+     * @param cardId extra card chosen from the board
      */
-    public void extraDrawn(Player player, Card card){
+    public void extraDrawn(Player player, int cardId){
         this.executeGameAction(() -> {
             this.validateExtraDrawRequest(player);
-
-            CardRow cardRow = this.validateAndRemoveExtraDrawCard(player, card);
-            this.applyChosenCardToPlayer(player, card);
+            //extraDrawn e chooseCard devono prendere in ingresso solo il cardId, questa struttura permette di ottenere
+            //tutto ciò che serve dalla board con una chiamata
+            ChosenCardResult result = this.validateAndRemoveExtraDrawCard(player, cardId);
+            this.applyChosenCardToPlayer(player, result.card);
             this.completeExtraDrawTurn();
             this.markStateChanged();
         });
+        GamePayload update = this.buildPayload();
+        this.notifyListeners(update);
     }
     /**
      * Resolves lower-row events after all standard and bonus draws are completed.
@@ -349,6 +359,8 @@ public class Game {
             this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
             this.markStateChanged();
         });
+        GamePayload update = this.buildPayload();
+        this.notifyListeners(update);
     }
     /**
      * Resets the board after event resolution and prepares the next round.
@@ -371,6 +383,8 @@ public class Game {
             this.turnOrderTrack.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
             this.markStateChanged();
         });
+        GamePayload update = this.buildPayload();
+        this.notifyListeners(update);
     }
     /**
      * Applies final-scoring rules to every player and closes the match.
@@ -441,10 +455,11 @@ public class Game {
      * Verifies that the chosen card is currently drawable and removes it from the correct board row.
      *
      * @param player player attempting the draw
-     * @param card chosen board card
+     * @param cardId chosen board card
      * @return board row the card was removed from
      */
-    private CardRow validateAndRemoveChosenCard(Player player, Card card) {
+    private ChosenCardResult validateAndRemoveChosenCard(Player player, int cardId) {
+        Card card = this.board.findCardById(cardId);
         CardRow cardRow = this.board.getCardRow(card);
         if (cardRow == CardRow.NOT_PRESENT) {
             throw new CardNotPresentException(card);
@@ -458,7 +473,7 @@ public class Game {
                 throw new CardRowSelectionNotAllowedException(cardRow);
             }
             this.board.removeUpperCard(card);
-            return cardRow;
+            return new ChosenCardResult(card, cardRow);
         }
 
         if (!this.board.getDraftableLowerCards(player).contains(card)) {
@@ -468,7 +483,7 @@ public class Game {
             throw new CardRowSelectionNotAllowedException(cardRow);
         }
         this.board.removeLowerCard(card);
-        return cardRow;
+        return new ChosenCardResult(card, cardRow);
     }
 
     /**
@@ -525,10 +540,11 @@ public class Game {
      * Verifies that the requested extra-draw card is present and drawable, then removes it.
      *
      * @param player player performing the extra draw
-     * @param card chosen extra-draw card
+     * @param cardId chosen extra-draw card
      * @return board row the card was removed from
      */
-    private CardRow validateAndRemoveExtraDrawCard(Player player, Card card) {
+    private ChosenCardResult validateAndRemoveExtraDrawCard(Player player, int cardId) {
+        Card card = this.board.findCardById(cardId);
         CardRow cardRow = this.board.getCardRow(card);
         if (cardRow == CardRow.NOT_PRESENT) {
             throw new CardNotPresentException(card);
@@ -539,14 +555,14 @@ public class Game {
                 throw new CardNotDrawableException(player, card);
             }
             this.board.removeUpperCard(card);
-            return cardRow;
+            return new ChosenCardResult(card, cardRow);
         }
 
         if (!this.board.getDraftableLowerCards(player).contains(card)) {
             throw new CardNotDrawableException(player, card);
         }
         this.board.removeLowerCard(card);
-        return cardRow;
+        return new ChosenCardResult(card, cardRow);
     }
 
     /**
@@ -805,4 +821,6 @@ public class Game {
                 occupiedBy
         );
     }
+    //tupla record per avere sia la row che la card in restituzione
+    private record ChosenCardResult(Card card, CardRow row) {}
 }

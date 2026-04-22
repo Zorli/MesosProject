@@ -333,6 +333,7 @@ public class Board {
      * or {@link CardRow#NOT_PRESENT} if the card is not on the board.
      */
     public CardRow getCardRow(Card card) {
+
         if (this.getUpperRowCards().contains(card)) {
             return CardRow.UPPER;
         }
@@ -466,5 +467,20 @@ public class Board {
      */
     public List<it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock> getStartingBlocks() {
         return this.offerPath.getStartingTile().getStartingBlocks();
+    }
+    //partendo dalla cardId la mappa alla rispettiva carta sulla board
+    public Card findCardById(int cardId) {
+        for (Card card : this.getUpperRowCards()) {
+            if (card.getId() == cardId) {
+                return card;
+            }
+        }
+
+        for (Card card : this.getLowerRowCards()) {
+            if (card.getId() == cardId) {
+                return card;
+            }
+        }
+        return null;
     }
 }

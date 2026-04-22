@@ -194,10 +194,11 @@ public class GameOrchestrator {
     /**
      * Places a player's totem and persists the start-of-turn checkpoint when the draw phase starts.
      *
-     * @param player acting player
+     * @param nickname of the acting player
      * @param tile target offer-space code
      */
-    public void moveTotem(Player player, String tile) {
+    public void moveTotem(String nickname, String tile) {
+        Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         long previousVersion = this.game.getStateVersion();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
@@ -215,15 +216,16 @@ public class GameOrchestrator {
      * Delegates one standard card draw and persists a turn-finished checkpoint when the draw turn
      * advances to another player or phase.
      *
-     * @param player acting player
-     * @param card chosen card
+     * @param nickname of acting player
+     * @param cardId of the chosen card
      */
-    public void chooseCard(Player player, Card card) {
+    public void chooseCard(String nickname, int cardId) {
+        Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         long previousVersion = this.game.getStateVersion();
         Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
-        this.game.chooseCard(player, card);
+        this.game.chooseCard(player, cardId);
 
         if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
@@ -234,15 +236,16 @@ public class GameOrchestrator {
      * Delegates one extra draw and persists a turn-finished checkpoint when the bonus-draw flow
      * advances to a new player or phase.
      *
-     * @param player acting player
-     * @param card chosen extra-draw card
+     * @param nickname acting player
+     * @param cardId chosen extra-draw card
      */
-    public void extraDrawn(Player player, Card card) {
+    public void extraDrawn(String nickname, int cardId) {
+        Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         long previousVersion = this.game.getStateVersion();
         Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
         RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
-        this.game.extraDrawn(player, card);
+        this.game.extraDrawn(player, cardId);
 
         if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
@@ -291,7 +294,13 @@ public class GameOrchestrator {
 
         this.persistOrFreeze("TURN_STARTED", () -> this.persistenceCoordinator.recordTurnStarted(this.game));
     }
-
+    //per mappare da nickname a player
+    private Player resolvePlayer(String nickname) {
+        return this.players.stream()
+                .filter(p -> p.getNickname().equals(nickname))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Player not in this match: " + nickname));
+    }
     /**
      * Applies final scoring and then executes the application-level completion flow.
      *
