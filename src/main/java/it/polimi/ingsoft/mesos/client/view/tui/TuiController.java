@@ -5,234 +5,215 @@ import it.polimi.ingsoft.mesos.client.virtualserver.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Objects;
 import java.util.Scanner;
 
 /**
- * Text-based user interface controller for the Mesos client.
- * Handles terminal input parsing and output rendering.
+ * State-driven terminal controller for the Mesos client.
  */
 public class TuiController implements ClientView {
+    private final Scanner scanner;
+    private final TuiTerminal terminal;
+    private final TuiStateReducer stateReducer;
+    private final TuiRenderer renderer;
+    private final TuiCommandRouter commandRouter;
+
+    private TuiState state;
     private ServerProxy serverProxy;
 
-    public void attachServerProxy(ServerProxy serverProxy) {
-        this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
+    /**
+     * Creates the default interactive TUI bound to standard input and output.
+     */
+    public TuiController() {
+        this(new Scanner(System.in), System.out, true);
     }
 
+    /**
+     * Creates a TUI with injectable terminal collaborators.
+     *
+     * @param scanner terminal scanner
+     * @param out terminal output stream
+     * @param clearScreenEnabled whether redraws should clear the terminal
+     */
+    public TuiController(Scanner scanner, PrintStream out, boolean clearScreenEnabled) {
+        this.scanner = Objects.requireNonNull(scanner, "scanner cannot be null");
+        this.terminal = new TuiTerminal(Objects.requireNonNull(out, "out cannot be null"), clearScreenEnabled);
+        this.state = TuiState.initial();
+        this.stateReducer = new TuiStateReducer();
+        this.renderer = new TuiRenderer();
+        this.commandRouter = new TuiCommandRouter();
+    }
+
+    /**
+     * Attaches the transport-agnostic server proxy used by this controller.
+     *
+     * @param serverProxy server proxy instance
+     */
+    public void attachServerProxy(ServerProxy serverProxy) {
+        this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
+        this.replaceState(this.stateReducer.reduceConnection(this.state, serverProxy.isConnected()));
+    }
+
+    /**
+     * Starts the interactive command loop.
+     */
     public void start() {
         if (this.serverProxy == null) {
             throw new IllegalStateException("serverProxy must be attached before starting the TUI");
         }
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Mesos TUI started.");
-        System.out.println("Connected: " + this.serverProxy.isConnected());
-        System.out.println("Type 'help' to list commands.");
-        this.printPrompt();
-        while (true) {
-            if (!scanner.hasNextLine()) {
-                return;
+        this.syncConnectionState();
+        this.renderState("Mesos TUI started.");
+
+        while (this.scanner.hasNextLine()) {
+            TuiCommand command;
+            try {
+                command = TuiCommandParser.parse(this.scanner.nextLine());
+            } catch (IllegalArgumentException exception) {
+                this.printMessage("[CLIENT][ERROR] " + exception.getMessage());
+                continue;
             }
 
-            String commandLine = scanner.nextLine().trim();
             try {
-                switch (this.readCommand(commandLine)) {
-                    case "help" -> this.printHelp();
-                    case "auth" -> this.handleAuthentication(commandLine);
-                    case "list-lobbies" -> this.handleListLobbies();
-                    case "create-lobby" -> this.handleCreateLobby(commandLine);
-                    case "join-lobby" -> this.handleJoinLobby(commandLine);
-                    case "quit-lobby" -> this.handleExitLobby();
-                    case "start-lobby" -> this.handleStartLobby();
-                    case "move-totem" -> this.handleMoveTotem(commandLine);
-                    case "choose-card" -> this.handleChooseCard(commandLine);
-                    case "extra-draw" -> this.handleExtraDraw(commandLine);
-
-                    case "quit" -> {
-                        this.serverProxy.close();
-                        System.out.println("Client closed.");
-                        return;
-                    }
-                    default -> System.out.println("Unsupported command.");
+                if (this.handleCommand(command)) {
+                    return;
                 }
             } catch (Exception exception) {
-                System.out.println("Client error: " + exception.getMessage());
+                this.printMessage("[CLIENT][ERROR] " + exception.getMessage());
             }
-            this.printPrompt();
         }
     }
 
-    private String readCommand(String commandLine) {
-        if (commandLine.isBlank()) {
-            return "";
-        }
-        return commandLine.split("\\s+", 2)[0].toLowerCase();
-    }
-
-    private void printHelp() {
-        System.out.println("Available commands:");
-        System.out.println("  help");
-        System.out.println("  auth <nickname>");
-        System.out.println("  list-lobbies");
-        System.out.println("  create-lobby <capacity>");
-        System.out.println("  join-lobby <lobby-id>");
-        System.out.println("  quit-lobby");
-        System.out.println("  start-lobby");
-        System.out.println("  move-totem <tile>");
-        System.out.println("  choose-card <card-id>");
-        System.out.println("  extra-draw <card-id>");
-//        System.out.println("  stop-lobbys"); //If he host quit a lobby what happens to the other player in the lobby?
-
-
-
-
-        System.out.println("  quit");
-    }
-
-
-    //Methods to handle the Commands call, forward to the virtualserver!-----
-    private void handleAuthentication(String commandLine) throws Exception {
-        String nickname = this.extractArgument(commandLine, "auth");
-        this.serverProxy.authenticate(nickname);
-        System.out.println("Authentication request sent.");
-    }
-
-    private void handleListLobbies() {
-        this.serverProxy.listLobbies();
-        System.out.println("List-lobbies request sent.");
-    }
-
-    private void handleCreateLobby(String commandLine) {
-        int chosenCapacity = this.extractIntArgument(commandLine, "create-lobby");
-        this.serverProxy.createLobby(chosenCapacity);
-        System.out.println("Create-lobby request sent.");
-    }
-
-    private void handleJoinLobby(String commandLine) {
-        int lobbyId = this.extractIntArgument(commandLine, "join-lobby");
-        this.serverProxy.joinLobby(lobbyId);
-        System.out.println("Join-lobby request sent.");
-    }
-
-    private void handleExitLobby() {
-        this.serverProxy.exitLobby();
-        System.out.println("Quit-lobby request sent.");
-    }
-
-    private void handleStartLobby() {
-        this.serverProxy.startLobby();
-        System.out.println("Start-lobby request sent.");
-    }
-
-    private void handleMoveTotem(String commandLine) {
-        String tile = this.extractArgument(commandLine, "move-totem");
-        this.serverProxy.moveTotem(tile);
-        System.out.println("Move-totem request sent.");
-    }
-
-    private void handleChooseCard(String commandLine) {
-        int cardId = this.extractIntArgument(commandLine, "choose-card");
-        this.serverProxy.chooseCard(cardId);
-        System.out.println("Choose-card request sent.");
-    }
-
-    private void handleExtraDraw(String commandLine) {
-        int cardId = this.extractIntArgument(commandLine, "extra-draw");
-        this.serverProxy.extraDraw(cardId);
-        System.out.println("Extra-draw request sent.");
-    }
-
-    //Helper to parse-----
-    private String extractArgument(String commandLine, String command) {
-        String prefix = command + " ";
-        if (!commandLine.startsWith(prefix) || commandLine.length() <= prefix.length()) {
-            throw new IllegalArgumentException("Usage: " + command + " <argument>");
-        }
-        return commandLine.substring(prefix.length()).trim();
-    }
-
-    private int extractIntArgument(String commandLine, String command) {
-        String argument = this.extractArgument(commandLine, command);
-        try {
-            return Integer.parseInt(argument);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Usage: " + command + " <integer>");
-        }
-    }
-
-
-
-
-
-    //I/O methods -----
-    private synchronized void printPrompt() {
-        System.out.print("> ");
-        System.out.flush();
-    }
-
+    /**
+     * Applies one server error update and redraws the current state.
+     *
+     * @param payload error payload pushed by the server
+     */
     @Override
-    public synchronized void showError(ErrorPayload payload) {
-        System.out.println();
-        System.out.println("[SERVER][ERROR] " + payload.code + ": " + payload.message);
-        this.printPrompt();
+    public void showError(ErrorPayload payload) {
+        this.replaceState(this.stateReducer.reduceError(this.state, Objects.requireNonNull(payload, "payload cannot be null")));
+        this.renderState("Server error received.");
     }
 
+    /**
+     * Applies one pre-match server update and redraws the current state.
+     *
+     * @param payload pre-match payload pushed by the server
+     */
     @Override
-    public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
-        StringBuilder messageBuilder = new StringBuilder("[SERVER][PRE-MATCH] ")
-                .append(payload.event);
-
-        if (payload.nickname != null) {
-            messageBuilder.append(" nickname=").append(payload.nickname);
-        }
-        if (payload.message != null) {
-            messageBuilder.append(" message=").append(payload.message);
-        }
-        if (payload.lobbyId != null) {
-            messageBuilder.append(" lobbyId=").append(payload.lobbyId);
-        }
-        if (payload.hostNickname != null) {
-            messageBuilder.append(" host=").append(payload.hostNickname);
-        }
-        if (payload.maxPlayers != null) {
-            messageBuilder.append(" maxPlayers=").append(payload.maxPlayers);
-        }
-        if (payload.players != null && !payload.players.isEmpty()) {
-            messageBuilder.append(" players=").append(payload.players);
-        }
-
-        System.out.println();
-        System.out.println(messageBuilder);
-        this.printPrompt();
+    public void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+        this.replaceState(this.stateReducer.reducePreMatchUpdate(
+                this.state,
+                Objects.requireNonNull(payload, "payload cannot be null")
+        ));
+        this.renderState("Pre-match update received.");
     }
 
+    /**
+     * Applies one lobby-list server update and redraws the current state.
+     *
+     * @param payload lobby-list payload pushed by the server
+     */
     @Override
-    public synchronized void showLobbyList(LobbyListPayload payload) {
-        System.out.println();
-        System.out.println("[SERVER][LOBBY-LIST]");
-        if (payload == null || payload.lobbies == null || payload.lobbies.isEmpty()) {
-            System.out.println("No open lobbies.");
-            this.printPrompt();
-            return;
-        }
-
-        for (LobbySummaryPayload lobby : payload.lobbies) {
-            System.out.println(
-                    "lobbyId=" + lobby.lobbyId
-                            + " host=" + lobby.hostNickname
-                            + " players=" + lobby.currentPlayers + "/" + lobby.maxPlayers
-                            + " status=" + lobby.status
-            );
-        }
-        this.printPrompt();
+    public void showLobbyList(LobbyListPayload payload) {
+        this.replaceState(this.stateReducer.reduceLobbyList(
+                this.state,
+                Objects.requireNonNull(payload, "payload cannot be null")
+        ));
+        this.renderState("Lobby list received.");
     }
 
+    /**
+     * Applies one in-match game snapshot and redraws the current state.
+     *
+     * @param payload game snapshot pushed by the server
+     */
     @Override
-    public synchronized void showGameUpdate(GamePayload payload) {
-        System.out.println();
-        System.out.println("[SERVER][GAME] update received for gameId=" + payload.id);
-        this.printPrompt();
+    public void showGameUpdate(GamePayload payload) {
+        this.replaceState(this.stateReducer.reduceGameUpdate(
+                this.state,
+                Objects.requireNonNull(payload, "payload cannot be null")
+        ));
+        this.renderState("Game update received.");
+    }
+
+    /**
+     * Replaces the current immutable state snapshot.
+     *
+     * @param newState new immutable state
+     */
+    private void replaceState(TuiState newState) {
+        this.state = Objects.requireNonNull(newState, "newState cannot be null");
+    }
+
+    /**
+     * Handles one parsed command.
+     *
+     * @param command parsed command
+     * @return {@code true} when the controller should terminate
+     * @throws IOException when closing the connection fails
+     */
+    private boolean handleCommand(TuiCommand command) throws IOException {
+        this.syncConnectionState();
+        TuiCommandRouter.RouteResult result = this.commandRouter.route(
+                command,
+                this.serverProxy,
+                new TuiCommandRouter.LocalActions() {
+                    @Override
+                    public void showHelp() {
+                        replaceState(stateReducer.reduceShowHelp(state));
+                        renderState(null);
+                    }
+
+                    @Override
+                    public void showStatus() {
+                        replaceState(stateReducer.reduceShowStatus(state));
+                        renderState(null);
+                    }
+                }
+        );
+
+        if (result.feedbackMessage() != null) {
+            if (result.shouldExit()) {
+                this.replaceState(this.stateReducer.reduceConnection(this.state, false));
+                this.terminal.printMessage(result.feedbackMessage());
+            } else {
+                this.printMessage("[CLIENT] " + result.feedbackMessage());
+            }
+        } else if (result.promptOnly()) {
+            this.terminal.prompt();
+        }
+
+        return result.shouldExit();
+    }
+
+    /**
+     * Synchronizes the cached connection status with the current proxy state.
+     */
+    private void syncConnectionState() {
+        if (this.serverProxy != null) {
+            this.replaceState(this.stateReducer.reduceConnection(this.state, this.serverProxy.isConnected()));
+        }
+    }
+
+    /**
+     * Renders the current state.
+     *
+     * @param banner optional banner line shown above the rendered state
+     */
+    private void renderState(String banner) {
+        this.terminal.render(this.renderer.render(this.state), true, banner);
+    }
+
+    /**
+     * Prints one transient message.
+     *
+     * @param message message to print
+     */
+    private void printMessage(String message) {
+        this.terminal.printMessage(message);
     }
 }
