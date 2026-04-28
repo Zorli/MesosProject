@@ -5,234 +5,198 @@ import it.polimi.ingsoft.mesos.client.virtualserver.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Objects;
 import java.util.Scanner;
 
-/**
- * Text-based user interface controller for the Mesos client.
- * Handles terminal input parsing and output rendering.
- */
 public class TuiController implements ClientView {
+    private final Scanner scanner;
+    private final PrintStream out;
+    private final TuiCommandParser commandParser;
+    private final TuiPayloadRenderer payloadRenderer;
+    private GamePayload lastGamePayload;
+    private LobbyListPayload lastLobbyListPayload;
+    private PreMatchUpdatePayload lastPreMatchUpdatePayload;
     private ServerProxy serverProxy;
+
+    public TuiController() {
+        this(new Scanner(System.in), System.out);
+    }
+
+    public TuiController(Scanner scanner, PrintStream out) {
+        this.scanner = Objects.requireNonNull(scanner, "scanner cannot be null");
+        this.out = Objects.requireNonNull(out, "out cannot be null");
+        this.commandParser = new TuiCommandParser();
+        this.payloadRenderer = new TuiPayloadRenderer();
+    }
 
     public void attachServerProxy(ServerProxy serverProxy) {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
+//    abbiamo sempre due soli thread che girano nel caso TCP
+//    Thread TUI/input:
+//            scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxy.method()
+//
+//    Thread trasporto:
+//    payload -> clientView.showGameUpdate -> render
+//    Caso RMI:
+//    Thread input TUI:
+//    scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxyRMI.method() -> chiamata RMI al server
+//
+//   Thread RMI callback:
+//  server -> VirtualServerRMI.handleGameUpdate() -> clientView.showGameUpdate() -> TuiController.render()
+//    Quindi se abbiamo un unico metodo di render synchronized siamo safe lato concorrenza di stampa.
+
     public void start() {
         if (this.serverProxy == null) {
             throw new IllegalStateException("serverProxy must be attached before starting the TUI");
         }
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Mesos TUI started.");
-        System.out.println("Connected: " + this.serverProxy.isConnected());
-        System.out.println("Type 'help' to list commands.");
-        this.printPrompt();
-        while (true) {
-            if (!scanner.hasNextLine()) {
-                return;
+
+        this.render("Mesos TUI started. Type 'help' to list commands.");
+        while (this.scanner.hasNextLine()) {
+            String commandLine = this.scanner.nextLine().trim();
+            if (commandLine.isBlank()) {
+                this.renderPrompt();
+                continue;
             }
 
-            String commandLine = scanner.nextLine().trim();
             try {
-                switch (this.readCommand(commandLine)) {
-                    case "help" -> this.printHelp();
-                    case "auth" -> this.handleAuthentication(commandLine);
-                    case "list-lobbies" -> this.handleListLobbies();
-                    case "create-lobby" -> this.handleCreateLobby(commandLine);
-                    case "join-lobby" -> this.handleJoinLobby(commandLine);
-                    case "quit-lobby" -> this.handleExitLobby();
-                    case "start-lobby" -> this.handleStartLobby();
-                    case "move-totem" -> this.handleMoveTotem(commandLine);
-                    case "choose-card" -> this.handleChooseCard(commandLine);
-                    case "extra-draw" -> this.handleExtraDraw(commandLine);
-
-                    case "quit" -> {
-                        this.serverProxy.close();
-                        System.out.println("Client closed.");
-                        return;
-                    }
-                    default -> System.out.println("Unsupported command.");
+                TuiCommand command = this.commandParser.parse(commandLine);
+                if (this.executeCommand(command)) {
+                    return;
                 }
             } catch (Exception exception) {
-                System.out.println("Client error: " + exception.getMessage());
+                this.render("[CLIENT][ERROR] " + exception.getMessage());
             }
-            this.printPrompt();
         }
-    }
-
-    private String readCommand(String commandLine) {
-        if (commandLine.isBlank()) {
-            return "";
-        }
-        return commandLine.split("\\s+", 2)[0].toLowerCase();
-    }
-
-    private void printHelp() {
-        System.out.println("Available commands:");
-        System.out.println("  help");
-        System.out.println("  auth <nickname>");
-        System.out.println("  list-lobbies");
-        System.out.println("  create-lobby <capacity>");
-        System.out.println("  join-lobby <lobby-id>");
-        System.out.println("  quit-lobby");
-        System.out.println("  start-lobby");
-        System.out.println("  move-totem <tile>");
-        System.out.println("  choose-card <card-id>");
-        System.out.println("  extra-draw <card-id>");
-//        System.out.println("  stop-lobbys"); //If he host quit a lobby what happens to the other player in the lobby?
-
-
-
-
-        System.out.println("  quit");
-    }
-
-
-    //Methods to handle the Commands call, forward to the virtualserver!-----
-    private void handleAuthentication(String commandLine) throws Exception {
-        String nickname = this.extractArgument(commandLine, "auth");
-        this.serverProxy.authenticate(nickname);
-        System.out.println("Authentication request sent.");
-    }
-
-    private void handleListLobbies() {
-        this.serverProxy.listLobbies();
-        System.out.println("List-lobbies request sent.");
-    }
-
-    private void handleCreateLobby(String commandLine) {
-        int chosenCapacity = this.extractIntArgument(commandLine, "create-lobby");
-        this.serverProxy.createLobby(chosenCapacity);
-        System.out.println("Create-lobby request sent.");
-    }
-
-    private void handleJoinLobby(String commandLine) {
-        int lobbyId = this.extractIntArgument(commandLine, "join-lobby");
-        this.serverProxy.joinLobby(lobbyId);
-        System.out.println("Join-lobby request sent.");
-    }
-
-    private void handleExitLobby() {
-        this.serverProxy.exitLobby();
-        System.out.println("Quit-lobby request sent.");
-    }
-
-    private void handleStartLobby() {
-        this.serverProxy.startLobby();
-        System.out.println("Start-lobby request sent.");
-    }
-
-    private void handleMoveTotem(String commandLine) {
-        String tile = this.extractArgument(commandLine, "move-totem");
-        this.serverProxy.moveTotem(tile);
-        System.out.println("Move-totem request sent.");
-    }
-
-    private void handleChooseCard(String commandLine) {
-        int cardId = this.extractIntArgument(commandLine, "choose-card");
-        this.serverProxy.chooseCard(cardId);
-        System.out.println("Choose-card request sent.");
-    }
-
-    private void handleExtraDraw(String commandLine) {
-        int cardId = this.extractIntArgument(commandLine, "extra-draw");
-        this.serverProxy.extraDraw(cardId);
-        System.out.println("Extra-draw request sent.");
-    }
-
-    //Helper to parse-----
-    private String extractArgument(String commandLine, String command) {
-        String prefix = command + " ";
-        if (!commandLine.startsWith(prefix) || commandLine.length() <= prefix.length()) {
-            throw new IllegalArgumentException("Usage: " + command + " <argument>");
-        }
-        return commandLine.substring(prefix.length()).trim();
-    }
-
-    private int extractIntArgument(String commandLine, String command) {
-        String argument = this.extractArgument(commandLine, command);
-        try {
-            return Integer.parseInt(argument);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Usage: " + command + " <integer>");
-        }
-    }
-
-
-
-
-
-    //I/O methods -----
-    private synchronized void printPrompt() {
-        System.out.print("> ");
-        System.out.flush();
     }
 
     @Override
     public synchronized void showError(ErrorPayload payload) {
-        System.out.println();
-        System.out.println("[SERVER][ERROR] " + payload.code + ": " + payload.message);
-        this.printPrompt();
+        this.render(this.payloadRenderer.renderError(payload, this.lastGamePayload));
     }
 
     @Override
     public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
-        StringBuilder messageBuilder = new StringBuilder("[SERVER][PRE-MATCH] ")
-                .append(payload.event);
-
-        if (payload.nickname != null) {
-            messageBuilder.append(" nickname=").append(payload.nickname);
-        }
-        if (payload.message != null) {
-            messageBuilder.append(" message=").append(payload.message);
-        }
-        if (payload.lobbyId != null) {
-            messageBuilder.append(" lobbyId=").append(payload.lobbyId);
-        }
-        if (payload.hostNickname != null) {
-            messageBuilder.append(" host=").append(payload.hostNickname);
-        }
-        if (payload.maxPlayers != null) {
-            messageBuilder.append(" maxPlayers=").append(payload.maxPlayers);
-        }
-        if (payload.players != null && !payload.players.isEmpty()) {
-            messageBuilder.append(" players=").append(payload.players);
-        }
-
-        System.out.println();
-        System.out.println(messageBuilder);
-        this.printPrompt();
+        this.lastPreMatchUpdatePayload = payload;
+        this.render(this.payloadRenderer.renderPreMatchUpdate(payload));
     }
 
     @Override
     public synchronized void showLobbyList(LobbyListPayload payload) {
-        System.out.println();
-        System.out.println("[SERVER][LOBBY-LIST]");
-        if (payload == null || payload.lobbies == null || payload.lobbies.isEmpty()) {
-            System.out.println("No open lobbies.");
-            this.printPrompt();
-            return;
-        }
-
-        for (LobbySummaryPayload lobby : payload.lobbies) {
-            System.out.println(
-                    "lobbyId=" + lobby.lobbyId
-                            + " host=" + lobby.hostNickname
-                            + " players=" + lobby.currentPlayers + "/" + lobby.maxPlayers
-                            + " status=" + lobby.status
-            );
-        }
-        this.printPrompt();
+        this.lastLobbyListPayload = payload;
+        this.render(this.payloadRenderer.renderLobbyList(payload));
     }
 
     @Override
     public synchronized void showGameUpdate(GamePayload payload) {
-        System.out.println();
-        System.out.println("[SERVER][GAME] update received for gameId=" + payload.id);
+        this.lastGamePayload = payload;
+        this.render(this.payloadRenderer.renderGame(payload));
+    }
+
+    private boolean executeCommand(TuiCommand command) throws IOException {
+        switch (command.type()) {
+            case HELP -> {
+                this.renderHelp();
+                return false;
+            }
+            case STATUS -> {
+                this.renderStatus();
+                return false;
+            }
+            case AUTH -> {
+                this.serverProxy.authenticate(command.argument());
+            }
+            case LIST_LOBBIES -> {
+                this.serverProxy.listLobbies();
+            }
+            case CREATE_LOBBY -> {
+                this.serverProxy.createLobby(command.intArgument());
+            }
+            case JOIN_LOBBY -> {
+                this.serverProxy.joinLobby(command.intArgument());
+            }
+            case QUIT_LOBBY -> {
+                this.serverProxy.exitLobby();
+            }
+            case START_LOBBY -> {
+                this.serverProxy.startLobby();
+            }
+            case MOVE_TOTEM -> {
+                this.serverProxy.moveTotem(command.argument());
+            }
+            case CHOOSE_CARD -> {
+                this.serverProxy.chooseCard(command.intArgument());
+            }
+            case EXTRA_DRAW -> {
+                this.serverProxy.extraDraw(command.intArgument());
+            }
+            case QUIT -> {
+                this.serverProxy.close();
+                this.render("Client closed.");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void renderHelp() {
+        this.render("""
+                General:
+                help
+                status
+                auth <nickname>
+                quit
+
+                Lobby:
+                list-lobbies
+                create-lobby <capacity>
+                join-lobby <lobby-id>
+                quit-lobby
+                start-lobby
+
+                Match:
+                move-totem <tile>
+                choose-card <card-id>
+                extra-draw <card-id>
+
+                Aliases:
+                exit -> quit
+                lobbies -> list-lobbies
+                create -> create-lobby
+                join -> join-lobby
+                """);
+    }
+
+    private synchronized void renderStatus() {
+        if (this.lastGamePayload != null) {
+            this.render(this.payloadRenderer.renderGame(this.lastGamePayload));
+        } else if (this.lastLobbyListPayload != null) {
+            this.render(this.payloadRenderer.renderLobbyList(this.lastLobbyListPayload));
+        } else if (this.lastPreMatchUpdatePayload != null) {
+            this.render(this.payloadRenderer.renderPreMatchUpdate(this.lastPreMatchUpdatePayload));
+        } else {
+            this.render("No status available.");
+        }
+    }
+
+    private synchronized void render(String message) {
+        this.out.println();
+        this.out.println(message);
         this.printPrompt();
+    }
+
+    private synchronized void renderPrompt() {
+        this.printPrompt();
+    }
+
+    private void printPrompt() {
+        this.out.print("> ");
+        this.out.flush();
     }
 }
