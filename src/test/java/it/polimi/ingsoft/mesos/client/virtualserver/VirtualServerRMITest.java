@@ -13,9 +13,16 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class VirtualServerRMITest {
+    @Test
+    void constructorRejectsNullClientViewImmediately() throws Exception {
+        assertConstructorRejectsNullClientView();
+    }
+
     @Test
     void callbacksAreForwardedToClientView() throws Exception {
         RecordingClientView clientView = new RecordingClientView();
@@ -49,6 +56,25 @@ class VirtualServerRMITest {
             assertEquals("Alice", clientView.preMatchPayload.nickname);
         } finally {
             UnicastRemoteObject.unexportObject(virtualServerRMI, true);
+        }
+    }
+
+    /**
+     * Verifies the null-client-view contract without leaving an exported RMI object
+     * behind when current production code unexpectedly accepts the dependency.
+     */
+    private static void assertConstructorRejectsNullClientView() throws Exception {
+        VirtualServerRMI virtualServerRMI = null;
+        try {
+            virtualServerRMI = new VirtualServerRMI(null);
+            fail("VirtualServerRMI should reject a null clientView before exporting callbacks");
+        } catch (Exception exception) {
+            assertInstanceOf(NullPointerException.class, exception);
+            assertEquals("clientView cannot be null", exception.getMessage());
+        } finally {
+            if (virtualServerRMI != null) {
+                UnicastRemoteObject.unexportObject(virtualServerRMI, true);
+            }
         }
     }
 

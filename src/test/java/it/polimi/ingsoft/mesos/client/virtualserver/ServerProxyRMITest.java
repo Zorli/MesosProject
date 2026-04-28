@@ -23,10 +23,22 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ServerProxyRMITest {
+    @Test
+    void constructorRejectsNullLoginFacadeImmediately() throws Exception {
+        assertConstructorRejectsNullLoginFacade(new RecordingClientView());
+    }
+
+    @Test
+    void constructorRejectsNullClientViewImmediately() throws Exception {
+        assertConstructorRejectsNullClientView(new RecordingRmiConnectionService(null));
+    }
+
     @Test
     void authenticateThenListLobbiesDelegatesToRemoteStub() throws Exception {
         RecordingClientView clientView = new RecordingClientView();
@@ -59,6 +71,48 @@ class ServerProxyRMITest {
             assertEquals("Client is not authenticated", clientView.errorPayload.message);
         } finally {
             serverProxyRMI.close();
+        }
+    }
+
+    /**
+     * Verifies the null-login-facade contract without leaking the callback receiver
+     * when current production code unexpectedly accepts the dependency.
+     *
+     * @param clientView valid view used to isolate the rejected dependency
+     */
+    private static void assertConstructorRejectsNullLoginFacade(ClientView clientView) throws Exception {
+        ServerProxyRMI serverProxyRMI = null;
+        try {
+            serverProxyRMI = new ServerProxyRMI(null, clientView);
+            fail("ServerProxyRMI should reject a null loginFacade before exporting callbacks");
+        } catch (Exception exception) {
+            assertInstanceOf(NullPointerException.class, exception);
+            assertEquals("loginFacade cannot be null", exception.getMessage());
+        } finally {
+            if (serverProxyRMI != null) {
+                serverProxyRMI.close();
+            }
+        }
+    }
+
+    /**
+     * Verifies the null-client-view contract without leaking the callback receiver
+     * when current production code unexpectedly accepts the dependency.
+     *
+     * @param loginFacade valid RMI facade used to isolate the rejected dependency
+     */
+    private static void assertConstructorRejectsNullClientView(RmiConnectionService loginFacade) throws Exception {
+        ServerProxyRMI serverProxyRMI = null;
+        try {
+            serverProxyRMI = new ServerProxyRMI(loginFacade, null);
+            fail("ServerProxyRMI should reject a null clientView before exporting callbacks");
+        } catch (Exception exception) {
+            assertInstanceOf(NullPointerException.class, exception);
+            assertEquals("clientView cannot be null", exception.getMessage());
+        } finally {
+            if (serverProxyRMI != null) {
+                serverProxyRMI.close();
+            }
         }
     }
 

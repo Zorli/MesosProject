@@ -36,7 +36,7 @@ final class TuiRenderer {
     }
 
     /**
-     * Renders the main dashboard view.
+     * Renders the main dashboard view using the active screen as the source of visible sections.
      *
      * @param state current terminal state
      * @return rendered dashboard text
@@ -54,31 +54,31 @@ final class TuiRenderer {
             this.appendLine(builder, this.formatError(state.getLastError()));
         }
 
-        if (state.getLastPreMatchUpdate() != null) {
+        if (this.shouldRenderPreMatchEvent(state)) {
             this.appendLine(builder, "");
             this.appendSectionTitle(builder, "Latest Server Event");
             this.appendLine(builder, this.formatPreMatchUpdate(state.getLastPreMatchUpdate()));
         }
 
-        if (state.hasLobbyContext()) {
+        if (this.shouldRenderLobbyContext(state)) {
             this.appendLine(builder, "");
             this.appendSectionTitle(builder, "Lobby");
             this.appendLine(builder, this.formatLobbyContext(state));
         }
 
-        if (state.getLastLobbyList() != null) {
+        if (this.shouldRenderLobbyList(state)) {
             this.appendLine(builder, "");
             this.appendSectionTitle(builder, "Open Lobbies");
             this.appendLobbyList(builder, state.getLastLobbyList());
         }
 
-        if (state.getScreen() == TuiScreen.MATCH_BOOTSTRAP && !state.hasGameSnapshot()) {
+        if (this.shouldRenderMatchBootstrap(state)) {
             this.appendLine(builder, "");
             this.appendSectionTitle(builder, "Match");
             this.appendLine(builder, "Match setup has started. Waiting for the initial game snapshot...");
         }
 
-        if (state.hasGameSnapshot()) {
+        if (this.shouldRenderGameSnapshot(state)) {
             this.appendLine(builder, "");
             this.appendSectionTitle(builder, "Match");
             this.appendGameSnapshot(builder, state, state.getLastGamePayload());
@@ -296,7 +296,7 @@ final class TuiRenderer {
     }
 
     /**
-     * Computes context-aware command hints.
+     * Computes command hints for the active screen instead of inferring commands from cached payloads.
      *
      * @param state current terminal state
      * @return suggested command list
@@ -305,13 +305,73 @@ final class TuiRenderer {
         if (!state.isAuthenticated()) {
             return List.of("auth <nickname>", "help");
         }
-        if (state.hasGameSnapshot()) {
-            return this.buildInMatchCommands(state);
+
+        switch (state.getScreen()) {
+            case IN_MATCH:
+                return this.buildInMatchCommands(state);
+            case WAITING_ROOM:
+                return List.of("status", "start-lobby", "quit-lobby");
+            case MATCH_BOOTSTRAP:
+                return List.of("status", "quit-lobby");
+            case LOBBY_BROWSER:
+                return List.of("list-lobbies", "create-lobby <capacity>", "join-lobby <lobby-id>", "help");
+            case HOME:
+            default:
+                return List.of("list-lobbies", "create-lobby <capacity>", "join-lobby <lobby-id>", "help");
         }
-        if (state.hasLobbyContext()) {
-            return List.of("status", "start-lobby", "quit-lobby", "list-lobbies");
-        }
-        return List.of("list-lobbies", "create-lobby <capacity>", "join-lobby <lobby-id>", "help");
+    }
+
+    /**
+     * Returns whether the active screen allows the cached lobby list to be displayed.
+     *
+     * @param state current terminal state
+     * @return {@code true} when the lobby browser should show an available lobby list
+     */
+    private boolean shouldRenderLobbyList(TuiState state) {
+        return state.getScreen() == TuiScreen.LOBBY_BROWSER && state.getLastLobbyList() != null;
+    }
+
+    /**
+     * Returns whether the active screen allows current lobby context to be displayed.
+     * Lobby browser stays a pure discovery screen, while waiting-room screens own the current lobby view.
+     *
+     * @param state current terminal state
+     * @return {@code true} when the screen is allowed to show the current lobby roster
+     */
+    private boolean shouldRenderLobbyContext(TuiState state) {
+        return state.hasLobbyContext()
+                && (state.getScreen() == TuiScreen.WAITING_ROOM
+                || state.getScreen() == TuiScreen.MATCH_BOOTSTRAP);
+    }
+
+    /**
+     * Returns whether the active screen allows the latest pre-match event to be displayed.
+     *
+     * @param state current terminal state
+     * @return {@code true} when a waiting-room event should be visible
+     */
+    private boolean shouldRenderPreMatchEvent(TuiState state) {
+        return state.getScreen() == TuiScreen.WAITING_ROOM && state.getLastPreMatchUpdate() != null;
+    }
+
+    /**
+     * Returns whether the active screen should show the match-bootstrap waiting message.
+     *
+     * @param state current terminal state
+     * @return {@code true} when waiting for the first active match snapshot
+     */
+    private boolean shouldRenderMatchBootstrap(TuiState state) {
+        return state.getScreen() == TuiScreen.MATCH_BOOTSTRAP;
+    }
+
+    /**
+     * Returns whether the active screen allows the cached game snapshot to be displayed.
+     *
+     * @param state current terminal state
+     * @return {@code true} when the in-match screen has a snapshot to render
+     */
+    private boolean shouldRenderGameSnapshot(TuiState state) {
+        return state.getScreen() == TuiScreen.IN_MATCH && state.hasGameSnapshot();
     }
 
     /**

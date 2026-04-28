@@ -20,9 +20,23 @@ import java.util.Scanner;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TuiControllerTest {
+    @Test
+    void startWithoutServerProxyFailsFast() {
+        TuiController controller = new TuiController(
+                new Scanner(new ByteArrayInputStream(new byte[0])),
+                new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
+                false
+        );
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, controller::start);
+
+        assertEquals("serverProxy must be attached before starting the TUI", exception.getMessage());
+    }
+
     @Test
     void startDispatchesCommandsToServerProxy() {
         FakeServerProxy serverProxy = new FakeServerProxy();
