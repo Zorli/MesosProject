@@ -34,40 +34,49 @@ final class TuiCommandRouter {
                 yield RouteResult.forContinueWithoutPrompt();
             }
             case AUTHENTICATE -> {
+                System.out.println("Authentication request sent.");
                 serverProxy.authenticate(command.getTextArgument());
-                yield RouteResult.forFeedback("Authentication request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case LIST_LOBBIES -> {
+                System.out.println("Lobby list request sent.");
                 serverProxy.listLobbies();
-                yield RouteResult.forFeedback("Lobby list request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case CREATE_LOBBY -> {
+                System.out.println("Create-lobby request sent.");
                 serverProxy.createLobby(command.getIntegerArgument());
-                yield RouteResult.forFeedback("Create-lobby request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case JOIN_LOBBY -> {
+                System.out.println("Join-lobby request sent.");
                 serverProxy.joinLobby(command.getIntegerArgument());
-                yield RouteResult.forFeedback("Join-lobby request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case EXIT_LOBBY -> {
+                System.out.println("Exit-lobby request sent.");
                 serverProxy.exitLobby();
-                yield RouteResult.forFeedback("Quit-lobby request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case START_LOBBY -> {
+                System.out.println("Start-lobby request sent.");
                 serverProxy.startLobby();
-                yield RouteResult.forFeedback("Start-lobby request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case MOVE_TOTEM -> {
+                System.out.println("Move-totem request sent.");
                 serverProxy.moveTotem(command.getTextArgument());
-                yield RouteResult.forFeedback("Move-totem request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case CHOOSE_CARD -> {
+                System.out.println("Choose card request sent.");
                 serverProxy.chooseCard(command.getIntegerArgument());
-                yield RouteResult.forFeedback("Choose-card request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case EXTRA_DRAW -> {
+                System.out.println("Extra draw request sent.");
                 serverProxy.extraDraw(command.getIntegerArgument());
-                yield RouteResult.forFeedback("Extra-draw request sent.");
+                yield RouteResult.forContinueWithoutPrompt();
             }
             case QUIT -> {
                 serverProxy.close();
