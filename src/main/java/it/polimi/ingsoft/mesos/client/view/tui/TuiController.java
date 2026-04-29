@@ -145,7 +145,6 @@ public class TuiController implements ClientView {
         this.render("""
                 General:
                 help
-                status
                 auth <nickname>
                 quit
 
