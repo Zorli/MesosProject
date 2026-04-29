@@ -9,5 +9,6 @@ public enum ClientMessageType {
     START_LOBBY,
     MOVE_TOTEM,
     CHOOSE_CARD,
-    EXTRA_DRAW
+    EXTRA_DRAW,
+    PONG
 }

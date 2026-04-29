@@ -21,54 +21,55 @@ public class LaunchClient {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.println("Select UI mode:");
-        System.out.println("1) GUI");
-        System.out.println("2) TUI\n");
-        String uiChoice = scanner.nextLine().trim();
+        while (true) {
+            System.out.println("Select UI mode:");
+            System.out.println("1) GUI");
+            System.out.println("2) TUI\n");
+            String uiChoice = scanner.nextLine().trim();
 
-        System.out.println("Select network technology:");
-        System.out.println("1) TCP");
-        System.out.println("2) RMI");
-        String networkChoice = scanner.nextLine().trim();
+            System.out.println("Select network technology:");
+            System.out.println("1) TCP");
+            System.out.println("2) RMI");
+            String networkChoice = scanner.nextLine().trim();
 
-        if (uiChoice.equals("1")) {
-            ClientMain.main(args);
-        } else {
+            if (uiChoice.equals("1")) {
+                ClientMain.main(args);
+                return;
+            } else if (uiChoice.equals("2")) {
+                try {
+                    TuiController tuiController = new TuiController();
+                    ClientView clientView = tuiController;
 
-            try {
+                    ServerProxy serverProxy;
 
-                TuiController tuiController = new TuiController();
-                ClientView clientView = tuiController;
+                    if (networkChoice.equals("1")) {
+                        System.out.println("Connecting to Server via TCP...");
+                        serverProxy = new VirtualServerTCP(
+                                DEFAULT_HOST,
+                                DEFAULT_TCP_PORT,
+                                clientView
+                        );
+                    } else if (networkChoice.equals("2")) {
+                        System.out.println("Connecting to Server via RMI...");
 
-                ServerProxy serverProxy;
+                        String registryUrl = "rmi://" + DEFAULT_HOST + ":" + DEFAULT_RMI_PORT + "/MesosServer";
+                        RmiConnectionService loginFacade = (RmiConnectionService) Naming.lookup(registryUrl);
 
-                if (networkChoice.equals("1")) {
-                    System.out.println("Connecting to Server via TCP...");
-                    serverProxy = new VirtualServerTCP(
-                            DEFAULT_HOST,
-                            DEFAULT_TCP_PORT,
-                            clientView
-                    );
-                } else if (networkChoice.equals("2")) {
-                    System.out.println("Connecting to Server via RMI...");
+                        serverProxy = new ServerProxyRMI(loginFacade, clientView);
+                    } else {
+                        System.out.println("Scelta di rete non valida.");
+                        continue;
+                    }
 
-
-                    String registryUrl = "rmi://" + DEFAULT_HOST + ":" + DEFAULT_RMI_PORT + "/MesosServer";
-                    RmiConnectionService loginFacade = (RmiConnectionService) Naming.lookup(registryUrl);
-
-
-                    serverProxy = new ServerProxyRMI(loginFacade, clientView);
-                } else {
-                    System.out.println("Scelta di rete non valida. Uscita.");
+                    tuiController.attachServerProxy(serverProxy);
+                    tuiController.start();
                     return;
+
+                } catch (Exception exception) {
+                    System.out.println("Failed to connect to the server: " + exception.getMessage());
                 }
-
-
-                tuiController.attachServerProxy(serverProxy);
-                tuiController.start();
-
-            } catch (Exception exception) {
-                throw new RuntimeException("Failed to connect to the server: " + exception.getMessage(), exception);
+            } else {
+                System.out.println("Scelta UI non valida.");
             }
         }
     }

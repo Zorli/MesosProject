@@ -10,6 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchSer
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -255,6 +256,11 @@ public class GameOrchestrator {
         if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
             this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
         }
+    }
+
+    public void freezeForDisconnectedPlayer(String nickname) {
+        this.frozen = true;
+        this.game.notifyError(new ErrorPayload("PLAYER_DISCONNECTED", "Player disconnected: " + nickname));
     }
 
     // Private methods

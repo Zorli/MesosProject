@@ -52,6 +52,7 @@ public class ServerProxyRMI implements ServerProxy{
         }
         try {
             this.serverStub = this.loginFacade.authenticate(new AuthenticationPayload(nickname), this.callbackReceiver);
+            this.callbackReceiver.attachServerStub(this.serverStub);
 
         } catch (RemoteException e) {
             if(this.serverStub == null) {

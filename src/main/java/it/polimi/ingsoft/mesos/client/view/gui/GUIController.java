@@ -4,4 +4,6 @@ package it.polimi.ingsoft.mesos.client.view.gui;
 //For every network necessity it must use the virtualserver
 public class GUIController {
 
+
+
 }

@@ -19,4 +19,5 @@ public interface RmiClientService extends Remote{
     void handlePreMatchUpdate(PreMatchUpdatePayload payload) throws RemoteException;
     void handleLobbyList(LobbyListPayload payload) throws RemoteException;
     void handleGameUpdate(GamePayload payload) throws RemoteException;
+    void handlePing() throws RemoteException;
 }

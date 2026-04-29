@@ -104,6 +104,11 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
     }
 
     @Override
+    public void handlePing() {
+        this.send(new ClientMessage(ClientMessageType.PONG, null));
+    }
+
+    @Override
     public void handleError(ErrorPayload payload) {
         this.clientView.showError(payload);
     }
