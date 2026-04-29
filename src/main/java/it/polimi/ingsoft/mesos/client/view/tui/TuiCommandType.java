@@ -3,7 +3,6 @@ package it.polimi.ingsoft.mesos.client.view.tui;
 enum TuiCommandType {
     //All the command supported here, with the common usage
     HELP("help", false, false),
-    STATUS("status", false, false),
     AUTH("auth <nickname>", true, false),
     LIST_LOBBIES("list-lobbies", false, false),
     CREATE_LOBBY("create-lobby <capacity>", true, true),

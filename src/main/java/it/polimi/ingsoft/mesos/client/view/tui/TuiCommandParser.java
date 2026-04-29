@@ -33,7 +33,6 @@ final class TuiCommandParser {
     private static TuiCommandType parseType(String keyword) {
         return switch (keyword) {
             case "help" -> TuiCommandType.HELP;
-            case "status" -> TuiCommandType.STATUS;
             case "auth" -> TuiCommandType.AUTH;
             case "list-lobbies", "lobbies" -> TuiCommandType.LIST_LOBBIES;
             case "create-lobby", "create" -> TuiCommandType.CREATE_LOBBY;

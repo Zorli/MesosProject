@@ -104,10 +104,6 @@ public class TuiController implements ClientView {
                 this.renderHelp();
                 return false;
             }
-            case STATUS -> {
-                this.renderStatus();
-                return false;
-            }
             case AUTH -> {
                 this.serverProxy.authenticate(command.argument());
             }
@@ -173,17 +169,6 @@ public class TuiController implements ClientView {
                 """);
     }
 
-    private synchronized void renderStatus() {
-        if (this.lastGamePayload != null) {
-            this.render(this.payloadRenderer.renderGame(this.lastGamePayload));
-        } else if (this.lastLobbyListPayload != null) {
-            this.render(this.payloadRenderer.renderLobbyList(this.lastLobbyListPayload));
-        } else if (this.lastPreMatchUpdatePayload != null) {
-            this.render(this.payloadRenderer.renderPreMatchUpdate(this.lastPreMatchUpdatePayload));
-        } else {
-            this.render("No status available.");
-        }
-    }
 
     private synchronized void render(String message) {
         this.out.println();
