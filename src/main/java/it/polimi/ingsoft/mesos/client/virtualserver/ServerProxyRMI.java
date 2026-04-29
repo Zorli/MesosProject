@@ -7,7 +7,6 @@ import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.io.IOException;
-import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 /**
@@ -157,8 +156,12 @@ public class ServerProxyRMI implements ServerProxy{
     public void close() throws IOException {
         this.connected = false;
         try {
+            if (this.serverStub != null) {
+                this.serverStub.closeSession();
+                this.serverStub = null;
+            }
+        } finally {
             UnicastRemoteObject.unexportObject(this.callbackReceiver, true);
-        } catch (NoSuchObjectException ignored) {
         }
     }
     private void notifyLocalError(String code, String message) {

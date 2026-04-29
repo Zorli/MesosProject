@@ -66,7 +66,7 @@ public class ClientCommandHandler {
                 + " from " + this.virtualView.describeSession()
                 + " payload=" + (payload == null ? "null" : payload));
 
-        if (type != ClientMessageType.AUTHENTICATE && type != ClientMessageType.PONG && !this.virtualView.isAuthenticated()) {
+        if (type != ClientMessageType.AUTHENTICATE && !this.virtualView.isAuthenticated()) {
             throw new AuthenticationException("Client is not authenticated");
         }
 
