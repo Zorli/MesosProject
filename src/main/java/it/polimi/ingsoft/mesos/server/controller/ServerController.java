@@ -2,12 +2,15 @@ package it.polimi.ingsoft.mesos.server.controller;
 //This should be the pre match orchestrator
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.LobbyManager;
 import it.polimi.ingsoft.mesos.server.model.user.User;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.util.List;
 import java.util.Map;
@@ -58,7 +61,7 @@ public class ServerController {
         if (disconnectedSession.gameOrchestrator() != null) {
             this.closeMatchForDisconnectedPlayer(disconnectedSession);
         } else if (disconnectedSession.user() != null && disconnectedSession.lobbyId() != null) {
-            this.lobbyManager.exitLobby(disconnectedSession.lobbyId(), disconnectedSession.user());
+            this.exitLobby(sessionId);
         }
         this.sessions.unregister(sessionId);
     }
@@ -98,6 +101,15 @@ public class ServerController {
     public Lobby createLobby(String sessionId, int chosenCapacity) {
         Lobby lobby = this.lobbyManager.createLobby(this.sessions.userOf(sessionId), chosenCapacity);
         this.sessions.enterLobby(sessionId, lobby.getId());
+        this.notifyLobbySessions(
+                lobby.getId(),
+                this.buildPreMatchUpdatePayload(
+                        PreMatchEventType.LOBBY_CREATED,
+                        this.sessions.nicknameOf(sessionId),
+                        "Lobby created successfully",
+                        lobby
+                )
+        );
         return lobby;
     }
 
@@ -108,6 +120,17 @@ public class ServerController {
     public void joinLobby(String sessionId, int lobbyId) {
         this.lobbyManager.joinLobby(lobbyId, this.sessions.userOf(sessionId));
         this.sessions.enterLobby(sessionId, lobbyId);
+        Lobby lobby = this.lobbyManager.getLobby(lobbyId)
+                .orElseThrow(() -> new IllegalArgumentException("Lobby not found: " + lobbyId));
+        this.notifyLobbySessions(
+                lobbyId,
+                this.buildPreMatchUpdatePayload(
+                        PreMatchEventType.LOBBY_JOINED,
+                        this.sessions.nicknameOf(sessionId),
+                        "Lobby joined successfully",
+                        lobby
+                )
+        );
     }
 
     public void exitLobby(int lobbyId, User user) {
@@ -119,7 +142,19 @@ public class ServerController {
         if (lobbyId == null) {
             throw new IllegalStateException("Client is not in a lobby");
         }
+        String nickname = this.sessions.nicknameOf(sessionId);
         this.lobbyManager.exitLobby(lobbyId, this.sessions.userOf(sessionId));
+        Optional<Lobby> remainingLobby = this.lobbyManager.getLobby(lobbyId);
+        this.notifyLobbySessions(
+                lobbyId,
+                this.buildPreMatchUpdatePayload(
+                        PreMatchEventType.LOBBY_LEFT,
+                        nickname,
+                        remainingLobby.isPresent() ? "Lobby left successfully" : "Lobby closed",
+                        remainingLobby.orElse(null),
+                        lobbyId
+                )
+        );
         this.sessions.leaveLobby(sessionId);
     }
 
@@ -134,6 +169,20 @@ public class ServerController {
     public GameOrchestrator createGameFromLobby(int lobbyId) {
         GameOrchestrator orchestrator = this.lobbyManager.createGameFromLobby(lobbyId);
         this.activeGames.put(lobbyId, orchestrator);
+        this.addLobbySessionsAsGameListeners(lobbyId, orchestrator);
+        this.enterLobbySessionsInGame(lobbyId, orchestrator);
+        Lobby lobby = this.lobbyManager.getLobby(lobbyId)
+                .orElseThrow(() -> new IllegalArgumentException("Lobby not found: " + lobbyId));
+        this.notifyLobbySessions(
+                lobbyId,
+                this.buildPreMatchUpdatePayload(
+                        PreMatchEventType.LOBBY_STARTED,
+                        lobby.getHostNickname(),
+                        "Match has started",
+                        lobby,
+                        lobbyId
+                )
+        );
         this.scheduleMatchSetup(orchestrator);
         return orchestrator;
     }
@@ -153,7 +202,6 @@ public class ServerController {
             throw new IllegalStateException("Client is not in a lobby");
         }
         GameOrchestrator orchestrator = this.createGameFromLobby(lobbyId, this.sessions.userOf(sessionId));
-        this.enterLobbySessionsInGame(lobbyId, orchestrator);
         return orchestrator;
     }
 
@@ -176,6 +224,22 @@ public class ServerController {
     private void enterLobbySessionsInGame(int lobbyId, GameOrchestrator orchestrator) {
         for (ServerSessionRegistry.SessionSnapshot session : this.sessions.sessionsInLobby(lobbyId)) {
             this.sessions.enterGame(session.sessionId(), orchestrator);
+        }
+    }
+
+    private void addLobbySessionsAsGameListeners(int lobbyId, GameOrchestrator orchestrator) {
+        for (ServerSessionRegistry.SessionSnapshot session : this.sessions.sessionsInLobby(lobbyId)) {
+            if (session.connection() instanceof Listener listener) {
+                orchestrator.getGame().addListener(listener);
+            }
+        }
+    }
+
+    private void notifyLobbySessions(int lobbyId, Object payload) {
+        for (ServerSessionRegistry.SessionSnapshot session : this.sessions.sessionsInLobby(lobbyId)) {
+            if (session.connection() instanceof Listener listener) {
+                listener.notifyUpdate(payload);
+            }
         }
     }
 
@@ -226,5 +290,38 @@ public class ServerController {
                 SECONDS_TO_WAIT,
                 TimeUnit.SECONDS
         );
+    }
+
+    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
+            PreMatchEventType event,
+            String nickname,
+            String message,
+            Lobby lobby
+    ) {
+        return this.buildPreMatchUpdatePayload(event, nickname, message, lobby, null);
+    }
+
+    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
+            PreMatchEventType event,
+            String nickname,
+            String message,
+            Lobby lobby,
+            Integer fallbackLobbyId
+    ) {
+        return new PreMatchUpdatePayload(
+                event,
+                nickname,
+                message,
+                lobby != null ? lobby.getId() : fallbackLobbyId,
+                lobby != null ? this.extractPlayers(lobby) : List.of(),
+                lobby != null ? lobby.getHostNickname() : null,
+                lobby != null ? lobby.getChosenCapacity() : null
+        );
+    }
+
+    private List<String> extractPlayers(Lobby lobby) {
+        return lobby.getUsers().stream()
+                .map(User::getNickname)
+                .toList();
     }
 }

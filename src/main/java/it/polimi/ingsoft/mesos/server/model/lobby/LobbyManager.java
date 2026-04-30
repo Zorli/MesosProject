@@ -6,15 +6,12 @@ import it.polimi.ingsoft.mesos.server.controller.Factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchRestoreResult;
 import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.user.User;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,7 +30,6 @@ import java.util.Set;
 public class LobbyManager {
     private int nextLobbyId;
     private final Map<Integer, Lobby> lobbies;
-    private final Map<Integer, List<Listener>> lobbyListeners;
     private final GameFactory gameFactory;
     private final LobbyPlayerFactory lobbyPlayerFactory;
 
@@ -56,7 +52,6 @@ public class LobbyManager {
 
         this.nextLobbyId = 1;
         this.lobbies = new HashMap<>();
-        this.lobbyListeners = new HashMap<>();
         this.gameFactory = gameFactory;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
     }
@@ -78,7 +73,6 @@ public class LobbyManager {
 
         Lobby lobby = new Lobby(this.nextLobbyId++, host, chosenCapacity);
         this.lobbies.put(lobby.getId(), lobby);
-        this.lobbyListeners.put(lobby.getId(), new ArrayList<>());
         return lobby;
     }
 
@@ -92,7 +86,6 @@ public class LobbyManager {
     public Lobby createResumeLobby(String resumableGameId, List<String> reservedNicknames) {
         Lobby lobby = Lobby.resumable(this.nextLobbyId++, resumableGameId, reservedNicknames);
         this.lobbies.put(lobby.getId(), lobby);
-        this.lobbyListeners.put(lobby.getId(), new ArrayList<>());
         return lobby;
     }
 
@@ -118,14 +111,6 @@ public class LobbyManager {
                 && (lobby.getStatus() == LobbyStatus.WAITING || lobby.getStatus() == LobbyStatus.RESUMABLE)) {
             lobby.setStatus(LobbyStatus.READY);
         }
-        //creazione payload e invio a tutti
-        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_JOINED,
-                user.getNickname(),
-                "Lobby joined successfully",
-                lobby
-        );
-        this.notifyLobbyListeners(lobbyId, update);
     }
 
     /**
@@ -153,18 +138,9 @@ public class LobbyManager {
         Lobby lobby = this.resolveLobby(lobbyId);
         lobby.removeUser(user);
         boolean isLobbyEmpty = lobby.getUsers().isEmpty() && !lobby.isResumable();
-        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_LEFT,
-                user.getNickname(),
-                isLobbyEmpty ? "Lobby closed" : "Lobby left successfully",
-                isLobbyEmpty ? null : lobby,
-                lobbyId
-        );
-        this.notifyLobbyListeners(lobbyId, update);
         if (isLobbyEmpty) {
             lobby.setStatus(LobbyStatus.CLOSED);
             this.lobbies.remove(lobbyId);
-            this.lobbyListeners.remove(lobbyId);
             return;
         }
 
@@ -205,36 +181,6 @@ public class LobbyManager {
      */
     public Optional<Lobby> getLobby(int lobbyId) {
         return Optional.ofNullable(this.lobbies.get(lobbyId));
-    }
-
-    public void addLobbyListener(int lobbyId, Listener listener) {
-        if (listener == null) {
-            throw new IllegalArgumentException("Listener cannot be null");
-        }
-
-        this.resolveLobby(lobbyId);
-        List<Listener> listeners = this.lobbyListeners.computeIfAbsent(lobbyId, ignored -> new ArrayList<>());
-        if (!listeners.contains(listener)) {
-            listeners.add(listener);
-        }
-    }
-
-    public void removeLobbyListener(int lobbyId, Listener listener) {
-        List<Listener> listeners = this.lobbyListeners.get(lobbyId);
-        if (listeners != null) {
-            listeners.remove(listener);
-        }
-    }
-
-    public void notifyLobbyListeners(int lobbyId, Object payload) {
-        List<Listener> listeners = this.lobbyListeners.get(lobbyId);
-        if (listeners == null) {
-            return;
-        }
-
-        for (Listener listener : List.copyOf(listeners)) {
-            listener.notifyUpdate(payload);
-        }
     }
 
     /**
@@ -298,16 +244,7 @@ public class LobbyManager {
                 savedMatchService,
                 rankingService
         );
-        this.copyLobbyListenersToGame(lobby.getId(), gameOrchestrator.getGame());
         lobby.setStatus(LobbyStatus.STARTED);
-        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_STARTED,
-                lobby.getHostNickname(),
-                "Match has started",
-                lobby,
-                lobbyId
-        );
-        this.notifyLobbyListeners(lobbyId, update);
         return gameOrchestrator;
     }
 
@@ -362,16 +299,7 @@ public class LobbyManager {
                 savedMatchService,
                 rankingService
         );
-        this.copyLobbyListenersToGame(lobby.getId(), gameOrchestrator.getGame());
         lobby.setStatus(LobbyStatus.STARTED);
-        PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_STARTED,
-                lobby.getHostNickname(),
-                "Resumed match has started",
-                lobby,
-                lobbyId
-        );
-        this.notifyLobbyListeners(lobbyId, update);
         return gameOrchestrator;
     }
 
@@ -427,17 +355,6 @@ public class LobbyManager {
                 .anyMatch(lobby -> lobby.getUsers().contains(user));
     }
 
-    private void copyLobbyListenersToGame(int lobbyId, Game game) {
-        List<Listener> listeners = this.lobbyListeners.get(lobbyId);
-        if (listeners == null) {
-            return;
-        }
-
-        for (Listener listener : listeners) {
-            game.addListener(listener);
-        }
-    }
-
     /**
      * Returns a debug-friendly textual representation of the manager and its tracked lobbies.
      *
@@ -454,32 +371,5 @@ public class LobbyManager {
                 ", lobbiesCount=" + this.lobbies.size() +
                 ", lobbies=" + orderedLobbies +
                 '}';
-    }
-    //metodi creazione payload pre_match
-    private PreMatchUpdatePayload buildPreMatchUpdatePayload(PreMatchEventType event, String nickname, String message, Lobby lobby) {
-        return this.buildPreMatchUpdatePayload(event, nickname, message, lobby, null);
-    }
-
-    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
-            PreMatchEventType event,
-            String nickname,
-            String message,
-            Lobby lobby,
-            Integer fallbackLobbyId
-    ) {
-        return new PreMatchUpdatePayload(
-                event,
-                nickname,
-                message,
-                lobby != null ? lobby.getId() : fallbackLobbyId,
-                lobby != null ? this.extractPlayers(lobby) : List.of(),
-                lobby != null ? lobby.getHostNickname() : null,
-                lobby != null ? lobby.getChosenCapacity() : null);
-
-    }
-    private List<String> extractPlayers(Lobby lobby) {
-        return lobby.getUsers().stream()
-                .map(User::getNickname)
-                .toList();
     }
 }
