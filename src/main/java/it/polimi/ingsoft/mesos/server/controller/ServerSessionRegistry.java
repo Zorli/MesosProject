@@ -20,7 +20,10 @@ public class ServerSessionRegistry {
 
     public synchronized String registerConnection(PingPongConnection connection) {
         Objects.requireNonNull(connection, "connection cannot be null");
-        String sessionId = UUID.randomUUID().toString();
+        String sessionId;
+        do {
+            sessionId = UUID.randomUUID().toString();
+        } while (this.sessionsById.containsKey(sessionId));
         SessionState state = new SessionState(connection, System.currentTimeMillis());
         this.sessionsById.put(sessionId, state);
         return sessionId;

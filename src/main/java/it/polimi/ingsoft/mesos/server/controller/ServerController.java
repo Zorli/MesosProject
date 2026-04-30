@@ -19,7 +19,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ServerController {
-    private static final int SECONDS_TO_WAIT = 5;
+    private static final int SECONDS_TO_WAIT = 5; //Before the game starts during the path lobby ready ->in game
     private final ServerSessionRegistry sessions;
     private final LobbyManager lobbyManager;
     private final ScheduledExecutorService matchSetupScheduler;

@@ -42,7 +42,7 @@ public class ServerProxyRMI implements ServerProxy{
             this.notifyLocalError("AUTH_ERROR", "client already Authenticated");
             return;
         }
-        if (this.serverStub != null) {
+        if (this.serverStub != null) { //If the client request authentication,and it's already in,  we return an error
             try {
                 this.callbackReceiver.handleError(new ErrorPayload("AUTH_ERROR", "client already Authenticated"));
             } catch (RemoteException ignored) {
