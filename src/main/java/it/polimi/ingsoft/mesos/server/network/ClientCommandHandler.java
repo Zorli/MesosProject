@@ -13,6 +13,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.server.virtualview.VirtualView;
@@ -81,10 +82,7 @@ public class ClientCommandHandler {
             case MOVE_TOTEM -> this.handleMoveTotem(payload);
             case CHOOSE_CARD -> this.handleChooseCard(payload);
             case EXTRA_DRAW -> this.handleExtraDraw(payload);
-            case PONG -> {
-                this.virtualView.recordPong();
-                yield null;
-            }
+            case PONG -> this.handlePong(payload);
             default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
         };
     }
@@ -222,5 +220,20 @@ public class ClientCommandHandler {
         }
 
         return this.virtualView.extraDraw(extraDrawPayload);
+    }
+
+    private ServerMessage handlePong(JsonElement payload) {
+        PongPayload pongPayload;
+        try {
+            pongPayload = GSON.fromJson(payload, PongPayload.class);
+            if (pongPayload == null) {
+                throw new IllegalArgumentException("Malformed pong payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed pong payload", exception);
+        }
+
+        this.virtualView.recordPong();
+        return null;
     }
 }

@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -62,6 +63,6 @@ public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientSe
         if (this.serverStub == null) {
             throw new IllegalStateException("Cannot reply to ping before authentication");
         }
-        this.serverStub.pong();
+        this.serverStub.pong(new PongPayload());
     }
 }

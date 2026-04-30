@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+//This must be the source of truth for every session detail
+//sessionId -> connection/user/lobby/game/lastPong
+//Al the service for lookup and registration are offered here
 public class ServerSessionRegistry {
     private static final long TIMEOUT_MILLIS = Duration.ofSeconds(25).toMillis();
 

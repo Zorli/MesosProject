@@ -156,7 +156,11 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     @Override
-    public void pong() throws RemoteException {
+    public void pong(PongPayload payload) throws RemoteException {
+        if (payload == null) {
+            this.clientCallback.handleError(new ErrorPayload("PONG_ERROR", "Malformed pong payload"));
+            return;
+        }
         this.recordPong();
     }
 

@@ -26,7 +26,7 @@ public interface RmiServerService extends Remote {
     void moveTotem(MoveTotemPayload payload) throws RemoteException;
     void chooseCard(ChooseCardPayload payload) throws RemoteException;
     void extraDraw(ExtraDrawPayload payload) throws RemoteException;
-    void pong() throws RemoteException;
+    void pong(PongPayload payload) throws RemoteException;
 
     void closeSession() throws RemoteException;
 }
