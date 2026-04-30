@@ -63,7 +63,7 @@ class ServerControllerLobbyFlowTest {
 
     @Test
     void startLobbyMovesAllLobbySessionsIntoTheCreatedGame() {
-        ServerController controller = new ServerController(new it.polimi.ingsoft.mesos.server.model.lobby.LobbyManager(new RecordingGameFactory()));
+        ServerController controller = new ServerController(new RecordingGameFactory());
         RecordingConnection aliceConnection = new RecordingConnection();
         RecordingConnection bobConnection = new RecordingConnection();
         String aliceSessionId = controller.registerConnection(aliceConnection);

@@ -171,7 +171,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         return new LobbySummaryPayload(
                 lobby.getId(),
                 lobby.getHostNickname(),
-                lobby.getUsers().size(),
+                lobby.getPlayers().size(),
                 lobby.getChosenCapacity(),
                 lobby.getStatus().name()
         );

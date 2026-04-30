@@ -1,13 +1,12 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -24,10 +23,12 @@ import java.rmi.server.UnicastRemoteObject;
  */
 public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnectionService {
     private final ServerController serverController;
+    private final PreMatchPayloadMapper payloadMapper;
 
     public RmiSessionFactory(ServerController serverController) throws RemoteException {
         super();
         this.serverController = serverController;
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     @Override
@@ -45,13 +46,7 @@ public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnect
 
             System.out.println("[RMI] User '" + payload.nickname + "' autenticathed");
 
-            PreMatchUpdatePayload updatePayload = new PreMatchUpdatePayload(
-                    PreMatchEventType.AUTHENTICATED,
-                    payload.nickname,
-                    "Authentication completed successfully",
-                    null, null, null, null
-            );
-            clientCallback.handlePreMatchUpdate(updatePayload);
+            clientCallback.handlePreMatchUpdate(this.payloadMapper.authenticated(payload.nickname));
 
             return session;
 

@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
@@ -49,6 +50,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private final PrintWriter writer;
     private final String sessionId;
     private final ClientCommandHandler commandHandler;
+    private final PreMatchPayloadMapper payloadMapper;
 
     //Consutrctor
     public VirtualViewTCP(Socket clientSocket, ServerController serverController) {
@@ -69,6 +71,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
         this.sessionId = this.serverController.registerConnection(this);
         this.commandHandler = new ClientCommandHandler(this.out, this);
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     //Main Loop on the socket
@@ -127,16 +130,10 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             throw new AuthenticationException(exception.getMessage(), exception);
         }
 
-        PreMatchUpdatePayload updatePayload = new PreMatchUpdatePayload(
-                PreMatchEventType.AUTHENTICATED,
-                this.serverController.nicknameOf(this.sessionId),
-                "Authentication completed successfully",
-                null,
-                null,
-                null,
-                null
+        return new ServerMessage(
+                ServerMessageType.PRE_MATCH_UPDATE,
+                this.payloadMapper.authenticated(this.serverController.nicknameOf(this.sessionId))
         );
-        return new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, updatePayload);
     }
 
     @Override
@@ -254,7 +251,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         return new LobbySummaryPayload(
                 lobby.getId(),
                 lobby.getHostNickname(),
-                lobby.getUsers().size(),
+                lobby.getPlayers().size(),
                 lobby.getChosenCapacity(),
                 lobby.getStatus().name()
         );

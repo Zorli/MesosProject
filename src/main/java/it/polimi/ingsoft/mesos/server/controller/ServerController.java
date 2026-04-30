@@ -1,17 +1,21 @@
 package it.polimi.ingsoft.mesos.server.controller;
-//This should be the pre match orchestrator
 
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.Factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.model.Listener;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
+import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
+import it.polimi.ingsoft.mesos.server.model.lobby.LobbyRegistry;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
-import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.lobby.LobbyManager;
-import it.polimi.ingsoft.mesos.server.model.user.User;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,21 +26,31 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ServerController {
-    private static final int SECONDS_TO_WAIT = 5; //Before the game starts during the path lobby ready ->in game
+    private static final int SECONDS_TO_WAIT = 5;
+
     private final ServerSessionRegistry sessions;
-    private final LobbyManager lobbyManager;
+    private final LobbyRegistry lobbyRegistry;
+    private final GameFactory gameFactory;
+    private final LobbyPlayerFactory lobbyPlayerFactory;
+    private final PreMatchPayloadMapper payloadMapper;
     private final ScheduledExecutorService matchSetupScheduler;
     private final PingPongRoutine pingPongRoutine;
-    //mappa necessaria nello switch tra lobby e game,campi lobbyId, Gameorchestrator
     final Map<Integer, GameOrchestrator> activeGames = new ConcurrentHashMap<>();
 
     public ServerController() {
-        this(new LobbyManager());
+        this(new LobbyRegistry(), DefaultGameFactory.getInstance());
     }
 
-    public ServerController(LobbyManager lobbyManager) {
+    public ServerController(GameFactory gameFactory) {
+        this(new LobbyRegistry(), gameFactory);
+    }
+
+    public ServerController(LobbyRegistry lobbyRegistry, GameFactory gameFactory) {
         this.sessions = new ServerSessionRegistry();
-        this.lobbyManager = Objects.requireNonNull(lobbyManager, "lobbyManager cannot be null");
+        this.lobbyRegistry = Objects.requireNonNull(lobbyRegistry, "lobbyRegistry cannot be null");
+        this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
+        this.lobbyPlayerFactory = new LobbyPlayerFactory();
+        this.payloadMapper = new PreMatchPayloadMapper();
         this.matchSetupScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "match-setup-scheduler");
             thread.setDaemon(true);
@@ -78,10 +92,6 @@ public class ServerController {
         return this.sessions.authenticate(sessionId, nickname);
     }
 
-    public User userOf(String sessionId) {
-        return this.sessions.userOf(sessionId);
-    }
-
     public String nicknameOf(String sessionId) {
         return this.sessions.nicknameOf(sessionId);
     }
@@ -94,47 +104,29 @@ public class ServerController {
         return this.sessions.gameOf(sessionId);
     }
 
-    public Lobby createLobby(User host, int chosenCapacity) {
-        return this.lobbyManager.createLobby(host, chosenCapacity);
-    }
-
     public Lobby createLobby(String sessionId, int chosenCapacity) {
-        Lobby lobby = this.lobbyManager.createLobby(this.sessions.userOf(sessionId), chosenCapacity);
+        this.ensureSessionCanEnterLobby(sessionId);
+        String nickname = this.requireNickname(sessionId);
+
+        Lobby lobby = this.lobbyRegistry.create(nickname, chosenCapacity);
         this.sessions.enterLobby(sessionId, lobby.getId());
-        this.notifyLobbySessions(
-                lobby.getId(),
-                this.buildPreMatchUpdatePayload(
-                        PreMatchEventType.LOBBY_CREATED,
-                        this.sessions.nicknameOf(sessionId),
-                        "Lobby created successfully",
-                        lobby
-                )
-        );
+        this.notifyLobbySessions(lobby.getId(), this.payloadMapper.lobbyCreated(nickname, lobby));
         return lobby;
     }
 
-    public void joinLobby(int lobbyId, User user) {
-        this.lobbyManager.joinLobby(lobbyId, user);
-    }
-
     public void joinLobby(String sessionId, int lobbyId) {
-        this.lobbyManager.joinLobby(lobbyId, this.sessions.userOf(sessionId));
-        this.sessions.enterLobby(sessionId, lobbyId);
-        Lobby lobby = this.lobbyManager.getLobby(lobbyId)
-                .orElseThrow(() -> new IllegalArgumentException("Lobby not found: " + lobbyId));
-        this.notifyLobbySessions(
-                lobbyId,
-                this.buildPreMatchUpdatePayload(
-                        PreMatchEventType.LOBBY_JOINED,
-                        this.sessions.nicknameOf(sessionId),
-                        "Lobby joined successfully",
-                        lobby
-                )
-        );
-    }
+        this.ensureSessionCanEnterLobby(sessionId);
+        String nickname = this.requireNickname(sessionId);
+        Lobby lobby = this.lobbyRegistry.require(lobbyId);
+        this.ensureLobbyAcceptsJoin(lobby);
 
-    public void exitLobby(int lobbyId, User user) {
-        this.lobbyManager.exitLobby(lobbyId, user);
+        lobby.addPlayer(nickname);
+        if (lobby.canStart()) {
+            lobby.setStatus(LobbyStatus.READY);
+        }
+
+        this.sessions.enterLobby(sessionId, lobbyId);
+        this.notifyLobbySessions(lobbyId, this.payloadMapper.lobbyJoined(nickname, lobby));
     }
 
     public void exitLobby(String sessionId) {
@@ -142,58 +134,31 @@ public class ServerController {
         if (lobbyId == null) {
             throw new IllegalStateException("Client is not in a lobby");
         }
-        String nickname = this.sessions.nicknameOf(sessionId);
-        this.lobbyManager.exitLobby(lobbyId, this.sessions.userOf(sessionId));
-        Optional<Lobby> remainingLobby = this.lobbyManager.getLobby(lobbyId);
-        this.notifyLobbySessions(
-                lobbyId,
-                this.buildPreMatchUpdatePayload(
-                        PreMatchEventType.LOBBY_LEFT,
-                        nickname,
-                        remainingLobby.isPresent() ? "Lobby left successfully" : "Lobby closed",
-                        remainingLobby.orElse(null),
-                        lobbyId
-                )
-        );
+
+        String nickname = this.requireNickname(sessionId);
+        Lobby lobby = this.lobbyRegistry.require(lobbyId);
+        lobby.removePlayer(nickname);
+
+        if (lobby.isEmpty()) {
+            lobby.setStatus(LobbyStatus.CLOSED);
+            this.lobbyRegistry.remove(lobbyId);
+            this.notifyLobbySessions(lobbyId, this.payloadMapper.lobbyLeft(nickname, null, lobbyId));
+        } else {
+            if (!lobby.canStart() && lobby.getStatus() == LobbyStatus.READY) {
+                lobby.setStatus(LobbyStatus.WAITING);
+            }
+            this.notifyLobbySessions(lobbyId, this.payloadMapper.lobbyLeft(nickname, lobby, lobbyId));
+        }
+
         this.sessions.leaveLobby(sessionId);
     }
 
     public List<Lobby> listOpenLobbies() {
-        return this.lobbyManager.listOpenLobbies();
+        return this.lobbyRegistry.listOpen();
     }
 
     public Optional<Lobby> getLobby(int lobbyId) {
-        return this.lobbyManager.getLobby(lobbyId);
-    }
-
-    public GameOrchestrator createGameFromLobby(int lobbyId) {
-        GameOrchestrator orchestrator = this.lobbyManager.createGameFromLobby(lobbyId);
-        this.activeGames.put(lobbyId, orchestrator);
-        this.addLobbySessionsAsGameListeners(lobbyId, orchestrator);
-        this.enterLobbySessionsInGame(lobbyId, orchestrator);
-        Lobby lobby = this.lobbyManager.getLobby(lobbyId)
-                .orElseThrow(() -> new IllegalArgumentException("Lobby not found: " + lobbyId));
-        this.notifyLobbySessions(
-                lobbyId,
-                this.buildPreMatchUpdatePayload(
-                        PreMatchEventType.LOBBY_STARTED,
-                        lobby.getHostNickname(),
-                        "Match has started",
-                        lobby,
-                        lobbyId
-                )
-        );
-        this.scheduleMatchSetup(orchestrator);
-        return orchestrator;
-    }
-
-    public GameOrchestrator createGameFromLobby(int lobbyId, User requester) {
-        Lobby lobby = this.lobbyManager.getLobby(lobbyId)
-                .orElseThrow(() -> new IllegalArgumentException("Lobby not found: " + lobbyId));
-        if (!lobby.isHost(requester)) {
-            throw new IllegalStateException("Only the lobby host can start the match");
-        }
-        return this.createGameFromLobby(lobbyId);
+        return this.lobbyRegistry.get(lobbyId);
     }
 
     public GameOrchestrator startLobby(String sessionId) {
@@ -201,16 +166,30 @@ public class ServerController {
         if (lobbyId == null) {
             throw new IllegalStateException("Client is not in a lobby");
         }
-        GameOrchestrator orchestrator = this.createGameFromLobby(lobbyId, this.sessions.userOf(sessionId));
+
+        String nickname = this.requireNickname(sessionId);
+        Lobby lobby = this.lobbyRegistry.require(lobbyId);
+        this.ensureLobbyCanStart(lobby, nickname);
+
+        List<Player> players = this.lobbyPlayerFactory.createPlayers(lobby.getPlayers());
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                this.gameFactory,
+                new ArrayList<>(players),
+                lobby.getHostNickname(),
+                NoOpSavedMatchService.INSTANCE
+        );
+
+        lobby.setStatus(LobbyStatus.STARTED);
+        this.activeGames.put(lobbyId, orchestrator);
+        this.addLobbySessionsAsGameListeners(lobbyId, orchestrator);
+        this.enterLobbySessionsInGame(lobbyId, orchestrator);
+        this.notifyLobbySessions(lobbyId, this.payloadMapper.lobbyStarted(nickname, lobby));
+        this.scheduleMatchSetup(orchestrator);
         return orchestrator;
     }
 
     public void enterGameIfAvailable(String sessionId, int lobbyId) {
         this.sessions.enterGame(sessionId, this.getGameOrchestrator(lobbyId));
-    }
-
-    public LobbyManager getLobbyManager() {
-        return this.lobbyManager;
     }
 
     public GameOrchestrator getGameOrchestrator(int lobbyId) {
@@ -219,6 +198,45 @@ public class ServerController {
             throw new IllegalStateException("No Match open for lobby:: " + lobbyId);
         }
         return orchestrator;
+    }
+
+    private void ensureSessionCanEnterLobby(String sessionId) {
+        if (this.sessions.lobbyIdOf(sessionId) != null) {
+            throw new IllegalStateException("Client is already in a lobby");
+        }
+        String nickname = this.requireNickname(sessionId);
+        if (this.lobbyRegistry.containsPlayer(nickname)) {
+            throw new IllegalStateException("Client is already in a lobby");
+        }
+    }
+
+    private void ensureLobbyAcceptsJoin(Lobby lobby) {
+        if (lobby.getStatus() == LobbyStatus.CLOSED || lobby.getStatus() == LobbyStatus.STARTED) {
+            throw new IllegalStateException("Cannot join lobby with status: " + lobby.getStatus());
+        }
+        if (lobby.isFull()) {
+            throw new IllegalStateException("Lobby is full");
+        }
+    }
+
+    private void ensureLobbyCanStart(Lobby lobby, String nickname) {
+        if (!lobby.isHost(nickname)) {
+            throw new IllegalStateException("Only the lobby host can start the match");
+        }
+        if (lobby.getStatus() != LobbyStatus.READY) {
+            throw new IllegalStateException("Cannot start lobby with status: " + lobby.getStatus());
+        }
+        if (!lobby.canStart()) {
+            throw new IllegalStateException("Cannot start lobby that cannot start");
+        }
+    }
+
+    private String requireNickname(String sessionId) {
+        String nickname = this.sessions.nicknameOf(sessionId);
+        if (nickname == null || nickname.isBlank()) {
+            throw new IllegalStateException("Client is not authenticated");
+        }
+        return nickname;
     }
 
     private void enterLobbySessionsInGame(int lobbyId, GameOrchestrator orchestrator) {
@@ -290,38 +308,5 @@ public class ServerController {
                 SECONDS_TO_WAIT,
                 TimeUnit.SECONDS
         );
-    }
-
-    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
-            PreMatchEventType event,
-            String nickname,
-            String message,
-            Lobby lobby
-    ) {
-        return this.buildPreMatchUpdatePayload(event, nickname, message, lobby, null);
-    }
-
-    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
-            PreMatchEventType event,
-            String nickname,
-            String message,
-            Lobby lobby,
-            Integer fallbackLobbyId
-    ) {
-        return new PreMatchUpdatePayload(
-                event,
-                nickname,
-                message,
-                lobby != null ? lobby.getId() : fallbackLobbyId,
-                lobby != null ? this.extractPlayers(lobby) : List.of(),
-                lobby != null ? lobby.getHostNickname() : null,
-                lobby != null ? lobby.getChosenCapacity() : null
-        );
-    }
-
-    private List<String> extractPlayers(Lobby lobby) {
-        return lobby.getUsers().stream()
-                .map(User::getNickname)
-                .toList();
     }
 }
