@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
@@ -42,8 +41,7 @@ public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnect
         VirtualViewRMI session = new VirtualViewRMI(this.serverController, clientCallback);
 
         try {
-            User authenticatedUser = this.serverController.authenticate(payload.nickname);
-            session.getConnectionContext().authenticate(authenticatedUser);
+            this.serverController.authenticate(session.getSessionId(), payload.nickname);
 
             System.out.println("[RMI] User '" + payload.nickname + "' autenticathed");
 
@@ -65,4 +63,3 @@ public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnect
         }
     }
 }
-

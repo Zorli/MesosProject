@@ -183,6 +183,10 @@ public class Game {
         this.listeners.remove(listener);
     }
 
+    public void notifyError(ErrorPayload payload) {
+        this.notifyListeners(payload);
+    }
+
     // Setters
 
     /**

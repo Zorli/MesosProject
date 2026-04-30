@@ -3,16 +3,14 @@ package it.polimi.ingsoft.mesos.server.model.user;
 import java.util.Objects;
 
 /**
- * Represents a globally recognized user connected to the server.
- * This class handles the virtualview identity and connection status of a client,
- * keeping it strictly separated from the in-game player state.
+ * Represents a user connected to the server.
+ * Connection ownership is tracked by the server session registry, not by this class.
  */
 public class User {
     private final String nickname;
-    private boolean isOnline;
 
     /**
-     * Creates a new user with the specified nickname and sets their initial status to online.
+     * Creates a new user with the specified nickname.
      *
      * @param nickname the unique identifier chosen by the user
      * @throws IllegalArgumentException if the provided nickname is null or blank
@@ -22,7 +20,6 @@ public class User {
             throw new IllegalArgumentException("nickname can't be null or blank");
         }
         this.nickname = nickname;
-        this.isOnline = true;
     }
 
     /**
@@ -32,24 +29,6 @@ public class User {
      */
     public String getNickname() {
         return nickname;
-    }
-
-    /**
-     * Checks whether the user is currently connected to the server.
-     *
-     * @return {@code true} if the user is online, {@code false} otherwise
-     */
-    public boolean isOnline() {
-        return isOnline;
-    }
-
-    /**
-     * Updates the connection status of the user.
-     *
-     * @param online {@code true} to mark the user as connected, {@code false} for disconnected
-     */
-    public void setOnline(boolean online) {
-        this.isOnline = online;
     }
 
     /**

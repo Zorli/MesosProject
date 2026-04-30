@@ -13,6 +13,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.server.virtualview.VirtualView;
@@ -43,7 +44,7 @@ public class ClientCommandHandler {
     }
 
     // Entry point
-    public ServerMessage handle(String rawMessage, ConnectionContext context) {
+    public ServerMessage handle(String rawMessage) {
         JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
         if (root == null) {
             throw new IllegalArgumentException("Malformed client message");
@@ -63,30 +64,31 @@ public class ClientCommandHandler {
 
         JsonElement payload = root.get("payload");
         this.out.println("[TCP] Received " + type
-                + " from " + this.describeConnection(context)
+                + " from " + this.virtualView.describeSession()
                 + " payload=" + (payload == null ? "null" : payload));
 
-        if (type != ClientMessageType.AUTHENTICATE && !context.isAuthenticated()) {
+        if (type != ClientMessageType.AUTHENTICATE && !this.virtualView.isAuthenticated()) {
             throw new AuthenticationException("Client is not authenticated");
         }
 
         // Command dispatch
         return switch (type) {
-            case AUTHENTICATE -> this.handleAuthentication(payload, context);
-            case LIST_LOBBIES -> this.handleListLobbies(payload, context);
-            case CREATE_LOBBY -> this.handleCreateLobby(payload, context);
-            case JOIN_LOBBY -> this.handleJoinLobby(payload, context);
-            case EXIT_LOBBY -> this.handleExitLobby(payload, context);
-            case START_LOBBY -> this.handleStartLobby(payload, context);
-            case MOVE_TOTEM -> this.handleMoveTotem(payload, context);
-            case CHOOSE_CARD -> this.handleChooseCard(payload, context);
-            case EXTRA_DRAW -> this.handleExtraDraw(payload, context);
+            case AUTHENTICATE -> this.handleAuthentication(payload);
+            case LIST_LOBBIES -> this.handleListLobbies(payload);
+            case CREATE_LOBBY -> this.handleCreateLobby(payload);
+            case JOIN_LOBBY -> this.handleJoinLobby(payload);
+            case EXIT_LOBBY -> this.handleExitLobby(payload);
+            case START_LOBBY -> this.handleStartLobby(payload);
+            case MOVE_TOTEM -> this.handleMoveTotem(payload);
+            case CHOOSE_CARD -> this.handleChooseCard(payload);
+            case EXTRA_DRAW -> this.handleExtraDraw(payload);
+            case PONG -> this.handlePong(payload);
             default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
         };
     }
 
     // Command-specific payload handling
-    private ServerMessage handleAuthentication(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleAuthentication(JsonElement payload) {
         AuthenticationPayload authenticationPayload;
         try {
             authenticationPayload = GSON.fromJson(payload, AuthenticationPayload.class);
@@ -100,7 +102,7 @@ public class ClientCommandHandler {
         return this.virtualView.authenticate(authenticationPayload);
     }
 
-    private ServerMessage handleCreateLobby(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleCreateLobby(JsonElement payload) {
         CreateLobbyPayload createLobbyPayload;
         try {
             createLobbyPayload = GSON.fromJson(payload, CreateLobbyPayload.class);
@@ -114,7 +116,7 @@ public class ClientCommandHandler {
         return this.virtualView.createLobby(createLobbyPayload);
     }
 
-    private ServerMessage handleListLobbies(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleListLobbies(JsonElement payload) {
         ListLobbiesPayload listLobbiesPayload;
         try {
             listLobbiesPayload = GSON.fromJson(payload, ListLobbiesPayload.class);
@@ -128,7 +130,7 @@ public class ClientCommandHandler {
         return this.virtualView.listLobbies(listLobbiesPayload);
     }
 
-    private ServerMessage handleJoinLobby(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleJoinLobby(JsonElement payload) {
         JoinLobbyPayload joinLobbyPayload;
         try {
             joinLobbyPayload = GSON.fromJson(payload, JoinLobbyPayload.class);
@@ -146,7 +148,7 @@ public class ClientCommandHandler {
         return this.virtualView.joinLobby(joinLobbyPayload);
     }
 
-    private ServerMessage handleExitLobby(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleExitLobby(JsonElement payload) {
         ExitLobbyPayload exitLobbyPayload;
         try {
             exitLobbyPayload = GSON.fromJson(payload, ExitLobbyPayload.class);
@@ -160,7 +162,7 @@ public class ClientCommandHandler {
         return this.virtualView.exitLobby(exitLobbyPayload);
     }
 
-    private ServerMessage handleStartLobby(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleStartLobby(JsonElement payload) {
         StartLobbyPayload startLobbyPayload;
         try {
             startLobbyPayload = GSON.fromJson(payload, StartLobbyPayload.class);
@@ -174,7 +176,7 @@ public class ClientCommandHandler {
         return this.virtualView.startLobby(startLobbyPayload);
     }
 
-    private ServerMessage handleMoveTotem(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleMoveTotem(JsonElement payload) {
         MoveTotemPayload moveTotemPayload;
         try {
             moveTotemPayload = GSON.fromJson(payload, MoveTotemPayload.class);
@@ -192,7 +194,7 @@ public class ClientCommandHandler {
         return this.virtualView.moveTotem(moveTotemPayload);
     }
 
-    private ServerMessage handleChooseCard(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleChooseCard(JsonElement payload) {
         ChooseCardPayload chooseCardPayload;
         try {
             chooseCardPayload = GSON.fromJson(payload, ChooseCardPayload.class);
@@ -206,7 +208,7 @@ public class ClientCommandHandler {
         return this.virtualView.chooseCard(chooseCardPayload);
     }
 
-    private ServerMessage handleExtraDraw(JsonElement payload, ConnectionContext context) {
+    private ServerMessage handleExtraDraw(JsonElement payload) {
         ExtraDrawPayload extraDrawPayload;
         try {
             extraDrawPayload = GSON.fromJson(payload, ExtraDrawPayload.class);
@@ -220,11 +222,18 @@ public class ClientCommandHandler {
         return this.virtualView.extraDraw(extraDrawPayload);
     }
 
-    // Helper methods section
-    private String describeConnection(ConnectionContext context) {
-        if (context.getNickname() != null && !context.getNickname().isBlank()) {
-            return context.getNickname();
+    private ServerMessage handlePong(JsonElement payload) {
+        PongPayload pongPayload;
+        try {
+            pongPayload = GSON.fromJson(payload, PongPayload.class);
+            if (pongPayload == null) {
+                throw new IllegalArgumentException("Malformed pong payload");
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed pong payload", exception);
         }
-        return "unauthenticated-client";
+
+        this.virtualView.recordPong();
+        return null;
     }
 }

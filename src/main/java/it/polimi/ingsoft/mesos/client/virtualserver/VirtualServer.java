@@ -24,6 +24,8 @@ public interface VirtualServer extends AutoCloseable {
 
     void handleGameUpdate(GamePayload payload);
 
+    void handlePing();
+
     @Override
     void close() throws IOException;
 }

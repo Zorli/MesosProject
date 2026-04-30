@@ -13,6 +13,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
@@ -101,6 +102,11 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
     @Override
     public void extraDraw(int cardId) {
         this.send(new ClientMessage(ClientMessageType.EXTRA_DRAW, new ExtraDrawPayload(cardId)));
+    }
+
+    @Override
+    public void handlePing() {
+        this.send(new ClientMessage(ClientMessageType.PONG, new PongPayload()));
     }
 
     @Override

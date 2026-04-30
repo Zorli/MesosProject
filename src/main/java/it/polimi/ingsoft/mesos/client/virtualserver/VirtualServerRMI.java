@@ -2,10 +2,12 @@ package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
+import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -25,10 +27,15 @@ import java.rmi.server.UnicastRemoteObject;
 public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientService {
 
     private final ClientView clientView;
+    private RmiServerService serverStub;
 
     public VirtualServerRMI(ClientView clientView) throws RemoteException {
         super();
         this.clientView = clientView;
+    }
+
+    void attachServerStub(RmiServerService serverStub) {
+        this.serverStub = serverStub;
     }
 
     @Override
@@ -49,5 +56,13 @@ public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientSe
     @Override
     public void handleGameUpdate(GamePayload payload) throws RemoteException {
         this.clientView.showGameUpdate(payload);
+    }
+
+    @Override
+    public void handlePing() throws RemoteException {
+        if (this.serverStub == null) {
+            throw new IllegalStateException("Cannot reply to ping before authentication");
+        }
+        this.serverStub.pong(new PongPayload());
     }
 }

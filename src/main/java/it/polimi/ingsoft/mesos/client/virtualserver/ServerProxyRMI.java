@@ -7,7 +7,6 @@ import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.io.IOException;
-import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 /**
@@ -43,7 +42,7 @@ public class ServerProxyRMI implements ServerProxy{
             this.notifyLocalError("AUTH_ERROR", "client already Authenticated");
             return;
         }
-        if (this.serverStub != null) {
+        if (this.serverStub != null) { //If the client request authentication,and it's already in,  we return an error
             try {
                 this.callbackReceiver.handleError(new ErrorPayload("AUTH_ERROR", "client already Authenticated"));
             } catch (RemoteException ignored) {
@@ -52,6 +51,7 @@ public class ServerProxyRMI implements ServerProxy{
         }
         try {
             this.serverStub = this.loginFacade.authenticate(new AuthenticationPayload(nickname), this.callbackReceiver);
+            this.callbackReceiver.attachServerStub(this.serverStub);
 
         } catch (RemoteException e) {
             if(this.serverStub == null) {
@@ -156,8 +156,12 @@ public class ServerProxyRMI implements ServerProxy{
     public void close() throws IOException {
         this.connected = false;
         try {
+            if (this.serverStub != null) {
+                this.serverStub.closeSession();
+                this.serverStub = null;
+            }
+        } finally {
             UnicastRemoteObject.unexportObject(this.callbackReceiver, true);
-        } catch (NoSuchObjectException ignored) {
         }
     }
     private void notifyLocalError(String code, String message) {

@@ -57,6 +57,7 @@ public class TcpServerMessageReceiver implements Runnable {
                 case PRE_MATCH_UPDATE -> this.handlePreMatchUpdate(payload);
                 case LOBBY_LIST -> this.handleLobbyList(payload);
                 case GAME_UPDATE -> this.handleGameUpdate(payload);
+                case PING -> this.virtualServer.handlePing();
             }
         } catch (RuntimeException exception) {
             this.virtualServer.handleError(new ErrorPayload("INVALID_SERVER_MESSAGE", serializedMessage));

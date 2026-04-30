@@ -4,5 +4,6 @@ public enum ServerMessageType {
     ERROR,
     PRE_MATCH_UPDATE,
     LOBBY_LIST,
-    GAME_UPDATE
+    GAME_UPDATE,
+    PING
 }

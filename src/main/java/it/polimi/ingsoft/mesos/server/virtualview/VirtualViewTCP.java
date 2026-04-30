@@ -6,7 +6,6 @@ import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrat
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
-import it.polimi.ingsoft.mesos.server.network.ConnectionContext;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
@@ -47,10 +46,9 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     private final Socket clientSocket;
     private final ServerController serverController;
-    private GameOrchestrator gameOrchestrator;
     private final PrintStream out;
     private final PrintWriter writer;
-    private final ConnectionContext connectionContext;
+    private final String sessionId;
     private final ClientCommandHandler commandHandler;
 
     //Consutrctor
@@ -62,8 +60,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         this.clientSocket = Objects.requireNonNull(clientSocket, "clientSocket cannot be null");
         this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
         this.out = Objects.requireNonNull(out, "out cannot be null");
-        this.connectionContext = new ConnectionContext(this.serverController);
-        this.commandHandler = new ClientCommandHandler(this.out, this);
         try {
             this.writer = new PrintWriter(
                     new OutputStreamWriter(this.clientSocket.getOutputStream(), StandardCharsets.UTF_8),
@@ -72,6 +68,8 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot open TCP virtual view writer", exception);
         }
+        this.sessionId = this.serverController.registerConnection(this);
+        this.commandHandler = new ClientCommandHandler(this.out, this);
     }
 
     //Main Loop on the socket
@@ -83,7 +81,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             String rawMessage;
             while ((rawMessage = reader.readLine()) != null) {
                 try {
-                    ServerMessage response = this.commandHandler.handle(rawMessage, this.connectionContext);
+                    ServerMessage response = this.commandHandler.handle(rawMessage);
                     if (response != null) {
                         this.sendServerMessage(response);
                     }
@@ -104,6 +102,15 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     @Override
     public void close() throws IOException {
+        Integer lobbyId = this.safeLobbyId();
+        if (lobbyId != null) {
+            this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
+        }
+        GameOrchestrator game = this.safeGame();
+        if (game != null) {
+            game.getGame().removeListener(this);
+        }
+        this.serverController.disconnectSession(this.sessionId);
         this.clientSocket.close();
     }
 
@@ -112,7 +119,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     //Molto importante se user non ha fatto auth non puo fare nulla
     @Override
     public ServerMessage authenticate(AuthenticationPayload payload) {
-        if (!this.connectionContext.isInAuthenticationPhase()) {
+        if (this.serverController.isAuthenticated(this.sessionId)) {
             throw new AuthenticationException("Client is already authenticated");
         }
         if (payload == null || payload.nickname == null || payload.nickname.isBlank()) {
@@ -120,15 +127,14 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
 
         try {
-            User authenticatedUser = this.serverController.authenticate(payload.nickname);
-            this.connectionContext.authenticate(authenticatedUser);
+            this.serverController.authenticate(this.sessionId, payload.nickname);
         } catch (IllegalArgumentException exception) {
             throw new AuthenticationException(exception.getMessage(), exception);
         }
 
         PreMatchUpdatePayload updatePayload = new PreMatchUpdatePayload(
                 PreMatchEventType.AUTHENTICATED,
-                this.connectionContext.getNickname(),
+                this.serverController.nicknameOf(this.sessionId),
                 "Authentication completed successfully",
                 null,
                 null,
@@ -148,12 +154,11 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     @Override
     public ServerMessage createLobby(CreateLobbyPayload payload) {
-        Lobby lobby = this.serverController.createLobby(this.connectionContext.getUser(), payload.chosenCapacity);
-        this.connectionContext.setCurrentLobbyId(lobby.getId());
+        Lobby lobby = this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
         this.serverController.getLobbyManager().addLobbyListener(lobby.getId(), this);
         return this.buildPreMatchUpdate(
                 PreMatchEventType.LOBBY_CREATED,
-                this.connectionContext.getNickname(),
+                this.serverController.nicknameOf(this.sessionId),
                 "Lobby created successfully",
                 lobby
         );
@@ -162,55 +167,48 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     @Override
     public ServerMessage joinLobby(JoinLobbyPayload payload) {
         this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
-        this.serverController.joinLobby(payload.lobbyId, this.connectionContext.getUser());
-        this.connectionContext.setCurrentLobbyId(payload.lobbyId);
+        this.serverController.joinLobby(this.sessionId, payload.lobbyId);
 
         return null;
     }
 
     @Override
     public ServerMessage exitLobby(ExitLobbyPayload payload) {
-        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+        Integer lobbyId = this.serverController.lobbyIdOf(this.sessionId);
         if (lobbyId == null) {
             throw new IllegalStateException("Client is not in a lobby");
         }
-        this.serverController.exitLobby(lobbyId, this.connectionContext.getUser());
+        this.serverController.exitLobby(this.sessionId);
         this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
-        this.connectionContext.setCurrentLobbyId(null);
 
         return null;
     }
 
     @Override
     public ServerMessage startLobby(StartLobbyPayload payload) {
-        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
-        this.gameOrchestrator = this.serverController.createGameFromLobby(
-                lobbyId,
-                this.connectionContext.getUser()
-        );
-        this.connectionContext.enterMatch(this.gameOrchestrator);
+        this.serverController.startLobby(this.sessionId);
 
         return null;
     }
 
     @Override
     public ServerMessage moveTotem(MoveTotemPayload payload) {
-        String nickname = this.connectionContext.getNickname();
-        this.gameOrchestrator.moveTotem(nickname, payload.tile);
+        String nickname = this.serverController.nicknameOf(this.sessionId);
+        this.serverController.gameOf(this.sessionId).moveTotem(nickname, payload.tile);
         return null;
     }
 
     @Override
     public ServerMessage chooseCard(ChooseCardPayload payload) {
-        String nickname = this.connectionContext.getNickname();
-        this.gameOrchestrator.chooseCard(nickname, payload.cardId);
+        String nickname = this.serverController.nicknameOf(this.sessionId);
+        this.serverController.gameOf(this.sessionId).chooseCard(nickname, payload.cardId);
         return null;
     }
 
     @Override
     public ServerMessage extraDraw(ExtraDrawPayload payload) {
-        String nickname = this.connectionContext.getNickname();
-        this.gameOrchestrator.extraDrawn(nickname, payload.cardId);
+        String nickname = this.serverController.nicknameOf(this.sessionId);
+        this.serverController.gameOf(this.sessionId).extraDrawn(nickname, payload.cardId);
         return null;
     }
 
@@ -219,6 +217,30 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     public void sendServerMessage(ServerMessage message) {//low level call
         Objects.requireNonNull(message, "message cannot be null");
         this.writer.println(GSON.toJson(message));
+    }
+
+    @Override
+    public void sendPing() {
+        this.sendServerMessage(new ServerMessage(ServerMessageType.PING, null));
+    }
+
+    @Override
+    public void recordPong() {
+        this.serverController.recordPong(this.sessionId);
+    }
+
+    @Override
+    public boolean isAuthenticated() {
+        return this.serverController.isAuthenticated(this.sessionId);
+    }
+
+    @Override
+    public String describeSession() {
+        String nickname = this.serverController.nicknameOf(this.sessionId);
+        if (nickname != null && !nickname.isBlank()) {
+            return nickname;
+        }
+        return "unauthenticated-client";
     }
 
     // Error handling methods section
@@ -239,10 +261,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
         }
         return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
-    }
-
-    public void setGameOrchestrator(GameOrchestrator gameOrchestrator) {
-        this.gameOrchestrator = gameOrchestrator;
     }
 
     private ServerMessage buildPreMatchUpdate(PreMatchEventType event, String nickname, String message, Lobby lobby) {
@@ -305,7 +323,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     }
 
     private void enterCurrentMatchIfAvailable() {
-        Integer lobbyId = this.connectionContext.getCurrentLobbyId();
+        Integer lobbyId = this.serverController.lobbyIdOf(this.sessionId);
         if (lobbyId != null) {
             this.enterMatchIfAvailable(lobbyId);
         }
@@ -313,9 +331,24 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     private void enterMatchIfAvailable(int lobbyId) {
         try {
-            this.gameOrchestrator = this.serverController.getGameOrchestrator(lobbyId);
-            this.connectionContext.enterMatch(this.gameOrchestrator);
+            this.serverController.enterGameIfAvailable(this.sessionId, lobbyId);
         } catch (Exception ignored) {
+        }
+    }
+
+    private Integer safeLobbyId() {
+        try {
+            return this.serverController.lobbyIdOf(this.sessionId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private GameOrchestrator safeGame() {
+        try {
+            return this.serverController.gameOf(this.sessionId);
+        } catch (RuntimeException ignored) {
+            return null;
         }
     }
 }

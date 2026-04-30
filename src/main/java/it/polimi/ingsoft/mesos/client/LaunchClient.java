@@ -26,11 +26,15 @@ public class LaunchClient {
      */
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        String uiChoice = readUiChoice(scanner);
 
-        if ("1".equals(uiChoice)) {
-            ClientMain.main(args);
-        } else {
+        while (true) {
+            String uiChoice = readUiChoice(scanner);
+
+            if ("1".equals(uiChoice)) {
+                ClientMain.main(args);
+                return;
+            }
+
             try {
                 TuiController tuiController = new TuiController(scanner, System.out);
                 ClientView clientView = tuiController;
@@ -53,8 +57,9 @@ public class LaunchClient {
 
                 tuiController.attachServerProxy(serverProxy);
                 tuiController.start();
+                return;
             } catch (Exception exception) {
-                throw new RuntimeException("Failed to connect to the server: " + exception.getMessage(), exception);
+                System.out.println("Failed to connect to the server: " + exception.getMessage());
             }
         }
     }

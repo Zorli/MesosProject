@@ -10,14 +10,14 @@ import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 
-import java.io.Closeable;
 // Here we expose the services that the client can request to the server.
 // This interface defines the common contract shared by TCP and RMI: with TCP these
 // operations are reached through message deserialization and dispatch, while with RMI
 // the same methods will be invoked directly as remote calls.
 // On the client side, the concrete transport object acts as a proxy toward this contract.
-public interface VirtualView extends Closeable {
+public interface VirtualView extends PingPongConnection {
     // Pre-match
     ServerMessage authenticate(AuthenticationPayload payload);
     ServerMessage listLobbies(ListLobbiesPayload payload);
@@ -30,4 +30,9 @@ public interface VirtualView extends Closeable {
     ServerMessage moveTotem(MoveTotemPayload payload);
     ServerMessage chooseCard(ChooseCardPayload payload);
     ServerMessage extraDraw(ExtraDrawPayload payload);
+
+    void sendPing();
+    void recordPong();
+    boolean isAuthenticated();
+    String describeSession();
 }
