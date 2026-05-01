@@ -123,7 +123,7 @@ public class BuildingCard extends Card {
     /**
      * Restores the mutable runtime state previously exported by {@link #exportRuntimeState()}.
      *
-     * @param runtimeState integer state entries persisted for this card
+     * @param runtimeState integer state entries exported for this card
      */
     public void restoreRuntimeState(Map<String, Integer> runtimeState) {
         if (runtimeState != null && !runtimeState.isEmpty()) {

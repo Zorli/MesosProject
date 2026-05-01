@@ -30,7 +30,7 @@ public class TurnState {
     }
 
     /**
-     * Creates a turn state from an already persisted runtime snapshot.
+     * Creates a turn state from an already exported runtime snapshot.
      *
      * @param phase turn phase to restore
      * @param remainingUpperChoicesByPlayer remaining upper-row choices by player
