@@ -4,7 +4,6 @@ import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrat
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
@@ -54,10 +53,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
         try {
             this.logReceived("JOIN_LOBBY", "lobbyId=" + payload.lobbyId);
-            //prima lo aggiungo poi chiamo join
-            this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
             this.serverController.joinLobby(this.sessionId, payload.lobbyId);
-            //nel model (joinLobby ()) sarà creato il payload e mandato a tutti i listener con il notifier
         } catch (Exception e) {
             this.clientCallback.handleError(new ErrorPayload("JOIN_LOBBY_ERROR", e.getMessage()));
         }
@@ -66,17 +62,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void createLobby(CreateLobbyPayload payload) throws RemoteException{
         try {
             this.logReceived("CREATE_LOBBY", "chosenCapacity=" + payload.chosenCapacity);
-            Lobby lobby = this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
-            //necessario ordine invertito in creazione lobby, virtual che si avvisa da sola (unica)
-            this.serverController.getLobbyManager().addLobbyListener(lobby.getId(), this);
-            PreMatchUpdatePayload update = this.buildPreMatchUpdatePayload(
-                    PreMatchEventType.LOBBY_CREATED,
-                    this.serverController.nicknameOf(this.sessionId),
-                    "Lobby created successfully",
-                    lobby
-            );
-
-            this.clientCallback.handlePreMatchUpdate(update);
+            this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
         } catch (Exception e) {
             this.clientCallback.handleError(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
         }
@@ -89,10 +75,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             if (lobbyId == null) {
                 throw new IllegalStateException("Client is not in a lobby");
             }
-            //qui si chiama exit, leva l'user, manda il payload a tutti, se è l'ultimo listener
-            //ne elimina la lista (lobby cancellata) altrimenti nulla->torno e mi disconnetto come listener
             this.serverController.exitLobby(this.sessionId);
-            this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
 
         } catch (Exception e) {
 
@@ -175,10 +158,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     private void cleanup() {
-        Integer lobbyId = this.safeLobbyId();
-        if (lobbyId != null) {
-            this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
-        }
         GameOrchestrator game = this.safeGame();
         if (game != null) {
             game.getGame().removeListener(this);
@@ -188,41 +167,11 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             UnicastRemoteObject.unexportObject(this, true);
         } catch (NoSuchObjectException ignored) {}
     }
-    //
-    // METODI HELPER PER COSTRUZIONE DEI PAYLOAD//
-    //
-    private List<String> extractPlayers(Lobby lobby) {
-        return lobby.getUsers().stream()
-                .map(User::getNickname)
-                .toList();
-    }
-
-    private PreMatchUpdatePayload buildPreMatchUpdatePayload(PreMatchEventType event, String nickname, String message, Lobby lobby) {
-        return this.buildPreMatchUpdatePayload(event, nickname, message, lobby, null);
-    }
-
-    private PreMatchUpdatePayload buildPreMatchUpdatePayload(
-            PreMatchEventType event,
-            String nickname,
-            String message,
-            Lobby lobby,
-            Integer fallbackLobbyId
-    ) {
-        return new PreMatchUpdatePayload(
-                event,
-                nickname,
-                message,
-                lobby != null ? lobby.getId() : fallbackLobbyId,
-                lobby != null ? this.extractPlayers(lobby) : List.of(),
-                lobby != null ? lobby.getHostNickname() : null,
-                lobby != null ? lobby.getChosenCapacity() : null
-        );
-    }
     private LobbySummaryPayload toLobbySummaryPayload(Lobby lobby) {
         return new LobbySummaryPayload(
                 lobby.getId(),
                 lobby.getHostNickname(),
-                lobby.getUsers().size(),
+                lobby.getPlayers().size(),
                 lobby.getChosenCapacity(),
                 lobby.getStatus().name()
         );
@@ -285,14 +234,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             return nickname;
         }
         return "unauthenticated-client";
-    }
-
-    private Integer safeLobbyId() {
-        try {
-            return this.serverController.lobbyIdOf(this.sessionId);
-        } catch (RuntimeException ignored) {
-            return null;
-        }
     }
 
     private GameOrchestrator safeGame() {

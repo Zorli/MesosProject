@@ -3,12 +3,12 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
@@ -50,6 +50,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private final PrintWriter writer;
     private final String sessionId;
     private final ClientCommandHandler commandHandler;
+    private final PreMatchPayloadMapper payloadMapper;
 
     //Consutrctor
     public VirtualViewTCP(Socket clientSocket, ServerController serverController) {
@@ -70,6 +71,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
         this.sessionId = this.serverController.registerConnection(this);
         this.commandHandler = new ClientCommandHandler(this.out, this);
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     //Main Loop on the socket
@@ -102,10 +104,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     @Override
     public void close() throws IOException {
-        Integer lobbyId = this.safeLobbyId();
-        if (lobbyId != null) {
-            this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
-        }
         GameOrchestrator game = this.safeGame();
         if (game != null) {
             game.getGame().removeListener(this);
@@ -132,16 +130,10 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             throw new AuthenticationException(exception.getMessage(), exception);
         }
 
-        PreMatchUpdatePayload updatePayload = new PreMatchUpdatePayload(
-                PreMatchEventType.AUTHENTICATED,
-                this.serverController.nicknameOf(this.sessionId),
-                "Authentication completed successfully",
-                null,
-                null,
-                null,
-                null
+        return new ServerMessage(
+                ServerMessageType.PRE_MATCH_UPDATE,
+                this.payloadMapper.authenticated(this.serverController.nicknameOf(this.sessionId))
         );
-        return new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, updatePayload);
     }
 
     @Override
@@ -154,19 +146,12 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
     @Override
     public ServerMessage createLobby(CreateLobbyPayload payload) {
-        Lobby lobby = this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
-        this.serverController.getLobbyManager().addLobbyListener(lobby.getId(), this);
-        return this.buildPreMatchUpdate(
-                PreMatchEventType.LOBBY_CREATED,
-                this.serverController.nicknameOf(this.sessionId),
-                "Lobby created successfully",
-                lobby
-        );
+        this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
+        return null;
     }
 
     @Override
     public ServerMessage joinLobby(JoinLobbyPayload payload) {
-        this.serverController.getLobbyManager().addLobbyListener(payload.lobbyId, this);
         this.serverController.joinLobby(this.sessionId, payload.lobbyId);
 
         return null;
@@ -179,7 +164,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             throw new IllegalStateException("Client is not in a lobby");
         }
         this.serverController.exitLobby(this.sessionId);
-        this.serverController.getLobbyManager().removeLobbyListener(lobbyId, this);
 
         return null;
     }
@@ -263,43 +247,14 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
     }
 
-    private ServerMessage buildPreMatchUpdate(PreMatchEventType event, String nickname, String message, Lobby lobby) {
-        return this.buildPreMatchUpdate(event, nickname, message, lobby, null);
-    }
-
-    private ServerMessage buildPreMatchUpdate(
-            PreMatchEventType event,
-            String nickname,
-            String message,
-            Lobby lobby,
-            Integer fallbackLobbyId
-    ) {
-        PreMatchUpdatePayload updatePayload = new PreMatchUpdatePayload(
-                event,
-                nickname,
-                message,
-                lobby != null ? lobby.getId() : fallbackLobbyId,
-                lobby != null ? this.extractPlayers(lobby) : List.of(),
-                lobby != null ? lobby.getHostNickname() : null,
-                lobby != null ? lobby.getChosenCapacity() : null
-        );
-        return new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, updatePayload);
-    }
-
     private LobbySummaryPayload toLobbySummaryPayload(Lobby lobby) {
         return new LobbySummaryPayload(
                 lobby.getId(),
                 lobby.getHostNickname(),
-                lobby.getUsers().size(),
+                lobby.getPlayers().size(),
                 lobby.getChosenCapacity(),
                 lobby.getStatus().name()
         );
-    }
-
-    private List<String> extractPlayers(Lobby lobby) {
-        return lobby.getUsers().stream()
-                .map(User::getNickname)
-                .toList();
     }
 
 
@@ -333,14 +288,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         try {
             this.serverController.enterGameIfAvailable(this.sessionId, lobbyId);
         } catch (Exception ignored) {
-        }
-    }
-
-    private Integer safeLobbyId() {
-        try {
-            return this.serverController.lobbyIdOf(this.sessionId);
-        } catch (RuntimeException ignored) {
-            return null;
         }
     }
 
