@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 /**
  * Test-only game factory that builds matches from a scripted card order.
  *
- * <p>The factory still uses real cards defined in {@code deckSetup.json} so save/restore tests keep
+ * <p>The factory still uses real cards defined in {@code deckSetup.json} so scripted tests keep
  * exercising the same production card catalog. Only the deck order becomes deterministic.
  */
 public final class ScriptedGameFactory implements GameFactory {

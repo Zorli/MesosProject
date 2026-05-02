@@ -1,6 +1,9 @@
 package it.polimi.ingsoft.mesos.server;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
@@ -27,7 +30,8 @@ public final class LaunchServer {
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
 
-            ServerController serverController = new ServerController();
+            ServerServices serverServices = ServerServicesFactory.create(ServerRuntimeConfig.fromEnvironment(environment));
+            ServerController serverController = new ServerController(serverServices.rankingService());
             int rmiPort = resolveRmiPort(environment);
             startRmiServer(serverController, rmiPort, out);
 
@@ -37,6 +41,9 @@ public final class LaunchServer {
             Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
             acceptorThread.start();
             out.println("TCP listener attivo sulla porta " + tcpPort);
+            if (serverServices.rankingService() == null) {
+                out.println("Modalita no-db attiva: ranking persistence disabilitata.");
+            }
 
             out.println("Server Mesos avviato con successo.");
             out.println("In attesa di giocatori...");

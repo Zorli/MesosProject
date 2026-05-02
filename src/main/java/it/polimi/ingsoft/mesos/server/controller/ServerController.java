@@ -10,7 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.LobbyRegistry;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
@@ -31,6 +31,7 @@ public class ServerController {
     private final ServerSessionRegistry sessions;
     private final LobbyRegistry lobbyRegistry;
     private final GameFactory gameFactory;
+    private final RankingService rankingService;
     private final LobbyPlayerFactory lobbyPlayerFactory;
     private final PreMatchPayloadMapper payloadMapper;
     private final ScheduledExecutorService matchSetupScheduler;
@@ -38,17 +39,26 @@ public class ServerController {
     final Map<Integer, GameOrchestrator> activeGames = new ConcurrentHashMap<>();
 
     public ServerController() {
-        this(new LobbyRegistry(), DefaultGameFactory.getInstance());
+        this(new LobbyRegistry(), DefaultGameFactory.getInstance(), null);
     }
 
     public ServerController(GameFactory gameFactory) {
-        this(new LobbyRegistry(), gameFactory);
+        this(new LobbyRegistry(), gameFactory, null);
+    }
+
+    public ServerController(RankingService rankingService) {
+        this(new LobbyRegistry(), DefaultGameFactory.getInstance(), rankingService);
     }
 
     public ServerController(LobbyRegistry lobbyRegistry, GameFactory gameFactory) {
+        this(lobbyRegistry, gameFactory, null);
+    }
+
+    public ServerController(LobbyRegistry lobbyRegistry, GameFactory gameFactory, RankingService rankingService) {
         this.sessions = new ServerSessionRegistry();
         this.lobbyRegistry = Objects.requireNonNull(lobbyRegistry, "lobbyRegistry cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
+        this.rankingService = rankingService;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
         this.payloadMapper = new PreMatchPayloadMapper();
         this.matchSetupScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
@@ -176,7 +186,7 @@ public class ServerController {
                 this.gameFactory,
                 new ArrayList<>(players),
                 lobby.getHostNickname(),
-                NoOpSavedMatchService.INSTANCE
+                this.rankingService
         );
 
         lobby.setStatus(LobbyStatus.STARTED);

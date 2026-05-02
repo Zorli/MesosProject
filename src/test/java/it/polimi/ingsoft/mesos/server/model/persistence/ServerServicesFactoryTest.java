@@ -1,33 +1,26 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 class ServerServicesFactoryTest {
 
     @Test
-    void createReturnsNoOpServicesWhenDatabaseIsDisabled() {
-        ServerRuntimeConfig runtimeConfig = new ServerRuntimeConfig(
-                "jdbc:postgresql://localhost:5432/mesos",
-                "jdbc:postgresql://localhost:5432/postgres",
-                "postgres",
-                "postgres",
-                3,
-                false
-        );
+    void noDbModeDisablesRankingServiceWithoutRemovingRankingCode() {
+        ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(Map.of("MESOS_NO_DB", "true"));
 
         ServerServices services = ServerServicesFactory.create(runtimeConfig);
 
-        assertSame(NoOpRankingService.INSTANCE, services.rankingService());
-        assertSame(NoOpSavedMatchService.INSTANCE, services.savedMatchService());
+        assertNull(services.rankingService());
     }
 
     @Test
-    void createRejectsNullRuntimeConfig() {
+    void rejectsNullRuntimeConfig() {
         assertThrows(NullPointerException.class, () -> ServerServicesFactory.create(null));
     }
+
 }
