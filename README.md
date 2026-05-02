@@ -29,6 +29,8 @@ La cartella `docs/` e` dedicata ai design doc e alla documentazione delle decisi
 
 ## Avvio PostgreSQL locale
 Per sviluppo locale il repository include un `docker-compose.yml` con PostgreSQL.
+Il database viene usato per ranking e storico risultati; il salvataggio dello stato match non e'
+gestito da PostgreSQL.
 
 1. Avvia il database:
 ```bash

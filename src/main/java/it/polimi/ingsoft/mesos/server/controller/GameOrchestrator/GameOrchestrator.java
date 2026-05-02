@@ -2,14 +2,19 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -24,6 +29,8 @@ public class GameOrchestrator {
     private final List<Player> players;
     private final String hostNickname;
     private final RankingService rankingService;
+    private Optional<RankingResult> finalRankingResult;
+    private boolean rankingRecorded;
     private boolean frozen;
 
     // Constructors
@@ -76,6 +83,7 @@ public class GameOrchestrator {
         this.players = List.copyOf(players);
         this.hostNickname = requireHostNickname(hostNickname);
         this.rankingService = rankingService;
+        this.finalRankingResult = Optional.empty();
     }
 
     // Getters
@@ -107,6 +115,15 @@ public class GameOrchestrator {
         return this.frozen;
     }
 
+    /**
+     * Returns the ranking result produced when the match was finalized.
+     *
+     * @return final ranking result, empty when ranking is disabled or the match is not finished
+     */
+    public Optional<RankingResult> getFinalRankingResult() {
+        return this.finalRankingResult;
+    }
+
     // Public gameplay API
 
     /**
@@ -115,6 +132,7 @@ public class GameOrchestrator {
     public void setupMatch() {
         this.ensureMatchIsWritable();
         this.game.setup();
+        this.recordRankingIfFinished();
     }
 
     /**
@@ -127,6 +145,7 @@ public class GameOrchestrator {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.moveTotem(player, tile);
+        this.recordRankingIfFinished();
     }
 
     /**
@@ -139,6 +158,7 @@ public class GameOrchestrator {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.chooseCard(player, cardId);
+        this.recordRankingIfFinished();
     }
 
     /**
@@ -151,6 +171,7 @@ public class GameOrchestrator {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.extraDrawn(player, cardId);
+        this.recordRankingIfFinished();
     }
 
     public void freezeForDisconnectedPlayer(String nickname) {
@@ -171,6 +192,33 @@ public class GameOrchestrator {
         if (this.frozen) {
             throw new MatchFrozenException();
         }
+    }
+
+    private void recordRankingIfFinished() {
+        if (this.rankingService == null || this.rankingRecorded || this.game.getStatus() != GameStatus.FINISHED) {
+            return;
+        }
+
+        try {
+            RankingResult rankingResult = this.rankingService.recordMatchAndGetRanking(
+                    String.valueOf(this.game.getId()),
+                    this.players.size(),
+                    Instant.now(),
+                    this.hostNickname,
+                    this.buildFinalScores()
+            );
+            this.finalRankingResult = Optional.of(rankingResult);
+            this.rankingRecorded = true;
+        } catch (RuntimeException exception) {
+            this.frozen = true;
+            throw new RankingFinalizationFailureException(exception);
+        }
+    }
+
+    private List<MatchScore> buildFinalScores() {
+        return this.players.stream()
+                .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
+                .toList();
     }
 
     // Helper methods
