@@ -31,7 +31,7 @@ public class TurnOrderTrack {
     }
 
     /**
-     * Creates a turn-order tracker from an already persisted runtime snapshot.
+     * Creates a turn-order tracker from an already exported runtime snapshot.
      *
      * @param turnOrder ordered players of the current round
      * @param currentPlayerIndex index of the next player to act

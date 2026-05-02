@@ -10,7 +10,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.LobbyRegistry;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
@@ -175,8 +174,7 @@ public class ServerController {
         GameOrchestrator orchestrator = new GameOrchestrator(
                 this.gameFactory,
                 new ArrayList<>(players),
-                lobby.getHostNickname(),
-                NoOpSavedMatchService.INSTANCE
+                lobby.getHostNickname()
         );
 
         lobby.setStatus(LobbyStatus.STARTED);

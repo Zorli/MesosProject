@@ -79,7 +79,7 @@ public class PairOfInventor extends BuildingCard {
     /**
      * Restores the internal counters used to track partial inventor pairs.
      *
-     * @param runtimeState persisted counters keyed by invention type name
+     * @param runtimeState exported counters keyed by invention type name
      */
     @Override
     public void restoreRuntimeState(Map<String, Integer> runtimeState) {

@@ -104,7 +104,7 @@ public final class MesosTestFixtures {
      * Creates a deterministic factory for a two-player scripted gameplay scenario.
      *
      * <p>The deck order is chosen to exercise lobby start, legal/illegal draws, row reset,
-     * lower-row event resolution, and save/restore continuation using only real catalog cards.
+     * lower-row event resolution, using only real catalog cards.
      *
      * @return scripted factory for the shared two-player gameplay scenario
      */
@@ -123,7 +123,7 @@ public final class MesosTestFixtures {
      * Creates a deterministic factory that preserves the full catalog order for the given player count.
      *
      * <p>The resulting matches do not rely on shuffling, which makes long gameplay flows and
-     * save/restore lockstep assertions reproducible across test runs.
+     * lockstep assertions reproducible across test runs.
      *
      * @param playerCount number of players to support in the tribe deck
      * @return scripted factory using the entire production catalog in deterministic order

@@ -1,6 +1,5 @@
 package it.polimi.ingsoft.mesos.server.testing;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -43,28 +42,6 @@ public abstract class PostgresIntegrationTestSupport {
         String databaseName = this.reserveDatabaseName(prefix);
         this.createDatabase(databaseName);
         return new PostgresConnectionConfig(this.buildJdbcUrl(databaseName), BACKEND.username(), BACKEND.password());
-    }
-
-    /**
-     * Creates runtime config for an isolated PostgreSQL database.
-     *
-     * @param prefix database name prefix used for easier diagnostics
-     * @param createDatabase whether the database must be created immediately
-     * @return server runtime config targeting the isolated database
-     */
-    protected ServerRuntimeConfig createRuntimeConfig(String prefix, boolean createDatabase) {
-        String databaseName = this.reserveDatabaseName(prefix);
-        if (createDatabase) {
-            this.createDatabase(databaseName);
-        }
-
-        return new ServerRuntimeConfig(
-                this.buildJdbcUrl(databaseName),
-                this.adminJdbcUrl(),
-                BACKEND.username(),
-                BACKEND.password(),
-                3
-        );
     }
 
     /**
@@ -192,13 +169,17 @@ public abstract class PostgresIntegrationTestSupport {
         }
 
         private static PostgresTestBackend fromEnvironment() {
-            ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(System.getenv());
             return new PostgresTestBackend(
-                    config.adminJdbcUrl(),
-                    config.jdbcUrl(),
-                    config.username(),
-                    config.password()
+                    environmentValue("MESOS_DB_ADMIN_URL", DEFAULT_ADMIN_JDBC_URL),
+                    environmentValue("MESOS_DB_URL", DEFAULT_JDBC_URL),
+                    environmentValue("MESOS_DB_USER", DEFAULT_USERNAME),
+                    environmentValue("MESOS_DB_PASSWORD", DEFAULT_PASSWORD)
             );
+        }
+
+        private static String environmentValue(String key, String defaultValue) {
+            String value = System.getenv(key);
+            return value == null || value.isBlank() ? defaultValue : value;
         }
 
         private boolean isReachable() {

@@ -1,7 +1,5 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresSchemaModule;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
