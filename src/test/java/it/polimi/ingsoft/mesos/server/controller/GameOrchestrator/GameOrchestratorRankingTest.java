@@ -20,8 +20,11 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,7 +47,8 @@ class GameOrchestratorRankingTest {
         orchestrator.chooseCard("Alice", 1);
 
         assertEquals(1, rankingService.recordCalls);
-        assertEquals("42", rankingService.gameId);
+        assertDoesNotThrow(() -> UUID.fromString(rankingService.gameId));
+        assertNotEquals("42", rankingService.gameId);
         assertEquals(2, rankingService.playerCount);
         assertEquals("Alice", rankingService.requestingNickname);
         assertEquals(List.of(new MatchScore("Alice", 10), new MatchScore("Bob", 4)), rankingService.finalScores);

@@ -47,6 +47,10 @@ Variabili supportate:
 - `MESOS_DB_MAX_BUSY_RETRIES`
 - `MESOS_NO_DB`
 
+Le variabili `MESOS_MYSQL_*` in `.env.server.example` sono usate da Docker Compose per creare il
+container locale; il server legge invece `MESOS_DB_*`. Se cambi database, porta o password nel
+compose, aggiorna anche le URL e credenziali `MESOS_DB_*`.
+
 Default locali:
 - `jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`
 - admin DB `jdbc:mysql://localhost:3306/mysql?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`
@@ -68,3 +72,6 @@ MESOS_NO_DB=true ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.Launc
 ```
 
 All'avvio il server crea il database se manca, inizializza lo schema ranking, verifica la connettivita' verso MySQL e fallisce con un errore esplicito se il DB e' irraggiungibile o non healthy.
+
+Nota operativa: il compose usa il volume persistente `mysql_data`. Se cambi credenziali o nome
+database dopo il primo avvio, il volume gia' inizializzato non viene riconfigurato automaticamente.

@@ -16,6 +16,7 @@ class MySqlRankingQueriesTest {
                 MySqlRankingQueries.CREATE_USERS_TABLE,
                 MySqlRankingQueries.CREATE_USER_RATINGS_TABLE,
                 MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE,
+                MySqlRankingQueries.INSERT_USER,
                 MySqlRankingQueries.INSERT_USER_IF_MISSING,
                 MySqlRankingQueries.INSERT_RATING_IF_MISSING,
                 MySqlRankingQueries.CHECK_USER_EXISTS,
@@ -47,8 +48,8 @@ class MySqlRankingQueriesTest {
 
     @Test
     void insertQueriesUseMySqlConflictHandling() {
-        assertTrue(MySqlRankingQueries.INSERT_USER_IF_MISSING.contains("INSERT IGNORE"));
-        assertTrue(MySqlRankingQueries.INSERT_RATING_IF_MISSING.contains("INSERT IGNORE"));
+        assertTrue(MySqlRankingQueries.INSERT_USER_IF_MISSING.contains("ON DUPLICATE KEY UPDATE"));
+        assertTrue(MySqlRankingQueries.INSERT_RATING_IF_MISSING.contains("ON DUPLICATE KEY UPDATE"));
     }
 
     @Test

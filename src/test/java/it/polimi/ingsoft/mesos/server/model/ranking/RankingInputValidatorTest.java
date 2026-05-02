@@ -55,6 +55,14 @@ class RankingInputValidatorTest {
     }
 
     @Test
+    void rejectsNicknameAndGameIdLongerThanMySqlColumns() {
+        String tooLong = "x".repeat(256);
+
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeNickname(tooLong));
+        assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeGameId(tooLong));
+    }
+
+    @Test
     void normalizeScoresRejectsNullEmptyWrongSizeAndNullElements() {
         assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeScores(null, 2));
         assertThrows(IllegalArgumentException.class, () -> this.validator.normalizeScores(List.of(), 2));

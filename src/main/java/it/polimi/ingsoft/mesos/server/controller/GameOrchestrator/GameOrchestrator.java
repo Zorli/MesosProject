@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -29,6 +30,7 @@ public class GameOrchestrator {
     private final List<Player> players;
     private final String hostNickname;
     private final RankingService rankingService;
+    private final String rankingGameId;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
     private boolean frozen;
@@ -83,6 +85,7 @@ public class GameOrchestrator {
         this.players = List.copyOf(players);
         this.hostNickname = requireHostNickname(hostNickname);
         this.rankingService = rankingService;
+        this.rankingGameId = UUID.randomUUID().toString();
         this.finalRankingResult = Optional.empty();
     }
 
@@ -201,7 +204,7 @@ public class GameOrchestrator {
 
         try {
             RankingResult rankingResult = this.rankingService.recordMatchAndGetRanking(
-                    String.valueOf(this.game.getId()),
+                    this.rankingGameId,
                     this.players.size(),
                     Instant.now(),
                     this.hostNickname,

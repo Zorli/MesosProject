@@ -98,12 +98,17 @@ public class MySqlRankingService implements RankingService {
 
         return this.database.executeWithRetry(() -> {
             try (Connection connection = this.database.openConnection()) {
-                boolean inserted;
+                boolean inserted = true;
 
-                try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_USER_IF_MISSING)) {
+                try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_USER)) {
                     statement.setString(1, normalizedNickname);
                     statement.setObject(2, this.currentTimestampUtc());
-                    inserted = statement.executeUpdate() > 0;
+                    statement.executeUpdate();
+                } catch (SQLException exception) {
+                    if (!this.isDuplicateKey(exception)) {
+                        throw exception;
+                    }
+                    inserted = false;
                 }
 
                 this.ensureRatingExists(connection, normalizedNickname);
@@ -477,6 +482,11 @@ public class MySqlRankingService implements RankingService {
     /** Reads a MySQL datetime column as an instant. */
     private Instant readInstant(ResultSet resultSet, String columnLabel) throws SQLException {
         return resultSet.getObject(columnLabel, LocalDateTime.class).toInstant(ZoneOffset.UTC);
+    }
+
+    /** Returns whether the exception was caused by a MySQL duplicate-key violation. */
+    private boolean isDuplicateKey(SQLException exception) {
+        return "23000".equals(exception.getSQLState()) && exception.getErrorCode() == 1062;
     }
 
     // TODO(controller): a fine partita invocare recordMatchAndGetRanking(...) e inviare al client rank globale Elo + leaderboard globale.

@@ -57,15 +57,23 @@ final class MySqlRankingQueries {
             """;
 
     /** Inserts a user row if nickname is not already present. */
-    static final String INSERT_USER_IF_MISSING = """
-            INSERT IGNORE INTO users(nickname, created_at)
+    static final String INSERT_USER = """
+            INSERT INTO users(nickname, created_at)
             VALUES(?, ?)
+            """;
+
+    /** Upserts a user row while keeping existing rows unchanged. */
+    static final String INSERT_USER_IF_MISSING = """
+            INSERT INTO users(nickname, created_at)
+            VALUES(?, ?)
+            ON DUPLICATE KEY UPDATE nickname = nickname
             """;
 
     /** Inserts an initial rating row if nickname does not have one yet. */
     static final String INSERT_RATING_IF_MISSING = """
-            INSERT IGNORE INTO user_ratings(nickname, elo, games_played, wins, win_streak, last_updated)
+            INSERT INTO user_ratings(nickname, elo, games_played, wins, win_streak, last_updated)
             VALUES(?, ?, 0, 0, 0, ?)
+            ON DUPLICATE KEY UPDATE nickname = nickname
             """;
 
     /** Checks if a nickname already exists in users table. */
