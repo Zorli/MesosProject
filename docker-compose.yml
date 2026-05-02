@@ -3,10 +3,10 @@ services:
     image: mysql:8.4
     container_name: mesos-mysql
     environment:
-      MYSQL_DATABASE: ${MESOS_MYSQL_DB:-mesos}
-      MYSQL_ROOT_PASSWORD: ${MESOS_MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MESOS_RANKING_DB_NAME:-mesos}
+      MYSQL_ROOT_PASSWORD: ${MESOS_RANKING_DB_PASSWORD:-root}
     ports:
-      - "${MESOS_MYSQL_PORT:-3306}:3306"
+      - "${MESOS_RANKING_DB_PORT:-3306}:3306"
     command: --default-time-zone=+00:00 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]

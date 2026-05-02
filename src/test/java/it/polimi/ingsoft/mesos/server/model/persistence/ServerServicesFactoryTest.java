@@ -11,7 +11,10 @@ class ServerServicesFactoryTest {
 
     @Test
     void noDbModeDisablesRankingServiceWithoutRemovingRankingCode() {
-        ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(Map.of("MESOS_NO_DB", "true"));
+        ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(Map.of(
+                "MESOS_RANKING_DB_ENABLED",
+                "false"
+        ));
 
         ServerServices services = ServerServicesFactory.create(runtimeConfig);
 

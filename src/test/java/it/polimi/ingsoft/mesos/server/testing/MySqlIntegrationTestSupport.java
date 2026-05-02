@@ -14,16 +14,14 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
-
  * Shared MySQL backend and isolated test-database lifecycle for integration tests.
  *
  * <p>The support prefers an already reachable MySQL instance configured via
- * {@code MESOS_DB_*} environment variables or the local development defaults
+ * {@code MESOS_RANKING_DB_*} environment variables or the local development defaults
  * ({@code localhost:3306}, {@code root}/{@code root}). When no external backend is
  * reachable, it falls back to a transient Testcontainers MySQL instance. This keeps
  * integration tests stable in local environments where the repository already provides MySQL
  * through {@code docker-compose.yml}, while still supporting clean ephemeral execution in CI.
-
  */
 public abstract class MySqlIntegrationTestSupport {
     private static final int MYSQL_IDENTIFIER_MAX_LENGTH = 64;
@@ -130,8 +128,8 @@ public abstract class MySqlIntegrationTestSupport {
                                        String defaultJdbcUrl,
                                        String username,
                                        String password) {
-        private static final String BACKEND_MODE_PROPERTY = "mesos.test.mysql.backend";
-        private static final String BACKEND_MODE_ENV = "MESOS_TEST_MYSQL_BACKEND";
+        private static final String BACKEND_MODE_PROPERTY = "mesos.ranking.db.test.backend";
+        private static final String BACKEND_MODE_ENV = "MESOS_RANKING_DB_TEST_BACKEND";
         private static final String DEFAULT_JDBC_URL =
                 "jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false";
         private static final String DEFAULT_ADMIN_JDBC_URL =
@@ -175,7 +173,8 @@ public abstract class MySqlIntegrationTestSupport {
 
             IllegalStateException failure = new IllegalStateException(
                     "MySQL integration tests require either a working Testcontainers Docker environment "
-                            + "or a reachable MySQL instance configured via MESOS_DB_URL/MESOS_DB_ADMIN_URL "
+                            + "or a reachable MySQL instance configured via "
+                            + "MESOS_RANKING_DB_URL/MESOS_RANKING_DB_ADMIN_URL "
                             + "(defaults: jdbc:mysql://localhost:3306/mesos and /mysql).",
                     containerFailure
             );
@@ -185,16 +184,20 @@ public abstract class MySqlIntegrationTestSupport {
 
         private static MySqlTestBackend fromEnvironment() {
             return new MySqlTestBackend(
-                    environmentValue("MESOS_DB_ADMIN_URL", DEFAULT_ADMIN_JDBC_URL),
-                    environmentValue("MESOS_DB_URL", DEFAULT_JDBC_URL),
-                    environmentValue("MESOS_DB_USER", DEFAULT_USERNAME),
-                    environmentValue("MESOS_DB_PASSWORD", DEFAULT_PASSWORD)
+                    environmentValue("MESOS_RANKING_DB_ADMIN_URL", DEFAULT_ADMIN_JDBC_URL),
+                    environmentValue("MESOS_RANKING_DB_URL", DEFAULT_JDBC_URL),
+                    environmentValue("MESOS_RANKING_DB_USER", DEFAULT_USERNAME),
+                    environmentValue("MESOS_RANKING_DB_PASSWORD", DEFAULT_PASSWORD)
             );
         }
 
         private static String environmentValue(String key, String defaultValue) {
             String value = System.getenv(key);
-            return value == null || value.isBlank() ? defaultValue : value;
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+
+            return defaultValue;
         }
 
         private SQLException reachabilityFailure() {

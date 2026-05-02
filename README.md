@@ -40,16 +40,14 @@ docker compose up -d mysql
 2. Configura le variabili ambiente del server. Puoi partire da `.env.server.example`.
 
 Variabili supportate:
-- `MESOS_DB_URL`
-- `MESOS_DB_ADMIN_URL`
-- `MESOS_DB_USER`
-- `MESOS_DB_PASSWORD`
-- `MESOS_DB_MAX_BUSY_RETRIES`
-- `MESOS_NO_DB`
-
-Le variabili `MESOS_MYSQL_*` in `.env.server.example` sono usate da Docker Compose per creare il
-container locale; il server legge invece `MESOS_DB_*`. Se cambi database, porta o password nel
-compose, aggiorna anche le URL e credenziali `MESOS_DB_*`.
+- `MESOS_RANKING_DB_NAME`
+- `MESOS_RANKING_DB_PORT`
+- `MESOS_RANKING_DB_URL`
+- `MESOS_RANKING_DB_ADMIN_URL`
+- `MESOS_RANKING_DB_USER`
+- `MESOS_RANKING_DB_PASSWORD`
+- `MESOS_RANKING_DB_MAX_BUSY_RETRIES`
+- `MESOS_RANKING_DB_ENABLED`
 
 Default locali:
 - `jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`
@@ -59,16 +57,16 @@ Default locali:
 
 3. Avvia il server:
 ```bash
-MESOS_DB_URL='jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false' \
-MESOS_DB_ADMIN_URL='jdbc:mysql://localhost:3306/mysql?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false' \
-MESOS_DB_USER=root \
-MESOS_DB_PASSWORD=root \
+MESOS_RANKING_DB_URL='jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false' \
+MESOS_RANKING_DB_ADMIN_URL='jdbc:mysql://localhost:3306/mysql?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false' \
+MESOS_RANKING_DB_USER=root \
+MESOS_RANKING_DB_PASSWORD=root \
 ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
 ```
 
 Per avvio naive senza MySQL:
 ```bash
-MESOS_NO_DB=true ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
+MESOS_RANKING_DB_ENABLED=false ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
 ```
 
 All'avvio il server crea il database se manca, inizializza lo schema ranking, verifica la connettivita' verso MySQL e fallisce con un errore esplicito se il DB e' irraggiungibile o non healthy.

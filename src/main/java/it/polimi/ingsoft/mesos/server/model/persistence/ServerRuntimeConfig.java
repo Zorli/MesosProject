@@ -20,6 +20,12 @@ public record ServerRuntimeConfig(String jdbcUrl,
     private static final String DEFAULT_PASSWORD = "root";
     private static final int DEFAULT_MAX_BUSY_RETRIES = 3;
     private static final boolean DEFAULT_DB_ENABLED = true;
+    private static final String ENV_JDBC_URL = "MESOS_RANKING_DB_URL";
+    private static final String ENV_ADMIN_JDBC_URL = "MESOS_RANKING_DB_ADMIN_URL";
+    private static final String ENV_USERNAME = "MESOS_RANKING_DB_USER";
+    private static final String ENV_PASSWORD = "MESOS_RANKING_DB_PASSWORD";
+    private static final String ENV_MAX_BUSY_RETRIES = "MESOS_RANKING_DB_MAX_BUSY_RETRIES";
+    private static final String ENV_ENABLED = "MESOS_RANKING_DB_ENABLED";
 
     /**
      * Backward-compatible constructor used by existing tests and bootstrap code.
@@ -49,24 +55,28 @@ public record ServerRuntimeConfig(String jdbcUrl,
             throw new IllegalArgumentException("Environment cannot be null");
         }
 
-        String jdbcUrl = environment.getOrDefault("MESOS_DB_URL", DEFAULT_JDBC_URL);
-        String adminJdbcUrl = environment.getOrDefault("MESOS_DB_ADMIN_URL", deriveAdminJdbcUrl(jdbcUrl));
-        String username = environment.getOrDefault("MESOS_DB_USER", DEFAULT_USERNAME);
-        String password = environment.getOrDefault("MESOS_DB_PASSWORD", DEFAULT_PASSWORD);
-        String retriesValue = environment.getOrDefault(
-                "MESOS_DB_MAX_BUSY_RETRIES",
+        String jdbcUrl = environmentValue(environment, ENV_JDBC_URL, DEFAULT_JDBC_URL);
+        String adminJdbcUrl = environmentValue(
+                environment,
+                ENV_ADMIN_JDBC_URL,
+                deriveAdminJdbcUrl(jdbcUrl)
+        );
+        String username = environmentValue(environment, ENV_USERNAME, DEFAULT_USERNAME);
+        String password = environmentValue(environment, ENV_PASSWORD, DEFAULT_PASSWORD);
+        String retriesValue = environmentValue(
+                environment,
+                ENV_MAX_BUSY_RETRIES,
                 Integer.toString(DEFAULT_MAX_BUSY_RETRIES)
         );
-        String dbEnabledValue = environment.getOrDefault("MESOS_NO_DB", Boolean.toString(!DEFAULT_DB_ENABLED));
 
         int maxBusyRetries;
         try {
             maxBusyRetries = Integer.parseInt(retriesValue);
         } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("MESOS_DB_MAX_BUSY_RETRIES must be an integer", exception);
+            throw new IllegalArgumentException(ENV_MAX_BUSY_RETRIES + " must be an integer", exception);
         }
 
-        boolean dbEnabled = !Boolean.parseBoolean(dbEnabledValue);
+        boolean dbEnabled = dbEnabled(environment);
         return new ServerRuntimeConfig(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries, dbEnabled);
     }
 
@@ -159,5 +169,29 @@ public record ServerRuntimeConfig(String jdbcUrl,
         }
 
         return databaseName;
+    }
+
+    /**
+     * Reads a ranking database environment variable.
+     */
+    private static String environmentValue(Map<String, String> environment, String key, String defaultValue) {
+        String value = environment.get(key);
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+
+        return defaultValue;
+    }
+
+    /**
+     * Resolves whether ranking persistence should be enabled.
+     */
+    private static boolean dbEnabled(Map<String, String> environment) {
+        String enabledValue = environment.get(ENV_ENABLED);
+        if (enabledValue != null && !enabledValue.isBlank()) {
+            return Boolean.parseBoolean(enabledValue);
+        }
+
+        return DEFAULT_DB_ENABLED;
     }
 }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class ServerRuntimeConfigTest {
 
@@ -28,7 +29,7 @@ class ServerRuntimeConfigTest {
     @Test
     void derivesAdminUrlPreservingJdbcQueryParameters() {
         ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(Map.of(
-                "MESOS_DB_URL",
+                "MESOS_RANKING_DB_URL",
                 "jdbc:mysql://db.example:3307/game?connectionTimeZone=UTC&useSSL=false"
         ));
 
@@ -37,5 +38,12 @@ class ServerRuntimeConfigTest {
                 config.adminJdbcUrl()
         );
         assertEquals("game", config.databaseName());
+    }
+
+    @Test
+    void disablesRankingDatabaseWithNewEnabledFlag() {
+        ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(Map.of("MESOS_RANKING_DB_ENABLED", "false"));
+
+        assertFalse(config.dbEnabled());
     }
 }

@@ -57,8 +57,8 @@ In runtime il wiring passa da:
 
 `LaunchServer -> ServerServicesFactory -> MySqlDatabaseBootstrap -> MySqlRankingService -> ServerController -> GameOrchestrator`
 
-Se `MESOS_NO_DB=true`, `ServerServicesFactory` restituisce `rankingService == null`. In questo
-caso `GameOrchestrator` non registra il ranking finale.
+Se `MESOS_RANKING_DB_ENABLED=false`, `ServerServicesFactory` restituisce
+`rankingService == null`. In questo caso `GameOrchestrator` non registra il ranking finale.
 
 ## Contratti pubblici
 
@@ -458,12 +458,14 @@ ritorna exit code `1`.
 
 Default runtime:
 
-- `MESOS_DB_URL`: `jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`;
-- `MESOS_DB_ADMIN_URL`: derivato dal target usando database `mysql`;
-- `MESOS_DB_USER`: `root`;
-- `MESOS_DB_PASSWORD`: `root`;
-- `MESOS_DB_MAX_BUSY_RETRIES`: `3`;
-- `MESOS_NO_DB`: se `true`, disabilita il ranking persistente.
+- `MESOS_RANKING_DB_NAME`: `mesos`;
+- `MESOS_RANKING_DB_PORT`: `3306`;
+- `MESOS_RANKING_DB_URL`: `jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`;
+- `MESOS_RANKING_DB_ADMIN_URL`: derivato dal target usando database `mysql`;
+- `MESOS_RANKING_DB_USER`: `root`;
+- `MESOS_RANKING_DB_PASSWORD`: `root`;
+- `MESOS_RANKING_DB_MAX_BUSY_RETRIES`: `3`;
+- `MESOS_RANKING_DB_ENABLED`: se `false`, disabilita il ranking persistente.
 
 Il repository include `docker-compose.yml` con MySQL `8.4`:
 
@@ -475,11 +477,7 @@ Il repository include `docker-compose.yml` con MySQL `8.4`:
 - collation `utf8mb4_bin`;
 - volume `mysql_data`.
 
-Variabili del compose:
-
-- `MESOS_MYSQL_DB`;
-- `MESOS_MYSQL_ROOT_PASSWORD`;
-- `MESOS_MYSQL_PORT`.
+Il compose usa lo stesso prefisso `MESOS_RANKING_DB_*` per nome database, porta e password.
 
 Per sviluppo locale il percorso atteso e':
 
@@ -497,15 +495,15 @@ I test di integrazione ereditano da `MySqlIntegrationTestSupport`.
 
 Strategia:
 
-- preferisce un MySQL raggiungibile via `MESOS_DB_*` o default locali;
+- preferisce un MySQL raggiungibile via `MESOS_RANKING_DB_*` o default locali;
 - se non disponibile, prova Testcontainers con immagine `mysql:8.4`;
 - crea un database isolato per ogni test;
 - elimina i database creati in `@AfterEach`.
 
 Il backend test puo' essere forzato con:
 
-- system property `mesos.test.mysql.backend`;
-- env var `MESOS_TEST_MYSQL_BACKEND`.
+- system property `mesos.ranking.db.test.backend`;
+- env var `MESOS_RANKING_DB_TEST_BACKEND`.
 
 Valori supportati:
 
