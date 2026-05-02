@@ -18,8 +18,6 @@ public class TuiController implements ClientView {
     private final TuiCommandParser commandParser;
     private final TuiPayloadRenderer payloadRenderer;
     private GamePayload lastGamePayload;
-    private LobbyListPayload lastLobbyListPayload;
-    private PreMatchUpdatePayload lastPreMatchUpdatePayload;
     private ServerProxy serverProxy;
 
     public TuiController() {
@@ -82,13 +80,11 @@ public class TuiController implements ClientView {
 
     @Override
     public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
-        this.lastPreMatchUpdatePayload = payload;
         this.render(this.payloadRenderer.renderPreMatchUpdate(payload));
     }
 
     @Override
     public synchronized void showLobbyList(LobbyListPayload payload) {
-        this.lastLobbyListPayload = payload;
         this.render(this.payloadRenderer.renderLobbyList(payload));
     }
 
