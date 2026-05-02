@@ -7,7 +7,7 @@
 
 ### Obiettivo
 Descrivere la scelta di persistenza del modulo ranking lato server, chiarendo:
-- perche' e' stato scelto PostgreSQL;
+- perche' e' stato scelto MySQL;
 - quali responsabilita' sono distribuite tra service, supporto database e query SQL;
 - quali invarianti di dominio sono protetti a livello applicativo e a livello database;
 - quali punti di integrazione restano verso orchestrator e controller.
@@ -26,7 +26,7 @@ La parte critica non e' soltanto salvare dati, ma farlo in modo atomico:
 
 ## Scelta implementativa
 
-La soluzione adottata e' una persistenza su `PostgreSQL`, incapsulata dietro un service di dominio.
+La soluzione adottata e' una persistenza su `MySQL`, incapsulata dietro un service di dominio.
 
 Questa scelta e' adatta al progetto perche':
 - non introduce infrastruttura esterna per sviluppo e test;
@@ -34,7 +34,7 @@ Questa scelta e' adatta al progetto perche':
 - offre transazioni, vincoli e indici sufficienti per il caso d'uso corrente;
 - mantiene semplice il setup dei test automatici.
 
-Il tradeoff e' che PostgreSQL introduce piu' infrastruttura rispetto a un database embedded, ma offre una gestione della concorrenza migliore e un percorso di crescita piu' solido lato server.
+Il tradeoff e' che MySQL introduce piu' infrastruttura rispetto a un database embedded, ma offre una gestione della concorrenza migliore e un percorso di crescita piu' solido lato server.
 
 ## Vista d'insieme
 
@@ -48,7 +48,7 @@ Il tradeoff e' che PostgreSQL introduce piu' infrastruttura rispetto a un databa
 - `getMatchHistory(int playerCount)`
 
 ### Implementazione concreta
-`PostgresRankingService` e' l'application service del package ranking:
+`MySqlRankingService` e' l'application service del package ranking:
 - valida input e precondizioni;
 - apre le transazioni;
 - legge lo stato rating corrente;
@@ -57,14 +57,14 @@ Il tradeoff e' che PostgreSQL introduce piu' infrastruttura rispetto a un databa
 - restituisce al chiamante leaderboard e ranking della partita.
 
 ### Supporto infrastrutturale
-`PostgresDatabaseSupport` incapsula gli aspetti tecnici di accesso al database:
+`MySqlDatabaseSupport` incapsula gli aspetti tecnici di accesso al database:
 - inizializzazione schema;
 - apertura connessioni JDBC;
 - configurazione transazionale coerente;
 - retry su errori transitori come serialization failure, deadlock o lock non disponibili.
 
 ### SQL centralizzato
-`PostgresRankingQueries` contiene DDL e DML, cosi' da evitare stringhe SQL sparse in piu' classi.
+`MySqlRankingQueries` contiene DDL e DML, cosi' da evitare stringhe SQL sparse in piu' classi.
 
 ## Modello dati persistito
 
@@ -99,7 +99,7 @@ Queste regole sono distribuite su due livelli:
 ### Livello applicativo
 - `RankingInputValidator` valida nickname, `gameId`, timestamp, player count e lista score;
 - `EloRatingCalculator` calcola placement e delta rating;
-- `PostgresRankingService` garantisce il flusso corretto dell'operazione.
+- `MySqlRankingService` garantisce il flusso corretto dell'operazione.
 
 ### Livello database
 - vincoli `UNIQUE`;
@@ -134,8 +134,8 @@ Contiene la logica di calcolo:
 - applicazione del bonus streak;
 - clamp al minimo Elo configurato.
 
-### `PostgresDatabaseSupport`
-Gestisce la parte operativa di PostgreSQL:
+### `MySqlDatabaseSupport`
+Gestisce la parte operativa di MySQL:
 - `initializeSchema()`;
 - `openConnection()`;
 - `executeWithRetry(...)`.
@@ -145,7 +145,7 @@ In apertura connessione viene imposto un livello di isolamento coerente con il m
 - connessione JDBC verso il database configurato
 - retry applicativo su SQL state transienti
 
-### `PostgresRankingService`
+### `MySqlRankingService`
 Coordina l'intera operazione di registrazione partita:
 1. valida input;
 2. apre transazione;
@@ -160,7 +160,7 @@ Coordina l'intera operazione di registrazione partita:
 Il package cerca di ridurre race condition e aggiornamenti parziali tramite:
 - transazioni SQL esplicite;
 - livello di isolamento coerente;
-- semantica transazionale nativa di PostgreSQL;
+- semantica transazionale nativa di MySQL;
 - retry con backoff su errori transitori del database;
 - vincolo di unicita' sul match per garantire idempotenza pratica in inserimento.
 
@@ -192,12 +192,12 @@ Unit test principali:
 - `RankingDataExceptionTest`
 - `RatingSnapshotTest`
 - `PlayerMatchUpdateTest`
-- `PostgresDatabaseSupportTest`
-- `PostgresRankingQueriesTest`
+- `MySqlDatabaseSupportTest`
+- `MySqlRankingQueriesTest`
 
 Test di servizio e integrazione:
-- `PostgresRankingServiceTest`
-- `PostgresRankingServiceIntegrationTest`
+- `MySqlRankingServiceTest`
+- `MySqlRankingServiceIntegrationTest`
 
 ## Punti di integrazione ancora aperti
 
@@ -209,6 +209,6 @@ Il package e' progettato per essere usato dal flusso applicativo principale, ma 
 ## Miglioramenti possibili
 
 I miglioramenti piu' naturali del modulo sono:
-- estrarre eventuali mapper SQL dedicati se `PostgresRankingService` cresce troppo;
+- estrarre eventuali mapper SQL dedicati se `MySqlRankingService` cresce troppo;
 - aggiungere test concorrenti piu' aggressivi;
 - rendere esplicita la strategia di migrazione schema se il database evolve.

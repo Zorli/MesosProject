@@ -5,7 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,49 +13,49 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PostgreSQL implementation of {@link RankingService}.
+ * MySQL implementation of {@link RankingService}.
  *
  * <p>Responsibilities:
  * validate input, persist completed matches atomically, compute Elo updates,
  * and expose leaderboard and match history queries.
  */
-public class PostgresRankingService implements RankingService {
+public class MySqlRankingService implements RankingService {
     private final RankingConfig config;
-    private final PostgresDatabaseSupport database;
+    private final MySqlDatabaseSupport database;
     private final RankingInputValidator validator;
     private final EloRatingCalculator eloCalculator;
 
     /**
      * Creates the service with default ranking configuration.
      *
-     * @param connectionConfig PostgreSQL connection settings
+     * @param connectionConfig MySQL connection settings
      */
-    public PostgresRankingService(PostgresConnectionConfig connectionConfig) {
+    public MySqlRankingService(MySqlConnectionConfig connectionConfig) {
         this(connectionConfig, RankingConfig.defaultConfig());
     }
 
     /**
      * Creates the service with default ranking settings and a custom retry limit.
      *
-     * @param connectionConfig PostgreSQL connection settings
+     * @param connectionConfig MySQL connection settings
      * @param maxBusyRetries maximum retries for transient database operations
      */
-    public PostgresRankingService(PostgresConnectionConfig connectionConfig, int maxBusyRetries) {
+    public MySqlRankingService(MySqlConnectionConfig connectionConfig, int maxBusyRetries) {
         this(connectionConfig, defaultConfigWithRetries(maxBusyRetries));
     }
 
     /**
      * Creates the service with a fully custom ranking configuration.
      *
-     * @param connectionConfig PostgreSQL connection settings
+     * @param connectionConfig MySQL connection settings
      * @param config ranking configuration
      */
-    public PostgresRankingService(PostgresConnectionConfig connectionConfig, RankingConfig config) {
+    public MySqlRankingService(MySqlConnectionConfig connectionConfig, RankingConfig config) {
         this.config = config;
-        this.database = new PostgresDatabaseSupport(
+        this.database = new MySqlDatabaseSupport(
                 connectionConfig,
                 config.maxBusyRetries(),
-                List.of(PostgresRankingSchemaModule.getInstance())
+                List.of(MySqlRankingSchemaModule.getInstance())
         );
         this.validator = new RankingInputValidator(config.minPlayers(), config.maxPlayers());
         this.eloCalculator = new EloRatingCalculator(
@@ -100,7 +100,7 @@ public class PostgresRankingService implements RankingService {
             try (Connection connection = this.database.openConnection()) {
                 boolean inserted;
 
-                try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.INSERT_USER_IF_MISSING)) {
+                try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_USER_IF_MISSING)) {
                     statement.setString(1, normalizedNickname);
                     statement.setObject(2, this.currentTimestampUtc());
                     inserted = statement.executeUpdate() > 0;
@@ -119,7 +119,7 @@ public class PostgresRankingService implements RankingService {
 
         return this.database.executeWithRetry(() -> {
             try (Connection connection = this.database.openConnection();
-                 PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.CHECK_USER_EXISTS)) {
+                 PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.CHECK_USER_EXISTS)) {
                 statement.setString(1, normalizedNickname);
 
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -241,7 +241,7 @@ public class PostgresRankingService implements RankingService {
 
     /** Returns whether the given game id already exists in persisted match rows. */
     private boolean gameAlreadyRecorded(Connection connection, String gameId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.CHECK_GAME_EXISTS)) {
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.CHECK_GAME_EXISTS)) {
             statement.setString(1, gameId);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -252,9 +252,9 @@ public class PostgresRankingService implements RankingService {
 
     /** Ensures that both user and rating rows exist for all final score nicknames. */
     private void ensureUsersAndRatingsExist(Connection connection, List<MatchScore> finalScores) throws SQLException {
-        try (PreparedStatement userStatement = connection.prepareStatement(PostgresRankingQueries.INSERT_USER_IF_MISSING);
-             PreparedStatement ratingStatement = connection.prepareStatement(PostgresRankingQueries.INSERT_RATING_IF_MISSING)) {
-            OffsetDateTime now = this.currentTimestampUtc();
+        try (PreparedStatement userStatement = connection.prepareStatement(MySqlRankingQueries.INSERT_USER_IF_MISSING);
+             PreparedStatement ratingStatement = connection.prepareStatement(MySqlRankingQueries.INSERT_RATING_IF_MISSING)) {
+            LocalDateTime now = this.currentTimestampUtc();
 
             for (MatchScore score : finalScores) {
                 userStatement.setString(1, score.nickname());
@@ -276,7 +276,7 @@ public class PostgresRankingService implements RankingService {
     private Map<String, RatingSnapshot> loadRatingSnapshots(Connection connection,
                                                             List<MatchScore> finalScores) throws SQLException {
         String placeholders = String.join(",", java.util.Collections.nCopies(finalScores.size(), "?"));
-        String query = PostgresRankingQueries.SELECT_RATINGS_BY_NICKNAMES_PREFIX + placeholders + ")";
+        String query = MySqlRankingQueries.SELECT_RATINGS_BY_NICKNAMES_PREFIX + placeholders + ")";
 
         Map<String, RatingSnapshot> snapshotsByNickname = new LinkedHashMap<>();
 
@@ -318,9 +318,9 @@ public class PostgresRankingService implements RankingService {
                                                Instant playedAtUtc,
                                                int playerCount,
                                                List<PlayerMatchUpdate> updates) throws SQLException {
-        try (PreparedStatement updateRating = connection.prepareStatement(PostgresRankingQueries.UPDATE_RATING);
-             PreparedStatement insertMatch = connection.prepareStatement(PostgresRankingQueries.INSERT_MATCH_RESULT)) {
-            OffsetDateTime playedAt = this.toOffsetDateTime(playedAtUtc);
+        try (PreparedStatement updateRating = connection.prepareStatement(MySqlRankingQueries.UPDATE_RATING);
+             PreparedStatement insertMatch = connection.prepareStatement(MySqlRankingQueries.INSERT_MATCH_RESULT)) {
+            LocalDateTime playedAt = this.toDatabaseTimestamp(playedAtUtc);
 
             for (PlayerMatchUpdate update : updates) {
                 updateRating.setInt(1, update.eloAfter());
@@ -351,7 +351,7 @@ public class PostgresRankingService implements RankingService {
 
     /** Loads the complete global leaderboard ordered by rank. */
     private List<LeaderboardEntry> loadGlobalLeaderboard(Connection connection) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_GLOBAL_LEADERBOARD);
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.SELECT_GLOBAL_LEADERBOARD);
              ResultSet resultSet = statement.executeQuery()) {
             List<LeaderboardEntry> leaderboard = new ArrayList<>();
 
@@ -371,7 +371,7 @@ public class PostgresRankingService implements RankingService {
 
     /** Loads global rank for one nickname and fails if player is missing. */
     private int loadGlobalRankForNickname(Connection connection, String nickname) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_PLAYER_GLOBAL_RANK)) {
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.SELECT_PLAYER_GLOBAL_RANK)) {
             statement.setString(1, nickname);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -386,7 +386,7 @@ public class PostgresRankingService implements RankingService {
 
     /** Ensures a rating aggregate row exists for a nickname. */
     private void ensureRatingExists(Connection connection, String nickname) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.INSERT_RATING_IF_MISSING)) {
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_RATING_IF_MISSING)) {
             statement.setString(1, nickname);
             statement.setInt(2, this.config.initialElo());
             statement.setObject(3, this.currentTimestampUtc());
@@ -396,7 +396,7 @@ public class PostgresRankingService implements RankingService {
 
     /** Loads full match history without player count filter. */
     private List<MatchHistory> loadMatchHistory(Connection connection) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_MATCH_HISTORY_ALL);
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.SELECT_MATCH_HISTORY_ALL);
              ResultSet resultSet = statement.executeQuery()) {
             return this.mapMatchHistoryRows(resultSet);
         }
@@ -404,7 +404,7 @@ public class PostgresRankingService implements RankingService {
 
     /** Loads match history filtered by the requested player count. */
     private List<MatchHistory> loadMatchHistory(Connection connection, int playerCount) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(PostgresRankingQueries.SELECT_MATCH_HISTORY_BY_PLAYER_COUNT)) {
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.SELECT_MATCH_HISTORY_BY_PLAYER_COUNT)) {
             statement.setInt(1, playerCount);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -464,19 +464,19 @@ public class PostgresRankingService implements RankingService {
         return history;
     }
 
-    /** Returns current UTC timestamp in PostgreSQL-friendly form. */
-    private OffsetDateTime currentTimestampUtc() {
-        return OffsetDateTime.now(ZoneOffset.UTC);
+    /** Returns current UTC timestamp in MySQL-friendly form. */
+    private LocalDateTime currentTimestampUtc() {
+        return LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC);
     }
 
-    /** Converts an instant to a UTC offset date time for JDBC writes. */
-    private OffsetDateTime toOffsetDateTime(Instant instant) {
-        return instant.atOffset(ZoneOffset.UTC);
+    /** Converts an instant to a UTC database timestamp for JDBC writes. */
+    private LocalDateTime toDatabaseTimestamp(Instant instant) {
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
-    /** Reads a PostgreSQL timestamptz column as an instant. */
+    /** Reads a MySQL datetime column as an instant. */
     private Instant readInstant(ResultSet resultSet, String columnLabel) throws SQLException {
-        return resultSet.getObject(columnLabel, OffsetDateTime.class).toInstant();
+        return resultSet.getObject(columnLabel, LocalDateTime.class).toInstant(ZoneOffset.UTC);
     }
 
     // TODO(controller): a fine partita invocare recordMatchAndGetRanking(...) e inviare al client rank globale Elo + leaderboard globale.

@@ -10,6 +10,9 @@ import java.util.Set;
  * Normalizes and validates ranking input values before database operations.
  */
 final class RankingInputValidator {
+    private static final int MAX_NICKNAME_LENGTH = 255;
+    private static final int MAX_GAME_ID_LENGTH = 255;
+
     private final int minPlayers;
     private final int maxPlayers;
 
@@ -41,6 +44,10 @@ final class RankingInputValidator {
             throw new IllegalArgumentException("Nickname cannot be blank");
         }
 
+        if (normalized.length() > MAX_NICKNAME_LENGTH) {
+            throw new IllegalArgumentException("Nickname cannot be longer than 255 characters");
+        }
+
         return normalized;
     }
 
@@ -59,6 +66,10 @@ final class RankingInputValidator {
 
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("Game id cannot be blank");
+        }
+
+        if (normalized.length() > MAX_GAME_ID_LENGTH) {
+            throw new IllegalArgumentException("Game id cannot be longer than 255 characters");
         }
 
         return normalized;

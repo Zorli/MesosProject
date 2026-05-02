@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.MySqlConnectionConfig;
 
 import java.util.Map;
 
@@ -13,18 +13,19 @@ public record ServerRuntimeConfig(String jdbcUrl,
                                   String password,
                                   int maxBusyRetries,
                                   boolean dbEnabled) {
-    private static final String DEFAULT_JDBC_URL = "jdbc:postgresql://localhost:5432/mesos";
-    private static final String DEFAULT_ADMIN_DATABASE = "postgres";
-    private static final String DEFAULT_USERNAME = "postgres";
-    private static final String DEFAULT_PASSWORD = "postgres";
+    private static final String DEFAULT_JDBC_URL =
+            "jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false";
+    private static final String DEFAULT_ADMIN_DATABASE = "mysql";
+    private static final String DEFAULT_USERNAME = "root";
+    private static final String DEFAULT_PASSWORD = "root";
     private static final int DEFAULT_MAX_BUSY_RETRIES = 3;
     private static final boolean DEFAULT_DB_ENABLED = true;
 
     /**
      * Backward-compatible constructor used by existing tests and bootstrap code.
      *
-     * @param jdbcUrl JDBC URL for the target PostgreSQL database
-     * @param adminJdbcUrl JDBC URL for the admin PostgreSQL database
+     * @param jdbcUrl JDBC URL for the target MySQL database
+     * @param adminJdbcUrl JDBC URL for the admin MySQL database
      * @param username database username
      * @param password database password
      * @param maxBusyRetries maximum number of transient retry attempts
@@ -97,14 +98,14 @@ public record ServerRuntimeConfig(String jdbcUrl,
     /**
      * Converts this runtime config to the ranking module connection config.
      *
-     * @return PostgreSQL connection configuration
+     * @return MySQL connection configuration
      */
-    public PostgresConnectionConfig toPostgresConnectionConfig() {
-        return new PostgresConnectionConfig(this.jdbcUrl, this.username, this.password);
+    public MySqlConnectionConfig toMySqlConnectionConfig() {
+        return new MySqlConnectionConfig(this.jdbcUrl, this.username, this.password);
     }
 
     /**
-     * Returns the target PostgreSQL database name extracted from the JDBC URL.
+     * Returns the target MySQL database name extracted from the JDBC URL.
      *
      * @return configured target database name
      */
@@ -116,7 +117,7 @@ public record ServerRuntimeConfig(String jdbcUrl,
      * Derives the admin JDBC URL by reusing host and port but switching to the default admin database.
      */
     private static String deriveAdminJdbcUrl(String jdbcUrl) {
-        String prefix = "jdbc:postgresql://";
+        String prefix = "jdbc:mysql://";
         if (jdbcUrl == null || !jdbcUrl.startsWith(prefix)) {
             throw new IllegalArgumentException("Cannot derive admin JDBC url from: " + jdbcUrl);
         }
@@ -128,14 +129,17 @@ public record ServerRuntimeConfig(String jdbcUrl,
         }
 
         String hostAndPort = remainder.substring(0, slashIndex);
-        return prefix + hostAndPort + "/" + DEFAULT_ADMIN_DATABASE;
+        String databaseAndQuery = remainder.substring(slashIndex + 1);
+        int queryIndex = databaseAndQuery.indexOf('?');
+        String querySuffix = queryIndex >= 0 ? databaseAndQuery.substring(queryIndex) : "";
+        return prefix + hostAndPort + "/" + DEFAULT_ADMIN_DATABASE + querySuffix;
     }
 
     /**
-     * Extracts the database name from a PostgreSQL JDBC URL.
+     * Extracts the database name from a MySQL JDBC URL.
      */
     private static String extractDatabaseName(String jdbcUrl) {
-        String prefix = "jdbc:postgresql://";
+        String prefix = "jdbc:mysql://";
         if (jdbcUrl == null || !jdbcUrl.startsWith(prefix)) {
             throw new IllegalArgumentException("Unsupported JDBC url: " + jdbcUrl);
         }

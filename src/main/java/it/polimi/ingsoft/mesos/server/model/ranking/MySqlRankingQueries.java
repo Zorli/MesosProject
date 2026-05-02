@@ -1,79 +1,71 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
- * Centralized SQL statements used by the PostgreSQL ranking persistence layer.
+ * Centralized SQL statements used by the MySQL ranking persistence layer.
  */
-final class PostgresRankingQueries {
+final class MySqlRankingQueries {
     /** Creates the table of registered users. */
     static final String CREATE_USERS_TABLE = """
             CREATE TABLE IF NOT EXISTS users (
-                nickname TEXT PRIMARY KEY,
-                created_at TIMESTAMPTZ NOT NULL
-            )
+                nickname VARCHAR(255) NOT NULL,
+                created_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (nickname)
+            ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
             """;
 
     /** Creates the table containing global rating aggregates per user. */
     static final String CREATE_USER_RATINGS_TABLE = """
             CREATE TABLE IF NOT EXISTS user_ratings (
-                nickname TEXT PRIMARY KEY,
+                nickname VARCHAR(255) NOT NULL,
                 elo INTEGER NOT NULL,
                 games_played INTEGER NOT NULL DEFAULT 0,
                 wins INTEGER NOT NULL DEFAULT 0,
                 win_streak INTEGER NOT NULL DEFAULT 0,
-                last_updated TIMESTAMPTZ NOT NULL,
-                FOREIGN KEY(nickname) REFERENCES users(nickname)
-            )
+                last_updated DATETIME(6) NOT NULL,
+                PRIMARY KEY (nickname),
+                CONSTRAINT fk_user_ratings_user FOREIGN KEY(nickname) REFERENCES users(nickname),
+                INDEX idx_user_ratings_leaderboard(elo DESC, wins DESC, nickname ASC)
+            ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
             """;
 
     /** Creates the table containing immutable per-match player results. */
     static final String CREATE_MATCH_RESULTS_TABLE = """
             CREATE TABLE IF NOT EXISTS match_results (
-                id BIGSERIAL PRIMARY KEY,
-                game_id TEXT NOT NULL,
-                nickname TEXT NOT NULL,
-                final_score INTEGER NOT NULL CHECK(final_score >= 0),
-                placement INTEGER NOT NULL CHECK(placement >= 1),
-                played_at TIMESTAMPTZ NOT NULL,
-                player_count INTEGER NOT NULL CHECK(player_count BETWEEN 2 AND 5),
-                elo_before INTEGER NOT NULL CHECK(elo_before >= 0),
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                game_id VARCHAR(255) NOT NULL,
+                nickname VARCHAR(255) NOT NULL,
+                final_score INTEGER NOT NULL,
+                placement INTEGER NOT NULL,
+                played_at DATETIME(6) NOT NULL,
+                player_count INTEGER NOT NULL,
+                elo_before INTEGER NOT NULL,
                 elo_delta INTEGER NOT NULL,
-                elo_after INTEGER NOT NULL CHECK(elo_after >= 0),
-                win_streak_after INTEGER NOT NULL CHECK(win_streak_after >= 0),
-                FOREIGN KEY(nickname) REFERENCES users(nickname),
-                UNIQUE(game_id, nickname)
-            )
-            """;
-
-    /** Creates the leaderboard index for rank queries. */
-    static final String CREATE_RATINGS_INDEX = """
-            CREATE INDEX IF NOT EXISTS idx_user_ratings_leaderboard
-            ON user_ratings(elo DESC, wins DESC, nickname ASC)
-            """;
-
-    /** Creates the history index for chronological match listing. */
-    static final String CREATE_MATCH_HISTORY_INDEX = """
-            CREATE INDEX IF NOT EXISTS idx_match_results_history
-            ON match_results(played_at DESC, game_id ASC, placement ASC)
-            """;
-
-    /** Creates the index used by history filtering by match size. */
-    static final String CREATE_MATCH_PLAYER_COUNT_INDEX = """
-            CREATE INDEX IF NOT EXISTS idx_match_results_player_count
-            ON match_results(player_count, played_at DESC)
+                elo_after INTEGER NOT NULL,
+                win_streak_after INTEGER NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT fk_match_results_user FOREIGN KEY(nickname) REFERENCES users(nickname),
+                CONSTRAINT uq_match_results_game_nickname UNIQUE(game_id, nickname),
+                CONSTRAINT chk_match_results_final_score CHECK(final_score >= 0),
+                CONSTRAINT chk_match_results_placement CHECK(placement >= 1),
+                CONSTRAINT chk_match_results_player_count CHECK(player_count BETWEEN 2 AND 5),
+                CONSTRAINT chk_match_results_elo_before CHECK(elo_before >= 0),
+                CONSTRAINT chk_match_results_elo_after CHECK(elo_after >= 0),
+                CONSTRAINT chk_match_results_win_streak CHECK(win_streak_after >= 0),
+                INDEX idx_match_results_history(played_at DESC, game_id ASC, placement ASC),
+                INDEX idx_match_results_player_count(player_count, played_at DESC)
+            ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
             """;
 
     /** Inserts a user row if nickname is not already present. */
     static final String INSERT_USER_IF_MISSING = """
-            INSERT INTO users(nickname, created_at)
+            INSERT IGNORE INTO users(nickname, created_at)
             VALUES(?, ?)
-            ON CONFLICT (nickname) DO NOTHING
             """;
 
     /** Inserts an initial rating row if nickname does not have one yet. */
     static final String INSERT_RATING_IF_MISSING = """
-            INSERT INTO user_ratings(nickname, elo, games_played, wins, win_streak, last_updated)
+            INSERT IGNORE INTO user_ratings(nickname, elo, games_played, wins, win_streak, last_updated)
             VALUES(?, ?, 0, 0, 0, ?)
-            ON CONFLICT (nickname) DO NOTHING
             """;
 
     /** Checks if a nickname already exists in users table. */
@@ -113,24 +105,24 @@ final class PostgresRankingQueries {
 
     /** Loads full global leaderboard with SQL rank computed by Elo/wins/nickname. */
     static final String SELECT_GLOBAL_LEADERBOARD = """
-            SELECT nickname, elo, wins, win_streak, rank
+            SELECT nickname, elo, wins, win_streak, `rank`
             FROM (
                 SELECT nickname,
                        elo,
                        wins,
                        win_streak,
-                       RANK() OVER (ORDER BY elo DESC, wins DESC, nickname ASC) AS rank
+                       RANK() OVER (ORDER BY elo DESC, wins DESC, nickname ASC) AS `rank`
                 FROM user_ratings
             ) ranked
-            ORDER BY rank ASC, nickname ASC
+            ORDER BY `rank` ASC, nickname ASC
             """;
 
     /** Loads global rank for a single nickname. */
     static final String SELECT_PLAYER_GLOBAL_RANK = """
-            SELECT rank
+            SELECT `rank`
             FROM (
                 SELECT nickname,
-                       RANK() OVER (ORDER BY elo DESC, wins DESC, nickname ASC) AS rank
+                       RANK() OVER (ORDER BY elo DESC, wins DESC, nickname ASC) AS `rank`
                 FROM user_ratings
             ) ranked
             WHERE nickname = ?
@@ -154,6 +146,6 @@ final class PostgresRankingQueries {
             """;
 
     /** Utility class: not instantiable. */
-    private PostgresRankingQueries() {
+    private MySqlRankingQueries() {
     }
 }

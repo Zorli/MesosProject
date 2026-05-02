@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
 import it.polimi.ingsoft.mesos.server.model.ranking.*;
-import it.polimi.ingsoft.mesos.server.testing.PostgresIntegrationTestSupport;
+import it.polimi.ingsoft.mesos.server.testing.MySqlIntegrationTestSupport;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -15,15 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 @Tag("integration")
 
 /**
- * Integration tests verifying ranking persistence across PostgreSQL-backed service instances.
+ * Integration tests verifying ranking persistence across MySQL-backed service instances.
  */
-class PostgresRankingServiceIntegrationTest extends PostgresIntegrationTestSupport {
+class MySqlRankingServiceIntegrationTest extends MySqlIntegrationTestSupport {
 
     @Test
     void persistsStateAcrossServiceInstancesUsingSameDatabase() {
-        PostgresConnectionConfig connectionConfig = this.createIsolatedConnectionConfig("ranking_integration");
+        MySqlConnectionConfig connectionConfig = this.createIsolatedConnectionConfig("ranking_integration");
 
-        RankingService firstInstance = new PostgresRankingService(connectionConfig);
+        RankingService firstInstance = new MySqlRankingService(connectionConfig);
         firstInstance.recordMatchAndGetRanking(
                 "game-int-1",
                 2,
@@ -32,7 +32,7 @@ class PostgresRankingServiceIntegrationTest extends PostgresIntegrationTestSuppo
                 List.of(new MatchScore("Alice", 12), new MatchScore("Bob", 8))
         );
 
-        RankingService secondInstance = new PostgresRankingService(connectionConfig);
+        RankingService secondInstance = new MySqlRankingService(connectionConfig);
         List<LeaderboardEntry> leaderboard = secondInstance.getLeaderboard();
 
         assertFalse(leaderboard.isEmpty());

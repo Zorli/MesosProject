@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresSchemaModule;
+import it.polimi.ingsoft.mesos.server.model.persistence.mysql.MySqlSchemaModule;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -11,22 +11,22 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 
 /**
- * Encapsulates PostgreSQL connection setup, schema initialization and transient-retry execution.
+ * Encapsulates MySQL connection setup, schema initialization and transient-retry execution.
  */
-final class PostgresDatabaseSupport {
-    private final PostgresConnectionConfig connectionConfig;
+final class MySqlDatabaseSupport {
+    private final MySqlConnectionConfig connectionConfig;
     private final int maxBusyRetries;
-    private final List<PostgresSchemaModule> schemaModules;
+    private final List<MySqlSchemaModule> schemaModules;
 
     /**
-     * Creates PostgreSQL support with connection settings and retry limit.
+     * Creates MySQL support with connection settings and retry limit.
      *
-     * @param connectionConfig PostgreSQL connection settings
-     * @param maxBusyRetries maximum retries for transient PostgreSQL failures
+     * @param connectionConfig MySQL connection settings
+     * @param maxBusyRetries maximum retries for transient MySQL failures
      */
-    PostgresDatabaseSupport(PostgresConnectionConfig connectionConfig,
+    MySqlDatabaseSupport(MySqlConnectionConfig connectionConfig,
                             int maxBusyRetries,
-                            List<PostgresSchemaModule> schemaModules) {
+                            List<MySqlSchemaModule> schemaModules) {
         this.connectionConfig = Objects.requireNonNull(connectionConfig, "Connection config cannot be null");
 
         if (maxBusyRetries < 0) {
@@ -48,7 +48,7 @@ final class PostgresDatabaseSupport {
         this.executeWithRetry(() -> {
             try (Connection connection = this.openConnection();
                  Statement statement = connection.createStatement()) {
-                for (PostgresSchemaModule schemaModule : this.schemaModules) {
+                for (MySqlSchemaModule schemaModule : this.schemaModules) {
                     for (String ddl : schemaModule.createStatements()) {
                         statement.execute(ddl);
                     }
@@ -59,9 +59,9 @@ final class PostgresDatabaseSupport {
     }
 
     /**
-     * Opens a PostgreSQL connection configured for transactional operations.
+     * Opens a MySQL connection configured for transactional operations.
      *
-     * @return opened PostgreSQL connection
+     * @return opened MySQL connection
      * @throws SQLException if connection fails
      */
     Connection openConnection() throws SQLException {
@@ -75,7 +75,7 @@ final class PostgresDatabaseSupport {
     }
 
     /**
-     * Executes an action retrying on transient PostgreSQL failures.
+     * Executes an action retrying on transient MySQL failures.
      *
      * @param action operation to execute
      * @param <T> operation result type
@@ -106,14 +106,16 @@ final class PostgresDatabaseSupport {
     }
 
     /**
-     * Detects transient PostgreSQL failures that are worth retrying.
+     * Detects transient MySQL failures that are worth retrying.
      */
     private boolean isRetryableException(SQLException exception) {
         String sqlState = exception.getSQLState();
+        int errorCode = exception.getErrorCode();
 
         return "40001".equals(sqlState)
-                || "40P01".equals(sqlState)
-                || "55P03".equals(sqlState);
+                || "41000".equals(sqlState)
+                || errorCode == 1205
+                || errorCode == 1213;
     }
 
     /**

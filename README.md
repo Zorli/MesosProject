@@ -27,14 +27,14 @@ Regole base:
 ## Documentazione tecnica (`docs/`)
 La cartella `docs/` e` dedicata ai design doc e alla documentazione delle decisioni tecniche.
 
-## Avvio PostgreSQL locale
-Per sviluppo locale il repository include un `docker-compose.yml` con PostgreSQL.
+## Avvio MySQL locale
+Per sviluppo locale il repository include un `docker-compose.yml` con MySQL.
 Il database viene usato per ranking e storico risultati; il salvataggio dello stato match non e'
-gestito da PostgreSQL.
+gestito da MySQL.
 
 1. Avvia il database:
 ```bash
-docker compose up -d postgres
+docker compose up -d mysql
 ```
 
 2. Configura le variabili ambiente del server. Puoi partire da `.env.server.example`.
@@ -48,23 +48,23 @@ Variabili supportate:
 - `MESOS_NO_DB`
 
 Default locali:
-- `jdbc:postgresql://localhost:5432/mesos`
-- admin DB `jdbc:postgresql://localhost:5432/postgres`
-- utente `postgres`
-- password `postgres`
+- `jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`
+- admin DB `jdbc:mysql://localhost:3306/mysql?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false`
+- utente `root`
+- password `root`
 
 3. Avvia il server:
 ```bash
-MESOS_DB_URL=jdbc:postgresql://localhost:5432/mesos \
-MESOS_DB_ADMIN_URL=jdbc:postgresql://localhost:5432/postgres \
-MESOS_DB_USER=postgres \
-MESOS_DB_PASSWORD=postgres \
+MESOS_DB_URL='jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false' \
+MESOS_DB_ADMIN_URL='jdbc:mysql://localhost:3306/mysql?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false' \
+MESOS_DB_USER=root \
+MESOS_DB_PASSWORD=root \
 ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
 ```
 
-Per avvio naive senza PostgreSQL:
+Per avvio naive senza MySQL:
 ```bash
 MESOS_NO_DB=true ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
 ```
 
-All'avvio il server crea il database se manca, inizializza lo schema ranking, verifica la connettivita' verso PostgreSQL e fallisce con un errore esplicito se il DB e' irraggiungibile o non healthy.
+All'avvio il server crea il database se manca, inizializza lo schema ranking, verifica la connettivita' verso MySQL e fallisce con un errore esplicito se il DB e' irraggiungibile o non healthy.

@@ -1,9 +1,9 @@
-package it.polimi.ingsoft.mesos.server.model.persistence.postgres;
+package it.polimi.ingsoft.mesos.server.model.persistence.mysql;
 
 /**
- * Signals that PostgreSQL cannot be used because it is unreachable or its schema is unhealthy.
+ * Signals that MySQL cannot be used because it is unreachable or its schema is unhealthy.
  */
-public final class PostgresDatabaseHealthException extends IllegalStateException {
+public final class MySqlDatabaseHealthException extends IllegalStateException {
     /**
      * High-level health category used to distinguish connectivity from schema problems.
      */
@@ -20,7 +20,7 @@ public final class PostgresDatabaseHealthException extends IllegalStateException
      * @param reason failure category
      * @param message diagnostic message
      */
-    public PostgresDatabaseHealthException(Reason reason, String message) {
+    public MySqlDatabaseHealthException(Reason reason, String message) {
         super(message);
         this.reason = reason;
     }
@@ -32,7 +32,7 @@ public final class PostgresDatabaseHealthException extends IllegalStateException
      * @param message diagnostic message
      * @param cause root cause
      */
-    public PostgresDatabaseHealthException(Reason reason, String message, Throwable cause) {
+    public MySqlDatabaseHealthException(Reason reason, String message, Throwable cause) {
         super(message, cause);
         this.reason = reason;
     }

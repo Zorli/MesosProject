@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
-import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
-import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingService;
+import it.polimi.ingsoft.mesos.server.model.persistence.mysql.MySqlDatabaseBootstrap;
+import it.polimi.ingsoft.mesos.server.model.ranking.MySqlRankingSchemaModule;
+import it.polimi.ingsoft.mesos.server.model.ranking.MySqlRankingService;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,14 +30,14 @@ public final class ServerServicesFactory {
             return new ServerServices(null);
         }
 
-        PostgresDatabaseBootstrap.getInstance().ensureReady(
+        MySqlDatabaseBootstrap.getInstance().ensureReady(
                 runtimeConfig,
-                List.of(PostgresRankingSchemaModule.getInstance())
+                List.of(MySqlRankingSchemaModule.getInstance())
         );
 
         return new ServerServices(
-                new PostgresRankingService(
-                        runtimeConfig.toPostgresConnectionConfig(),
+                new MySqlRankingService(
+                        runtimeConfig.toMySqlConnectionConfig(),
                         runtimeConfig.maxBusyRetries()
                 )
         );

@@ -1,11 +1,11 @@
-package it.polimi.ingsoft.mesos.server.model.persistence.postgres;
+package it.polimi.ingsoft.mesos.server.model.persistence.mysql;
 
 import java.util.List;
 
 /**
- * Defines one modular PostgreSQL schema contribution owned by a server subsystem.
+ * Defines one modular MySQL schema contribution owned by a server subsystem.
  */
-public interface PostgresSchemaModule {
+public interface MySqlSchemaModule {
 
     /**
      * Returns the human-readable module name used in diagnostics.

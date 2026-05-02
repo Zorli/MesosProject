@@ -1,19 +1,19 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresSchemaModule;
+import it.polimi.ingsoft.mesos.server.model.persistence.mysql.MySqlSchemaModule;
 
 import java.util.List;
 
 /**
- * Modular PostgreSQL schema contribution for the ranking subsystem.
+ * Modular MySQL schema contribution for the ranking subsystem.
  */
-public final class PostgresRankingSchemaModule implements PostgresSchemaModule {
-    private static final PostgresRankingSchemaModule INSTANCE = new PostgresRankingSchemaModule();
+public final class MySqlRankingSchemaModule implements MySqlSchemaModule {
+    private static final MySqlRankingSchemaModule INSTANCE = new MySqlRankingSchemaModule();
 
     /**
      * Prevents external instantiation of the singleton schema module.
      */
-    private PostgresRankingSchemaModule() {
+    private MySqlRankingSchemaModule() {
     }
 
     /**
@@ -21,7 +21,7 @@ public final class PostgresRankingSchemaModule implements PostgresSchemaModule {
      *
      * @return singleton ranking schema module
      */
-    public static PostgresRankingSchemaModule getInstance() {
+    public static MySqlRankingSchemaModule getInstance() {
         return INSTANCE;
     }
 
@@ -43,12 +43,9 @@ public final class PostgresRankingSchemaModule implements PostgresSchemaModule {
     @Override
     public List<String> createStatements() {
         return List.of(
-                PostgresRankingQueries.CREATE_USERS_TABLE,
-                PostgresRankingQueries.CREATE_USER_RATINGS_TABLE,
-                PostgresRankingQueries.CREATE_MATCH_RESULTS_TABLE,
-                PostgresRankingQueries.CREATE_RATINGS_INDEX,
-                PostgresRankingQueries.CREATE_MATCH_HISTORY_INDEX,
-                PostgresRankingQueries.CREATE_MATCH_PLAYER_COUNT_INDEX
+                MySqlRankingQueries.CREATE_USERS_TABLE,
+                MySqlRankingQueries.CREATE_USER_RATINGS_TABLE,
+                MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE
         );
     }
 
