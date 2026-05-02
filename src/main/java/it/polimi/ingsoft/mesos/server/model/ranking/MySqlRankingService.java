@@ -98,21 +98,37 @@ public class MySqlRankingService implements RankingService {
 
         return this.database.executeWithRetry(() -> {
             try (Connection connection = this.database.openConnection()) {
-                boolean inserted = true;
+                connection.setAutoCommit(false);
 
-                try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_USER)) {
-                    statement.setString(1, normalizedNickname);
-                    statement.setObject(2, this.currentTimestampUtc());
-                    statement.executeUpdate();
-                } catch (SQLException exception) {
-                    if (!this.isDuplicateKey(exception)) {
-                        throw exception;
+                try {
+                    boolean inserted = true;
+
+                    try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_USER)) {
+                        statement.setString(1, normalizedNickname);
+                        statement.setObject(2, this.currentTimestampUtc());
+                        statement.executeUpdate();
+                    } catch (SQLException exception) {
+                        if (!this.isDuplicateKey(exception)) {
+                            throw exception;
+                        }
+                        inserted = false;
                     }
-                    inserted = false;
-                }
 
-                this.ensureRatingExists(connection, normalizedNickname);
-                return inserted;
+                    this.ensureRatingExists(connection, normalizedNickname);
+                    connection.commit();
+                    return inserted;
+                } catch (Exception exception) {
+                    connection.rollback();
+
+                    if (exception instanceof SQLException sqlException) {
+                        throw sqlException;
+                    }
+                    if (exception instanceof RuntimeException runtimeException) {
+                        throw runtimeException;
+                    }
+
+                    throw new RankingDataException("Cannot register ranking user");
+                }
             }
         });
     }
@@ -207,10 +223,7 @@ public class MySqlRankingService implements RankingService {
             connection.setAutoCommit(false);
 
             try {
-                if (this.gameAlreadyRecorded(connection, gameId)) {
-                    throw new DuplicateGameException(gameId);
-                }
-
+                this.insertMatchHeader(connection, gameId, playedAtUtc, playerCount);
                 this.ensureUsersAndRatingsExist(connection, finalScores);
 
                 Map<String, Integer> placements = this.eloCalculator.computePlacements(finalScores);
@@ -222,7 +235,7 @@ public class MySqlRankingService implements RankingService {
                         playerCount
                 );
 
-                this.persistEloUpdatesAndMatchRows(connection, gameId, playedAtUtc, playerCount, updates);
+                this.persistEloUpdatesAndMatchRows(connection, gameId, playedAtUtc, updates);
 
                 List<LeaderboardEntry> leaderboard = this.loadGlobalLeaderboard(connection);
                 int playerRank = this.loadGlobalRankForNickname(connection, requestingNickname);
@@ -244,14 +257,22 @@ public class MySqlRankingService implements RankingService {
         }
     }
 
-    /** Returns whether the given game id already exists in persisted match rows. */
-    private boolean gameAlreadyRecorded(Connection connection, String gameId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.CHECK_GAME_EXISTS)) {
+    /** Inserts the immutable match header, relying on its primary key for idempotence. */
+    private void insertMatchHeader(Connection connection,
+                                   String gameId,
+                                   Instant playedAtUtc,
+                                   int playerCount) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(MySqlRankingQueries.INSERT_MATCH)) {
             statement.setString(1, gameId);
-
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next();
+            statement.setObject(2, this.toDatabaseTimestamp(playedAtUtc));
+            statement.setInt(3, playerCount);
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            if (this.isDuplicateKey(exception)) {
+                throw new DuplicateGameException(gameId);
             }
+
+            throw exception;
         }
     }
 
@@ -321,7 +342,6 @@ public class MySqlRankingService implements RankingService {
     private void persistEloUpdatesAndMatchRows(Connection connection,
                                                String gameId,
                                                Instant playedAtUtc,
-                                               int playerCount,
                                                List<PlayerMatchUpdate> updates) throws SQLException {
         try (PreparedStatement updateRating = connection.prepareStatement(MySqlRankingQueries.UPDATE_RATING);
              PreparedStatement insertMatch = connection.prepareStatement(MySqlRankingQueries.INSERT_MATCH_RESULT)) {
@@ -340,12 +360,10 @@ public class MySqlRankingService implements RankingService {
                 insertMatch.setString(2, update.nickname());
                 insertMatch.setInt(3, update.finalScore());
                 insertMatch.setInt(4, update.placement());
-                insertMatch.setObject(5, playedAt);
-                insertMatch.setInt(6, playerCount);
-                insertMatch.setInt(7, update.eloBefore());
-                insertMatch.setInt(8, update.eloDelta());
-                insertMatch.setInt(9, update.eloAfter());
-                insertMatch.setInt(10, update.winStreakAfter());
+                insertMatch.setInt(5, update.eloBefore());
+                insertMatch.setInt(6, update.eloDelta());
+                insertMatch.setInt(7, update.eloAfter());
+                insertMatch.setInt(8, update.winStreakAfter());
                 insertMatch.addBatch();
             }
 
@@ -488,7 +506,5 @@ public class MySqlRankingService implements RankingService {
     private boolean isDuplicateKey(SQLException exception) {
         return "23000".equals(exception.getSQLState()) && exception.getErrorCode() == 1062;
     }
-
-    // TODO(controller): a fine partita invocare recordMatchAndGetRanking(...) e inviare al client rank globale Elo + leaderboard globale.
     // TODO(controller): in fase di login invocare isNicknameAvailable(...) e registerUser(...) per enforce nickname univoco.
 }

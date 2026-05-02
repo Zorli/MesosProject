@@ -259,10 +259,11 @@ Il minimo Elo default e' `100`.
 
 Il backend persistente usa MySQL via JDBC e richiede InnoDB.
 
-Le tabelle sono create da `MySqlRankingSchemaModule`, che contribuisce tre DDL:
+Le tabelle sono create da `MySqlRankingSchemaModule`, che contribuisce quattro DDL:
 
 - `users`;
 - `user_ratings`;
+- `matches`;
 - `match_results`.
 
 Le query sono centralizzate in `MySqlRankingQueries`. La scelta riduce duplicazione di stringhe SQL
@@ -307,6 +308,27 @@ Uso:
 - sorgente della leaderboard globale;
 - snapshot pre-match per il calcolo Elo successivo.
 
+### Tabella `matches`
+
+Colonne:
+
+- `game_id VARCHAR(255) NOT NULL`;
+- `played_at DATETIME(6) NOT NULL`;
+- `player_count INTEGER NOT NULL`.
+
+Vincoli e indici:
+
+- primary key su `game_id`;
+- check `player_count BETWEEN 2 AND 5`;
+- index `idx_matches_history(played_at DESC, game_id ASC)`;
+- index `idx_matches_player_count(player_count, played_at DESC)`.
+
+Uso:
+
+- header immutabile del match completato;
+- guardia persistente atomica contro il doppio conteggio dello stesso `game_id`;
+- sorgente di timestamp e numero giocatori per lo storico.
+
 ### Tabella `match_results`
 
 Colonne:
@@ -316,8 +338,6 @@ Colonne:
 - `nickname VARCHAR(255) NOT NULL`;
 - `final_score INTEGER NOT NULL`;
 - `placement INTEGER NOT NULL`;
-- `played_at DATETIME(6) NOT NULL`;
-- `player_count INTEGER NOT NULL`;
 - `elo_before INTEGER NOT NULL`;
 - `elo_delta INTEGER NOT NULL`;
 - `elo_after INTEGER NOT NULL`;
@@ -326,20 +346,17 @@ Colonne:
 Vincoli e indici:
 
 - primary key su `id`;
+- foreign key `game_id -> matches.game_id`;
 - foreign key `nickname -> users.nickname`;
 - unique key `(game_id, nickname)`;
-- check su score, placement, player count, Elo e win streak;
-- index `idx_match_results_history(played_at DESC, game_id ASC, placement ASC)`;
-- index `idx_match_results_player_count(player_count, played_at DESC)`.
+- check su score, placement, Elo e win streak;
+- index `idx_match_results_history(game_id ASC, placement ASC, nickname ASC)`.
 
 Uso:
 
 - storico immutabile dei risultati per giocatore;
 - ricostruzione di `MatchHistory`;
 - diagnosi di come ogni match ha modificato l'Elo.
-
-Non esiste oggi una tabella header `matches`: un match e' rappresentato dal gruppo di righe con lo
-stesso `game_id` in `match_results`.
 
 ## Query di lettura
 
@@ -352,12 +369,12 @@ RANK() OVER (ORDER BY elo DESC, wins DESC, nickname ASC)
 L'ordinamento premia prima Elo, poi numero di vittorie, poi nickname. Poiche' `nickname` e' unico e
 fa parte dell'`ORDER BY`, l'ordine finale e' deterministico.
 
-Lo storico viene letto da `match_results`, ordinato per:
+Lo storico viene letto con join `matches -> match_results`, ordinato per:
 
-- `played_at DESC`;
-- `game_id ASC`;
-- `placement ASC`;
-- `nickname ASC`.
+- `matches.played_at DESC`;
+- `matches.game_id ASC`;
+- `match_results.placement ASC`;
+- `match_results.nickname ASC`.
 
 Il mapper raggruppa le righe consecutive per `game_id` in oggetti `MatchHistory`.
 
@@ -370,14 +387,15 @@ Flusso interno:
 1. normalizza e valida tutti gli input fuori dalla transazione;
 2. apre una connessione MySQL;
 3. imposta `autoCommit(false)`;
-4. verifica se `game_id` e' gia' presente;
-5. crea utenti e rating mancanti con upsert mirati su duplicate key;
-6. carica gli snapshot rating dei giocatori;
-7. calcola placement e aggiornamenti Elo;
-8. aggiorna `user_ratings` in batch;
-9. inserisce le righe `match_results` in batch;
-10. legge leaderboard globale e rank del richiedente nello stesso stato transazionale;
-11. esegue `commit`.
+4. inserisce l'header `matches`;
+5. se la primary key `matches.game_id` esiste gia', lancia `DuplicateGameException`;
+6. crea utenti e rating mancanti con upsert mirati su duplicate key;
+7. carica gli snapshot rating dei giocatori;
+8. calcola placement e aggiornamenti Elo;
+9. aggiorna `user_ratings` in batch;
+10. inserisce le righe `match_results` in batch;
+11. legge leaderboard globale e rank del richiedente nello stesso stato transazionale;
+12. esegue `commit`.
 
 Qualunque eccezione prima del commit attiva `rollback`.
 
@@ -389,16 +407,11 @@ conservativa la concorrenza tra partite che coinvolgono gli stessi giocatori o l
 Il sistema usa due difese contro il doppio conteggio della stessa partita:
 
 - difesa in memoria: `GameOrchestrator.rankingRecorded`;
-- difesa persistente: `MySqlRankingService.gameAlreadyRecorded` prima degli insert e unique key
-  `(game_id, nickname)` sulle righe match.
+- difesa persistente primaria: `matches.game_id` come primary key, inserita come primo passo della
+  transazione;
+- difesa persistente secondaria: unique key `(game_id, nickname)` sulle righe giocatore.
 
 Se il `game_id` e' gia' presente nello storico, il service lancia `DuplicateGameException`.
-
-La difesa corrente e' adeguata per il flusso attuale, ma non e' il modello piu' forte possibile:
-non esiste una tabella `matches` con primary key su `game_id`. Una futura evoluzione dovrebbe
-introdurre una riga header `matches(game_id PRIMARY KEY, played_at, player_count, ...)` e inserire
-quella riga come primo passo della transazione. In quel modello l'idempotenza sarebbe garantita da
-un vincolo univoco diretto sul match, non solo dal gruppo di righe giocatore.
 
 Il `game_id` persistito non coincide con `Game#getId()`: e' un UUID dedicato al ranking. Questa
 scelta evita collisioni tra storico persistente e contatori runtime che ripartono dopo un riavvio.
@@ -570,8 +583,6 @@ Il package ranking ha copertura su:
 - La registrazione persistente del nickname non e' ancora agganciata al login TCP/RMI.
 - Il risultato ranking finale non viene ancora inviato ai client.
 - Non esistono endpoint/protocol commands per leaderboard e storico.
-- Non c'e' una tabella `matches` con unique key su `game_id`.
-- La registrazione nickname non usa una transazione esplicita tra `users` e `user_ratings`.
 - I parametri Elo sono in codice, non configurabili via environment.
 - Il modulo assume `finalScore >= 0`; se il dominio gioco permette prestige points negativi, il
   mapping verso `MatchScore` deve essere rivisto.
@@ -584,7 +595,6 @@ Il package ranking ha copertura su:
 - Integrare `RankingService.registerUser` nel flusso auth e rendere persistente la semantica dei
   nickname.
 - Aggiungere payload e comandi per leaderboard, storico e ranking finale.
-- Introdurre tabella `matches` con `game_id` primary key e stato header del match.
 - Aggiungere lock espliciti sugli snapshot rating dei giocatori coinvolti.
 - Estrarre mapper SQL dedicati se `MySqlRankingService` cresce ancora.
 - Versionare lo schema con migration tool o tabella interna di schema version.

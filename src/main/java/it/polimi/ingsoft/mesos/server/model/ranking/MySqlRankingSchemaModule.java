@@ -45,6 +45,7 @@ public final class MySqlRankingSchemaModule implements MySqlSchemaModule {
         return List.of(
                 MySqlRankingQueries.CREATE_USERS_TABLE,
                 MySqlRankingQueries.CREATE_USER_RATINGS_TABLE,
+                MySqlRankingQueries.CREATE_MATCHES_TABLE,
                 MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE
         );
     }
@@ -56,6 +57,6 @@ public final class MySqlRankingSchemaModule implements MySqlSchemaModule {
      */
     @Override
     public List<String> requiredTables() {
-        return List.of("users", "user_ratings", "match_results");
+        return List.of("users", "user_ratings", "matches", "match_results");
     }
 }

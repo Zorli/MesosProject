@@ -28,6 +28,19 @@ final class MySqlRankingQueries {
             ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
             """;
 
+    /** Creates the table containing one immutable header row per completed match. */
+    static final String CREATE_MATCHES_TABLE = """
+            CREATE TABLE IF NOT EXISTS matches (
+                game_id VARCHAR(255) NOT NULL,
+                played_at DATETIME(6) NOT NULL,
+                player_count INTEGER NOT NULL,
+                PRIMARY KEY (game_id),
+                CONSTRAINT chk_matches_player_count CHECK(player_count BETWEEN 2 AND 5),
+                INDEX idx_matches_history(played_at DESC, game_id ASC),
+                INDEX idx_matches_player_count(player_count, played_at DESC)
+            ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
+            """;
+
     /** Creates the table containing immutable per-match player results. */
     static final String CREATE_MATCH_RESULTS_TABLE = """
             CREATE TABLE IF NOT EXISTS match_results (
@@ -36,23 +49,20 @@ final class MySqlRankingQueries {
                 nickname VARCHAR(255) NOT NULL,
                 final_score INTEGER NOT NULL,
                 placement INTEGER NOT NULL,
-                played_at DATETIME(6) NOT NULL,
-                player_count INTEGER NOT NULL,
                 elo_before INTEGER NOT NULL,
                 elo_delta INTEGER NOT NULL,
                 elo_after INTEGER NOT NULL,
                 win_streak_after INTEGER NOT NULL,
                 PRIMARY KEY (id),
+                CONSTRAINT fk_match_results_match FOREIGN KEY(game_id) REFERENCES matches(game_id),
                 CONSTRAINT fk_match_results_user FOREIGN KEY(nickname) REFERENCES users(nickname),
                 CONSTRAINT uq_match_results_game_nickname UNIQUE(game_id, nickname),
                 CONSTRAINT chk_match_results_final_score CHECK(final_score >= 0),
                 CONSTRAINT chk_match_results_placement CHECK(placement >= 1),
-                CONSTRAINT chk_match_results_player_count CHECK(player_count BETWEEN 2 AND 5),
                 CONSTRAINT chk_match_results_elo_before CHECK(elo_before >= 0),
                 CONSTRAINT chk_match_results_elo_after CHECK(elo_after >= 0),
                 CONSTRAINT chk_match_results_win_streak CHECK(win_streak_after >= 0),
-                INDEX idx_match_results_history(played_at DESC, game_id ASC, placement ASC),
-                INDEX idx_match_results_player_count(player_count, played_at DESC)
+                INDEX idx_match_results_history(game_id ASC, placement ASC, nickname ASC)
             ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
             """;
 
@@ -80,10 +90,6 @@ final class MySqlRankingQueries {
     static final String CHECK_USER_EXISTS =
             "SELECT 1 FROM users WHERE nickname = ?";
 
-    /** Checks if a game id was already persisted. */
-    static final String CHECK_GAME_EXISTS =
-            "SELECT 1 FROM match_results WHERE game_id = ? LIMIT 1";
-
     /** Loads a single rating snapshot by nickname. */
     static final String SELECT_RATING = """
             SELECT nickname, elo, games_played, wins, win_streak
@@ -102,13 +108,19 @@ final class MySqlRankingQueries {
             WHERE nickname = ?
             """;
 
+    /** Inserts one immutable match header row. */
+    static final String INSERT_MATCH = """
+            INSERT INTO matches(game_id, played_at, player_count)
+            VALUES(?, ?, ?)
+            """;
+
     /** Inserts one match result row for one player. */
     static final String INSERT_MATCH_RESULT = """
             INSERT INTO match_results(
-                game_id, nickname, final_score, placement, played_at, player_count,
+                game_id, nickname, final_score, placement,
                 elo_before, elo_delta, elo_after, win_streak_after
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
     /** Loads full global leaderboard with SQL rank computed by Elo/wins/nickname. */
@@ -138,19 +150,21 @@ final class MySqlRankingQueries {
 
     /** Loads complete match history across all player counts. */
     static final String SELECT_MATCH_HISTORY_ALL = """
-            SELECT game_id, played_at, player_count, nickname, final_score,
-                   placement, elo_before, elo_delta, elo_after, win_streak_after
-            FROM match_results
-            ORDER BY played_at DESC, game_id ASC, placement ASC, nickname ASC
+            SELECT m.game_id, m.played_at, m.player_count, r.nickname, r.final_score,
+                   r.placement, r.elo_before, r.elo_delta, r.elo_after, r.win_streak_after
+            FROM matches m
+            JOIN match_results r ON r.game_id = m.game_id
+            ORDER BY m.played_at DESC, m.game_id ASC, r.placement ASC, r.nickname ASC
             """;
 
     /** Loads match history filtered by a specific player count. */
     static final String SELECT_MATCH_HISTORY_BY_PLAYER_COUNT = """
-            SELECT game_id, played_at, player_count, nickname, final_score,
-                   placement, elo_before, elo_delta, elo_after, win_streak_after
-            FROM match_results
-            WHERE player_count = ?
-            ORDER BY played_at DESC, game_id ASC, placement ASC, nickname ASC
+            SELECT m.game_id, m.played_at, m.player_count, r.nickname, r.final_score,
+                   r.placement, r.elo_before, r.elo_delta, r.elo_after, r.win_streak_after
+            FROM matches m
+            JOIN match_results r ON r.game_id = m.game_id
+            WHERE m.player_count = ?
+            ORDER BY m.played_at DESC, m.game_id ASC, r.placement ASC, r.nickname ASC
             """;
 
     /** Utility class: not instantiable. */

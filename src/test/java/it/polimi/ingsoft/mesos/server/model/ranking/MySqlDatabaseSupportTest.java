@@ -62,10 +62,10 @@ class MySqlDatabaseSupportTest extends MySqlIntegrationTestSupport {
                      "SELECT COUNT(*) " +
                              "FROM information_schema.tables " +
                              "WHERE table_schema = DATABASE() " +
-                             "AND table_name IN ('users', 'user_ratings', 'match_results')"
+                             "AND table_name IN ('users', 'user_ratings', 'matches', 'match_results')"
              )) {
             assertTrue(resultSet.next());
-            assertEquals(3, resultSet.getInt(1));
+            assertEquals(4, resultSet.getInt(1));
         }
     }
 

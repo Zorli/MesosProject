@@ -15,15 +15,16 @@ class MySqlRankingQueriesTest {
         List<String> queries = List.of(
                 MySqlRankingQueries.CREATE_USERS_TABLE,
                 MySqlRankingQueries.CREATE_USER_RATINGS_TABLE,
+                MySqlRankingQueries.CREATE_MATCHES_TABLE,
                 MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE,
                 MySqlRankingQueries.INSERT_USER,
                 MySqlRankingQueries.INSERT_USER_IF_MISSING,
                 MySqlRankingQueries.INSERT_RATING_IF_MISSING,
                 MySqlRankingQueries.CHECK_USER_EXISTS,
-                MySqlRankingQueries.CHECK_GAME_EXISTS,
                 MySqlRankingQueries.SELECT_RATING,
                 MySqlRankingQueries.SELECT_RATINGS_BY_NICKNAMES_PREFIX,
                 MySqlRankingQueries.UPDATE_RATING,
+                MySqlRankingQueries.INSERT_MATCH,
                 MySqlRankingQueries.INSERT_MATCH_RESULT,
                 MySqlRankingQueries.SELECT_GLOBAL_LEADERBOARD,
                 MySqlRankingQueries.SELECT_PLAYER_GLOBAL_RANK,
@@ -38,7 +39,7 @@ class MySqlRankingQueriesTest {
 
     @Test
     void matchResultsQueryEnforcesSupportedPlayerRange() {
-        assertTrue(MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE.contains("CHECK(player_count BETWEEN 2 AND 5)"));
+        assertTrue(MySqlRankingQueries.CREATE_MATCHES_TABLE.contains("CHECK(player_count BETWEEN 2 AND 5)"));
     }
 
     @Test
@@ -55,7 +56,8 @@ class MySqlRankingQueriesTest {
     @Test
     void tableDefinitionsInlineIndexesForIdempotentInitialization() {
         assertTrue(MySqlRankingQueries.CREATE_USER_RATINGS_TABLE.contains("idx_user_ratings_leaderboard"));
+        assertTrue(MySqlRankingQueries.CREATE_MATCHES_TABLE.contains("idx_matches_history"));
+        assertTrue(MySqlRankingQueries.CREATE_MATCHES_TABLE.contains("idx_matches_player_count"));
         assertTrue(MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE.contains("idx_match_results_history"));
-        assertTrue(MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE.contains("idx_match_results_player_count"));
     }
 }
