@@ -4,7 +4,7 @@ package it.polimi.ingsoft.mesos.server.model.ranking;
  * Immutable per-player ranking row stored for one historical match.
  *
  * @param nickname player nickname
- * @param finalScore final match score
+ * @param finalScore signed final match score
  * @param placement final placement in the match (1-based)
  * @param eloBefore Elo before the match
  * @param eloDelta Elo variation introduced by the match
@@ -25,10 +25,6 @@ public record MatchRankingEntry(String nickname,
     public MatchRankingEntry {
         if (nickname == null || nickname.isBlank()) {
             throw new IllegalArgumentException("Nickname cannot be null or blank");
-        }
-
-        if (finalScore < 0) {
-            throw new IllegalArgumentException("Final score cannot be negative");
         }
 
         if (placement < 1) {

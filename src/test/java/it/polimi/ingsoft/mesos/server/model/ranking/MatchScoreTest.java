@@ -23,7 +23,10 @@ class MatchScoreTest {
     }
 
     @Test
-    void throwsWhenFinalScoreIsNegative() {
-        assertThrows(IllegalArgumentException.class, () -> new MatchScore("Alice", -1));
+    void acceptsNegativeScores() {
+        MatchScore matchScore = new MatchScore("Alice", -12);
+
+        assertEquals("Alice", matchScore.nickname());
+        assertEquals(-12, matchScore.finalScore());
     }
 }

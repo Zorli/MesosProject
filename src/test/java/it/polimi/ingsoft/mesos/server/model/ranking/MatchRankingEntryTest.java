@@ -32,12 +32,20 @@ class MatchRankingEntryTest {
     @Test
     void throwsOnNegativeScoresOrEloOrStreak() {
         assertThrows(IllegalArgumentException.class,
-                () -> new MatchRankingEntry("Alice", -1, 1, 1000, 5, 1005, 0));
-        assertThrows(IllegalArgumentException.class,
                 () -> new MatchRankingEntry("Alice", 10, 1, -1, 5, 1005, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new MatchRankingEntry("Alice", 10, 1, 1000, 5, -1, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new MatchRankingEntry("Alice", 10, 1, 1000, 5, 1005, -1));
+    }
+
+    @Test
+    void allowsNegativeFinalScores() {
+        MatchRankingEntry entry = new MatchRankingEntry("Alice", -20, 1, 1000, -5, 995, 0);
+
+        assertEquals("Alice", entry.nickname());
+        assertEquals(-20, entry.finalScore());
+        assertEquals(-5, entry.eloDelta());
+        assertEquals(995, entry.eloAfter());
     }
 }

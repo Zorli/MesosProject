@@ -43,6 +43,11 @@ class MySqlRankingQueriesTest {
     }
 
     @Test
+    void matchResultsQueryAllowsNegativeScores() {
+        assertFalse(MySqlRankingQueries.CREATE_MATCH_RESULTS_TABLE.contains("CHECK(final_score >= 0)"));
+    }
+
+    @Test
     void leaderboardQueryUsesSqlRanking() {
         assertTrue(MySqlRankingQueries.SELECT_GLOBAL_LEADERBOARD.contains("RANK() OVER"));
     }

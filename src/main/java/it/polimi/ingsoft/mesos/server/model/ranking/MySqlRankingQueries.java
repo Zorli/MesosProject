@@ -57,7 +57,6 @@ final class MySqlRankingQueries {
                 CONSTRAINT fk_match_results_match FOREIGN KEY(game_id) REFERENCES matches(game_id),
                 CONSTRAINT fk_match_results_user FOREIGN KEY(nickname) REFERENCES users(nickname),
                 CONSTRAINT uq_match_results_game_nickname UNIQUE(game_id, nickname),
-                CONSTRAINT chk_match_results_final_score CHECK(final_score >= 0),
                 CONSTRAINT chk_match_results_placement CHECK(placement >= 1),
                 CONSTRAINT chk_match_results_elo_before CHECK(elo_before >= 0),
                 CONSTRAINT chk_match_results_elo_after CHECK(elo_after >= 0),
