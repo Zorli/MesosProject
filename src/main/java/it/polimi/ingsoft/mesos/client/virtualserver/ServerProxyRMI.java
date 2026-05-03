@@ -32,6 +32,8 @@ public class ServerProxyRMI implements ServerProxy{
 
         this.connected = true;
     }
+
+    //Servizi offerti in uscita
     @Override
     public boolean isConnected() {
         return this.connected;

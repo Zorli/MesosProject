@@ -48,6 +48,8 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
         this.messageReceiverThread.start();
     }
 
+
+    //Servizi in uscita, quindi quelli offerti al controller tramite interfaccia serverproxy
     @Override
     public boolean isConnected() {
         return this.socket.isConnected() && !this.socket.isClosed();
@@ -104,6 +106,8 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
         this.send(new ClientMessage(ClientMessageType.EXTRA_DRAW, new ExtraDrawPayload(cardId)));
     }
 
+
+    //Servizi offerti in entrata, tramite interfaccia virtualserver
     @Override
     public void handlePing() {
         this.send(new ClientMessage(ClientMessageType.PONG, new PongPayload()));

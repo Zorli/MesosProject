@@ -56,9 +56,10 @@ class TuiControllerTest {
                 "startLobby",
                 "moveTotem:A1",
                 "chooseCard:11",
-                "extraDraw:12"
+                "extraDraw:12",
+                "close"
         ), proxy.calls);
-        assertFalse(proxy.closed);
+        assertTrue(proxy.closed);
     }
 
     @Test

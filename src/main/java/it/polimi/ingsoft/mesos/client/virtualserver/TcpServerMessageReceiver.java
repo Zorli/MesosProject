@@ -34,15 +34,24 @@ public class TcpServerMessageReceiver implements Runnable {
 
     @Override
     public void run() {
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8)
-        )) {
+        try (BufferedReader reader = new BufferedReader (new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8)))
+        {
             String serverMessage;
+
             while ((serverMessage = reader.readLine()) != null) {
                 this.handleServerMessage(serverMessage);
             }
+
+            this.virtualServer.handleError(
+                    new ErrorPayload("CONNECTION_CLOSED", "Connection closed by server")
+            );
+
         } catch (IOException exception) {
-            this.virtualServer.handleError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+
+            //For an error
+            this.virtualServer.handleError(
+                    new ErrorPayload("CONNECTION_CLOSED", exception.getMessage())
+            );
         }
     }
 
@@ -85,4 +94,6 @@ public class TcpServerMessageReceiver implements Runnable {
         GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
         this.virtualServer.handleGameUpdate(gamePayload);
     }
+
+    //Metodo per killare il thread
 }

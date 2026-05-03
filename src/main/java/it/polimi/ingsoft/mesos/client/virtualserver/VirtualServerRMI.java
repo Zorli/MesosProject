@@ -38,6 +38,8 @@ public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientSe
         this.serverStub = serverStub;
     }
 
+
+    //Servizi offerti in entrata
     @Override
     public void handleError(ErrorPayload payload) throws RemoteException {
         this.clientView.showError(payload);

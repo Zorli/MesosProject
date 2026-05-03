@@ -30,10 +30,14 @@ public class LaunchClient {
         while (true) {
             String uiChoice = readUiChoice(scanner);
 
-            if ("1".equals(uiChoice)) {
-                ClientMain.main(args);
-                return;
-            }
+            //Quando avremo la GUi bisogna capire se vogliamo mantenere uniformato il fatto
+            //che questo si occupa di creare tutti gli oggetti della rete, quindi il loop diventera:
+//            1)Ciclo sulla scelta della user interface
+//            2)Ciclo sulla scelta della rete
+//            if ("1".equals(uiChoice)) {
+//                ClientMain.main(args);
+//                return;
+//            }
 
             try {
                 TuiController tuiController = new TuiController(scanner, System.out);
@@ -56,7 +60,7 @@ public class LaunchClient {
                 }
 
                 tuiController.attachServerProxy(serverProxy);
-                tuiController.start();
+                tuiController.start(); //Da qui in poi il thread main fa girare il controller, quando ritorna chiude qua
                 return;
             } catch (Exception exception) {
                 System.out.println("Failed to connect to the server: " + exception.getMessage());

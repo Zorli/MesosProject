@@ -37,18 +37,16 @@ public class TuiController implements ClientView {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
-//    abbiamo sempre due soli thread che girano nel caso TCP
-//    Thread TUI/input:
-//            scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxy.method()
-//
-//    Thread trasporto:
-//    payload -> clientView.showGameUpdate -> render
+//    abbiamo sempre due soli thread che girano
+//    Caso TCP:
+//    Thread TUI/input: scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxy.method()
+//    Thread trasporto: payload -> clientView.showGameUpdate -> render
 //    Caso RMI:
 //    Thread input TUI:
 //    scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxyRMI.method() -> chiamata RMI al server
 //
-//   Thread RMI callback:
-//  server -> VirtualServerRMI.handleGameUpdate() -> clientView.showGameUpdate() -> TuiController.render()
+//    Thread RMI callback:
+//   server -> VirtualServerRMI.handleGameUpdate() -> clientView.showGameUpdate() -> TuiController.render()
 //    Quindi se abbiamo un unico metodo di render synchronized siamo safe lato concorrenza di stampa.
 
     public void start() {
@@ -73,6 +71,18 @@ public class TuiController implements ClientView {
                 this.render("[CLIENT][ERROR] " + exception.getMessage());
             }
         }
+        // When the TUI terminates, close the attached server proxy.
+        // For TCP this closes socket/streams and lets the receiver thread terminate.
+        // For RMI this closes the remote session and unexports the callback object.
+        if(this.serverProxy != null) {
+            try {
+                this.serverProxy.close();
+            } catch (IOException e) {
+               this.render("[CLIENT][ERROR] " + e.getMessage());
+            }
+        }
+
+
     }
 
     @Override
