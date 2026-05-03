@@ -48,10 +48,10 @@ Il tradeoff e' che la classe `Board` assume il ruolo di "passacarte" per alcune 
 ### Implementazione concreta dei sotto-componenti
 Le logiche specifiche risiedono nei componenti specializzati:
 - `OfferPath` e `StartingTile`: validano i codici di posizionamento, filtrano gli spazi attivi per player count e risolvono l'algoritmo per il nuovo ordine di turno.
-- `UpperPile` e `LowerPile`: incapsulano la persistenza in memoria delle carte, filtrano la visibilita' in base ai requisiti e coordinano gli scarti e gli eventi.
+- `UpperPile` e `LowerPile`: incapsulano lo stato in memoria delle carte, filtrano la visibilita' in base ai requisiti e coordinano gli scarti e gli eventi.
 
 ### Supporto infrastrutturale
-Non sono previsti supporti di persistenza esterna (es. SQLite) all'interno di questo specifico package, in quanto lo stato della plancia e' volatile e mantenuto in memoria per l'intera esecuzione della partita corrente.
+Lo stato della plancia e' volatile e mantenuto in memoria per l'intera esecuzione della partita corrente.
 
 ## Stato del dominio gestito
 

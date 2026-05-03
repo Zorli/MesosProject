@@ -47,7 +47,7 @@ public class Board {
     }
 
     /**
-     * Creates a board from an already persisted runtime snapshot.
+     * Creates a board from an already exported runtime snapshot.
      *
      * @param tribeDeck remaining tribe deck in draw order
      * @param buildingDeck remaining building deck in draw order

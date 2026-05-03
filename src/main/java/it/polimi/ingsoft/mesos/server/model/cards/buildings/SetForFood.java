@@ -106,7 +106,7 @@ public class SetForFood extends BuildingCard {
     /**
      * Restores the internal counters used to track partial completed sets.
      *
-     * @param runtimeState persisted counters keyed by tribe-card type name
+     * @param runtimeState exported counters keyed by tribe-card type name
      */
     @Override
     public void restoreRuntimeState(Map<String, Integer> runtimeState) {

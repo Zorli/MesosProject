@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds advanced runtime scenarios used by save/restore and late-game tests.
+ * Builds advanced runtime scenarios used by late-game tests.
  */
 public final class AdvancedGameStateFixtures {
     private AdvancedGameStateFixtures() {

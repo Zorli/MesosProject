@@ -2,11 +2,9 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.NoOpSavedMatchService;
-import it.polimi.ingsoft.mesos.server.model.persistence.savedmatch.SavedMatchService;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
@@ -25,16 +23,14 @@ import java.util.Optional;
  * the list of players participating in that match. Higher layers are expected to route all
  * game-specific requests through this class so that access checks and orchestration logic stay
  * centralized.
- *
- * <p>All durable gameplay transitions must flow through this class so checkpoint timing remains in
- * the application layer rather than leaking into callers or domain objects.
  */
 public class GameOrchestrator {
     private final Game game;
     private final List<Player> players;
     private final String hostNickname;
     private final RankingService rankingService;
-    private final MatchPersistenceCoordinator persistenceCoordinator;
+    private Optional<RankingResult> finalRankingResult;
+    private boolean rankingRecorded;
     private boolean frozen;
 
     // Constructors
@@ -49,41 +45,34 @@ public class GameOrchestrator {
         this(
                 gameFactory,
                 players,
-                resolveDefaultHostNickname(players),
-                NoOpSavedMatchService.INSTANCE
+                resolveDefaultHostNickname(players)
         );
     }
 
     /**
-     * Creates an orchestrator for a new match and wires the per-match persistence coordinator.
+     * Creates an orchestrator for a new match.
      *
      * @param gameFactory factory used to bootstrap the underlying game aggregate
      * @param players players transferred from the lobby into the match
      * @param hostNickname original host nickname associated with the match
-     * @param savedMatchService persistence service selected for the current runtime mode
      */
     public GameOrchestrator(GameFactory gameFactory,
                             ArrayList<Player> players,
-                            String hostNickname,
-                            SavedMatchService savedMatchService) {
-        this(gameFactory, players, hostNickname, savedMatchService, null);
+                            String hostNickname) {
+        this(gameFactory, players, hostNickname, null);
     }
 
     /**
-     * Creates an orchestrator for a new match and wires both save-match persistence and final
-     * ranking registration.
+     * Creates an orchestrator for a new match and wires final ranking registration.
      *
      * @param gameFactory factory used to bootstrap the underlying game aggregate
      * @param players players transferred from the lobby into the match
      * @param hostNickname original host nickname associated with the match
-     * @param savedMatchService persistence service selected for the current runtime mode
-     * @param rankingService ranking service used to register completed matches; nullable when the
-     *                       runtime does not expose ranking persistence
+     * @param rankingService ranking service used to register completed matches; nullable when disabled
      */
     public GameOrchestrator(GameFactory gameFactory,
                             ArrayList<Player> players,
                             String hostNickname,
-                            SavedMatchService savedMatchService,
                             RankingService rankingService) {
         Objects.requireNonNull(gameFactory, "Game factory cannot be null");
         if (players == null || players.isEmpty()) {
@@ -94,55 +83,7 @@ public class GameOrchestrator {
         this.players = List.copyOf(players);
         this.hostNickname = requireHostNickname(hostNickname);
         this.rankingService = rankingService;
-        this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, this.hostNickname);
-    }
-
-    /**
-     * Creates an orchestrator starting from an already restored game aggregate.
-     *
-     * @param restoredGame previously persisted game state reconstructed from storage
-     */
-    public GameOrchestrator(Game restoredGame) {
-        this(
-                restoredGame,
-                resolveDefaultHostNickname(restoredGame.getPlayers()),
-                NoOpSavedMatchService.INSTANCE
-        );
-    }
-
-    /**
-     * Creates an orchestrator starting from an already restored game aggregate and wires match persistence.
-     *
-     * @param restoredGame previously persisted game state reconstructed from storage
-     * @param hostNickname original host nickname associated with the match
-     * @param savedMatchService persistence service selected for the current runtime mode
-     */
-    public GameOrchestrator(Game restoredGame, String hostNickname, SavedMatchService savedMatchService) {
-        this(restoredGame, hostNickname, savedMatchService, null);
-    }
-
-    /**
-     * Creates an orchestrator starting from an already restored game aggregate and wires both
-     * save-match persistence and final ranking registration.
-     *
-     * @param restoredGame previously persisted game state reconstructed from storage
-     * @param hostNickname original host nickname associated with the match
-     * @param savedMatchService persistence service selected for the current runtime mode
-     * @param rankingService ranking service used to register completed matches; nullable when the
-     *                       runtime does not expose ranking persistence
-     */
-    public GameOrchestrator(Game restoredGame,
-                            String hostNickname,
-                            SavedMatchService savedMatchService,
-                            RankingService rankingService) {
-        this.game = Objects.requireNonNull(restoredGame, "Restored game cannot be null");
-        this.players = restoredGame.getPlayers();
-        if (this.players.isEmpty()) {
-            throw new IllegalArgumentException("Restored game must contain at least one player");
-        }
-        this.hostNickname = requireHostNickname(hostNickname);
-        this.rankingService = rankingService;
-        this.persistenceCoordinator = new MatchPersistenceCoordinator(savedMatchService, this.hostNickname);
+        this.finalRankingResult = Optional.empty();
     }
 
     // Getters
@@ -166,16 +107,7 @@ public class GameOrchestrator {
     }
 
     /**
-     * Returns whether this match is backed by real persistence.
-     *
-     * @return {@code true} when save-match persistence is active
-     */
-    public boolean isPersistenceEnabled() {
-        return this.persistenceCoordinator.isPersistenceEnabled();
-    }
-
-    /**
-     * Returns whether the match has been frozen after a persistence failure.
+     * Returns whether the match has been frozen.
      *
      * @return {@code true} when gameplay commands are no longer accepted
      */
@@ -183,22 +115,28 @@ public class GameOrchestrator {
         return this.frozen;
     }
 
+    /**
+     * Returns the ranking result produced when the match was finalized.
+     *
+     * @return final ranking result, empty when ranking is disabled or the match is not finished
+     */
+    public Optional<RankingResult> getFinalRankingResult() {
+        return this.finalRankingResult;
+    }
+
     // Public gameplay API
 
     /**
-     * Performs match setup and persists the initial checkpoint when configured.
+     * Performs match setup.
      */
     public void setupMatch() {
         this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
         this.game.setup();
-        if (this.didGameStateChange(previousVersion)) {
-            this.persistOrFreeze("GAME_INITIALIZED", () -> this.persistenceCoordinator.recordMatchInitialized(this.game));
-        }
+        this.recordRankingIfFinished();
     }
 
     /**
-     * Places a player's totem and persists the start-of-turn checkpoint when the draw phase starts.
+     * Places a player's totem.
      *
      * @param nickname of the acting player
      * @param tile target offer-space code
@@ -206,21 +144,12 @@ public class GameOrchestrator {
     public void moveTotem(String nickname, String tile) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
-        RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.moveTotem(player, tile);
-        if (!this.didGameStateChange(previousVersion)) {
-            return;
-        }
-        this.persistOrFreeze(
-                "TURN_STARTED",
-                () -> this.persistenceCoordinator.recordAfterMoveTotem(this.game, previousRoundPhase)
-        );
+        this.recordRankingIfFinished();
     }
 
     /**
-     * Delegates one standard card draw and persists a turn-finished checkpoint when the draw turn
-     * advances to another player or phase.
+     * Delegates one standard card draw.
      *
      * @param nickname of acting player
      * @param cardId of the chosen card
@@ -228,19 +157,12 @@ public class GameOrchestrator {
     public void chooseCard(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
-        Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
-        RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.chooseCard(player, cardId);
-
-        if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
-            this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
-        }
+        this.recordRankingIfFinished();
     }
 
     /**
-     * Delegates one extra draw and persists a turn-finished checkpoint when the bonus-draw flow
-     * advances to a new player or phase.
+     * Delegates one extra draw.
      *
      * @param nickname acting player
      * @param cardId chosen extra-draw card
@@ -248,14 +170,8 @@ public class GameOrchestrator {
     public void extraDrawn(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
-        long previousVersion = this.game.getStateVersion();
-        Player previousPlayer = this.game.getTurnOrderTrack().getCurrentPlayer();
-        RoundPhase previousRoundPhase = this.game.getTurnOrderTrack().getCurrentRoundPhase();
         this.game.extraDrawn(player, cardId);
-
-        if (this.didGameStateChange(previousVersion) && this.didTurnAdvance(previousPlayer, previousRoundPhase)) {
-            this.persistOrFreeze("TURN_FINISHED", () -> this.persistenceCoordinator.recordTurnFinished(this.game));
-        }
+        this.recordRankingIfFinished();
     }
 
     public void freezeForDisconnectedPlayer(String nickname) {
@@ -278,22 +194,12 @@ public class GameOrchestrator {
         }
     }
 
-    private void persistOrFreeze(String checkpointName, Runnable saveAction) {
-        try {
-            saveAction.run();
-        } catch (RuntimeException exception) {
-            this.frozen = true;
-            throw new MatchPersistenceFailureException(checkpointName, exception);
+    private void recordRankingIfFinished() {
+        if (this.rankingService == null || this.rankingRecorded || this.game.getStatus() != GameStatus.FINISHED) {
+            return;
         }
-    }
 
-    private Optional<RankingResult> finalizeCompletedMatchOrFreeze() {
         try {
-            this.persistenceCoordinator.recordMatchCompleted(this.game);
-            if (this.rankingService == null) {
-                return Optional.empty();
-            }
-
             RankingResult rankingResult = this.rankingService.recordMatchAndGetRanking(
                     String.valueOf(this.game.getId()),
                     this.players.size(),
@@ -301,10 +207,11 @@ public class GameOrchestrator {
                     this.hostNickname,
                     this.buildFinalScores()
             );
-            return Optional.of(rankingResult);
+            this.finalRankingResult = Optional.of(rankingResult);
+            this.rankingRecorded = true;
         } catch (RuntimeException exception) {
             this.frozen = true;
-            throw new MatchFinalizationFailureException(exception);
+            throw new RankingFinalizationFailureException(exception);
         }
     }
 
@@ -312,15 +219,6 @@ public class GameOrchestrator {
         return this.players.stream()
                 .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
                 .toList();
-    }
-
-    private boolean didTurnAdvance(Player previousPlayer, RoundPhase previousRoundPhase) {
-        return !this.game.getTurnOrderTrack().getCurrentPlayer().equals(previousPlayer)
-                || previousRoundPhase != this.game.getTurnOrderTrack().getCurrentRoundPhase();
-    }
-
-    private boolean didGameStateChange(long previousVersion) {
-        return this.game.getStateVersion() != previousVersion;
     }
 
     // Helper methods
