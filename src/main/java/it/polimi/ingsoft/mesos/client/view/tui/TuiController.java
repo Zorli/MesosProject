@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.client.virtualserver.ServerProxy;
+import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -9,6 +9,7 @@ import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -18,6 +19,8 @@ public class TuiController implements ClientView {
     private final TuiCommandParser commandParser;
     private final TuiPayloadRenderer payloadRenderer;
     private GamePayload lastGamePayload;
+    private LobbyListPayload lastLobbyListPayload;
+    private PreMatchUpdatePayload lastPreMatchUpdatePayload;
     private ServerProxy serverProxy;
 
     public TuiController() {
@@ -35,63 +38,61 @@ public class TuiController implements ClientView {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
-//    abbiamo sempre due soli thread che girano nel caso TCP
-//    Thread TUI/input:
-//            scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxy.method()
-//
-//    Thread trasporto:
-//    payload -> clientView.showGameUpdate -> render
-//    Caso RMI:
-//    Thread input TUI:
-//    scanner.nextLine() -> commandParser.parse() -> executeCommand() -> serverProxyRMI.method() -> chiamata RMI al server
-//
-//   Thread RMI callback:
-//  server -> VirtualServerRMI.handleGameUpdate() -> clientView.showGameUpdate() -> TuiController.render()
-//    Quindi se abbiamo un unico metodo di render synchronized siamo safe lato concorrenza di stampa.
+    /*
+    Analisi dei thread che stanno girando nel caso del tuicontroller con le due tech di rete:
 
+    Caso TCP.
+    1. Main thread su cui gira tuicontroller
+    2. Thread su cui gira virtualserver con loop di lettura messaggi da server
+
+    Caso RMI:
+    1. Thread del controller
+    2. Thread RMI
+
+    Abbiamo sempre quindi due soli thread, è quindi molto importante che i metodi per plottare a schermo siano thread-safe
+
+     */
     public void start() {
         if (this.serverProxy == null) {
             throw new IllegalStateException("serverProxy must be attached before starting the TUI");
         }
 
         this.render("Mesos TUI started. Type 'help' to list commands.");
+
         while (this.scanner.hasNextLine()) {
-            String commandLine = this.scanner.nextLine().trim();
-            if (commandLine.isBlank()) {
+            String line = this.scanner.nextLine().trim();
+
+            if (line.isBlank()) {
                 this.renderPrompt();
                 continue;
             }
 
-            try {
-                TuiCommand command = this.commandParser.parse(commandLine);
-                if (this.executeCommand(command)) {
-                    return;
-                }
-            } catch (Exception exception) {
-                this.render("[CLIENT][ERROR] " + exception.getMessage());
+            if (this.handleInputLine(line)) {
+                return;
             }
         }
+
+        //In ogni caso faccio close
+        this.closeServerProxy();
     }
 
-    @Override
-    public synchronized void showError(ErrorPayload payload) {
-        this.render(this.payloadRenderer.renderError(payload, this.lastGamePayload));
-    }
-
-    @Override
-    public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
-        this.render(this.payloadRenderer.renderPreMatchUpdate(payload));
-    }
-
-    @Override
-    public synchronized void showLobbyList(LobbyListPayload payload) {
-        this.render(this.payloadRenderer.renderLobbyList(payload));
-    }
-
-    @Override
-    public synchronized void showGameUpdate(GamePayload payload) {
-        this.lastGamePayload = payload;
-        this.render(this.payloadRenderer.renderGame(payload));
+    private boolean handleInputLine(String line) {
+        try {
+            TuiCommand command = this.commandParser.parse(line);
+            return this.executeCommand(command);
+        } catch (IllegalArgumentException exception) {
+            this.showError(new ErrorPayload("CLIENT_COMMAND_ERROR", exception.getMessage()));
+            return false;
+        } catch (IOException exception) {
+            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+            return true;
+        } catch (UncheckedIOException exception) {
+            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+            return true;
+        } catch (RuntimeException exception) {
+            this.showError(new ErrorPayload("CLIENT_ERROR", exception.getMessage()));
+            return false;
+        }
     }
 
     private boolean executeCommand(TuiCommand command) throws IOException {
@@ -135,6 +136,39 @@ public class TuiController implements ClientView {
         }
 
         return false;
+    }
+
+    private void closeServerProxy() {
+        try {
+            this.serverProxy.close();
+        } catch (IOException exception) {
+            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+        }
+    }
+
+
+
+
+    //Metodi per plottare
+    @Override
+    public synchronized void showError(ErrorPayload payload) {
+        this.render(this.payloadRenderer.renderError(payload, this.lastGamePayload));
+    }
+
+    @Override
+    public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+        this.render(this.payloadRenderer.renderPreMatchUpdate(payload));
+    }
+
+    @Override
+    public synchronized void showLobbyList(LobbyListPayload payload) {
+        this.render(this.payloadRenderer.renderLobbyList(payload));
+    }
+
+    @Override
+    public synchronized void showGameUpdate(GamePayload payload) {
+        this.lastGamePayload = payload;
+        this.render(this.payloadRenderer.renderGame(payload));
     }
 
     private void renderHelp() {

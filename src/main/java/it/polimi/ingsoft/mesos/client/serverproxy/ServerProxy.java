@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.client.virtualserver;
+package it.polimi.ingsoft.mesos.client.serverproxy;
 
 import java.io.IOException;
 

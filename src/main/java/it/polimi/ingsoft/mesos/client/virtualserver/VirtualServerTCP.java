@@ -2,111 +2,74 @@ package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
-import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.InputStreamReader;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-//TCP implementation of the client-side proxy/callback layer.
-//Outbound client calls are translated into serialized TCP messages toward the server-side VirtualView,
-//while inbound server messages are deserialized and forwarded to the client-side view contract.
-public class VirtualServerTCP implements VirtualServer, ServerProxy {
+// TCP implementation of the server -> client channel.
+// It reads server messages from the socket and forwards them to the UI through ClientView.
+public class VirtualServerTCP implements VirtualServer, Runnable {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket socket;
-    private final PrintWriter writer;
     private final ClientView clientView;
-    private final TcpServerMessageReceiver messageReceiver;
-    private final Thread messageReceiverThread;
+    private final ServerProxyTCP serverProxy;
+    private boolean closeRequestedByClient;
 
-    public VirtualServerTCP(String host, int port, ClientView clientView) throws IOException {
-        Objects.requireNonNull(host, "host cannot be null");
-        Objects.requireNonNull(clientView, "clientView cannot be null");
-        this.clientView = clientView;
-        this.socket = new Socket(host, port);
-        this.writer = new PrintWriter(this.socket.getOutputStream(), true);
-        this.messageReceiver = new TcpServerMessageReceiver(this.socket, this);
-        this.messageReceiverThread = new Thread(this.messageReceiver, "mesos-client-server-message-receiver");
-        this.messageReceiverThread.start();
+    public VirtualServerTCP(Socket socket, ClientView clientView, ServerProxyTCP serverProxy) {
+        this.socket = Objects.requireNonNull(socket, "socket cannot be null");
+        this.clientView = Objects.requireNonNull(clientView, "clientView cannot be null");
+        this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
+    }
+
+    public synchronized void requestCloseByClient() {
+        this.closeRequestedByClient = true;
+    }
+
+    private synchronized boolean isCloseRequestedByClient() {
+        return this.closeRequestedByClient;
     }
 
     @Override
-    public boolean isConnected() {
-        return this.socket.isConnected() && !this.socket.isClosed();
-    }
+    public void run() {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8))) {
+            String serverMessage;
 
+            while ((serverMessage = reader.readLine()) != null) {
+                this.handleServerMessage(serverMessage);
+            }
 
-    public void send(ClientMessage message) {
-        Objects.requireNonNull(message, "message cannot be null");
-        this.writer.println(GSON.toJson(message));
-    }
-
-    @Override
-    public void authenticate(String nickname) {
-        this.send(new ClientMessage(ClientMessageType.AUTHENTICATE, new AuthenticationPayload(nickname)));
-    }
-
-    @Override
-    public void listLobbies() {
-        this.send(new ClientMessage(ClientMessageType.LIST_LOBBIES, new ListLobbiesPayload()));
-    }
-
-    @Override
-    public void createLobby(int chosenCapacity) {
-        this.send(new ClientMessage(ClientMessageType.CREATE_LOBBY, new CreateLobbyPayload(chosenCapacity)));
-    }
-
-    @Override
-    public void joinLobby(int lobbyId) {
-        this.send(new ClientMessage(ClientMessageType.JOIN_LOBBY, new JoinLobbyPayload(lobbyId)));
-    }
-
-    @Override
-    public void exitLobby() {
-        this.send(new ClientMessage(ClientMessageType.EXIT_LOBBY, new ExitLobbyPayload()));
-    }
-
-    @Override
-    public void startLobby() {
-        this.send(new ClientMessage(ClientMessageType.START_LOBBY, new StartLobbyPayload()));
-    }
-
-    @Override
-    public void moveTotem(String tile) {
-        this.send(new ClientMessage(ClientMessageType.MOVE_TOTEM, new MoveTotemPayload(tile)));
-    }
-
-    @Override
-    public void chooseCard(int cardId) {
-        this.send(new ClientMessage(ClientMessageType.CHOOSE_CARD, new ChooseCardPayload(cardId)));
-    }
-
-    @Override
-    public void extraDraw(int cardId) {
-        this.send(new ClientMessage(ClientMessageType.EXTRA_DRAW, new ExtraDrawPayload(cardId)));
+            if (!this.isCloseRequestedByClient()) {
+                this.handleError(new ErrorPayload("CONNECTION_CLOSED", "Connection closed by server"));
+            }
+        } catch (IOException exception) {
+            if (!this.isCloseRequestedByClient()) {
+                this.handleError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+            }
+        } finally {
+            try {
+                this.serverProxy.closeConnection();
+            } catch (IOException ignored) {
+            }
+        }
     }
 
     @Override
     public void handlePing() {
-        this.send(new ClientMessage(ClientMessageType.PONG, new PongPayload()));
+        this.serverProxy.sendPong();
     }
 
     @Override
@@ -131,7 +94,44 @@ public class VirtualServerTCP implements VirtualServer, ServerProxy {
 
     @Override
     public void close() throws IOException {
-        this.writer.close();
-        this.socket.close();
+        this.serverProxy.closeConnection();
+    }
+
+    private void handleServerMessage(String serializedMessage) {
+        try {
+            JsonObject root = GSON.fromJson(serializedMessage, JsonObject.class);
+            ServerMessageType type = ServerMessageType.valueOf(root.get("type").getAsString());
+            JsonElement payload = root.get("payload");
+
+            switch (type) {
+                case ERROR -> this.handleError(payload);
+                case PRE_MATCH_UPDATE -> this.handlePreMatchUpdate(payload);
+                case LOBBY_LIST -> this.handleLobbyList(payload);
+                case GAME_UPDATE -> this.handleGameUpdate(payload);
+                case PING -> this.handlePing();
+            }
+        } catch (RuntimeException exception) {
+            this.handleError(new ErrorPayload("INVALID_SERVER_MESSAGE", serializedMessage));
+        }
+    }
+
+    private void handleError(JsonElement payload) {
+        ErrorPayload errorPayload = GSON.fromJson(payload, ErrorPayload.class);
+        this.handleError(errorPayload);
+    }
+
+    private void handlePreMatchUpdate(JsonElement payload) {
+        PreMatchUpdatePayload updatePayload = GSON.fromJson(payload, PreMatchUpdatePayload.class);
+        this.handlePreMatchUpdate(updatePayload);
+    }
+
+    private void handleLobbyList(JsonElement payload) {
+        LobbyListPayload lobbyListPayload = GSON.fromJson(payload, LobbyListPayload.class);
+        this.handleLobbyList(lobbyListPayload);
+    }
+
+    private void handleGameUpdate(JsonElement payload) {
+        GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
+        this.handleGameUpdate(gamePayload);
     }
 }

@@ -1,68 +1,73 @@
 package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
+import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyRMI;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
-import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 
+import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-/**
- * RMI callback receiver for the client.
- * <p>
- * This class acts as the inbound network boundary on the client side.
- * It is exported as a remote object and passed to the server during the authentication phase.
- * The server uses this remote reference to push asynchronous updates, game events,
- * and errors back to the client.
- * <p>
- * Upon receiving a remote invocation, this adapter translates and forwards the
- * network-level payload to the local {@link ClientView} (e.g., TUI or GUI) for rendering,
- * ensuring strict decoupling between the network transport and the user interface.
- */
-public class VirtualServerRMI extends UnicastRemoteObject implements RmiClientService {
+// RMI implementation of the server -> client channel.
+// It receives server callbacks and forwards them to the UI through ClientView.
+public class VirtualServerRMI implements VirtualServer, RmiClientService {
 
     private final ClientView clientView;
-    private RmiServerService serverStub;
+    private final boolean exported;
+    private ServerProxyRMI serverProxy;
 
     public VirtualServerRMI(ClientView clientView) throws RemoteException {
-        super();
-        this.clientView = clientView;
+        this(clientView, true);
     }
 
-    void attachServerStub(RmiServerService serverStub) {
-        this.serverStub = serverStub;
+    public VirtualServerRMI(ClientView clientView, boolean exported) throws RemoteException {
+        if (exported) {
+            UnicastRemoteObject.exportObject(this, 0);
+        }
+        this.clientView = clientView;
+        this.exported = exported;
+    }
+
+    public void attachServerProxy(ServerProxyRMI serverProxy) {
+        this.serverProxy = serverProxy;
     }
 
     @Override
-    public void handleError(ErrorPayload payload) throws RemoteException {
+    public void handleError(ErrorPayload payload) {
         this.clientView.showError(payload);
     }
 
     @Override
-    public void handlePreMatchUpdate(PreMatchUpdatePayload payload) throws RemoteException {
+    public void handlePreMatchUpdate(PreMatchUpdatePayload payload) {
         this.clientView.showPreMatchUpdate(payload);
     }
 
     @Override
-    public void handleLobbyList(LobbyListPayload payload) throws RemoteException {
+    public void handleLobbyList(LobbyListPayload payload) {
         this.clientView.showLobbyList(payload);
     }
 
     @Override
-    public void handleGameUpdate(GamePayload payload) throws RemoteException {
+    public void handleGameUpdate(GamePayload payload) {
         this.clientView.showGameUpdate(payload);
     }
 
     @Override
-    public void handlePing() throws RemoteException {
-        if (this.serverStub == null) {
-            throw new IllegalStateException("Cannot reply to ping before authentication");
+    public void handlePing() {
+        if (this.serverProxy == null) {
+            throw new IllegalStateException("Cannot reply to ping before connection");
         }
-        this.serverStub.pong(new PongPayload());
+        this.serverProxy.sendPong();
+    }
+
+    @Override
+    public void close() throws NoSuchObjectException {
+        if (this.exported) {
+            UnicastRemoteObject.unexportObject(this, true);
+        }
     }
 }

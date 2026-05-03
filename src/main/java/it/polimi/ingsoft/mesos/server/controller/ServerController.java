@@ -289,13 +289,17 @@ public class ServerController {
     private void closeMatchForDisconnectedPlayer(ServerSessionRegistry.SessionSnapshot disconnectedSession) {
         GameOrchestrator interruptedOrchestrator = disconnectedSession.gameOrchestrator();
         Integer interruptedLobbyId = disconnectedSession.lobbyId();
+        List<ServerSessionRegistry.SessionSnapshot> interruptedSessions = this.sessions.sessionsInGame(interruptedOrchestrator);
 
         interruptedOrchestrator.freezeForDisconnectedPlayer(disconnectedSession.user().getNickname());
         if (interruptedLobbyId != null) {
             this.activeGames.remove(interruptedLobbyId);
         }
 
-        for (ServerSessionRegistry.SessionSnapshot session : this.sessions.sessionsInGame(interruptedOrchestrator)) {
+        for (ServerSessionRegistry.SessionSnapshot session : interruptedSessions) {
+            if (session.connection() instanceof Listener listener) {
+                interruptedOrchestrator.getGame().removeListener(listener);
+            }
             this.sessions.leaveGame(session.sessionId());
             this.sessions.leaveLobby(session.sessionId());
         }

@@ -26,14 +26,14 @@ class TuiPayloadRendererTest {
     void rendersErrorWithoutLastGame() {
         String rendered = this.renderer.renderError(new ErrorPayload("BAD_COMMAND", "Invalid command"), null);
 
-        assertEquals("[SERVER][ERROR] BAD_COMMAND: Invalid command", rendered);
+        assertEquals("[ERROR] BAD_COMMAND: Invalid command", rendered);
     }
 
     @Test
     void rendersErrorWithLastGame() {
         String rendered = this.renderer.renderError(new ErrorPayload("MOVE_DENIED", "Tile occupied"), gamePayload());
 
-        assertTrue(rendered.contains("[SERVER][ERROR] MOVE_DENIED: Tile occupied"));
+        assertTrue(rendered.contains("[ERROR] MOVE_DENIED: Tile occupied"));
         assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=2"));
         assertTrue(rendered.contains("- ada food=3 prestige=5 totem=A1"));
     }
