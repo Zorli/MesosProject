@@ -601,3 +601,93 @@ Il package ranking ha copertura su:
 - Rendere configurabili i parametri Elo e registrarne il valore nello storico per audit.
 - Aggiungere paginazione e filtri su leaderboard/history.
 - Aggiungere test concorrenti multi-thread su match con player sovrapposti e duplicate game.
+
+## Proposta architettura target (primo merge consigliato)
+
+Obiettivo: portare il modulo ranking a una variante MVC semplice e stabile, senza introdurre eccesso di livelli.
+
+### 1) Model (dominio puro)
+
+- `server/model/ranking` resta responsabile di:
+  - regole di business (prestige/final score -> `MatchScore`)
+  - `EloRatingCalculator`
+  - `RankingResult`, `MatchHistory`, `LeaderboardEntry`
+  - eccezioni di dominio (`RankingDataException`, `DuplicateGameException`)
+- `MatchScore` deve accettare punteggio con segno (non solo `>=0`) se il dominio gioco ammette prestige
+  negativo.
+
+### 2) Application service
+
+- `RankingService`/`MySqlRankingService` rimane caso d'uso, ma con 2 output netti:
+  - `recordMatchAndGetRanking(...)` deve essere **idempotente**:
+    - se `gameId` duplicato, restituire stato già persistito senza riapplicare Elo.
+  - non deve mai trasformarsi in “freeze globale” della partita; l’errore va riportato come stato applicativo
+    recuperabile.
+- `MySqlRankingService` non deve contenere mapping protocollo/transport.
+
+### 3) Persistence (infra) separata
+
+- `server/model/persistence/mysql` mantiene solo:
+  - `MySqlDatabaseSupport` (connessioni/transazioni/retry)
+  - `MySqlRankingQueries`
+  - `MySqlRankingSchemaModule`
+  - bootstrap schema + bootstrap healthcheck **versionati**
+- bootstrap attuale (`IF NOT EXISTS`) viene mantenuto come guardia idempotente, ma va
+  esteso con validazione completa schema:
+  - colonne attese
+  - tipi
+  - vincoli
+  - indici
+  - engine/collation
+
+### 4) Controller
+
+- `GameOrchestrator` rimane punto di orchestrazione:
+  - riceve ranking solo quando `GameStatus.FINISHED`
+  - non contiene regole SQL
+  - non duplica mapping errori/protocollo
+- `ServerController` dovrebbe integrare l’autenticazione con `rankingService.registerUser / isNicknameAvailable` se la semantica
+  business richiede persistenza del nickname.
+
+### 5) View/client
+
+- `VirtualViewTCP` e `VirtualViewRMI` restano adapter:
+  - parsing/serializzazione per TCP
+  - remote callback per RMI
+  - nessuna regola Elo/DB
+- Introdurre payload ranking/eventi lato server:
+  - fine match (`MATCH_FINAL_RANKING`)
+  - richiesta e risposta `LEADERBOARD`
+  - richiesta e risposta `MATCH_HISTORY`
+- Spingere il risultato a UI su entrambe le transport API in modo coerente.
+
+### 6) Integrazione errori (allineamento protocollare)
+
+- stabilizzare codici errore dominio condivisi tra TCP e RMI (es. `RANKING_DISABLED`,
+  `RANKING_FAILURE`, `RANKING_DUPLICATE_MATCH`)
+- mantenere stato client coerente su retry e disconnessioni.
+
+## Priorità per il primo merge (ordine consigliato)
+
+1. Fix critici modello/persistenza ranking:
+   - idempotenza reale su `gameId` (non solo eccezione `DuplicateGameException`)
+   - punteggi finali firmati
+   - bootstrap schema con validazione versione/struttura completa
+2. Integrazione flusso partita:
+   - non congelare la partita su failure ranking
+   - restituire stato applicativo ricco (`RankingResult` o stato errore recuperabile)
+3. Integrazione server-client:
+   - introdurre payload di ranking finale
+   - endpoint/command per leaderboard + storico
+4. Controlli qualità:
+   - test idempotenza DB con replay
+   - test integrazione ranking in `./mvnw verify`
+   - test contract per ranking via TCP e RMI
+
+## Criteri di accettazione del primo merge
+
+- Gli stessi eventi dominio producono risposta applicativa coerente su TCP e RMI.
+- `recordMatchAndGetRanking` con `gameId` già visto ritorna risultato idempotente.
+- `MatchScore` non tronca/piazza score negativi in uscita da `Game` con prestigio negativo.
+- Ranking finale e/o classifica parziale può essere consumata dai client senza cambiare regole di game loop.
+- `verify` esegue almeno una suite integrazione MySQL e fallisce se bootstrap/infrastruttura non sono allineati.
