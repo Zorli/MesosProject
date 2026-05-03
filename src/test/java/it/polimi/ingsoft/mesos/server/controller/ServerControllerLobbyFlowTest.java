@@ -16,6 +16,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,7 +25,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ServerControllerLobbyFlowTest {
 
@@ -83,6 +86,29 @@ class ServerControllerLobbyFlowTest {
         assertEquals(PreMatchEventType.LOBBY_STARTED, startedForBob.event);
     }
 
+    @Test
+    void disconnectSessionClosesMatchAndClearsGameSessions() {
+        ServerController controller = new ServerController(new RecordingGameFactory());
+        RecordingConnection aliceConnection = new RecordingConnection();
+        RecordingConnection bobConnection = new RecordingConnection();
+        String aliceSessionId = controller.registerConnection(aliceConnection);
+        String bobSessionId = controller.registerConnection(bobConnection);
+        controller.authenticate(aliceSessionId, "Alice");
+        controller.authenticate(bobSessionId, "Bob");
+        controller.createLobby(aliceSessionId, 2);
+        controller.joinLobby(bobSessionId, 1);
+        controller.startLobby(aliceSessionId);
+
+        controller.disconnectSession(aliceSessionId);
+
+        assertTrue(controller.activeGames.isEmpty());
+        assertNull(controller.lobbyIdOf(bobSessionId));
+        assertNull(controller.gameOf(bobSessionId));
+        ErrorPayload error = assertInstanceOf(ErrorPayload.class, bobConnection.lastRawUpdate());
+        assertEquals("PLAYER_DISCONNECTED", error.code);
+        assertEquals("Player disconnected: Alice", error.message);
+    }
+
     private static final class RecordingConnection implements PingPongConnection, Listener {
         private final List<Object> updates = new ArrayList<>();
 
@@ -105,6 +131,10 @@ class ServerControllerLobbyFlowTest {
 
         private PreMatchUpdatePayload lastUpdate() {
             return this.updateAt(this.updates.size() - 1);
+        }
+
+        private Object lastRawUpdate() {
+            return this.updates.get(this.updates.size() - 1);
         }
     }
 

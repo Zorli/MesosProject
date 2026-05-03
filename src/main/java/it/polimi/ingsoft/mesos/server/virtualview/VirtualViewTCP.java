@@ -51,6 +51,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private final String sessionId;
     private final ClientCommandHandler commandHandler;
     private final PreMatchPayloadMapper payloadMapper;
+    private boolean cleanupDone;
 
     //Consutrctor
     public VirtualViewTCP(Socket clientSocket, ServerController serverController) {
@@ -92,7 +93,9 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
                 }
             }
         } catch (IOException exception) {
-            throw new IllegalStateException("TCP virtual view failed", exception);
+            if (!this.cleanupDone) {
+                this.out.println("[TCP] Connection closed for " + this.describeSession() + ": " + exception.getMessage());
+            }
         } finally {
             try {
                 this.close();
@@ -103,13 +106,19 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     }
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
+        if (this.cleanupDone) {
+            return;
+        }
+        this.cleanupDone = true;
         GameOrchestrator game = this.safeGame();
         if (game != null) {
             game.getGame().removeListener(this);
         }
         this.serverController.disconnectSession(this.sessionId);
-        this.clientSocket.close();
+        if (!this.clientSocket.isClosed()) {
+            this.clientSocket.close();
+        }
     }
 
     //Handling the command section------------------- this method are called as callback by the commandhandler

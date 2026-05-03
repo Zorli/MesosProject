@@ -16,6 +16,7 @@ import java.rmi.RemoteException;
  */
 public interface RmiServerService extends Remote {
 
+    void authenticate(AuthenticationPayload payload) throws RemoteException;
     void listLobbies(ListLobbiesPayload payload) throws RemoteException;
     void createLobby(CreateLobbyPayload payload) throws RemoteException;
     void joinLobby(JoinLobbyPayload payload) throws RemoteException;

@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
-import it.polimi.ingsoft.mesos.client.virtualserver.ServerProxy;
+import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -105,7 +105,38 @@ class TuiControllerTest {
 
         harness.controller.start();
 
-        assertTrue(harness.output().contains("[CLIENT][ERROR] Unknown command. Type 'help'."));
+        assertTrue(harness.output().contains("[ERROR] CLIENT_COMMAND_ERROR: Unknown command. Type 'help'."));
+    }
+
+    @Test
+    void eofInputClosesProxy() {
+        TuiHarness harness = new TuiHarness("""
+                auth ada
+                """);
+        FakeServerProxy proxy = new FakeServerProxy();
+        harness.controller.attachServerProxy(proxy);
+
+        harness.controller.start();
+
+        assertEquals(List.of("authenticate:ada", "close"), proxy.calls);
+        assertTrue(proxy.closed);
+    }
+
+    @Test
+    void closeFailurePrintsConnectionErrorAndStopsLoop() {
+        TuiHarness harness = new TuiHarness("""
+                quit
+                auth unreachable
+                """);
+        FakeServerProxy proxy = new FakeServerProxy();
+        proxy.closeFailure = new IOException("socket failed");
+        harness.controller.attachServerProxy(proxy);
+
+        harness.controller.start();
+
+        assertEquals(List.of("close"), proxy.calls);
+        assertTrue(harness.output().contains("[ERROR] CONNECTION_CLOSED: socket failed"));
+        assertFalse(harness.output().contains("Client closed."));
     }
 
     @Test
@@ -149,6 +180,7 @@ class TuiControllerTest {
     private static final class FakeServerProxy implements ServerProxy {
         private final List<String> calls = new ArrayList<>();
         private boolean closed;
+        private IOException closeFailure;
 
         @Override
         public boolean isConnected() {
@@ -202,6 +234,10 @@ class TuiControllerTest {
 
         @Override
         public void close() throws IOException {
+            if (this.closeFailure != null) {
+                this.calls.add("close");
+                throw this.closeFailure;
+            }
             this.closed = true;
             this.calls.add("close");
         }

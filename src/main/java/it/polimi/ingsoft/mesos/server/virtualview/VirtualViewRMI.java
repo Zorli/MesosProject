@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -30,12 +31,14 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     private final ServerController serverController;
     private final RmiClientService clientCallback; // Per mandare gli update al client
     private final String sessionId;
+    private final PreMatchPayloadMapper payloadMapper;
 
     public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback) throws RemoteException {
         super();
         this.serverController = serverController;
         this.clientCallback = clientCallback;
         this.sessionId = this.serverController.registerConnection(this);
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     public String getSessionId() {
@@ -49,6 +52,20 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         } catch (RemoteException ignored) {
         }
     }
+
+    @Override
+    public void authenticate(AuthenticationPayload payload) throws RemoteException {
+        try {
+            if (payload == null || payload.nickname == null || payload.nickname.isBlank()) {
+                throw new IllegalArgumentException("Nickname cannot be empty");
+            }
+            this.serverController.authenticate(this.sessionId, payload.nickname);
+            this.clientCallback.handlePreMatchUpdate(this.payloadMapper.authenticated(payload.nickname));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            this.clientCallback.handleError(new ErrorPayload("AUTH_ERROR", e.getMessage()));
+        }
+    }
+
     @Override
     public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
         try {

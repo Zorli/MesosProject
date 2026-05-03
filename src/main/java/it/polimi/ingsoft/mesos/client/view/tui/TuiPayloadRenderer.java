@@ -16,7 +16,7 @@ import java.util.List;
 final class TuiPayloadRenderer {
     String renderError(ErrorPayload payload, GamePayload lastGamePayload) {
         StringBuilder builder = new StringBuilder();
-        builder.append("[SERVER][ERROR] ")
+        builder.append("[ERROR] ")
                 .append(payload.code)
                 .append(": ")
                 .append(payload.message);
