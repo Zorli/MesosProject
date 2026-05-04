@@ -69,9 +69,21 @@ class TurnStateTest {
         turnState.registerDrawableCards(alice, 0, 1);
         turnState.startCardSelection(alice);
 
+        assertFalse(turnState.canChooseFromUpperRow(null));
+        assertFalse(turnState.canChooseFromLowerRow(null));
         assertThrows(IllegalArgumentException.class, () -> turnState.onCardChosen(null, CardRow.UPPER));
         assertThrows(IllegalStateException.class, () -> turnState.onCardChosen(alice, CardRow.UPPER));
         assertThrows(IllegalArgumentException.class, () -> turnState.onCardChosen(alice, CardRow.NOT_PRESENT));
+    }
+
+    @Test
+    void onCardChosenRejectsLowerRowWhenLowerChoicesAreMissing() {
+        TurnState turnState = new TurnState();
+        Player alice = player("Alice", TotemColor.RED);
+        turnState.registerDrawableCards(alice, 1, 0);
+        turnState.startCardSelection(alice);
+
+        assertThrows(IllegalStateException.class, () -> turnState.onCardChosen(alice, CardRow.LOWER));
     }
 
     @Test

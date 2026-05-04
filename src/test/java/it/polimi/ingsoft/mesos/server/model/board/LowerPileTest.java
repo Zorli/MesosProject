@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.board;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer;
 import it.polimi.ingsoft.mesos.server.model.cards.events.HuntEventCard;
 import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
@@ -125,6 +126,16 @@ class LowerPileTest {
     }
 
     @Test
+    void addAndRemoveIgnoreUnknownCardSubtype() {
+        Card unknownCard = new UnknownCard(99, Era.first);
+
+        lowerPile.addCard(unknownCard);
+        lowerPile.removeCard(unknownCard);
+
+        assertTrue(lowerPile.getAllCards().isEmpty());
+    }
+
+    @Test
     void resolveLowerRowEvents_WithoutSustenance_ResolvesOnlyRegularEvents() {
         List<String> executionLog = new ArrayList<>();
         ArrayList<Player> dummyPlayers = new ArrayList<>();
@@ -229,5 +240,15 @@ class LowerPileTest {
 
         assertEquals("SUST_ERA1", executionLog.get(2));
         assertEquals("SUST_ERA3", executionLog.get(3));
+    }
+    private static final class UnknownCard extends Card {
+        private UnknownCard(int id, Era era) {
+            super(id, era);
+        }
+
+        @Override
+        public boolean isDrawable(Player player) {
+            return false;
+        }
     }
 }

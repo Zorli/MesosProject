@@ -1,123 +1,76 @@
-// Temporarily commented out: stale tests target removed game lifecycle APIs.
-//package it.polimi.ingsoft.mesos.server.model.game;
-//
-//import it.polimi.ingsoft.mesos.server.model.board.Board;
-//import it.polimi.ingsoft.mesos.server.model.enums.Era;
-//import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
-//import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-//import it.polimi.ingsoft.mesos.server.model.Listener;
-//import it.polimi.ingsoft.mesos.server.model.player.Player;
-//import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-//import org.junit.jupiter.api.Test;
-//
-//import java.util.ArrayList;
-//import java.util.List;
-//
-//import static org.junit.jupiter.api.Assertions.assertEquals;
-//import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-//import static org.junit.jupiter.api.Assertions.assertTrue;
-//
-///**
-// * Focused tests for lower-event resolution and phase transitions in {@link Game}.
-// */
-//class GameResolveEffectsTest {
-//
-//    @Test
-//    void resolveEffectsDelegatesToBoardAndMovesToResettingBoard() {
-//        Player alice = player("Alice", TotemColor.RED);
-//        RecordingBoard board = new RecordingBoard();
-//        Game game = new Game(
-//                1,
-//                new ArrayList<>(List.of(alice)),
-//                new TurnState(),
-//                new TurnOrderTrack(List.of(alice), 0, 1, RoundPhase.RESOLVING_EFFECTS),
-//                board,
-//                Era.first,
-//                GameStatus.IN_PROGRESS
-//        );
-//
-//        game.resolveEffects();
-//
-//        assertTrue(board.resolveLowerEventsCalled);
-//        assertEquals(RoundPhase.RESETTING_BOARD, game.getTurnOrderTrack().getCurrentRoundPhase());
-//    }
-//
-//    @Test
-//    void resolveEffectsRejectsWrongRoundPhase() {
-//        Player alice = player("Alice", TotemColor.RED);
-//        Game game = new Game(
-//                1,
-//                new ArrayList<>(List.of(alice)),
-//                new TurnState(),
-//                new TurnOrderTrack(List.of(alice), 0, 1, RoundPhase.PLAYER_DRAWS),
-//                new RecordingBoard(),
-//                Era.first,
-//                GameStatus.IN_PROGRESS
-//        );
-//
-//        assertGameError(game, InvalidGamePhaseException.class, game::resolveEffects);
-//    }
-//
-//    @Test
-//    void resolveEffectsMovesToFinalScoringOnRoundTen() {
-//        Player alice = player("Alice", TotemColor.RED);
-//        RecordingBoard board = new RecordingBoard();
-//        Game game = new Game(
-//                1,
-//                new ArrayList<>(List.of(alice)),
-//                new TurnState(),
-//                new TurnOrderTrack(List.of(alice), 0, 10, RoundPhase.RESOLVING_EFFECTS),
-//                board,
-//                Era.first,
-//                GameStatus.IN_PROGRESS
-//        );
-//
-//        game.resolveEffects();
-//
-//        assertTrue(board.resolveLowerEventsCalled);
-//        assertEquals(RoundPhase.FINAL_SCORING, game.getTurnOrderTrack().getCurrentRoundPhase());
-//    }
-//
-//    private static Player player(String nickname, TotemColor color) {
-//        Player player = new Player(nickname, 0, 0, color);
-//        return player;
-//    }
-//
-//    private static void assertGameError(Game game, Class<? extends RuntimeException> expectedError, Runnable action) {
-//        RecordingListener listener = new RecordingListener();
-//        long previousVersion = game.getStateVersion();
-//        game.addListener(listener);
-//
-//        action.run();
-//
-//        assertEquals(previousVersion, game.getStateVersion());
-//        ErrorPayload errorPayload = assertInstanceOf(ErrorPayload.class, listener.payload);
-//        assertEquals(expectedError.getSimpleName(), errorPayload.code);
-//    }
-//
-//    private static final class RecordingListener implements Listener {
-//        private Object payload;
-//
-//        @Override
-//        public void notifyUpdate(Object payload) {
-//            this.payload = payload;
-//        }
-//    }
-//
-//    /**
-//     * Minimal board double exposing only lower-event resolution to the game aggregate.
-//     */
-//    private static final class RecordingBoard extends Board {
-//        private boolean resolveLowerEventsCalled;
-//
-//        private RecordingBoard() {
-//            super(null, null, new ArrayList<>());
-//        }
-//
-//        @Override
-//        public void resolveLowerEvents() {
-//            this.resolveLowerEventsCalled = true;
-//        }
-//    }
-//}
-//
+package it.polimi.ingsoft.mesos.server.model.game;
+
+import it.polimi.ingsoft.mesos.server.model.board.CardRow;
+import it.polimi.ingsoft.mesos.server.model.cards.characters.Hunter;
+import it.polimi.ingsoft.mesos.server.model.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
+import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static it.polimi.ingsoft.mesos.server.model.game.GameTestSupport.player;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class GameResolveEffectsTest {
+
+    @Test
+    void passiveResolveEffectsRunsLowerEventsBeforeBoardResetInNormalRounds() {
+        Player alice = player("Alice", 5, TotemColor.RED);
+        Hunter hunter = hunter(30);
+        GameTestSupport.RecordingBoard board = boardWithOnlyDraw(alice, hunter);
+        Game game = singleDrawGame(alice, board, 1);
+
+        game.chooseCard(alice, hunter.getId());
+
+        assertTrue(board.resolveLowerEventsCalled);
+        assertTrue(board.resetBoardAfterRoundCalled);
+        assertEquals(RoundPhase.PLACING_TOTEMS, game.getTurnOrderTrack().getCurrentRoundPhase());
+        assertEquals(GameStatus.IN_PROGRESS, game.getStatus());
+    }
+
+    @Test
+    void passiveResolveEffectsRunsAllEventsAndFinalScoringOnRoundTen() {
+        Player alice = player("Alice", 5, TotemColor.RED);
+        Hunter hunter = hunter(31);
+        GameTestSupport.RecordingBoard board = boardWithOnlyDraw(alice, hunter);
+        Game game = singleDrawGame(alice, board, 10);
+
+        game.chooseCard(alice, hunter.getId());
+
+        assertTrue(board.resolveAllEventsCalled);
+        assertEquals(RoundPhase.FINAL_SCORING, game.getTurnOrderTrack().getCurrentRoundPhase());
+        assertEquals(GameStatus.FINISHED, game.getStatus());
+    }
+
+    private static Game singleDrawGame(Player player, GameTestSupport.RecordingBoard board, int roundNumber) {
+        TurnState turnState = new TurnState();
+        turnState.registerDrawableCards(player, 0, 1);
+        return new Game(
+                1,
+                new ArrayList<>(List.of(player)),
+                turnState,
+                new TurnOrderTrack(List.of(player), 0, roundNumber, RoundPhase.PLAYER_DRAWS),
+                board,
+                Era.first,
+                GameStatus.IN_PROGRESS
+        );
+    }
+
+    private static GameTestSupport.RecordingBoard boardWithOnlyDraw(Player player, Hunter hunter) {
+        GameTestSupport.RecordingBoard board = new GameTestSupport.RecordingBoard(List.of(player));
+        board.cardRow = CardRow.LOWER;
+        board.lowerCards = List.of(hunter);
+        board.lowerDraftableCards = List.of(hunter);
+        board.nextRoundTurnOrder = List.of(player);
+        return board;
+    }
+
+    private static Hunter hunter(int id) {
+        return new Hunter(id, Era.first, false, TribeCardType.HUNTER);
+    }
+}
