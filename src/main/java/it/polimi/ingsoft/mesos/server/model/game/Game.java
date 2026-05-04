@@ -2,8 +2,6 @@ package it.polimi.ingsoft.mesos.server.model.game;
 
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.board.CardRow;
-import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
-import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
@@ -11,16 +9,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -183,8 +171,8 @@ public class Game {
         this.listeners.remove(listener);
     }
 
-    public void notifyError(ErrorPayload payload) {
-        this.notifyListeners(payload);
+    public void notifyError(String code, String message) {
+        this.notifyListeners(GamePayloadMapper.toErrorPayload(code, message));
     }
 
     // Setters
@@ -708,23 +696,8 @@ public class Game {
         this.stateVersion++;
     }
 
-    public GamePayload buildPayload() {
-        TurnOrderPayload turnOrder = this.buildTurnOrderPayload();
-        TurnStatePayload turnState = new TurnStatePayload(this.turnState.getPhase().name());
-        List<PlayerPayload> players = this.players.stream()
-                .map(this::toPlayerPayload)
-                .toList();
-        BoardPayload board = this.buildBoardPayload();
-
-        return new GamePayload(
-                this.id,
-                this.status.name(),
-                this.currentEra.ordinal(),
-                turnOrder,
-                turnState,
-                players,
-                board
-        );
+    public Object buildPayload() {
+        return GamePayloadMapper.from(this);
     }
 
     //Praticamente le azioni diventanto dei runnable , delle lambda che runniamo qua dentro
@@ -738,7 +711,7 @@ public class Game {
                 this.notifyListeners(this.buildPayload());
             }
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            this.notifyListeners(new ErrorPayload(exception.getClass().getSimpleName(), exception.getMessage()));
+            this.notifyError(exception.getClass().getSimpleName(), exception.getMessage());
         }
     }
 
@@ -749,88 +722,6 @@ public class Game {
         }
     }
 
-    private TurnOrderPayload buildTurnOrderPayload() {
-        List<Player> order;
-        try {
-            order = this.turnOrderTrack.getTurnOrder();
-        } catch (IllegalStateException e) {
-            order = List.of();
-        }
-
-        String currentPlayerNickname = order.isEmpty()
-                ? null
-                : this.turnOrderTrack.getCurrentPlayer().getNickname();
-
-        return new TurnOrderPayload(
-                this.turnOrderTrack.getRoundNumber(),
-                this.turnOrderTrack.getCurrentRoundPhase().name(),
-                currentPlayerNickname,
-                order.stream().map(Player::getNickname).toList()
-        );
-    }
-
-    private PlayerPayload toPlayerPayload(Player player) {
-        List<CardPayload> characters = player.getTribe().getCharacters().stream()
-                .map(this::toCardPayload)
-                .toList();
-        List<CardPayload> buildings = player.getTribe().getBuildings().stream()
-                .map(this::toCardPayload)
-                .toList();
-        TribePayload tribe = new TribePayload(characters, buildings);
-
-        return new PlayerPayload(
-                player.getNickname(),
-                player.getFood(),
-                player.getPrestigePoints(),
-                player.getTotem().name(),
-                tribe
-        );
-    }
-
-    private CardPayload toCardPayload(Card card) {
-        return new CardPayload(
-                card.getId(),
-                card.getClass().getSimpleName(),
-                card.getEra().ordinal()
-        );
-    }
-
-    private BoardPayload buildBoardPayload() {
-        List<CardPayload> upperRow = this.board.getUpperRowCards().stream()
-                .map(this::toCardPayload)
-                .toList();
-        List<CardPayload> lowerRow = this.board.getLowerRowCards().stream()
-                .map(this::toCardPayload)
-                .toList();
-        List<OfferSpacePayload> offerSpaces = this.board.getOfferSpaces().stream()
-                .map(this::toOfferSpacePayload)
-                .toList();
-        List<StartingBlockPayload> startingBlocks = this.board.getStartingBlocks().stream()
-                .map(this::toStartingBlockPayload)
-                .toList();
-
-        return new BoardPayload(upperRow, lowerRow, offerSpaces, startingBlocks);
-    }
-
-    private OfferSpacePayload toOfferSpacePayload(OfferSpace space) {
-        String occupiedBy = space.getOccupiedBy() == null ? null : space.getOccupiedBy().getNickname();
-        return new OfferSpacePayload(
-                space.getCode(),
-                space.getTopRowCardsToTake(),
-                space.getBottomRowCardsToTake(),
-                occupiedBy
-        );
-    }
-
-    private StartingBlockPayload toStartingBlockPayload(StartingBlock block) {
-        String occupiedBy = block.getOccupiedBy() == null ? null : block.getOccupiedBy().getNickname();
-        return new StartingBlockPayload(
-                block.getPosition(),
-                block.getFoodModifier(),
-                block.getPrestigeModifier(),
-                occupiedBy
-        );
-    }
     //tupla record per avere sia la row che la card in restituzione
     private record ChosenCardResult(Card card, CardRow row) {}
 }
