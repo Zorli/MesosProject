@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
+import it.polimi.ingsoft.mesos.shared.payload.server.ApplicationErrorCode;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -53,11 +54,11 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
             }
 
             if (!this.isCloseRequestedByClient()) {
-                this.handleError(new ErrorPayload("CONNECTION_CLOSED", "Connection closed by server"));
+                this.handleError(new ErrorPayload(ApplicationErrorCode.CONNECTION_CLOSED.name(), "Connection closed by server"));
             }
         } catch (IOException exception) {
             if (!this.isCloseRequestedByClient()) {
-                this.handleError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+                this.handleError(new ErrorPayload(ApplicationErrorCode.CONNECTION_CLOSED.name(), exception.getMessage()));
             }
         } finally {
             try {

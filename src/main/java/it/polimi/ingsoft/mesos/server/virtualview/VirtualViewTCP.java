@@ -3,12 +3,9 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
 import it.polimi.ingsoft.mesos.server.model.Listener;
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
@@ -22,8 +19,6 @@ import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
@@ -34,7 +29,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.PrintStream;
 import java.net.Socket;
-import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
@@ -50,7 +44,8 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private final PrintWriter writer;
     private final String sessionId;
     private final ClientCommandHandler commandHandler;
-    private final PreMatchPayloadMapper payloadMapper;
+    private final ServerCommandApplicationService applicationService;
+    private final ApplicationErrorMapper errorMapper;
     private boolean cleanupDone;
 
     //Consutrctor
@@ -72,7 +67,8 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
         this.sessionId = this.serverController.registerConnection(this);
         this.commandHandler = new ClientCommandHandler(this.out, this);
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.applicationService = new ServerCommandApplicationService(this.serverController, this.sessionId);
+        this.errorMapper = new ApplicationErrorMapper();
     }
 
     //Main Loop on the socket
@@ -126,83 +122,47 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     //Molto importante se user non ha fatto auth non puo fare nulla
     @Override
     public ServerMessage authenticate(AuthenticationPayload payload) {
-        if (this.serverController.isAuthenticated(this.sessionId)) {
-            throw new AuthenticationException("Client is already authenticated");
-        }
-        if (payload == null || payload.nickname == null || payload.nickname.isBlank()) {
-            throw new IllegalArgumentException("Authentication payload must contain a nickname");
-        }
-
-        try {
-            this.serverController.authenticate(this.sessionId, payload.nickname);
-        } catch (IllegalArgumentException exception) {
-            throw new AuthenticationException(exception.getMessage(), exception);
-        }
-
-        return new ServerMessage(
-                ServerMessageType.PRE_MATCH_UPDATE,
-                this.payloadMapper.authenticated(this.serverController.nicknameOf(this.sessionId))
-        );
+        return this.applicationService.authenticate(payload);
     }
 
     @Override
     public ServerMessage listLobbies(ListLobbiesPayload payload) {
-        List<LobbySummaryPayload> lobbies = this.serverController.listOpenLobbies().stream()
-                .map(this::toLobbySummaryPayload)
-                .toList();
-        return new ServerMessage(ServerMessageType.LOBBY_LIST, new LobbyListPayload(lobbies));
+        return this.applicationService.listLobbies(payload);
     }
 
     @Override
     public ServerMessage createLobby(CreateLobbyPayload payload) {
-        this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
-        return null;
+        return this.applicationService.createLobby(payload);
     }
 
     @Override
     public ServerMessage joinLobby(JoinLobbyPayload payload) {
-        this.serverController.joinLobby(this.sessionId, payload.lobbyId);
-
-        return null;
+        return this.applicationService.joinLobby(payload);
     }
 
     @Override
     public ServerMessage exitLobby(ExitLobbyPayload payload) {
-        Integer lobbyId = this.serverController.lobbyIdOf(this.sessionId);
-        if (lobbyId == null) {
-            throw new IllegalStateException("Client is not in a lobby");
-        }
-        this.serverController.exitLobby(this.sessionId);
-
-        return null;
+        return this.applicationService.exitLobby(payload);
     }
 
     @Override
     public ServerMessage startLobby(StartLobbyPayload payload) {
-        this.serverController.startLobby(this.sessionId);
-
-        return null;
+        return this.applicationService.startLobby(payload);
     }
 
     @Override
     public ServerMessage moveTotem(MoveTotemPayload payload) {
-        String nickname = this.serverController.nicknameOf(this.sessionId);
-        this.serverController.gameOf(this.sessionId).moveTotem(nickname, payload.tile);
-        return null;
+        return this.applicationService.moveTotem(payload);
     }
 
     @Override
     public ServerMessage chooseCard(ChooseCardPayload payload) {
-        String nickname = this.serverController.nicknameOf(this.sessionId);
-        this.serverController.gameOf(this.sessionId).chooseCard(nickname, payload.cardId);
-        return null;
+        return this.applicationService.chooseCard(payload);
     }
 
     @Override
     public ServerMessage extraDraw(ExtraDrawPayload payload) {
-        String nickname = this.serverController.nicknameOf(this.sessionId);
-        this.serverController.gameOf(this.sessionId).extraDrawn(nickname, payload.cardId);
-        return null;
+        return this.applicationService.extraDraw(payload);
     }
 
 
@@ -239,31 +199,8 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     // Error handling methods section
     public void sendError(Exception exception) {
         Objects.requireNonNull(exception, "exception cannot be null");
-        ErrorPayload errorPayload = this.mapExceptionToErrorPayload(exception);
+        ErrorPayload errorPayload = this.errorMapper.toPayload(exception);
         this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
-    }
-
-    private ErrorPayload mapExceptionToErrorPayload(Exception exception) {
-        if (exception instanceof AuthenticationException) {
-            return new ErrorPayload("AUTH_ERROR", exception.getMessage());
-        }
-        if (exception instanceof IllegalArgumentException) {
-            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
-        }
-        if (exception instanceof UnsupportedOperationException) {
-            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
-        }
-        return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
-    }
-
-    private LobbySummaryPayload toLobbySummaryPayload(Lobby lobby) {
-        return new LobbySummaryPayload(
-                lobby.getId(),
-                lobby.getHostNickname(),
-                lobby.getPlayers().size(),
-                lobby.getChosenCapacity(),
-                lobby.getStatus().name()
-        );
     }
 
 

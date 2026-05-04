@@ -14,6 +14,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ApplicationErrorCode;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.io.IOException;
@@ -148,7 +149,7 @@ public class ServerProxyRMI implements ServerProxy {
 
     private void handleDisconnection(RemoteException e) {
         this.connected = false;
-        this.notifyLocalError("CONNECTION_CLOSED", e.getMessage());
+        this.notifyLocalError(ApplicationErrorCode.CONNECTION_CLOSED, e.getMessage());
     }
 
     @Override
@@ -168,11 +169,15 @@ public class ServerProxyRMI implements ServerProxy {
         this.callbackReceiver.handleError(new ErrorPayload(code, message));
     }
 
+    private void notifyLocalError(ApplicationErrorCode code, String message) {
+        this.notifyLocalError(code.name(), message);
+    }
+
     private boolean ensureConnected() {
         if (this.connected) {
             return true;
         }
-        this.notifyLocalError("CONNECTION_CLOSED", "Client is not connected");
+        this.notifyLocalError(ApplicationErrorCode.CONNECTION_CLOSED, "Client is not connected");
         return false;
     }
 }

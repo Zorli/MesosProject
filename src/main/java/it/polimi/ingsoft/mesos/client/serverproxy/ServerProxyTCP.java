@@ -16,6 +16,7 @@ import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ApplicationErrorCode;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.io.IOException;
@@ -70,17 +71,21 @@ public class ServerProxyTCP implements ServerProxy {
     private void send(ClientMessage message) {
         Objects.requireNonNull(message, "message cannot be null");
         if (!this.isConnected()) {
-            this.notifyLocalError("CONNECTION_CLOSED", "Client is not connected");
+            this.notifyLocalError(ApplicationErrorCode.CONNECTION_CLOSED, "Client is not connected");
             return;
         }
         this.writer.println(GSON.toJson(message));
         if (this.writer.checkError()) {
-            this.notifyLocalError("CONNECTION_CLOSED", "Cannot send message to server");
+            this.notifyLocalError(ApplicationErrorCode.CONNECTION_CLOSED, "Cannot send message to server");
         }
     }
 
     private void notifyLocalError(String code, String message) {
         this.clientView.showError(new ErrorPayload(code, message));
+    }
+
+    private void notifyLocalError(ApplicationErrorCode code, String message) {
+        this.notifyLocalError(code.name(), message);
     }
 
     public void sendPong() {

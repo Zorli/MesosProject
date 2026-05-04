@@ -1,44 +1,50 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.Listener;
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
-import it.polimi.ingsoft.mesos.shared.payload.server.*;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
+import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.List;
+
 /**
- * Dedicated RMI remote session for a single authenticated client.
- * <p>
- * Instances of this class are dynamically created by the {@link RmiSessionFactory}
- * upon successful login. This class acts as a private proxy for the client on the server,
- * maintaining their session id and holding the remote reference to their personal
- * callback receiver ({@link RmiClientService}).
- * <p>
- * It is responsible for intercepting inbound gameplay commands from the client,
- * delegating the domain logic to the central {@link ServerController}, and dispatching
- * outbound server updates back to the client via asynchronous RMI callbacks.
+ * Dedicated RMI remote session for a single client.
  */
 public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, Listener, PingPongConnection {
     private final ServerController serverController;
-    private final RmiClientService clientCallback; // Per mandare gli update al client
+    private final RmiClientService clientCallback;
     private final String sessionId;
-    private final PreMatchPayloadMapper payloadMapper;
+    private final ServerCommandApplicationService applicationService;
+    private final ApplicationErrorMapper errorMapper;
 
     public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback) throws RemoteException {
         super();
         this.serverController = serverController;
         this.clientCallback = clientCallback;
         this.sessionId = this.serverController.registerConnection(this);
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.applicationService = new ServerCommandApplicationService(this.serverController, this.sessionId);
+        this.errorMapper = new ApplicationErrorMapper();
     }
 
     public String getSessionId() {
@@ -55,110 +61,61 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
 
     @Override
     public void authenticate(AuthenticationPayload payload) throws RemoteException {
-        try {
-            if (payload == null || payload.nickname == null || payload.nickname.isBlank()) {
-                throw new IllegalArgumentException("Nickname cannot be empty");
-            }
-            this.serverController.authenticate(this.sessionId, payload.nickname);
-            this.clientCallback.handlePreMatchUpdate(this.payloadMapper.authenticated(payload.nickname));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            this.clientCallback.handleError(new ErrorPayload("AUTH_ERROR", e.getMessage()));
-        }
+        this.execute("AUTHENTICATE", payload == null ? "null" : "nickname=" + payload.nickname,
+                () -> this.applicationService.authenticate(payload));
     }
 
     @Override
     public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
-        try {
-            this.logReceived("JOIN_LOBBY", "lobbyId=" + payload.lobbyId);
-            this.serverController.joinLobby(this.sessionId, payload.lobbyId);
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("JOIN_LOBBY_ERROR", e.getMessage()));
-        }
+        this.execute("JOIN_LOBBY", payload == null ? "null" : "lobbyId=" + payload.lobbyId,
+                () -> this.applicationService.joinLobby(payload));
     }
+
     @Override
-    public void createLobby(CreateLobbyPayload payload) throws RemoteException{
-        try {
-            this.logReceived("CREATE_LOBBY", "chosenCapacity=" + payload.chosenCapacity);
-            this.serverController.createLobby(this.sessionId, payload.chosenCapacity);
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
-        }
+    public void createLobby(CreateLobbyPayload payload) throws RemoteException {
+        this.execute("CREATE_LOBBY", payload == null ? "null" : "chosenCapacity=" + payload.chosenCapacity,
+                () -> this.applicationService.createLobby(payload));
     }
+
     @Override
     public void exitLobby(ExitLobbyPayload payload) throws RemoteException {
-        try {
-            this.logReceived("EXIT_LOBBY", "{}");
-            Integer lobbyId = this.serverController.lobbyIdOf(this.sessionId);
-            if (lobbyId == null) {
-                throw new IllegalStateException("Client is not in a lobby");
-            }
-            this.serverController.exitLobby(this.sessionId);
-
-        } catch (Exception e) {
-
-            this.clientCallback.handleError(new ErrorPayload("EXIT_LOBBY_ERROR", e.getMessage()));
-        }
+        this.execute("EXIT_LOBBY", "{}", () -> this.applicationService.exitLobby(payload));
     }
+
     @Override
     public void listLobbies(ListLobbiesPayload payload) throws RemoteException {
-        //questa è solo una query non modifica niente (non è update) la lasciamo cosi
-        try{
-            this.logReceived("LIST_LOBBIES", "{}");
-            List<LobbySummaryPayload> lobbies = this.serverController.listOpenLobbies().stream()
-                    .map(this::toLobbySummaryPayload)
-                    .toList();
-            this.clientCallback.handleLobbyList(new LobbyListPayload(lobbies));
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("LIST_LOBBY_ERROR", e.getMessage()));
-        }
+        this.execute("LIST_LOBBIES", "{}", () -> this.applicationService.listLobbies(payload));
     }
+
     @Override
     public void startLobby(StartLobbyPayload payload) throws RemoteException {
-        try {
-            this.logReceived("START_LOBBY", "{}");
-            this.serverController.startLobby(this.sessionId);
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("START_LOBBY_ERROR", e.getMessage()));
-        }
+        this.execute("START_LOBBY", "{}", () -> this.applicationService.startLobby(payload));
     }
 
     @Override
-    public void moveTotem(MoveTotemPayload payload)  throws RemoteException {
-      try{
-          this.logReceived("MOVE_TOTEM", "tile=" + payload.tile);
-          String nickname = this.serverController.nicknameOf(this.sessionId);
-          this.serverController.gameOf(this.sessionId).moveTotem(nickname, payload.tile);
-      } catch (Exception e) {
-          this.clientCallback.handleError(new ErrorPayload("MOVE_TOTEM_ERROR", e.getMessage()));
-      }
+    public void moveTotem(MoveTotemPayload payload) throws RemoteException {
+        this.execute("MOVE_TOTEM", payload == null ? "null" : "tile=" + payload.tile,
+                () -> this.applicationService.moveTotem(payload));
     }
 
     @Override
-    public void chooseCard(ChooseCardPayload payload)  throws RemoteException {
-        try{
-            this.logReceived("CHOOSE_CARD", "cardId=" + payload.cardId);
-            String nickname = this.serverController.nicknameOf(this.sessionId);
-            this.serverController.gameOf(this.sessionId).chooseCard(nickname,payload.cardId);
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("CHOSE_CARD_ERROR", e.getMessage()));
-        }
+    public void chooseCard(ChooseCardPayload payload) throws RemoteException {
+        this.execute("CHOOSE_CARD", payload == null ? "null" : "cardId=" + payload.cardId,
+                () -> this.applicationService.chooseCard(payload));
     }
 
     @Override
-    public void extraDraw(ExtraDrawPayload payload)  throws RemoteException {
-        try{
-            this.logReceived("EXTRA_DRAW", "cardId=" + payload.cardId);
-            String nickname = this.serverController.nicknameOf(this.sessionId);
-            this.serverController.gameOf(this.sessionId).extraDrawn(nickname,payload.cardId);
-        } catch (Exception e) {
-            this.clientCallback.handleError(new ErrorPayload("EXTRA_DRAW_ERROR", e.getMessage()));
-        }
+    public void extraDraw(ExtraDrawPayload payload) throws RemoteException {
+        this.execute("EXTRA_DRAW", payload == null ? "null" : "cardId=" + payload.cardId,
+                () -> this.applicationService.extraDraw(payload));
     }
 
     @Override
     public void pong(PongPayload payload) throws RemoteException {
         if (payload == null) {
-            this.clientCallback.handleError(new ErrorPayload("PONG_ERROR", "Malformed pong payload"));
+            this.clientCallback.handleError(this.errorMapper.toPayload(
+                    new IllegalArgumentException("Malformed pong payload")
+            ));
             return;
         }
         this.recordPong();
@@ -182,16 +139,8 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         this.serverController.disconnectSession(this.sessionId);
         try {
             UnicastRemoteObject.unexportObject(this, true);
-        } catch (NoSuchObjectException ignored) {}
-    }
-    private LobbySummaryPayload toLobbySummaryPayload(Lobby lobby) {
-        return new LobbySummaryPayload(
-                lobby.getId(),
-                lobby.getHostNickname(),
-                lobby.getPlayers().size(),
-                lobby.getChosenCapacity(),
-                lobby.getStatus().name()
-        );
+        } catch (NoSuchObjectException ignored) {
+        }
     }
 
     private void logReceived(String command, String payload) {
@@ -200,6 +149,35 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 + " payload=" + payload);
     }
 
+    private void execute(String command, String payload, CommandInvocation invocation) throws RemoteException {
+        try {
+            this.logReceived(command, payload);
+            this.dispatch(invocation.invoke());
+        } catch (RuntimeException exception) {
+            this.clientCallback.handleError(this.errorMapper.toPayload(exception));
+        }
+    }
+
+    private void dispatch(ServerMessage message) throws RemoteException {
+        if (message == null) {
+            return;
+        }
+        if (message.type == ServerMessageType.PRE_MATCH_UPDATE && message.payload instanceof PreMatchUpdatePayload payload) {
+            this.clientCallback.handlePreMatchUpdate(payload);
+            return;
+        }
+        if (message.type == ServerMessageType.LOBBY_LIST && message.payload instanceof LobbyListPayload payload) {
+            this.clientCallback.handleLobbyList(payload);
+            return;
+        }
+        if (message.type == ServerMessageType.GAME_UPDATE && message.payload instanceof GamePayload payload) {
+            this.clientCallback.handleGameUpdate(payload);
+            return;
+        }
+        if (message.type == ServerMessageType.ERROR && message.payload instanceof ErrorPayload payload) {
+            this.clientCallback.handleError(payload);
+        }
+    }
 
     @Override
     public void notifyUpdate(Object payload) {
@@ -259,5 +237,10 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         } catch (RuntimeException ignored) {
             return null;
         }
+    }
+
+    @FunctionalInterface
+    private interface CommandInvocation {
+        ServerMessage invoke();
     }
 }

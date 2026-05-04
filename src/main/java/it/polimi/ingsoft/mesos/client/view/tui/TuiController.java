@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.client.view.tui;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
+import it.polimi.ingsoft.mesos.shared.payload.server.ApplicationErrorCode;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -84,10 +85,10 @@ public class TuiController implements ClientView {
             this.showError(new ErrorPayload("CLIENT_COMMAND_ERROR", exception.getMessage()));
             return false;
         } catch (IOException exception) {
-            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+            this.showError(new ErrorPayload(ApplicationErrorCode.CONNECTION_CLOSED.name(), exception.getMessage()));
             return true;
         } catch (UncheckedIOException exception) {
-            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+            this.showError(new ErrorPayload(ApplicationErrorCode.CONNECTION_CLOSED.name(), exception.getMessage()));
             return true;
         } catch (RuntimeException exception) {
             this.showError(new ErrorPayload("CLIENT_ERROR", exception.getMessage()));
@@ -142,7 +143,7 @@ public class TuiController implements ClientView {
         try {
             this.serverProxy.close();
         } catch (IOException exception) {
-            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
+            this.showError(new ErrorPayload(ApplicationErrorCode.CONNECTION_CLOSED.name(), exception.getMessage()));
         }
     }
 
