@@ -101,6 +101,24 @@ class GameMoveTotemTest {
     }
 
     @Test
+    void moveTotemStopsSkippingWhenResolutionOrderEndsWithPlayerWithoutDrawableCards() {
+        ArrayList<Player> players = players("Alice", "Bob");
+        RecordingBoard board = new RecordingBoard(players);
+        board.resolutionOrder = List.of(players.get(0), players.get(1));
+        board.drawableCardsByPlayer.put(players.get(0), new int[]{0, 0});
+        board.drawableCardsByPlayer.put(players.get(1), new int[]{0, 0});
+        TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
+        Game game = new Game(1, players, new TurnState(), turnOrderTrack, board);
+        game.setup();
+
+        game.moveTotem(players.get(0), "A");
+        game.moveTotem(players.get(1), "B");
+
+        assertEquals(RoundPhase.PLAYER_DRAWS, turnOrderTrack.getCurrentRoundPhase());
+        assertEquals(players.get(1), turnOrderTrack.getCurrentPlayer());
+    }
+
+    @Test
     void moveTotemRejectsWrongPlayer() {
         ArrayList<Player> players = players("Alice", "Bob");
         RecordingBoard board = new RecordingBoard(players);
@@ -118,6 +136,16 @@ class GameMoveTotemTest {
         game.setup();
 
         assertGameError(game, TileNotAvailableException.class, () -> game.moveTotem(players.get(0), "Z"));
+    }
+
+    @Test
+    void moveTotemRejectsNullTileBeforeCheckingBoardAvailability() {
+        ArrayList<Player> players = players("Alice", "Bob");
+        RecordingBoard board = new RecordingBoard(players);
+        Game game = new Game(1, players, new TurnState(), new TurnOrderTrack(), board);
+        game.setup();
+
+        assertGameError(game, TileNotAvailableException.class, () -> game.moveTotem(players.get(0), null));
     }
 
     @Test

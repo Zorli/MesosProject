@@ -8,7 +8,6 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -176,7 +175,7 @@ public class GameOrchestrator {
 
     public void freezeForDisconnectedPlayer(String nickname) {
         this.frozen = true;
-        this.game.notifyError(new ErrorPayload("PLAYER_DISCONNECTED", "Player disconnected: " + nickname));
+        this.game.notifyError("PLAYER_DISCONNECTED", "Player disconnected: " + nickname);
     }
 
     // Private methods

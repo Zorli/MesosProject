@@ -1,10 +1,12 @@
 package it.polimi.ingsoft.mesos.server.model.board;
 
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer;
 import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.player.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -54,6 +56,16 @@ class UpperPileTest {
     }
 
     @Test
+    void addAndRemoveIgnoreUnknownCardSubtype() {
+        Card unknownCard = new UnknownCard(99, Era.first);
+
+        upperPile.addCard(unknownCard);
+        upperPile.removeCard(unknownCard);
+
+        assertTrue(upperPile.getAllCards().isEmpty());
+    }
+
+    @Test
     void removeAndReturnAllCards_EmptiesThePile_AndHandlesEmptyCase() {
         upperPile.addCard(tribeCard1);
         upperPile.addCard(tribeCard2);
@@ -95,5 +107,15 @@ class UpperPileTest {
 
         assertEquals(2, restoredPile.getTribeCardsSize(), "La pila deve mantenere le tribù ripristinate");
         assertEquals(3, restoredPile.getAllCards().size(), "Le copie restituite non devono alterare lo stato interno");
+    }
+    private static final class UnknownCard extends Card {
+        private UnknownCard(int id, Era era) {
+            super(id, era);
+        }
+
+        @Override
+        public boolean isDrawable(Player player) {
+            return false;
+        }
     }
 }

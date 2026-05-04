@@ -30,8 +30,9 @@ public final class LaunchServer {
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
 
-            ServerServices serverServices = ServerServicesFactory.create(ServerRuntimeConfig.fromEnvironment(environment));
-            ServerController serverController = new ServerController(serverServices.rankingService());
+            //ServerServices serverServices = ServerServicesFactory.create(ServerRuntimeConfig.fromEnvironment(environment));
+            //ServerController serverController = new ServerController(serverServices.rankingService());
+            ServerController serverController = new ServerController();
             int rmiPort = resolveRmiPort(environment);
             startRmiServer(serverController, rmiPort, out);
 
@@ -41,9 +42,9 @@ public final class LaunchServer {
             Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
             acceptorThread.start();
             out.println("TCP listener attivo sulla porta " + tcpPort);
-            if (serverServices.rankingService() == null) {
-                out.println("Modalita no-db attiva: ranking persistence disabilitata.");
-            }
+            //if (serverServices.rankingService() == null) {
+            //    out.println("Modalita no-db attiva: ranking persistence disabilitata.");
+            //}
 
             out.println("Server Mesos avviato con successo.");
             out.println("In attesa di giocatori...");

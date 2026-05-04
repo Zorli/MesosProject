@@ -356,8 +356,8 @@ class GameOrchestratorRankingTest {
         }
 
         @Override
-        public void notifyError(ErrorPayload payload) {
-            this.lastNotifiedError = payload;
+        public void notifyError(String code, String message) {
+            this.lastNotifiedError = new ErrorPayload(code, message);
         }
 
         private int getSetupCalls() {
