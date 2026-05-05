@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.controller;
 
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
@@ -216,7 +217,13 @@ public class ServerSessionRegistry {
     public synchronized Integer lobbyIdOf(String sessionId) {
         return this.requireSession(sessionId).lobbyId;
     }
-
+    public synchronized Listener getListenerOf(String sessionId) {
+        PingPongConnection connection = this.requireSession(sessionId).connection;
+        if (connection instanceof Listener listener) {
+            return listener;
+        }
+        throw new IllegalStateException("La connessione per la sessione " + sessionId + " non implementa Listener");
+    }
     public synchronized Integer gameIdOf(String sessionId) {
         return this.requireSession(sessionId).gameId;
     }

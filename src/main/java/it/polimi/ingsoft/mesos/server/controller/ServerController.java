@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.ServerModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
@@ -33,8 +34,8 @@ public class ServerController implements Runnable {
     // --- CODA PRE-LOBBY ---
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
-    public ServerController(GameFactory gameFactory, RankingService rankingService) {
-        this.sessions = new ServerSessionRegistry();
+    public ServerController(GameFactory gameFactory, RankingService rankingService, ServerSessionRegistry sessions) {
+        this.sessions = sessions;
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
         this.rankingService = rankingService;
 
@@ -45,11 +46,11 @@ public class ServerController implements Runnable {
         this.pingPongRoutine.start();
     }
     //cacata
-    public ServerController(RankingService rankingService) {
-        this(DefaultGameFactory.getInstance(), rankingService);
+    public ServerController(ServerSessionRegistry sessions) {
+        this(DefaultGameFactory.getInstance(), null, sessions);
     }
-    public ServerController(GameFactory gameFactory) {
-        this(gameFactory, null);
+    public ServerController(GameFactory gameFactory, ServerSessionRegistry sessions) {
+        this(gameFactory,null, sessions);
     }
     // --- YELLOW PAGES GETTERS (Usati dalla VirtualView per l'instradamento) ---
 
@@ -99,16 +100,19 @@ public class ServerController implements Runnable {
     // --- WRAPPER API PRE-LOBBY (Chiamati dai Command estratti dalla coda) ---
 
     public void authenticate(String sessionId, String nickname) {
-        this.serverModel.authenticate(sessionId, nickname);
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        this.serverModel.authenticate(sessionId, nickname,  clientView);
     }
 
     public void listOpenLobbies(String sessionId) {
-        this.serverModel.listOpenLobbies(sessionId);
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        this.serverModel.listOpenLobbies(sessionId, clientView);
     }
 
     public void createLobby(String sessionId, int chosenCapacity) {
         // 1. Chiamata al Model per logica ed eventuali errori
-        Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity);
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity, clientView);
 
         // 2. Transizione e Setup Controller se successo
         if (lobby != null) {
@@ -121,14 +125,19 @@ public class ServerController implements Runnable {
                     this.rankingService
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);
+            Thread lobbyWorker = new Thread(lobbyController, "Lobby-" + lobby.getId() + "-Worker");
+            lobbyWorker.start();
         }
     }
 
     public void joinLobby(String sessionId, int lobbyId) {
-        Lobby lobby = this.serverModel.joinLobby(sessionId, lobbyId);
-
-        if (lobby != null) {
-            this.sessions.enterLobby(sessionId, lobby.getId());
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        String nickname = this.sessions.nicknameOf(sessionId);
+        try{
+            this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId );
+            LobbyController target = this.sessions.getLobbyController(lobbyId);
+            target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
+        }catch (Exception e) {
         }
     }
 

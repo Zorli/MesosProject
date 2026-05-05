@@ -48,14 +48,14 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private boolean cleanupDone;
 
     //Consutrctor
-    public VirtualViewTCP(Socket clientSocket, ServerController serverController) {
-        this(clientSocket, serverController, System.out);
+    public VirtualViewTCP(Socket clientSocket, ServerController serverController, MessageRouter router) {
+        this(clientSocket, serverController, router, System.out);
     }
 
-    public VirtualViewTCP(Socket clientSocket, ServerController serverController, PrintStream out) {
+    public VirtualViewTCP(Socket clientSocket, ServerController serverController,MessageRouter router, PrintStream out) {
         this.clientSocket = Objects.requireNonNull(clientSocket, "clientSocket cannot be null");
         this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
-        this.router = new MessageRouter(serverController.getSessionRegistry(),  serverController);
+        this.router = router;
         this.out = Objects.requireNonNull(out, "out cannot be null");
         try {
             this.writer = new PrintWriter(
