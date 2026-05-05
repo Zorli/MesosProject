@@ -5,33 +5,12 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
-import it.polimi.ingsoft.mesos.server.virtualview.VirtualView;
+import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.server.virtualview.VirtualView; // Assicurati che punti alla tua nuova TcpVirtualView unificata
 
 import java.io.PrintStream;
 import java.util.Objects;
 
-
-// !!!!! Vital !!!!!
-// Command handlers call application-layer methods that may throw exceptions.
-// When a called method can fail with a generic or domain-level exception, catch it here
-// and rethrow a more precise protocol-facing exception. The VirtualView boundary then
-// catches that exception and maps it to the correct ERROR message for the client.
-//!!!!!!!!!
-
-//Here we maintain only the de-serialization logic and the parsing logic, all the business logic is inside the virtualviewtcp
-//that implements the common contract in virtualview. So here in the call we check the payload and the TCP semantics
-//In the virtualview method we check for the applicability of that method(everythin non related to network)
 public class ClientCommandHandler {
     private static final Gson GSON = new GsonBuilder().create();
 
@@ -43,8 +22,10 @@ public class ClientCommandHandler {
         this.virtualView = Objects.requireNonNull(virtualView, "virtualView cannot be null");
     }
 
-    // Entry point
-    public ServerMessage handle(String rawMessage) {
+    // =========================================================
+    // L'UNICO PUNTO DI INGRESSO (Nota: Ritorna void, non più ServerMessage!)
+    // =========================================================
+    public void handle(String rawMessage) {
         JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
         if (root == null) {
             throw new IllegalArgumentException("Malformed client message");
@@ -62,178 +43,50 @@ public class ClientCommandHandler {
             throw new IllegalArgumentException("Unknown client message type", exception);
         }
 
-        JsonElement payload = root.get("payload");
-        this.out.println("[TCP] Received " + type
-                + " from " + this.virtualView.describeSession()
-                + " payload=" + (payload == null ? "null" : payload));
+        JsonElement payloadElement = root.get("payload");
+        this.out.println("[TCP] Received " + type + " from " + this.virtualView.describeSession());
 
-        if (type != ClientMessageType.AUTHENTICATE && !this.virtualView.isAuthenticated()) {
-            throw new AuthenticationException("Client is not authenticated");
+        // =========================================================
+        // SMISTAMENTO E DESERIALIZZAZIONE
+        // =========================================================
+
+        // Se è un PONG, lo gestiamo istantaneamente bypassando la logica di gioco
+        if (type == ClientMessageType.PONG) {
+            this.virtualView.recordPong();
+            return; // Fine dell'esecuzione
         }
 
-        // Command dispatch
-        return switch (type) {
-            case AUTHENTICATE -> this.handleAuthentication(payload);
-            case LIST_LOBBIES -> this.handleListLobbies(payload);
-            case CREATE_LOBBY -> this.handleCreateLobby(payload);
-            case JOIN_LOBBY -> this.handleJoinLobby(payload);
-            case EXIT_LOBBY -> this.handleExitLobby(payload);
-            case START_LOBBY -> this.handleStartLobby(payload);
-            case MOVE_TOTEM -> this.handleMoveTotem(payload);
-            case CHOOSE_CARD -> this.handleChooseCard(payload);
-            case EXTRA_DRAW -> this.handleExtraDraw(payload);
-            case PONG -> this.handlePong(payload);
-            default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
-        };
+        // Per tutti gli altri messaggi, deserializziamo nella classe corretta
+        // e imbustiamo il payload come ClientPayload generico
+        ClientPayload payload = deserializePayload(type, payloadElement);
+
+        if (payload == null) {
+            throw new IllegalArgumentException("Malformed payload for type " + type);
+        }
+
+        // BAM! Unica chiamata alla VirtualView. Niente attesa, niente return.
+        this.virtualView.sendMessage(payload);
     }
 
-    // Command-specific payload handling
-    private ServerMessage handleAuthentication(JsonElement payload) {
-        AuthenticationPayload authenticationPayload;
+    // =========================================================
+    // METODO DI SUPPORTO PER LA DESERIALIZZAZIONE
+    // =========================================================
+    private ClientPayload deserializePayload(ClientMessageType type, JsonElement payloadElement) {
         try {
-            authenticationPayload = GSON.fromJson(payload, AuthenticationPayload.class);
-            if (authenticationPayload == null) {
-                throw new IllegalArgumentException("Malformed authentication payload");
-            }
+            return switch (type) {
+                case AUTHENTICATE -> GSON.fromJson(payloadElement, AuthenticationPayload.class);
+                case LIST_LOBBIES -> GSON.fromJson(payloadElement, ListLobbiesPayload.class);
+                case CREATE_LOBBY -> GSON.fromJson(payloadElement, CreateLobbyPayload.class);
+                case JOIN_LOBBY   -> GSON.fromJson(payloadElement, JoinLobbyPayload.class);
+                case EXIT_LOBBY   -> GSON.fromJson(payloadElement, ExitLobbyPayload.class);
+                case START_LOBBY  -> GSON.fromJson(payloadElement, StartLobbyPayload.class);
+                case MOVE_TOTEM   -> GSON.fromJson(payloadElement, MoveTotemPayload.class);
+                case CHOOSE_CARD  -> GSON.fromJson(payloadElement, ChooseCardPayload.class);
+                case EXTRA_DRAW   -> GSON.fromJson(payloadElement, ExtraDrawPayload.class);
+                default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
+            };
         } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed authentication payload", exception);
+            throw new IllegalArgumentException("Malformed payload for " + type, exception);
         }
-
-        return this.virtualView.authenticate(authenticationPayload);
-    }
-
-    private ServerMessage handleCreateLobby(JsonElement payload) {
-        CreateLobbyPayload createLobbyPayload;
-        try {
-            createLobbyPayload = GSON.fromJson(payload, CreateLobbyPayload.class);
-            if (createLobbyPayload == null) {
-                throw new IllegalArgumentException("Malformed create-lobby payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed create-lobby payload", exception);
-        }
-
-        return this.virtualView.createLobby(createLobbyPayload);
-    }
-
-    private ServerMessage handleListLobbies(JsonElement payload) {
-        ListLobbiesPayload listLobbiesPayload;
-        try {
-            listLobbiesPayload = GSON.fromJson(payload, ListLobbiesPayload.class);
-            if (listLobbiesPayload == null) {
-                throw new IllegalArgumentException("Malformed list-lobbies payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed list-lobbies payload", exception);
-        }
-
-        return this.virtualView.listLobbies(listLobbiesPayload);
-    }
-
-    private ServerMessage handleJoinLobby(JsonElement payload) {
-        JoinLobbyPayload joinLobbyPayload;
-        try {
-            joinLobbyPayload = GSON.fromJson(payload, JoinLobbyPayload.class);
-            if (joinLobbyPayload == null) {
-                throw new IllegalArgumentException("Malformed join-lobby payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed join-lobby payload", exception);
-        }
-
-        if (joinLobbyPayload.lobbyId <= 0) {
-            throw new IllegalArgumentException("Join-lobby payload must contain a valid lobbyId");
-        }
-
-        return this.virtualView.joinLobby(joinLobbyPayload);
-    }
-
-    private ServerMessage handleExitLobby(JsonElement payload) {
-        ExitLobbyPayload exitLobbyPayload;
-        try {
-            exitLobbyPayload = GSON.fromJson(payload, ExitLobbyPayload.class);
-            if (exitLobbyPayload == null) {
-                throw new IllegalArgumentException("Malformed exit-lobby payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed exit-lobby payload", exception);
-        }
-
-        return this.virtualView.exitLobby(exitLobbyPayload);
-    }
-
-    private ServerMessage handleStartLobby(JsonElement payload) {
-        StartLobbyPayload startLobbyPayload;
-        try {
-            startLobbyPayload = GSON.fromJson(payload, StartLobbyPayload.class);
-            if (startLobbyPayload == null) {
-                throw new IllegalArgumentException("Malformed start-lobby payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed start-lobby payload", exception);
-        }
-
-        return this.virtualView.startLobby(startLobbyPayload);
-    }
-
-    private ServerMessage handleMoveTotem(JsonElement payload) {
-        MoveTotemPayload moveTotemPayload;
-        try {
-            moveTotemPayload = GSON.fromJson(payload, MoveTotemPayload.class);
-            if (moveTotemPayload == null) {
-                throw new IllegalArgumentException("Malformed move-totem payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed move-totem payload", exception);
-        }
-
-        if (moveTotemPayload.tile == null || moveTotemPayload.tile.isBlank()) {
-            throw new IllegalArgumentException("Move-totem payload must contain a tile");
-        }
-
-        return this.virtualView.moveTotem(moveTotemPayload);
-    }
-
-    private ServerMessage handleChooseCard(JsonElement payload) {
-        ChooseCardPayload chooseCardPayload;
-        try {
-            chooseCardPayload = GSON.fromJson(payload, ChooseCardPayload.class);
-            if (chooseCardPayload == null) {
-                throw new IllegalArgumentException("Malformed choose-card payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed choose-card payload", exception);
-        }
-
-        return this.virtualView.chooseCard(chooseCardPayload);
-    }
-
-    private ServerMessage handleExtraDraw(JsonElement payload) {
-        ExtraDrawPayload extraDrawPayload;
-        try {
-            extraDrawPayload = GSON.fromJson(payload, ExtraDrawPayload.class);
-            if (extraDrawPayload == null) {
-                throw new IllegalArgumentException("Malformed extra-draw payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed extra-draw payload", exception);
-        }
-
-        return this.virtualView.extraDraw(extraDrawPayload);
-    }
-
-    private ServerMessage handlePong(JsonElement payload) {
-        PongPayload pongPayload;
-        try {
-            pongPayload = GSON.fromJson(payload, PongPayload.class);
-            if (pongPayload == null) {
-                throw new IllegalArgumentException("Malformed pong payload");
-            }
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Malformed pong payload", exception);
-        }
-
-        this.virtualView.recordPong();
-        return null;
     }
 }

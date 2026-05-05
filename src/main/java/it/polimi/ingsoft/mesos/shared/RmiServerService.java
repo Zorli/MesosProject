@@ -16,17 +16,10 @@ import java.rmi.RemoteException;
  */
 public interface RmiServerService extends Remote {
 
-    void authenticate(AuthenticationPayload payload) throws RemoteException;
-    void listLobbies(ListLobbiesPayload payload) throws RemoteException;
-    void createLobby(CreateLobbyPayload payload) throws RemoteException;
-    void joinLobby(JoinLobbyPayload payload) throws RemoteException;
-    void exitLobby(ExitLobbyPayload payload) throws RemoteException;
-    void startLobby(StartLobbyPayload payload) throws RemoteException;
-
-    // IN-MATCH
-    void moveTotem(MoveTotemPayload payload) throws RemoteException;
-    void chooseCard(ChooseCardPayload payload) throws RemoteException;
-    void extraDraw(ExtraDrawPayload payload) throws RemoteException;
+    // 1. IL METODO UNIFICATO PER IL GIOCO
+    // Sostituisce createLobby, joinLobby, moveTotem, ecc.
+    // Viene passato al MessageRouter e finisce nelle code.
+    void sendMessage(ClientPayload payload) throws RemoteException;
     void pong(PongPayload payload) throws RemoteException;
 
     void closeSession() throws RemoteException;
