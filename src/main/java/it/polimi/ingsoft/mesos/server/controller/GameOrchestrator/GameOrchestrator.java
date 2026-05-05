@@ -2,18 +2,22 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-
+import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -23,28 +27,32 @@ import java.util.Optional;
  * game-specific requests through this class so that access checks and orchestration logic stay
  * centralized.
  */
-public class GameOrchestrator {
+public class GameOrchestrator implements Runnable  {
     private final Game game;
     private final List<Player> players;
     private final String hostNickname;
+    private final ServerSessionRegistry sessions;
     private final RankingService rankingService;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
     private boolean frozen;
+    private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
-    // Constructors
+// Constructors
 
     /**
      * Creates an orchestrator for a new match using the provided game factory and player list.
      *
      * @param gameFactory factory used to bootstrap the underlying game aggregate
      * @param players players transferred from the lobby into the match
+     * @param sessions the server session registry
      */
-    public GameOrchestrator(GameFactory gameFactory, ArrayList<Player> players) {
+    public GameOrchestrator(GameFactory gameFactory, ArrayList<Player> players, ServerSessionRegistry sessions) {
         this(
                 gameFactory,
                 players,
-                resolveDefaultHostNickname(players)
+                resolveDefaultHostNickname(players),
+                sessions
         );
     }
 
@@ -54,11 +62,13 @@ public class GameOrchestrator {
      * @param gameFactory factory used to bootstrap the underlying game aggregate
      * @param players players transferred from the lobby into the match
      * @param hostNickname original host nickname associated with the match
+     * @param sessions the server session registry
      */
     public GameOrchestrator(GameFactory gameFactory,
                             ArrayList<Player> players,
-                            String hostNickname) {
-        this(gameFactory, players, hostNickname, null);
+                            String hostNickname,
+                            ServerSessionRegistry sessions) {
+        this(gameFactory, players, hostNickname, null, sessions);
     }
 
     /**
@@ -68,12 +78,15 @@ public class GameOrchestrator {
      * @param players players transferred from the lobby into the match
      * @param hostNickname original host nickname associated with the match
      * @param rankingService ranking service used to register completed matches; nullable when disabled
+     * @param sessions the server session registry
      */
     public GameOrchestrator(GameFactory gameFactory,
                             ArrayList<Player> players,
                             String hostNickname,
-                            RankingService rankingService) {
+                            RankingService rankingService,
+                            ServerSessionRegistry sessions) {
         Objects.requireNonNull(gameFactory, "Game factory cannot be null");
+        Objects.requireNonNull(sessions, "Server session registry cannot be null");
         if (players == null || players.isEmpty()) {
             throw new IllegalArgumentException("Players cannot be null or empty");
         }
@@ -81,6 +94,7 @@ public class GameOrchestrator {
         this.game = gameFactory.createGame(players);
         this.players = List.copyOf(players);
         this.hostNickname = requireHostNickname(hostNickname);
+        this.sessions = sessions;
         this.rankingService = rankingService;
         this.finalRankingResult = Optional.empty();
     }
@@ -124,7 +138,31 @@ public class GameOrchestrator {
     }
 
     // Public gameplay API
-
+    //idem alla lobby
+    public void enqueueMessage(EnqueuedMessage command) {
+        this.commandQueue.add(command);
+    }
+    @Override
+    public void run() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                EnqueuedMessage cmd = this.commandQueue.take();
+                String sessionId = cmd.sessionId();
+                String nickname = sessions.nicknameOf(sessionId);
+                switch(cmd.payload()){
+                    //sistemare con sessions di serverRegistry
+                    case ChooseCardPayload p -> {this.chooseCard(nickname, p.cardId);}
+                    case ExtraDrawPayload p -> {this.extraDrawn(nickname, p.cardId);}
+                    case MoveTotemPayload p -> {this.moveTotem(nickname, p.tile);}
+                    // aggiustare unicast
+                    default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
     /**
      * Performs match setup.
      */

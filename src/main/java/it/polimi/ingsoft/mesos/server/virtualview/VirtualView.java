@@ -1,15 +1,7 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 
 // Here we expose the services that the client can request to the server.
@@ -19,20 +11,9 @@ import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 // On the client side, the concrete transport object acts as a proxy toward this contract.
 public interface VirtualView extends PingPongConnection {
     // Pre-match
-    ServerMessage authenticate(AuthenticationPayload payload);
-    ServerMessage listLobbies(ListLobbiesPayload payload);
-    ServerMessage createLobby(CreateLobbyPayload payload);
-    ServerMessage joinLobby(JoinLobbyPayload payload);
-    ServerMessage exitLobby(ExitLobbyPayload payload);
-    ServerMessage startLobby(StartLobbyPayload payload);
-
-    // In-match
-    ServerMessage moveTotem(MoveTotemPayload payload);
-    ServerMessage chooseCard(ChooseCardPayload payload);
-    ServerMessage extraDraw(ExtraDrawPayload payload);
+    void sendMessage(ClientPayload payload);
 
     void sendPing();
     void recordPong();
-    boolean isAuthenticated();
     String describeSession();
 }

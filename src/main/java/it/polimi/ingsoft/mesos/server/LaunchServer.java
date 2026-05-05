@@ -13,9 +13,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Map;
 
-// From this class we bootstrap the server for BOTH TCP and RMI.
-// The Singleton ServerController is shared between both network layers,
-// ensuring all players play in the same lobbies regardless of their protocol.
 public final class LaunchServer {
     private static final int DEFAULT_TCP_PORT = 12_345;
     private static final int DEFAULT_RMI_PORT = 1099;
@@ -26,7 +23,15 @@ public final class LaunchServer {
             System.exit(exitCode);
         }
     }
-
+    /*
+    Architettura del server:
+    - Virtualview RMI/TCP: Gestione delle connessioni in entrata ed in uscita, si occupano del relativo protocollo di rete
+      scambiandosi payload. Quello che la virtualview sa fare è ricevere e mandare in uscita payload, sul come instradarli
+      internamente se ne occupa il relativo router
+    - Harness vari protocol dependent delle virtualview : connection acceptor, commandhandler, etc
+    - Command Router: Dato un payload recuper lo snapshot della sessione del player e lo instrada correttamente
+    //TODO : Finire lo spiegone architetturale
+    */
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
 

@@ -4,6 +4,8 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
@@ -48,7 +50,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void authenticate(String nickname) {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.authenticate(new AuthenticationPayload(nickname));
+            this.serverStub.sendMessage(new AuthenticationPayload(nickname));
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -58,7 +60,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void listLobbies() {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.listLobbies(new ListLobbiesPayload());
+            this.serverStub.sendMessage(new ListLobbiesPayload());
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -69,7 +71,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void createLobby(int chosenCapacity){
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.createLobby(new CreateLobbyPayload(chosenCapacity));
+            this.serverStub.sendMessage(new CreateLobbyPayload(chosenCapacity));
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -79,7 +81,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void joinLobby(int lobbyId) {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.joinLobby(new JoinLobbyPayload(lobbyId));
+            this.serverStub.sendMessage(new JoinLobbyPayload(lobbyId));
 
         } catch (RemoteException e) {
             this.handleDisconnection(e);
@@ -90,7 +92,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void exitLobby() {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.exitLobby(new ExitLobbyPayload());
+            this.serverStub.sendMessage(new ExitLobbyPayload());
 
         } catch (RemoteException e) {
             this.handleDisconnection(e);
@@ -101,7 +103,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void startLobby() {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.startLobby(new StartLobbyPayload());
+            this.serverStub.sendMessage(new StartLobbyPayload());
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -111,7 +113,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void moveTotem(String tile) {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.moveTotem(new MoveTotemPayload(tile));
+            this.serverStub.sendMessage(new MoveTotemPayload(tile));
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -121,7 +123,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void chooseCard(int cardId) {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.chooseCard(new ChooseCardPayload(cardId));
+            this.serverStub.sendMessage(new ChooseCardPayload(cardId));
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -131,7 +133,7 @@ public class ServerProxyRMI implements ServerProxy {
     public void extraDraw(int cardId) {
         if (!this.ensureConnected()) return;
         try {
-            this.serverStub.extraDraw(new ExtraDrawPayload(cardId));
+            this.serverStub.sendMessage(new ExtraDrawPayload(cardId));
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -165,7 +167,7 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     private void notifyLocalError(String code, String message) {
-        this.callbackReceiver.handleError(new ErrorPayload(code, message));
+        this.callbackReceiver.handleMessagge(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload(code, message)));
     }
 
     private boolean ensureConnected() {
