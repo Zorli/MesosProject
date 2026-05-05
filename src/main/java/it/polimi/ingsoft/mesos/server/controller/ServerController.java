@@ -52,7 +52,6 @@ public class ServerController implements Runnable {
     public ServerController(GameFactory gameFactory) {
         this(gameFactory, null);
     }
-
     public ServerController() {this(DefaultGameFactory.getInstance(), null);}
     // --- YELLOW PAGES GETTERS (Usati dalla VirtualView per l'instradamento) ---
 
