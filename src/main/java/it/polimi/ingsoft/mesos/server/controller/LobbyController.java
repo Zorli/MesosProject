@@ -12,6 +12,7 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.SystemJoinPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,12 +54,15 @@ public class LobbyController implements Runnable {
             try {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                switch(cmd.payload()){
-                    case StartLobbyPayload p -> {this.startLobby(sessionId);}
-                    case ExitLobbyPayload p -> {this.exitLobby(sessionId);}
-                    case SystemJoinPayload p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
-                    // aggiustare unicast
-                    default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                try {
+                    switch(cmd.payload()){
+                        case StartLobbyPayload p -> {this.startLobby(sessionId);}
+                        case ExitLobbyPayload p -> {this.exitLobby(sessionId);}
+                        case SystemJoinPayload p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
+                        default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                    }
+                } catch (RuntimeException e) {
+                    this.notifySessionError(sessionId, e);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -74,6 +78,7 @@ public class LobbyController implements Runnable {
         // SOLO se il Model ha dato semaforo verde!
         if (joinedSuccessfully) {
             this.sessions.enterLobby(sessionId, this.lobby.getId());
+            this.notifyLobbySessions(this.payloadMapper.lobbyJoined(nickname, this.lobby));
         }
 
         // Se joinedSuccessfully è false, il Controller NON FA NULLA.
@@ -84,10 +89,12 @@ public class LobbyController implements Runnable {
 
         // Il Model fa controlli, aggiorna i suoi dati e spara il Broadcast.
         // Se tutto va a buon fine (ritorna true), il Controller sposta l'utente nel Registry.
-        if (this.lobby.removePlayer(nickname,null)) {
-            Listener listenerToRemove = (Listener) this.sessions.connectionOf(sessionId);
-            this.lobby.removeListener(listenerToRemove);
+        Listener leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+        if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.sessions.leaveLobby(sessionId);
+            Object payload = this.payloadMapper.lobbyLeft(nickname, this.lobby, this.lobby.getId());
+            leavingListener.notifyUpdate(payload);
+            this.notifyLobbySessions(payload);
         }
         if (this.lobby.isEmpty()) {
             this.sessions.removeLobbyController(this.lobby.getId());
@@ -156,5 +163,21 @@ public class LobbyController implements Runnable {
                 Thread.currentThread().interrupt();
             }
         }, "match-countdown-" + this.lobby.getId()).start();
+    }
+
+    private void notifyLobbySessions(Object payload) {
+        for (ServerSessionRegistry.SessionSnapshot session : this.sessions.sessionsInLobby(this.lobby.getId())) {
+            if (session.connection() instanceof Listener listener) {
+                listener.notifyUpdate(payload);
+            }
+        }
+    }
+
+    private void notifySessionError(String sessionId, RuntimeException exception) {
+        try {
+            Listener listener = this.sessions.getListenerOf(sessionId);
+            listener.notifyUpdate(new ErrorPayload("LOBBY_ACTION_ERROR", exception.getMessage()));
+        } catch (RuntimeException ignored) {
+        }
     }
 }

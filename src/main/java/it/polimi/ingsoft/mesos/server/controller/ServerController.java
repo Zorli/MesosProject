@@ -11,11 +11,10 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ServerController implements Runnable {
@@ -52,7 +51,9 @@ public class ServerController implements Runnable {
     public ServerController(GameFactory gameFactory, ServerSessionRegistry sessions) {
         this(gameFactory,null, sessions);
     }
-    public ServerController() {this(DefaultGameFactory.getInstance(), null);}
+    public ServerController() {
+        this(new ServerSessionRegistry());
+    }
     // --- YELLOW PAGES GETTERS (Usati dalla VirtualView per l'instradamento) ---
 
 //    public LobbyController getLobbyController(int lobbyId) {
@@ -149,8 +150,13 @@ public class ServerController implements Runnable {
         try{
             this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId );
             LobbyController target = this.sessions.getLobbyController(lobbyId);
+            if (target == null) {
+                clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR", "Lobby controller not found: " + lobbyId));
+                return;
+            }
             target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
         }catch (Exception e) {
+            clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR", e.getMessage()));
         }
     }
 

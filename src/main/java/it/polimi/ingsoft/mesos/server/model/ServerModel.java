@@ -72,8 +72,6 @@ public class ServerModel {
             String nickname = this.requireNickname(sessionId);
             Lobby lobby = this.sessions.createLobbyModel(nickname, chosenCapacity);
 
-            lobby.addPlayer(nickname,null);
-
             lobby.addListener(clientView);
             clientView.notifyUpdate(this.payloadMapper.lobbyCreated(nickname, lobby));
 

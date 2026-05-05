@@ -4,6 +4,7 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
@@ -11,6 +12,7 @@ import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -149,19 +151,23 @@ public class GameOrchestrator implements Runnable  {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
                 String nickname = sessions.nicknameOf(sessionId);
-                switch (GameCommandType.fromPayload(cmd.payload())) {
-                    case CHOOSE_CARD -> {
-                        ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
-                        this.chooseCard(nickname, p.cardId);
+                try {
+                    switch (GameCommandType.fromPayload(cmd.payload())) {
+                        case CHOOSE_CARD -> {
+                            ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
+                            this.chooseCard(nickname, p.cardId);
+                        }
+                        case EXTRA_DRAW -> {
+                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
+                            this.extraDrawn(nickname, p.cardId);
+                        }
+                        case MOVE_TOTEM -> {
+                            MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
+                            this.moveTotem(nickname, p.tile);
+                        }
                     }
-                    case EXTRA_DRAW -> {
-                        ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
-                        this.extraDrawn(nickname, p.cardId);
-                    }
-                    case MOVE_TOTEM -> {
-                        MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
-                        this.moveTotem(nickname, p.tile);
-                    }
+                } catch (RuntimeException e) {
+                    this.notifySessionError(sessionId, e);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -284,5 +290,14 @@ public class GameOrchestrator implements Runnable  {
             throw new IllegalArgumentException("Match host nickname cannot be null or blank");
         }
         return hostNickname;
+    }
+
+    private void notifySessionError(String sessionId, RuntimeException exception) {
+        try {
+            if (this.sessions.connectionOf(sessionId) instanceof Listener listener) {
+                listener.notifyUpdate(new ErrorPayload("GAME_ACTION_ERROR", exception.getMessage()));
+            }
+        } catch (RuntimeException ignored) {
+        }
     }
 }
