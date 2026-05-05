@@ -25,6 +25,7 @@ public class LobbyController implements Runnable {
     private final GameFactory gameFactory;
     private final RankingService rankingService;
     private final LobbyPlayerFactory lobbyPlayerFactory;
+    private final PreMatchPayloadMapper payloadMapper;
 
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -39,6 +40,7 @@ public class LobbyController implements Runnable {
         this.gameFactory = gameFactory;
         this.rankingService = rankingService;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     public void enqueueMessage(EnqueuedMessage command) {
@@ -122,6 +124,7 @@ public class LobbyController implements Runnable {
 
                 // C) Lo attacchiamo al nuovo Motore di Gioco
                 if (playerListener != null) {
+                    playerListener.notifyUpdate(this.payloadMapper.lobbyStarted(session.user().getNickname(), this.lobby));
                     orchestrator.getGame().addListener(playerListener);
                     // (Nota: assumo che il tuo Game abbia il metodo addListener che mi hai mostrato nel codice precedente!)
                 }

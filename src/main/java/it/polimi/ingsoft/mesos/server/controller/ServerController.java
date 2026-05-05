@@ -83,12 +83,24 @@ public class ServerController implements Runnable {
             try {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                switch (cmd.payload()){
-                    case AuthenticationPayload p -> {this.authenticate(sessionId, p.nickname);}
-                    case JoinLobbyPayload p -> {this.joinLobby(sessionId, p.lobbyId);}
-                    case CreateLobbyPayload p -> {this.createLobby(sessionId, p.chosenCapacity);}
-                    case ListLobbiesPayload p -> {this.listOpenLobbies(sessionId);}
-                    default -> this.serverModel.reportPhaseError(sessionId,cmd.payload().toString());
+                try {
+                    switch (PreLobbyCommandType.fromPayload(cmd.payload())) {
+                        case AUTHENTICATE -> {
+                            AuthenticationPayload p = (AuthenticationPayload) cmd.payload();
+                            this.authenticate(sessionId, p.nickname);
+                        }
+                        case JOIN_LOBBY -> {
+                            JoinLobbyPayload p = (JoinLobbyPayload) cmd.payload();
+                            this.joinLobby(sessionId, p.lobbyId);
+                        }
+                        case CREATE_LOBBY -> {
+                            CreateLobbyPayload p = (CreateLobbyPayload) cmd.payload();
+                            this.createLobby(sessionId, p.chosenCapacity);
+                        }
+                        case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
+                    }
+                } catch (IllegalArgumentException e) {
+                    this.serverModel.reportPhaseError(sessionId, String.valueOf(cmd.payload()));
                 }
 
             } catch (InterruptedException e) {
@@ -145,7 +157,11 @@ public class ServerController implements Runnable {
     // --- LIFECYCLE DELLA CONNESSIONE --- da spostare in altro luogo
 
     public String registerConnection(PingPongConnection connection) {
-        return this.sessions.registerConnection(connection);
+        String sessionId = this.sessions.registerConnection(connection);
+        if (connection instanceof Listener listener) {
+            this.serverModel.addGlobalListener(sessionId, listener);
+        }
+        return sessionId;
     }
 
     public void recordPong(String sessionId) {
@@ -153,6 +169,8 @@ public class ServerController implements Runnable {
     }
 
     public void disconnectSession(String sessionId) {
+        this.serverModel.removeGlobalListener(sessionId);
+
         ServerSessionRegistry.SessionSnapshot snapshot;
         try {
             snapshot = this.sessions.snapshotOf(sessionId);

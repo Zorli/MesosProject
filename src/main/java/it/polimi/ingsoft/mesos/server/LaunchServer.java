@@ -47,8 +47,7 @@ public final class LaunchServer {
             // C. The globally shared Message Router
             MessageRouter router = new MessageRouter(sessions, serverController);
 
-            // Start the Controller worker threads (to read from their queues)
-            new Thread(serverController, "ServerController-Worker").start();
+            
 
             // ==========================================
             // 2. NETWORK LAYERS SETUP

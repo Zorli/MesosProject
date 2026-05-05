@@ -1,9 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 
@@ -49,7 +47,7 @@ public class ServerModel {
 
     public void authenticate(String sessionId, String nickname, Listener clientView) {
         try {
-            User user = this.sessions.authenticate(sessionId, nickname);
+            this.sessions.authenticate(sessionId, nickname);
 
             clientView.notifyUpdate(this.payloadMapper.authenticated(nickname));
 
@@ -96,7 +94,7 @@ public class ServerModel {
             }
         } catch (Exception e) {
             // UNICAST DI ERRORE DAL MODEL (MVC Puro)
-            clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR " , e.getMessage()));
+            clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR" , e.getMessage()));
             throw e; // Rilanciamo per bloccare il Controller
         }
     }
