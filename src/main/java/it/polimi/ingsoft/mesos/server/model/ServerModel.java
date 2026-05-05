@@ -65,7 +65,10 @@ public class ServerModel {
     public List<Lobby> listOpenLobbies(String sessionId) {
         try {
             List<Lobby> openLobbies = this.sessions.getOpenLobbies();
-            //da capire il payload qui
+            Listener listener = this.globalListeners.get(sessionId);
+            if (listener != null) {
+                listener.notifyUpdate(this.payloadMapper.lobbyList(openLobbies));
+            }
             return openLobbies;
         } catch (Exception e) {
             this.sendUnicastError(sessionId, "LIST_LOBBY_ERROR", "Errore nel recupero delle lobby.");
@@ -104,7 +107,12 @@ public class ServerModel {
                 lobby.addListener(listener);
             }
 
-            lobby.addPlayer(nickname);
+            if (!lobby.addPlayer(nickname)) {
+                return null;
+            }
+            if (listener != null) {
+                listener.notifyUpdate(this.payloadMapper.lobbyJoined(nickname, lobby));
+            }
             // Nota: Qui il broadcast alla lobby avverrà o tramite il LobbyController
             // o direttamente notificando la lista interna della classe Lobby!
 

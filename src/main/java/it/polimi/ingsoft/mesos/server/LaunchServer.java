@@ -33,6 +33,8 @@ public final class LaunchServer {
             //ServerServices serverServices = ServerServicesFactory.create(ServerRuntimeConfig.fromEnvironment(environment));
             //ServerController serverController = new ServerController(serverServices.rankingService());
             ServerController serverController = new ServerController();
+            Thread serverControllerThread = new Thread(serverController, "mesos-server-controller");
+            serverControllerThread.start();
             int rmiPort = resolveRmiPort(environment);
             startRmiServer(serverController, rmiPort, out);
 

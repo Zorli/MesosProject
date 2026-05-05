@@ -10,11 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-<<<<<<< refactor/total_refactorV1
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-=======
->>>>>>> develop
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -154,13 +150,19 @@ public class GameOrchestrator implements Runnable  {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
                 String nickname = sessions.nicknameOf(sessionId);
-                switch(cmd.payload()){
-                    //sistemare con sessions di serverRegistry
-                    case ChooseCardPayload p -> {this.chooseCard(nickname, p.cardId);}
-                    case ExtraDrawPayload p -> {this.extraDrawn(nickname, p.cardId);}
-                    case MoveTotemPayload p -> {this.moveTotem(nickname, p.tile);}
-                    // aggiustare unicast
-                    default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                switch (GameCommandType.fromPayload(cmd.payload())) {
+                    case CHOOSE_CARD -> {
+                        ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
+                        this.chooseCard(nickname, p.cardId);
+                    }
+                    case EXTRA_DRAW -> {
+                        ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
+                        this.extraDrawn(nickname, p.cardId);
+                    }
+                    case MOVE_TOTEM -> {
+                        MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
+                        this.moveTotem(nickname, p.tile);
+                    }
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

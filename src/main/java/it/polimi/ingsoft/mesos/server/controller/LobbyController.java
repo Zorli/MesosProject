@@ -9,8 +9,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +22,7 @@ public class LobbyController implements Runnable {
     private final GameFactory gameFactory;
     private final RankingService rankingService;
     private final LobbyPlayerFactory lobbyPlayerFactory;
+    private final PreMatchPayloadMapper payloadMapper;
 
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -38,6 +37,7 @@ public class LobbyController implements Runnable {
         this.gameFactory = gameFactory;
         this.rankingService = rankingService;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     public void enqueueMessage(EnqueuedMessage command) {
@@ -50,11 +50,9 @@ public class LobbyController implements Runnable {
             try {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                switch(cmd.payload()){
-                    case StartLobbyPayload p -> {this.startLobby(sessionId);}
-                    case ExitLobbyPayload p -> {this.exitLobby(sessionId);}
-                    // aggiustare unicast
-                    default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                switch (LobbyCommandType.fromPayload(cmd.payload())) {
+                    case START_LOBBY -> this.startLobby(sessionId);
+                    case EXIT_LOBBY -> this.exitLobby(sessionId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -108,6 +106,7 @@ public class LobbyController implements Runnable {
 
                 // C) Lo attacchiamo al nuovo Motore di Gioco
                 if (playerListener != null) {
+                    playerListener.notifyUpdate(this.payloadMapper.lobbyStarted(session.user().getNickname(), this.lobby));
                     orchestrator.getGame().addListener(playerListener);
                     // (Nota: assumo che il tuo Game abbia il metodo addListener che mi hai mostrato nel codice precedente!)
                 }
@@ -116,6 +115,7 @@ public class LobbyController implements Runnable {
             // 4. Stacchiamo tutti dalla vecchia Lobby, ormai diventata inutile
             this.lobby.clearListeners();
             this.sessions.registerGameOrchestrator(this.lobby.getId(), orchestrator);
+            new Thread(orchestrator, "game-orchestrator-" + this.lobby.getId()).start();
             // ...e cancelliamo noi stessi dal database, dato che il nostro lavoro qui è finito!
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());

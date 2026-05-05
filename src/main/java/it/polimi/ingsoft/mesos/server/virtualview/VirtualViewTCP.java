@@ -187,6 +187,10 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
             return;
         }
+        if (payload instanceof LobbyListPayload lobbyListPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
+            return;
+        }
         if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
             if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED){
             }
