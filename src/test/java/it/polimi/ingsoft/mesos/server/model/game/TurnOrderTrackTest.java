@@ -41,6 +41,9 @@ class TurnOrderTrackTest {
         Player bob = player("Bob", TotemColor.BLUE);
         TurnOrderTrack turnOrderTrack = new TurnOrderTrack(List.of(alice, bob), 1, 2, RoundPhase.PLAYER_DRAWS);
 
+        assertThrows(IllegalArgumentException.class, () -> turnOrderTrack.setNewOrder(null));
+        assertThrows(IllegalArgumentException.class, () -> turnOrderTrack.setNewOrder(List.of()));
+
         turnOrderTrack.setNewOrder(List.of(bob, alice));
         List<Player> snapshot = turnOrderTrack.getTurnOrder();
 
