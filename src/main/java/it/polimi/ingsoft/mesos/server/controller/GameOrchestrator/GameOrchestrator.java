@@ -149,13 +149,23 @@ public class GameOrchestrator implements Runnable  {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
                 String nickname = sessions.nicknameOf(sessionId);
-                switch(cmd.payload()){
-                    //sistemare con sessions di serverRegistry
-                    case ChooseCardPayload p -> {this.chooseCard(nickname, p.cardId);}
-                    case ExtraDrawPayload p -> {this.extraDrawn(nickname, p.cardId);}
-                    case MoveTotemPayload p -> {this.moveTotem(nickname, p.tile);}
-                    // aggiustare unicast
-                    default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                try {
+                    switch (GameCommandType.fromPayload(cmd.payload())) {
+                        case CHOOSE_CARD -> {
+                            ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
+                            this.chooseCard(nickname, p.cardId);
+                        }
+                        case EXTRA_DRAW -> {
+                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
+                            this.extraDrawn(nickname, p.cardId);
+                        }
+                        case MOVE_TOTEM -> {
+                            MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
+                            this.moveTotem(nickname, p.tile);
+                        }
+                    }
+                } catch (RuntimeException e) {
+                    this.notifyPhaseError(sessionId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -278,5 +288,12 @@ public class GameOrchestrator implements Runnable  {
             throw new IllegalArgumentException("Match host nickname cannot be null or blank");
         }
         return hostNickname;
+    }
+
+    private void notifyPhaseError(String sessionId) {
+        try {
+            this.game.notifyActionError(this.sessions.getListenerOf(sessionId));
+        } catch (RuntimeException ignored) {
+        }
     }
 }

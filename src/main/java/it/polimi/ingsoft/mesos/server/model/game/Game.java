@@ -175,6 +175,12 @@ public class Game {
         this.notifyListeners(GamePayloadMapper.toErrorPayload(code, message));
     }
 
+    public void notifyActionError(Listener target) {
+        if (target != null) {
+            target.notifyUpdate(GamePayloadMapper.toErrorPayload("GAME_ACTION_ERROR", "Action non permitted in this phase."));
+        }
+    }
+
     // Setters
 
     /**
@@ -379,7 +385,7 @@ public class Game {
      * Verifies that the chosen card is currently drawable and removes it from the correct board row.
      *
      * @param player player attempting the draw
-     * @param cardId chosen board card
+     * @param card chosen board card
      * @return board row the card was removed from
      */
     private ChosenCardResult validateAndRemoveChosenCard(Player player, Card card) {
@@ -472,7 +478,7 @@ public class Game {
      * Verifies that the requested extra-draw card is present and drawable, then removes it.
      *
      * @param player player performing the extra draw
-     * @param cardId chosen extra-draw card
+     * @param card chosen extra-draw card
      * @return board row the card was removed from
      */
     private ChosenCardResult validateAndRemoveExtraDrawCard(Player player, Card card) {

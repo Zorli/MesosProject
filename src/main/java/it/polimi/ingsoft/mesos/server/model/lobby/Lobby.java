@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
+import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
@@ -25,6 +26,7 @@ public class Lobby {
     private long stateVersion;
 
     private final transient List<Listener> listeners;
+    private final transient PreMatchPayloadMapper payloadMapper;
 
     public Lobby(int id, String hostNickname, int capacity) {
         if (capacity < MIN_PLAYERS || capacity > MAX_PLAYERS) {
@@ -40,6 +42,7 @@ public class Lobby {
 
         this.stateVersion = 0L;
         this.listeners = new ArrayList<>();
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     // --- GESTIONE LISTENER (Identica a Game) ---
@@ -58,16 +61,51 @@ public class Lobby {
     // --- METODI PUBBLICI (Wrapper chiamati dai Controller) ---
 
     public boolean startMatch(String nickname) {
-        return this.executeLobbyAction(() -> this.startMatchInternal(nickname));
+        // Passiamo null come target d'errore -> BROADCAST
+        return this.executeLobbyAction(() -> this.startMatchInternal(nickname), null);
     }
 
-    public boolean addPlayer(String nickname) {
-        return this.executeLobbyAction(() -> this.addPlayerInternal(nickname));
+    public boolean addPlayer(String nickname, Listener requesterView) {
+        // Passiamo requesterView come target d'errore -> UNICAST a chi ha sbagliato
+        return this.executeLobbyAction(() -> {
+            this.addPlayerInternal(nickname);
+            this.addListener(requesterView);
+        }, requesterView);
     }
 
-    public boolean removePlayer(String nickname) {
-        return this.executeLobbyAction(() -> this.removePlayerInternal(nickname));
+    public boolean removePlayer(String nickname, Listener requesterView) {
+        // Passiamo null come target d'errore -> BROADCAST
+        // (Nota: requesterView ci serve comunque per rimuoverlo dalla lista se ha successo!)
+        return this.executeLobbyAction(() -> {
+            this.removePlayerInternal(nickname);
+            this.removeListener(requesterView);
+        }, null);
     }
+
+    public void notifyActionError(Listener target) {
+        if (target != null) {
+            target.notifyUpdate(new ErrorPayload("PHASE_ERROR", "Action non permitted in this phase."));
+        }
+    }
+
+    public void notifyPlayerJoined(String nickname) {
+        this.notifyListeners(this.payloadMapper.lobbyJoined(nickname, this));
+    }
+
+    public void notifyPlayerLeft(String nickname, Listener leavingListener) {
+        Object payload = this.payloadMapper.lobbyLeft(nickname, this, this.id);
+        if (leavingListener != null) {
+            leavingListener.notifyUpdate(payload);
+        }
+        this.notifyListeners(payload);
+    }
+
+    public void notifyMatchStarted(String nickname, Listener target) {
+        if (target != null) {
+            target.notifyUpdate(this.payloadMapper.lobbyStarted(nickname, this));
+        }
+    }
+
 
     // --- METODI PRIVATI (Logica interna e Check di dominio) ---
 
@@ -137,18 +175,30 @@ public class Lobby {
      * Ritorna TRUE se l'azione ha avuto successo, FALSE se c'è stata un'eccezione,
      * permettendo al Controller di aggiornare la FSM di conseguenza.
      */
-    private boolean executeLobbyAction(Runnable action) {
+    private boolean executeLobbyAction(Runnable action, Listener errorUnicastTarget) {
         long previousVersion = this.stateVersion;
         try {
             action.run();
             if (this.stateVersion != previousVersion) {
-                // Se lo stato è cambiato, inviamo a tutti lo stato aggiornato
+                // SUCCESSO: Broadcast sempre a tutti del nuovo stato (LobbyPayload)
                 //this.notifyListeners(this.buildPayload());
             }
             return true;
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            // BROADCAST DELL'ERRORE A TUTTI (come richiesto)
-            this.notifyListeners(new ErrorPayload(exception.getClass().getSimpleName(), exception.getMessage()));
+
+            ErrorPayload errorPayload = new ErrorPayload(
+                    exception.getClass().getSimpleName(),
+                    exception.getMessage()
+            );
+
+            // GESTIONE DINAMICA DELL'ERRORE
+            if (errorUnicastTarget != null) {
+                // Caso AddPlayer: Unicast al diretto interessato
+                errorUnicastTarget.notifyUpdate(errorPayload);
+            } else {
+                // Caso StartMatch / RemovePlayer: Broadcast a tutta la lobby
+                this.notifyListeners(errorPayload);
+            }
             return false;
         }
     }

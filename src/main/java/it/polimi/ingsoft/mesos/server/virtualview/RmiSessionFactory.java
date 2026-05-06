@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
@@ -20,14 +21,16 @@ import java.rmi.server.UnicastRemoteObject;
  */
 public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnectionService {
     private final ServerController serverController;
+    private final MessageRouter router;
 
-    public RmiSessionFactory(ServerController serverController) throws RemoteException {
+    public RmiSessionFactory(ServerController serverController, MessageRouter router) throws RemoteException {
         super();
         this.serverController = serverController;
+        this.router = router;
     }
 
     @Override
     public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-        return new VirtualViewRMI(this.serverController, clientCallback);
+        return new VirtualViewRMI(this.serverController, clientCallback, this.router);
     }
 }

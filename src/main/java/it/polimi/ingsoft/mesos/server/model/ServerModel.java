@@ -1,9 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.user.User;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 
@@ -41,78 +39,69 @@ public class ServerModel {
         }
     }
 
-    public void reportPhaseError(String sessionId, String actionName) {
-        this.sendUnicastError(sessionId, "PHASE_ERROR", "Action '" + actionName + "' non permitted in this phase.");
+    public void reportPhaseError(String sessionId) {
+        this.sendUnicastError(sessionId, "PHASE_ERROR", "Action non permitted in this phase.");
+    }
+
+    public void reportJoinError(String sessionId, String message) {
+        this.sendUnicastError(sessionId, "JOIN_ERROR", message);
+    }
+
+    public void reportRoutingError(String sessionId, String message) {
+        this.sendUnicastError(sessionId, "ROUTING_ERROR", message);
     }
 
     // --- METODI DI BUSINESS (Fase PRE-LOBBY) ---
 
-    public User authenticate(String sessionId, String nickname) {
+    public void authenticate(String sessionId, String nickname, Listener clientView) {
         try {
-            User user = this.sessions.authenticate(sessionId, nickname);
-            Listener listener = this.globalListeners.get(sessionId);
-            if (listener != null) {
-                listener.notifyUpdate(this.payloadMapper.authenticated(nickname));
-            }
-            return user;
+            this.sessions.authenticate(sessionId, nickname);
+
+            clientView.notifyUpdate(this.payloadMapper.authenticated(nickname));
+
         } catch (IllegalArgumentException | IllegalStateException e) {
-            // Unicast di ERRORE puro dal Model
-            this.sendUnicastError(sessionId, "AUTH_ERROR", e.getMessage());
-            return null;
+            clientView.notifyUpdate(new ErrorPayload("AUTH_ERROR", e.getMessage()));
         }
     }
 
-    public List<Lobby> listOpenLobbies(String sessionId) {
+    public void listOpenLobbies(String sessionId, Listener clientView) {
         try {
             List<Lobby> openLobbies = this.sessions.getOpenLobbies();
-            //da capire il payload qui
-            return openLobbies;
+            clientView.notifyUpdate(this.payloadMapper.lobbyList(openLobbies));
+
         } catch (Exception e) {
-            this.sendUnicastError(sessionId, "LIST_LOBBY_ERROR", "Errore nel recupero delle lobby.");
-            return null;
+            clientView.notifyUpdate(new ErrorPayload("LIST_OPEN_ERROR", e.getMessage()));
         }
     }
 
-    public Lobby createLobby(String sessionId, int chosenCapacity) {
+    public Lobby createLobby(String sessionId, int chosenCapacity, Listener clientView) {
         try {
             this.ensureSessionCanEnterLobby(sessionId);
             String nickname = this.requireNickname(sessionId);
-
             Lobby lobby = this.sessions.createLobbyModel(nickname, chosenCapacity);
 
-            // Unicast di Successo (Lobby creata)
-            Listener listener = this.globalListeners.get(sessionId);
-            if (listener != null) {
-                lobby.addListener(listener);
-                listener.notifyUpdate(this.payloadMapper.lobbyCreated(nickname, lobby));
-            }
-            return lobby; // Il Controller lo userà per fare: sessions.enterLobby()
+            lobby.addListener(clientView);
+            clientView.notifyUpdate(this.payloadMapper.lobbyCreated(nickname, lobby));
+
+            return lobby;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            this.sendUnicastError(sessionId, "CREATE_LOBBY_ERROR", e.getMessage());
+            clientView.notifyUpdate(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
             return null;
         }
     }
 
-    public Lobby joinLobby(String sessionId, int lobbyId) {
+    public void joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
         try {
             this.ensureSessionCanEnterLobby(sessionId);
-            String nickname = this.requireNickname(sessionId);
-            Lobby lobby = this.sessions.requireLobbyModel(lobbyId);
-            Listener listener = this.globalListeners.get(sessionId);
-            if (listener != null) {
-                lobby.addListener(listener);
+
+            if (this.sessions.getLobbyModel(lobbyId).isEmpty()) {
+                throw new IllegalArgumentException("La lobby richiesta non esiste.");
             }
-
-            lobby.addPlayer(nickname);
-            // Nota: Qui il broadcast alla lobby avverrà o tramite il LobbyController
-            // o direttamente notificando la lista interna della classe Lobby!
-
-            return lobby; // Ritorna l'oggetto così il Controller fa sessions.enterLobby() e lo passa al LobbyController
-
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            this.sendUnicastError(sessionId, "JOIN_LOBBY_ERROR", e.getMessage());
-            return null;
+        } catch (Exception e) {
+            // UNICAST DI ERRORE DAL MODEL (MVC Puro)
+            clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR" , e.getMessage()));
+            throw e; // Rilanciamo per bloccare il Controller
         }
     }
 
@@ -122,7 +111,6 @@ public class ServerModel {
         if (this.sessions.lobbyIdOf(sessionId) != null) {
             throw new IllegalStateException("Already in a lobby.");
         }
-        //??
         String nickname = this.requireNickname(sessionId);
         if (this.sessions.isPlayerInAnyLobby(nickname)) {
             throw new IllegalStateException("you're nickname is alredy in a lobby.");

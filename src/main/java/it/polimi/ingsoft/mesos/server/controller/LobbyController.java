@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.SystemJoinPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,11 +51,15 @@ public class LobbyController implements Runnable {
             try {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                switch(cmd.payload()){
-                    case StartLobbyPayload p -> {this.startLobby(sessionId);}
-                    case ExitLobbyPayload p -> {this.exitLobby(sessionId);}
-                    // aggiustare unicast
-                    default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                try {
+                    switch(cmd.payload()){
+                        case StartLobbyPayload p -> {this.startLobby(sessionId);}
+                        case ExitLobbyPayload p -> {this.exitLobby(sessionId);}
+                        case SystemJoinPayload p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
+                        default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                    }
+                } catch (RuntimeException e) {
+                    this.notifyPhaseError(sessionId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -62,16 +67,29 @@ public class LobbyController implements Runnable {
             }
         }
     }
+    private void joinUser(String sessionId, String nickname, Listener clientView) {
+        // 1. Deleghiamo al Model (che ora gestisce tutto: logica, Unicast di errore e Broadcast)
+        boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView);
 
+        // 2. Il Controller agisce sulla rete/macchina a stati GLOBALE
+        // SOLO se il Model ha dato semaforo verde!
+        if (joinedSuccessfully) {
+            this.sessions.enterLobby(sessionId, this.lobby.getId());
+            this.lobby.notifyPlayerJoined(nickname);
+        }
+
+        // Se joinedSuccessfully è false, il Controller NON FA NULLA.
+        // Il Model si è già occupato di inviare l'ErrorPayload (Unicast) al clientView.
+    }
     public void exitLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
 
         // Il Model fa controlli, aggiorna i suoi dati e spara il Broadcast.
         // Se tutto va a buon fine (ritorna true), il Controller sposta l'utente nel Registry.
-        if (this.lobby.removePlayer(nickname)) {
-            Listener listenerToRemove = (Listener) this.sessions.connectionOf(sessionId);
-            this.lobby.removeListener(listenerToRemove);
+        Listener leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+        if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.sessions.leaveLobby(sessionId);
+            this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
         if (this.lobby.isEmpty()) {
             this.sessions.removeLobbyController(this.lobby.getId());
@@ -108,6 +126,7 @@ public class LobbyController implements Runnable {
 
                 // C) Lo attacchiamo al nuovo Motore di Gioco
                 if (playerListener != null) {
+                    this.lobby.notifyMatchStarted(session.user().getNickname(), playerListener);
                     orchestrator.getGame().addListener(playerListener);
                     // (Nota: assumo che il tuo Game abbia il metodo addListener che mi hai mostrato nel codice precedente!)
                 }
@@ -116,10 +135,11 @@ public class LobbyController implements Runnable {
             // 4. Stacchiamo tutti dalla vecchia Lobby, ormai diventata inutile
             this.lobby.clearListeners();
             this.sessions.registerGameOrchestrator(this.lobby.getId(), orchestrator);
-            // ...e cancelliamo noi stessi dal database, dato che il nostro lavoro qui è finito!
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
-            // 6. Thread classico per i 5 secondi di attesa (invariato)
+            Thread gameWorker = new Thread(orchestrator, "Game-" + this.lobby.getId() + "-Worker");
+            gameWorker.start();
+            Thread.currentThread().interrupt();
             this.startMatchCountdown(orchestrator);
         }
     }
@@ -138,5 +158,13 @@ public class LobbyController implements Runnable {
                 Thread.currentThread().interrupt();
             }
         }, "match-countdown-" + this.lobby.getId()).start();
+    }
+
+    private void notifyPhaseError(String sessionId) {
+        try {
+            Listener listener = this.sessions.getListenerOf(sessionId);
+            this.lobby.notifyActionError(listener);
+        } catch (RuntimeException ignored) {
+        }
     }
 }

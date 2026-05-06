@@ -37,12 +37,12 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     private final MessageRouter router;
     private final PreMatchPayloadMapper payloadMapper;
 
-    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback) throws RemoteException {
+    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router) throws RemoteException {
         super();
         this.serverController = serverController;
         this.clientCallback = clientCallback;
         this.sessionId = this.serverController.registerConnection(this);
-        this.router = new MessageRouter(serverController.getSessionRegistry(),  serverController);
+        this.router = router;
         this.payloadMapper = new PreMatchPayloadMapper();
     }
 
@@ -121,6 +121,10 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             }
             if (payload instanceof ErrorPayload errorPayload) {
                 this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+                return;
+            }
+            if (payload instanceof LobbyListPayload lobbyListPayload) {
+                this.clientCallback.handleLobbyList(lobbyListPayload);
                 return;
             }
             if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
