@@ -1,11 +1,187 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
-<StackPane xmlns="http://javafx.com/javafx/21"
-           xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <Label text="Mesos GUI stub" />
-    </children>
-</StackPane>
+<BorderPane styleClass="app-shell"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1">
+    <top>
+        <HBox fx:id="topBar" alignment="CENTER_LEFT" spacing="18" styleClass="top-bar">
+            <padding>
+                <Insets top="16" right="28" bottom="16" left="28"/>
+            </padding>
+            <VBox spacing="0">
+                <Label text="MESOS" styleClass="brand-title"/>
+                <Label text="desktop command table" styleClass="brand-subtitle"/>
+            </VBox>
+            <HBox spacing="8" styleClass="nav-rail">
+                <Label text="Login" styleClass="nav-chip"/>
+                <Label text="Lobby" styleClass="nav-chip"/>
+                <Label text="Match" styleClass="nav-chip"/>
+                <Label text="Ranking" styleClass="nav-chip"/>
+            </HBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="sessione" styleClass="muted"/>
+            <Label fx:id="sessionNicknameLabel" text="Guest" styleClass="session-pill"/>
+        </HBox>
+    </top>
+
+    <center>
+        <StackPane fx:id="pages" styleClass="page-stack">
+            <StackPane fx:id="loginPage" styleClass="login-page">
+                <HBox alignment="CENTER" spacing="34" styleClass="login-overlay">
+                    <VBox alignment="CENTER" spacing="16" minWidth="410" maxWidth="450" minHeight="0" maxHeight="310" styleClass="login-panel">
+                        <VBox alignment="CENTER" spacing="6">
+                            <Label text="User Login" styleClass="panel-title-large"/>
+
+                        </VBox>
+                        <Region maxWidth="92" minHeight="2" prefHeight="2" styleClass="login-divider"/>
+                        <Label text="Nickname" maxWidth="Infinity" styleClass="field-label"/>
+                        <TextField fx:id="nicknameField"
+                                   promptText="es. Tartufo"
+                                   onAction="#handleLogin"
+                                   styleClass="text-input"/>
+                        <Button text="Log in" maxWidth="Infinity" onAction="#handleLogin" styleClass="primary-button"/>
+                        <Label fx:id="loginStatusLabel" text="" wrapText="true" styleClass="status-text"/>
+                    </VBox>
+                </HBox>
+            </StackPane>
+
+            <VBox fx:id="lobbyPage" spacing="18" styleClass="page lobby-page">
+                <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
+                    <VBox spacing="2">
+                        <Label text="Lobby attive" styleClass="section-title"/>
+                        <Label fx:id="lobbyStatusLabel" text="Scegli una lobby o creane una nuova." styleClass="section-subtitle"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lobbyCountLabel" text="0 tavoli" styleClass="session-pill"/>
+                    <Button text="Ranking" onAction="#handleRanking" styleClass="ghost-button"/>
+                    <Button text="Aggiorna" onAction="#handleRefreshLobbies" styleClass="secondary-button"/>
+                </HBox>
+
+                <HBox spacing="18" VBox.vgrow="ALWAYS">
+                    <VBox spacing="14" styleClass="surface-panel list-panel" HBox.hgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="Tavoli disponibili" styleClass="panel-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="in tempo reale" styleClass="status-pill"/>
+                        </HBox>
+                        <ScrollPane fx:id="lobbyScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="clean-scroll">
+                            <VBox fx:id="lobbyListContainer" spacing="12"/>
+                        </ScrollPane>
+                    </VBox>
+
+                    <VBox spacing="16" minWidth="316" prefWidth="340" styleClass="surface-panel command-panel">
+                        <VBox spacing="2">
+                            <Label text="Crea tavolo" styleClass="panel-title-large"/>
+                            <Label text="Imposta la capienza e resta host della lobby." wrapText="true" styleClass="muted"/>
+                        </VBox>
+                        <Label text="Capienza" styleClass="field-label"/>
+                        <ComboBox fx:id="capacityComboBox" maxWidth="Infinity"/>
+                        <Button text="Crea lobby" onAction="#handleCreateLobby" maxWidth="Infinity" styleClass="primary-button"/>
+                        <Button fx:id="startLobbyButton"
+                                text="Avvia partita"
+                                disable="true"
+                                onAction="#handleStartLobby"
+                                maxWidth="Infinity"
+                                styleClass="secondary-button"/>
+                        <VBox spacing="8" styleClass="hint-panel">
+                            <Label text="Architettura client" styleClass="hint-title"/>
+                            <Label text="GUI -> ServerProxy -> server" styleClass="muted"/>
+                            <Label text="server -> VirtualServer -> GUI" styleClass="muted"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox fx:id="gamePage" spacing="14" styleClass="page game-page">
+                <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
+                    <VBox spacing="2">
+                        <Label fx:id="matchTitleLabel" text="Partita" styleClass="section-title"/>
+                        <Label fx:id="matchMetaLabel" text="Era - / stato -" styleClass="section-subtitle"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="turnLabel" text="Turno in attesa" styleClass="turn-pill"/>
+                    <Button text="Fine mock" onAction="#handleMockEndMatch" styleClass="ghost-button"/>
+                </HBox>
+
+                <HBox spacing="16" VBox.vgrow="ALWAYS">
+                    <VBox spacing="14" styleClass="board-panel" HBox.hgrow="ALWAYS">
+                        <VBox spacing="8" styleClass="market-band">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Mercato superiore" styleClass="panel-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label text="clicca una carta" styleClass="micro-pill"/>
+                            </HBox>
+                            <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
+                                <HBox fx:id="upperRowContainer" spacing="12" styleClass="card-row"/>
+                            </ScrollPane>
+                        </VBox>
+                        <VBox spacing="8" styleClass="market-band">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Mercato inferiore" styleClass="panel-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label text="scelta + pesca" styleClass="micro-pill"/>
+                            </HBox>
+                            <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
+                                <HBox fx:id="lowerRowContainer" spacing="12" styleClass="card-row"/>
+                            </ScrollPane>
+                        </VBox>
+                        <VBox spacing="8" styleClass="offer-band">
+                            <Label text="Percorso offerta" styleClass="panel-title"/>
+                            <HBox fx:id="offerPathContainer" spacing="10"/>
+                        </VBox>
+                    </VBox>
+
+                    <VBox spacing="14" minWidth="318" prefWidth="340">
+                        <VBox spacing="10" styleClass="surface-panel">
+                            <Label text="Giocatori" styleClass="panel-title"/>
+                            <VBox fx:id="playerListContainer" spacing="10"/>
+                        </VBox>
+                        <VBox spacing="10" styleClass="surface-panel action-panel">
+                            <Label text="Azioni turno" styleClass="panel-title-large"/>
+                            <Label fx:id="selectedCardLabel" text="Nessuna carta selezionata" wrapText="true" styleClass="status-text"/>
+                            <HBox spacing="8">
+                                <Button text="A" onAction="#handleMoveTotemA" styleClass="tile-button"/>
+                                <Button text="B" onAction="#handleMoveTotemB" styleClass="tile-button"/>
+                                <Button text="C" onAction="#handleMoveTotemC" styleClass="tile-button"/>
+                            </HBox>
+                            <Button text="Scegli carta" onAction="#handleChooseCard" maxWidth="Infinity" styleClass="primary-button"/>
+                            <Button text="Pesca extra" onAction="#handleExtraDraw" maxWidth="Infinity" styleClass="secondary-button"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+
+                <VBox spacing="8" styleClass="surface-panel tribe-panel">
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="Tribu" styleClass="panel-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label text="carte personali" styleClass="micro-pill"/>
+                    </HBox>
+                    <ScrollPane fitToHeight="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
+                        <HBox fx:id="tribeCardsContainer" spacing="10"/>
+                    </ScrollPane>
+                </VBox>
+            </VBox>
+
+            <VBox fx:id="endPage" alignment="CENTER" spacing="22" styleClass="page end-page">
+                <VBox alignment="CENTER" spacing="4">
+                    <Label text="Partita conclusa" styleClass="hero-title"/>
+                    <Label text="Classifica mock integrata in attesa del ranking reale." styleClass="hero-copy"/>
+                </VBox>
+                <VBox fx:id="finalRankingContainer" spacing="10" maxWidth="560" styleClass="surface-panel final-panel"/>
+                <Button text="Torna alle lobby" onAction="#handleBackToLobby" styleClass="primary-button"/>
+            </VBox>
+        </StackPane>
+    </center>
+</BorderPane>
