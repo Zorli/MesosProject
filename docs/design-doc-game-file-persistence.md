@@ -28,8 +28,8 @@ This branch is still a draft and is not ready to merge.
 ## Approved Decisions
 
 - Checkpoints are JSON text files with dedicated DTOs.
-- Save failures use strict semantics: the match is frozen and a domain exception
-  is raised instead of continuing without a reliable checkpoint.
+- Save failures use strict semantics: the match is frozen and the failure is
+  propagated instead of continuing without a reliable checkpoint.
 - Only already-started matches are persisted.
 - Finished matches delete their checkpoint after successful finalization.
 - Checkpoints live under `MESOS_GAME_PERSISTENCE_DIR` when configured, otherwise
@@ -154,21 +154,11 @@ review and aligned with MVC boundaries.
   - Record containing `enabled`, `checkpointDirectory`, and `schemaVersion`.
   - Built from `ServerRuntimeConfig`.
 
-- `MatchPersistenceException`
-  - Base unchecked persistence exception.
-
-- `MatchCheckpointWriteException`
-  - Thrown when a save/delete fails.
-  - `GameOrchestrator` converts this into strict freeze behavior.
-
-- `MatchCheckpointReadException`
-  - Used for unrecoverable read failures.
-
-- `MatchSnapshotValidationException`
-  - Used when JSON is readable but semantically invalid.
-
-- `UnsupportedSnapshotVersionException`
-  - Used when `schemaVersion` is unsupported.
+No custom persistence exception hierarchy is planned. Implementations should use
+standard Java exceptions at the boundary, such as `UncheckedIOException` for file
+I/O failures and `IllegalArgumentException` for invalid snapshot data. The
+application layer freezes the match when a save failure escapes from the
+persistence port.
 
 #### `it.polimi.ingsoft.mesos.server.persistence.game.dto`
 
@@ -395,8 +385,7 @@ Behavior:
 2. Run the action.
 3. If `stateVersion` did not change, do nothing.
 4. If game is active, save snapshot.
-5. If save fails, freeze the match, notify error, and throw
-   `MatchPersistenceFailureException`.
+5. If save fails, freeze the match, notify error, and propagate the failure.
 6. If game is finished and finalization succeeds, delete checkpoint.
 
 Apply the wrapper to:
@@ -549,7 +538,7 @@ If `matchPersistence.save` fails after a valid state change:
 
 1. Freeze the match.
 2. Notify players through the existing error path.
-3. Raise a domain-level persistence failure exception.
+3. Propagate the persistence failure to the caller.
 
 The in-memory state is not rolled back. The match is frozen because allowing more
 actions would break the guarantee that restart restores the latest confirmed
