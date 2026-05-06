@@ -162,42 +162,32 @@ persistence port.
 
 #### `it.polimi.ingsoft.mesos.server.persistence.game.dto`
 
-DTOs must be records or simple immutable classes containing only primitives,
-strings, enum names, lists, maps, and other DTOs. They must not contain `Game`,
-`Player`, `Card`, `Listener`, `GamePayload`, or `ClientPayload`.
+DTOs must be records containing only primitives, strings, enum names, lists,
+maps, and other DTO records. They must not contain `Game`, `Player`, `Card`,
+`Listener`, `GamePayload`, or `ClientPayload`.
+
+To keep the file/class count small, the DTO package should expose only two
+top-level records. Sub-shapes live as nested records inside `SavedMatchSnapshot`.
 
 - `SavedMatchSnapshot`
   - Root checkpoint DTO.
   - Fields: `schemaVersion`, `savedAtUtc`, `game`, `players`, `board`,
     `turnOrder`, `turnState`.
+  - Nested records:
+    - `Game`
+    - `Player`
+    - `Tribe`
+    - `Board`
+    - `OfferSpace`
+    - `StartingBlock`
+    - `TurnOrder`
+    - `TurnState`
 
-- `GameSnapshot`
-  - Fields: `id`, `hostNickname`, `status`, `currentEra`, `stateVersion`.
-
-- `PlayerSnapshot`
-  - Fields: `nickname`, `totem`, `food`, `prestigePoints`, `tribe`.
-
-- `TribeSnapshot`
-  - Fields: `characters`, `buildings`.
-
-- `BuildingCardSnapshot`
+- `SavedCardSnapshot`
+  - Reusable card reference DTO.
   - Fields: `id`, `runtimeState`.
-
-- `BoardSnapshot`
-  - Fields: `upperTribe`, `upperBuildings`, `lowerTribe`, `lowerBuildings`,
-    `tribeDeck`, `buildingDeck`, `offerSpaces`, `startingBlocks`.
-
-- `OfferSpaceSnapshot`
-  - Fields: `code`, `occupiedBy`.
-
-- `StartingBlockSnapshot`
-  - Fields: `position`, `occupiedBy`.
-
-- `TurnOrderSnapshot`
-  - Fields: `nicknames`, `currentPlayerIndex`, `roundNumber`, `phase`.
-
-- `TurnStateSnapshot`
-  - Fields: `phase`, `remainingUpperChoices`, `remainingLowerChoices`.
+  - Used for building cards and any future card with mutable runtime state.
+  - Plain card lists that do not need runtime state can stay as `List<Integer>`.
 
 #### `it.polimi.ingsoft.mesos.server.persistence.game.mapper`
 
@@ -241,20 +231,55 @@ strings, enum names, lists, maps, and other DTOs. They must not contain `Game`,
 
 - `FileMatchPersistence`
   - Concrete `MatchPersistence`.
-  - Owns JSON serialization and filesystem calls.
+  - Owns JSON serialization and coordinates load/save/delete.
   - Suggested constructor:
     - `FileMatchPersistence(Path checkpointDirectory, ObjectMapper objectMapper, Clock clock)`
+  - `save(SavedMatchSnapshot snapshot)`:
+    - validates that the snapshot has a game id;
+    - serializes the DTO to pretty JSON;
+    - asks `CheckpointFileLocator` for the target path;
+    - delegates the safe replace to `AtomicCheckpointWriter`.
+  - `loadActiveMatches()`:
+    - ensures the directory can be inspected;
+    - asks `CheckpointFileLocator` for loadable checkpoint files;
+    - ignores temporary files;
+    - deserializes each JSON file;
+    - quarantines unreadable or invalid files;
+    - returns all valid snapshots without letting one corrupt file block others.
+  - `delete(int gameId)`:
+    - resolves the checkpoint path;
+    - deletes it if present;
+    - ignores missing files.
+  - Does not know how to rebuild `Game`; it returns DTOs only.
 
 - `CheckpointFileLocator`
+  - Owns file naming and file filtering policy.
   - Builds checkpoint paths such as `game-<gameId>.json`.
-  - Filters temporary and corrupt files during load.
+  - Builds temporary paths in the same directory as the target.
+  - Detects loadable checkpoint files.
+  - Excludes:
+    - temporary files;
+    - quarantined `.corrupt-*` files;
+    - unrelated files.
+  - Keeps filename rules out of `FileMatchPersistence`.
 
 - `AtomicCheckpointWriter`
-  - Writes temporary files, flushes/forces data, then atomically moves into place.
+  - Owns crash-safe replacement.
+  - Writes JSON bytes to a temporary file.
+  - Flushes and forces file contents to disk.
+  - Moves the temp file over the target with `ATOMIC_MOVE` and
+    `REPLACE_EXISTING` where supported.
   - Must never truncate an existing valid checkpoint before replacement succeeds.
+  - Cleans up the temp file after failed writes when possible.
+  - Does not parse JSON and does not know checkpoint DTOs.
 
 - `CorruptCheckpointQuarantine`
+  - Owns quarantine policy.
   - Renames invalid checkpoints to `.corrupt-<timestamp>` files.
+  - Preserves the original file for debugging/review instead of deleting it.
+  - Must not prevent other valid checkpoints from loading.
+  - Does not validate JSON itself; it only moves files when asked by
+    `FileMatchPersistence`.
 
 #### `it.polimi.ingsoft.mesos.server.controller.persistence`
 
