@@ -12,7 +12,6 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.SystemJoinPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +25,6 @@ public class LobbyController implements Runnable {
     private final GameFactory gameFactory;
     private final RankingService rankingService;
     private final LobbyPlayerFactory lobbyPlayerFactory;
-    private final PreMatchPayloadMapper payloadMapper;
 
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -41,7 +39,6 @@ public class LobbyController implements Runnable {
         this.gameFactory = gameFactory;
         this.rankingService = rankingService;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
-        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     public void enqueueMessage(EnqueuedMessage command) {
@@ -78,7 +75,7 @@ public class LobbyController implements Runnable {
         // SOLO se il Model ha dato semaforo verde!
         if (joinedSuccessfully) {
             this.sessions.enterLobby(sessionId, this.lobby.getId());
-            this.notifyLobbySessions(this.payloadMapper.lobbyJoined(nickname, this.lobby));
+            this.lobby.notifyPlayerJoined(nickname);
         }
 
         // Se joinedSuccessfully è false, il Controller NON FA NULLA.
@@ -92,9 +89,7 @@ public class LobbyController implements Runnable {
         Listener leavingListener = (Listener) this.sessions.connectionOf(sessionId);
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.sessions.leaveLobby(sessionId);
-            Object payload = this.payloadMapper.lobbyLeft(nickname, this.lobby, this.lobby.getId());
-            leavingListener.notifyUpdate(payload);
-            this.notifyLobbySessions(payload);
+            this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
         if (this.lobby.isEmpty()) {
             this.sessions.removeLobbyController(this.lobby.getId());
@@ -131,7 +126,7 @@ public class LobbyController implements Runnable {
 
                 // C) Lo attacchiamo al nuovo Motore di Gioco
                 if (playerListener != null) {
-                    playerListener.notifyUpdate(this.payloadMapper.lobbyStarted(session.user().getNickname(), this.lobby));
+                    this.lobby.notifyMatchStarted(session.user().getNickname(), playerListener);
                     orchestrator.getGame().addListener(playerListener);
                     // (Nota: assumo che il tuo Game abbia il metodo addListener che mi hai mostrato nel codice precedente!)
                 }
@@ -165,18 +160,10 @@ public class LobbyController implements Runnable {
         }, "match-countdown-" + this.lobby.getId()).start();
     }
 
-    private void notifyLobbySessions(Object payload) {
-        for (ServerSessionRegistry.SessionSnapshot session : this.sessions.sessionsInLobby(this.lobby.getId())) {
-            if (session.connection() instanceof Listener listener) {
-                listener.notifyUpdate(payload);
-            }
-        }
-    }
-
     private void notifySessionError(String sessionId, RuntimeException exception) {
         try {
             Listener listener = this.sessions.getListenerOf(sessionId);
-            listener.notifyUpdate(new ErrorPayload("LOBBY_ACTION_ERROR", exception.getMessage()));
+            this.lobby.notifyActionError(listener, exception);
         } catch (RuntimeException ignored) {
         }
     }

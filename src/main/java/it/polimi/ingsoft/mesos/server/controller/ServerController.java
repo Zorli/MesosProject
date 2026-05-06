@@ -11,7 +11,6 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
@@ -151,13 +150,17 @@ public class ServerController implements Runnable {
             this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId );
             LobbyController target = this.sessions.getLobbyController(lobbyId);
             if (target == null) {
-                clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR", "Lobby controller not found: " + lobbyId));
+                this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
                 return;
             }
             target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
         }catch (Exception e) {
-            clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR", e.getMessage()));
+            this.serverModel.reportJoinError(sessionId, e.getMessage());
         }
+    }
+
+    public void reportRoutingError(String sessionId, String message) {
+        this.serverModel.reportRoutingError(sessionId, message);
     }
 
     // --- LIFECYCLE DELLA CONNESSIONE --- da spostare in altro luogo

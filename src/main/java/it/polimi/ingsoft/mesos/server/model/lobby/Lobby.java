@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
+import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
@@ -25,6 +26,7 @@ public class Lobby {
     private long stateVersion;
 
     private final transient List<Listener> listeners;
+    private final transient PreMatchPayloadMapper payloadMapper;
 
     public Lobby(int id, String hostNickname, int capacity) {
         if (capacity < MIN_PLAYERS || capacity > MAX_PLAYERS) {
@@ -40,6 +42,7 @@ public class Lobby {
 
         this.stateVersion = 0L;
         this.listeners = new ArrayList<>();
+        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     // --- GESTIONE LISTENER (Identica a Game) ---
@@ -77,6 +80,30 @@ public class Lobby {
             this.removePlayerInternal(nickname);
             this.removeListener(requesterView);
         }, null);
+    }
+
+    public void notifyActionError(Listener target, RuntimeException exception) {
+        if (target != null) {
+            target.notifyUpdate(new ErrorPayload("LOBBY_ACTION_ERROR", exception.getMessage()));
+        }
+    }
+
+    public void notifyPlayerJoined(String nickname) {
+        this.notifyListeners(this.payloadMapper.lobbyJoined(nickname, this));
+    }
+
+    public void notifyPlayerLeft(String nickname, Listener leavingListener) {
+        Object payload = this.payloadMapper.lobbyLeft(nickname, this, this.id);
+        if (leavingListener != null) {
+            leavingListener.notifyUpdate(payload);
+        }
+        this.notifyListeners(payload);
+    }
+
+    public void notifyMatchStarted(String nickname, Listener target) {
+        if (target != null) {
+            target.notifyUpdate(this.payloadMapper.lobbyStarted(nickname, this));
+        }
     }
 
 

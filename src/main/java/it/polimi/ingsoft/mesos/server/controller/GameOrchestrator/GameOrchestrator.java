@@ -4,7 +4,6 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
@@ -12,7 +11,6 @@ import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -294,9 +292,7 @@ public class GameOrchestrator implements Runnable  {
 
     private void notifySessionError(String sessionId, RuntimeException exception) {
         try {
-            if (this.sessions.connectionOf(sessionId) instanceof Listener listener) {
-                listener.notifyUpdate(new ErrorPayload("GAME_ACTION_ERROR", exception.getMessage()));
-            }
+            this.game.notifyActionError(this.sessions.getListenerOf(sessionId), exception);
         } catch (RuntimeException ignored) {
         }
     }

@@ -175,6 +175,12 @@ public class Game {
         this.notifyListeners(GamePayloadMapper.toErrorPayload(code, message));
     }
 
+    public void notifyActionError(Listener target, RuntimeException exception) {
+        if (target != null) {
+            target.notifyUpdate(GamePayloadMapper.toErrorPayload("GAME_ACTION_ERROR", exception.getMessage()));
+        }
+    }
+
     // Setters
 
     /**

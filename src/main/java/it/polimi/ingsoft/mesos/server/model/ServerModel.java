@@ -43,6 +43,14 @@ public class ServerModel {
         this.sendUnicastError(sessionId, "PHASE_ERROR", "Action '" + actionName + "' non permitted in this phase.");
     }
 
+    public void reportJoinError(String sessionId, String message) {
+        this.sendUnicastError(sessionId, "JOIN_ERROR", message);
+    }
+
+    public void reportRoutingError(String sessionId, String message) {
+        this.sendUnicastError(sessionId, "ROUTING_ERROR", message);
+    }
+
     // --- METODI DI BUSINESS (Fase PRE-LOBBY) ---
 
     public void authenticate(String sessionId, String nickname, Listener clientView) {

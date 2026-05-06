@@ -32,7 +32,7 @@ public class MessageRouter {
                 if (lobbyController != null) {
                     lobbyController.enqueueMessage(new EnqueuedMessage(sessionId, payload));
                 } else {
-                    System.err.println("Lobby non trovata per instradamento: " + snapshot.lobbyId());
+                    this.serverController.reportRoutingError(sessionId, "Lobby non trovata per instradamento: " + snapshot.lobbyId());
                 }
             }
             case GAME -> {
@@ -40,7 +40,7 @@ public class MessageRouter {
                 if (gameOrchestrator != null) {
                     gameOrchestrator.enqueueMessage(new EnqueuedMessage(sessionId, payload));
                 } else {
-                    System.err.println("Partita non trovata per instradamento: " + snapshot.gameId());
+                    this.serverController.reportRoutingError(sessionId, "Partita non trovata per instradamento: " + snapshot.gameId());
                 }
             }
         }
