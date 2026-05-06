@@ -5,6 +5,8 @@ enum TuiCommandType {
     HELP("help", false, false),
     AUTH("auth <nickname>", true, false),
     LIST_LOBBIES("list-lobbies", false, false),
+    GLOBAL_RANKING("ranking", false, false),
+    MATCH_HISTORY("history [player-count]", false, true),
     CREATE_LOBBY("create-lobby <capacity>", true, true),
     JOIN_LOBBY("join-lobby <lobby-id>", true, true),
     QUIT_LOBBY("quit-lobby", false, false),

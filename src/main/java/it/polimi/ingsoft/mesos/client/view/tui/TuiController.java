@@ -3,8 +3,11 @@ package it.polimi.ingsoft.mesos.client.view.tui;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.IOException;
@@ -107,6 +110,16 @@ public class TuiController implements ClientView {
             case LIST_LOBBIES -> {
                 this.serverProxy.listLobbies();
             }
+            case GLOBAL_RANKING -> {
+                this.serverProxy.listGlobalRanking();
+            }
+            case MATCH_HISTORY -> {
+                if (command.argument() == null) {
+                    this.serverProxy.listMatchHistory();
+                } else {
+                    this.serverProxy.listMatchHistory(command.intArgument());
+                }
+            }
             case CREATE_LOBBY -> {
                 this.serverProxy.createLobby(command.intArgument());
             }
@@ -171,6 +184,21 @@ public class TuiController implements ClientView {
         this.render(this.payloadRenderer.renderGame(payload));
     }
 
+    @Override
+    public synchronized void showGlobalRanking(GlobalRankingPayload payload) {
+        this.render(this.payloadRenderer.renderGlobalRanking(payload));
+    }
+
+    @Override
+    public synchronized void showFinalMatchRanking(FinalMatchRankingPayload payload) {
+        this.render(this.payloadRenderer.renderFinalMatchRanking(payload));
+    }
+
+    @Override
+    public synchronized void showMatchHistory(MatchHistoryPayload payload) {
+        this.render(this.payloadRenderer.renderMatchHistory(payload));
+    }
+
     private void renderHelp() {
         this.render("""
                 General:
@@ -180,6 +208,8 @@ public class TuiController implements ClientView {
 
                 Lobby:
                 list-lobbies
+                ranking
+                history [player-count]
                 create-lobby <capacity>
                 join-lobby <lobby-id>
                 quit-lobby
@@ -193,6 +223,8 @@ public class TuiController implements ClientView {
                 Aliases:
                 exit -> quit
                 lobbies -> list-lobbies
+                leaderboard -> ranking
+                match-history -> history
                 create -> create-lobby
                 join -> join-lobby
                 """);

@@ -12,7 +12,9 @@ import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListGlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListMatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
@@ -95,6 +97,21 @@ public class ServerProxyTCP implements ServerProxy {
     @Override
     public void listLobbies() {
         this.send(new ClientMessage(ClientMessageType.LIST_LOBBIES, new ListLobbiesPayload()));
+    }
+
+    @Override
+    public void listGlobalRanking() {
+        this.send(new ClientMessage(ClientMessageType.LIST_GLOBAL_RANKING, new ListGlobalRankingPayload()));
+    }
+
+    @Override
+    public void listMatchHistory() {
+        this.send(new ClientMessage(ClientMessageType.LIST_MATCH_HISTORY, new ListMatchHistoryPayload()));
+    }
+
+    @Override
+    public void listMatchHistory(int playerCount) {
+        this.send(new ClientMessage(ClientMessageType.LIST_MATCH_HISTORY, new ListMatchHistoryPayload(playerCount)));
     }
 
     @Override

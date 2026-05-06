@@ -76,6 +76,8 @@ public class ClientCommandHandler {
             return switch (type) {
                 case AUTHENTICATE -> GSON.fromJson(payloadElement, AuthenticationPayload.class);
                 case LIST_LOBBIES -> GSON.fromJson(payloadElement, ListLobbiesPayload.class);
+                case LIST_GLOBAL_RANKING -> GSON.fromJson(payloadElement, ListGlobalRankingPayload.class);
+                case LIST_MATCH_HISTORY -> GSON.fromJson(payloadElement, ListMatchHistoryPayload.class);
                 case CREATE_LOBBY -> GSON.fromJson(payloadElement, CreateLobbyPayload.class);
                 case JOIN_LOBBY   -> GSON.fromJson(payloadElement, JoinLobbyPayload.class);
                 case EXIT_LOBBY   -> GSON.fromJson(payloadElement, ExitLobbyPayload.class);

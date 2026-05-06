@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 /**
  * Runtime service container for the server application.
  *
- * @param rankingService ranking service selected for the current runtime mode; nullable when DB is disabled
+ * @param rankingService ranking service selected for the current runtime mode
  */
 public record ServerServices(RankingService rankingService) {
 }

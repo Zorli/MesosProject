@@ -1,10 +1,19 @@
 package it.polimi.ingsoft.mesos.client.serverproxy;
 
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingDeltaPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingStatus;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingEntryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -13,12 +22,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VirtualServerTCPTest {
+    private static final Gson GSON = new Gson();
 
     @Test
     void serverClosedConnectionNotifiesClientAndClosesProxy() throws Exception {
@@ -45,6 +56,36 @@ class VirtualServerTCPTest {
 
         assertNull(clientView.lastError);
         assertTrue(socket.closed);
+    }
+
+    @Test
+    void rankingServerMessagesAreForwardedToClientView() throws Exception {
+        RecordingClientView clientView = new RecordingClientView();
+        GlobalRankingPayload globalRanking = new GlobalRankingPayload(List.of(
+                new GlobalRankingEntryPayload("Alice", 1200, 1, 4, 2)
+        ));
+        FinalMatchRankingPayload finalRanking = new FinalMatchRankingPayload(
+                "game-1",
+                FinalMatchRankingStatus.RECORDED,
+                List.of(new FinalMatchRankingDeltaPayload("Alice", 1000, 1020, 3, 1)),
+                null
+        );
+        MatchHistoryPayload history = new MatchHistoryPayload(List.of());
+        String messages = GSON.toJson(new ServerMessage(ServerMessageType.GLOBAL_RANKING, globalRanking))
+                + System.lineSeparator()
+                + GSON.toJson(new ServerMessage(ServerMessageType.FINAL_MATCH_RANKING, finalRanking))
+                + System.lineSeparator()
+                + GSON.toJson(new ServerMessage(ServerMessageType.MATCH_HISTORY, history))
+                + System.lineSeparator();
+        TestSocket socket = new TestSocket(new ByteArrayInputStream(messages.getBytes()));
+        ServerProxyTCP proxy = new ServerProxyTCP(socket, clientView);
+
+        proxy.waitForVirtualServer();
+
+        assertEquals("Alice", clientView.lastGlobalRanking.entries.getFirst().username);
+        assertEquals("game-1", clientView.lastFinalMatchRanking.gameId);
+        assertEquals(1, clientView.lastFinalMatchRanking.deltas.getFirst().newGlobalRank);
+        assertTrue(clientView.lastMatchHistory.matches.isEmpty());
     }
 
     private static final class TestSocket extends Socket {
@@ -109,6 +150,9 @@ class VirtualServerTCPTest {
 
     private static final class RecordingClientView implements ClientView {
         private ErrorPayload lastError;
+        private GlobalRankingPayload lastGlobalRanking;
+        private FinalMatchRankingPayload lastFinalMatchRanking;
+        private MatchHistoryPayload lastMatchHistory;
 
         @Override
         public void showError(ErrorPayload payload) {
@@ -125,6 +169,21 @@ class VirtualServerTCPTest {
 
         @Override
         public void showGameUpdate(GamePayload payload) {
+        }
+
+        @Override
+        public void showGlobalRanking(GlobalRankingPayload payload) {
+            this.lastGlobalRanking = payload;
+        }
+
+        @Override
+        public void showFinalMatchRanking(FinalMatchRankingPayload payload) {
+            this.lastFinalMatchRanking = payload;
+        }
+
+        @Override
+        public void showMatchHistory(MatchHistoryPayload payload) {
+            this.lastMatchHistory = payload;
         }
     }
 }

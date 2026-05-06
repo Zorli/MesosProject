@@ -125,6 +125,18 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
                 this.clientCallback.handleLobbyList(lobbyListPayload);
                 return;
             }
+            if (payload instanceof GlobalRankingPayload globalRankingPayload) {
+                this.clientCallback.handleGlobalRanking(globalRankingPayload);
+                return;
+            }
+            if (payload instanceof FinalMatchRankingPayload finalMatchRankingPayload) {
+                this.clientCallback.handleFinalMatchRanking(finalMatchRankingPayload);
+                return;
+            }
+            if (payload instanceof MatchHistoryPayload matchHistoryPayload) {
+                this.clientCallback.handleMatchHistory(matchHistoryPayload);
+                return;
+            }
             if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
                 if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
                 }

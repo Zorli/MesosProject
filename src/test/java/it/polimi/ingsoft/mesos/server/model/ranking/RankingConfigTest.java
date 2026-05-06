@@ -9,6 +9,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class RankingConfigTest {
 
     @Test
+    void withMaxBusyRetriesPreservesOtherValues() {
+        RankingConfig config = RankingConfig.defaultConfig();
+        RankingConfig updated = config.withMaxBusyRetries(7);
+
+        assertEquals(config.minPlayers(), updated.minPlayers());
+        assertEquals(config.maxPlayers(), updated.maxPlayers());
+        assertEquals(config.initialElo(), updated.initialElo());
+        assertEquals(config.minElo(), updated.minElo());
+        assertEquals(config.baseK(), updated.baseK());
+        assertEquals(config.kStepPerExtraPlayer(), updated.kStepPerExtraPlayer());
+        assertEquals(config.streakBonusStep(), updated.streakBonusStep());
+        assertEquals(config.streakBonusCap(), updated.streakBonusCap());
+        assertEquals(7, updated.maxBusyRetries());
+    }
+
+    @Test
+    void withMaxBusyRetriesRejectsNegativeValues() {
+        assertThrows(IllegalArgumentException.class,
+                () -> RankingConfig.defaultConfig().withMaxBusyRetries(-1));
+    }
+
+    @Test
     void defaultConfigHasExpectedValues() {
         RankingConfig config = RankingConfig.defaultConfig();
 

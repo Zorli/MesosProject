@@ -1,18 +1,18 @@
 package it.polimi.ingsoft.mesos.server.model.ranking;
 
 /**
- * Immutable PostgreSQL connection settings used by the ranking persistence layer.
+ * Immutable MySQL connection settings used by the ranking persistence layer.
  *
- * @param jdbcUrl full JDBC URL of the PostgreSQL database
+ * @param jdbcUrl full JDBC URL of the MySQL database
  * @param username database username
  * @param password database password
  */
-public record PostgresConnectionConfig(String jdbcUrl, String username, String password) {
+public record MySqlConnectionConfig(String jdbcUrl, String username, String password) {
 
     /**
      * Validates connection settings.
      */
-    public PostgresConnectionConfig {
+    public MySqlConnectionConfig {
         if (jdbcUrl == null || jdbcUrl.isBlank()) {
             throw new IllegalArgumentException("JDBC url cannot be null or blank");
         }

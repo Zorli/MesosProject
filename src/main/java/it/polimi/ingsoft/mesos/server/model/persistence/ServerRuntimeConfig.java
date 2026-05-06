@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
+import it.polimi.ingsoft.mesos.server.model.ranking.MySqlConnectionConfig;
 
 import java.util.Map;
 
@@ -13,18 +13,25 @@ public record ServerRuntimeConfig(String jdbcUrl,
                                   String password,
                                   int maxBusyRetries,
                                   boolean dbEnabled) {
-    private static final String DEFAULT_JDBC_URL = "jdbc:postgresql://localhost:5432/mesos";
-    private static final String DEFAULT_ADMIN_DATABASE = "postgres";
-    private static final String DEFAULT_USERNAME = "postgres";
-    private static final String DEFAULT_PASSWORD = "postgres";
+    private static final String DEFAULT_JDBC_URL =
+            "jdbc:mysql://localhost:3306/mesos?connectionTimeZone=UTC&allowPublicKeyRetrieval=true&useSSL=false";
+    private static final String DEFAULT_ADMIN_DATABASE = "mysql";
+    private static final String DEFAULT_USERNAME = "root";
+    private static final String DEFAULT_PASSWORD = "root";
     private static final int DEFAULT_MAX_BUSY_RETRIES = 3;
     private static final boolean DEFAULT_DB_ENABLED = true;
+    private static final String ENV_JDBC_URL = "MESOS_RANKING_DB_URL";
+    private static final String ENV_ADMIN_JDBC_URL = "MESOS_RANKING_DB_ADMIN_URL";
+    private static final String ENV_USERNAME = "MESOS_RANKING_DB_USER";
+    private static final String ENV_PASSWORD = "MESOS_RANKING_DB_PASSWORD";
+    private static final String ENV_MAX_BUSY_RETRIES = "MESOS_RANKING_DB_MAX_BUSY_RETRIES";
+    private static final String ENV_ENABLED = "MESOS_RANKING_DB_ENABLED";
 
     /**
      * Backward-compatible constructor used by existing tests and bootstrap code.
      *
-     * @param jdbcUrl JDBC URL for the target PostgreSQL database
-     * @param adminJdbcUrl JDBC URL for the admin PostgreSQL database
+     * @param jdbcUrl JDBC URL for the target MySQL database
+     * @param adminJdbcUrl JDBC URL for the admin MySQL database
      * @param username database username
      * @param password database password
      * @param maxBusyRetries maximum number of transient retry attempts
@@ -48,24 +55,14 @@ public record ServerRuntimeConfig(String jdbcUrl,
             throw new IllegalArgumentException("Environment cannot be null");
         }
 
-        String jdbcUrl = environment.getOrDefault("MESOS_DB_URL", DEFAULT_JDBC_URL);
-        String adminJdbcUrl = environment.getOrDefault("MESOS_DB_ADMIN_URL", deriveAdminJdbcUrl(jdbcUrl));
-        String username = environment.getOrDefault("MESOS_DB_USER", DEFAULT_USERNAME);
-        String password = environment.getOrDefault("MESOS_DB_PASSWORD", DEFAULT_PASSWORD);
-        String retriesValue = environment.getOrDefault(
-                "MESOS_DB_MAX_BUSY_RETRIES",
-                Integer.toString(DEFAULT_MAX_BUSY_RETRIES)
-        );
-        String dbEnabledValue = environment.getOrDefault("MESOS_NO_DB", Boolean.toString(!DEFAULT_DB_ENABLED));
+        String jdbcUrl = valueOrDefault(environment, ENV_JDBC_URL, DEFAULT_JDBC_URL);
+        String adminJdbcUrl = valueOrDefault(environment, ENV_ADMIN_JDBC_URL, deriveAdminJdbcUrl(jdbcUrl));
+        String username = valueOrDefault(environment, ENV_USERNAME, DEFAULT_USERNAME);
+        String password = valueOrDefault(environment, ENV_PASSWORD, DEFAULT_PASSWORD);
 
-        int maxBusyRetries;
-        try {
-            maxBusyRetries = Integer.parseInt(retriesValue);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("MESOS_DB_MAX_BUSY_RETRIES must be an integer", exception);
-        }
+        int maxBusyRetries = parseMaxBusyRetries(environment);
+        boolean dbEnabled = parseBoolean(environment.get(ENV_ENABLED), DEFAULT_DB_ENABLED);
 
-        boolean dbEnabled = !Boolean.parseBoolean(dbEnabledValue);
         return new ServerRuntimeConfig(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries, dbEnabled);
     }
 
@@ -97,14 +94,14 @@ public record ServerRuntimeConfig(String jdbcUrl,
     /**
      * Converts this runtime config to the ranking module connection config.
      *
-     * @return PostgreSQL connection configuration
+     * @return MySQL connection configuration
      */
-    public PostgresConnectionConfig toPostgresConnectionConfig() {
-        return new PostgresConnectionConfig(this.jdbcUrl, this.username, this.password);
+    public MySqlConnectionConfig toMySqlConnectionConfig() {
+        return new MySqlConnectionConfig(this.jdbcUrl, this.username, this.password);
     }
 
     /**
-     * Returns the target PostgreSQL database name extracted from the JDBC URL.
+     * Returns the target MySQL database name extracted from the JDBC URL.
      *
      * @return configured target database name
      */
@@ -116,7 +113,7 @@ public record ServerRuntimeConfig(String jdbcUrl,
      * Derives the admin JDBC URL by reusing host and port but switching to the default admin database.
      */
     private static String deriveAdminJdbcUrl(String jdbcUrl) {
-        String prefix = "jdbc:postgresql://";
+        String prefix = "jdbc:mysql://";
         if (jdbcUrl == null || !jdbcUrl.startsWith(prefix)) {
             throw new IllegalArgumentException("Cannot derive admin JDBC url from: " + jdbcUrl);
         }
@@ -128,14 +125,17 @@ public record ServerRuntimeConfig(String jdbcUrl,
         }
 
         String hostAndPort = remainder.substring(0, slashIndex);
-        return prefix + hostAndPort + "/" + DEFAULT_ADMIN_DATABASE;
+        String databaseAndQuery = remainder.substring(slashIndex + 1);
+        int queryIndex = databaseAndQuery.indexOf('?');
+        String querySuffix = queryIndex >= 0 ? databaseAndQuery.substring(queryIndex) : "";
+        return prefix + hostAndPort + "/" + DEFAULT_ADMIN_DATABASE + querySuffix;
     }
 
     /**
-     * Extracts the database name from a PostgreSQL JDBC URL.
+     * Extracts the database name from a MySQL JDBC URL.
      */
     private static String extractDatabaseName(String jdbcUrl) {
-        String prefix = "jdbc:postgresql://";
+        String prefix = "jdbc:mysql://";
         if (jdbcUrl == null || !jdbcUrl.startsWith(prefix)) {
             throw new IllegalArgumentException("Unsupported JDBC url: " + jdbcUrl);
         }
@@ -155,5 +155,38 @@ public record ServerRuntimeConfig(String jdbcUrl,
         }
 
         return databaseName;
+    }
+
+    /**
+     * Reads a ranking database environment variable.
+     */
+    private static String valueOrDefault(Map<String, String> environment, String key, String defaultValue) {
+        String value = environment.get(key);
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+
+        return defaultValue;
+    }
+
+    /**
+     * Resolves whether ranking persistence should be enabled.
+     */
+    private static int parseMaxBusyRetries(Map<String, String> environment) {
+        String retriesValue = valueOrDefault(
+                environment,
+                ENV_MAX_BUSY_RETRIES,
+                Integer.toString(DEFAULT_MAX_BUSY_RETRIES)
+        );
+
+        try {
+            return Integer.parseInt(retriesValue);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(ENV_MAX_BUSY_RETRIES + " must be an integer", exception);
+        }
+    }
+
+    private static boolean parseBoolean(String rawValue, boolean defaultValue) {
+        return rawValue == null || rawValue.isBlank() ? defaultValue : Boolean.parseBoolean(rawValue);
     }
 }

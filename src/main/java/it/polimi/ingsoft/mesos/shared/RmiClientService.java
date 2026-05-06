@@ -1,7 +1,10 @@
 package it.polimi.ingsoft.mesos.shared;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.rmi.Remote;
@@ -21,5 +24,8 @@ public interface RmiClientService extends Remote{
     void handlePreMatchUpdate(PreMatchUpdatePayload payload) throws RemoteException;
     void handleLobbyList(LobbyListPayload payload) throws RemoteException;
     void handleGameUpdate(GamePayload payload) throws RemoteException;
+    void handleGlobalRanking(GlobalRankingPayload payload) throws RemoteException;
+    void handleFinalMatchRanking(FinalMatchRankingPayload payload) throws RemoteException;
+    void handleMatchHistory(MatchHistoryPayload payload) throws RemoteException;
     void handlePing() throws RemoteException;
 }

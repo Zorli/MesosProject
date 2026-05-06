@@ -8,7 +8,13 @@ import java.util.List;
  * @param playerRank global rank of the requesting player
  * @param leaderboard full global leaderboard after the match is recorded
  */
-public record RankingResult(int playerRank, List<LeaderboardEntry> leaderboard) {
+public record RankingResult(int playerRank,
+                            List<LeaderboardEntry> leaderboard,
+                            List<PlayerRankingDelta> playerDeltas) {
+
+    public RankingResult(int playerRank, List<LeaderboardEntry> leaderboard) {
+        this(playerRank, leaderboard, List.of());
+    }
 
     /**
      * Validates result payload and performs a defensive copy of the leaderboard list.
@@ -23,5 +29,6 @@ public record RankingResult(int playerRank, List<LeaderboardEntry> leaderboard) 
         }
 
         leaderboard = List.copyOf(leaderboard);
+        playerDeltas = playerDeltas == null ? List.of() : List.copyOf(playerDeltas);
     }
 }

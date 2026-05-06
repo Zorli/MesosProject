@@ -4,7 +4,7 @@ package it.polimi.ingsoft.mesos.server.model.ranking;
  * Immutable per-player ranking row stored for one historical match.
  *
  * @param nickname player nickname
- * @param finalScore final match score
+ * @param finalScore signed final match score
  * @param placement final placement in the match (1-based)
  * @param eloBefore Elo before the match
  * @param eloDelta Elo variation introduced by the match
@@ -17,7 +17,19 @@ public record MatchRankingEntry(String nickname,
                                 int eloBefore,
                                 int eloDelta,
                                 int eloAfter,
+                                int previousGlobalRank,
+                                int newGlobalRank,
                                 int winStreakAfter) {
+
+    public MatchRankingEntry(String nickname,
+                             int finalScore,
+                             int placement,
+                             int eloBefore,
+                             int eloDelta,
+                             int eloAfter,
+                             int winStreakAfter) {
+        this(nickname, finalScore, placement, eloBefore, eloDelta, eloAfter, 1, 1, winStreakAfter);
+    }
 
     /**
      * Validates ranking row values.
@@ -25,10 +37,6 @@ public record MatchRankingEntry(String nickname,
     public MatchRankingEntry {
         if (nickname == null || nickname.isBlank()) {
             throw new IllegalArgumentException("Nickname cannot be null or blank");
-        }
-
-        if (finalScore < 0) {
-            throw new IllegalArgumentException("Final score cannot be negative");
         }
 
         if (placement < 1) {
@@ -41,6 +49,10 @@ public record MatchRankingEntry(String nickname,
 
         if (eloAfter < 0) {
             throw new IllegalArgumentException("Elo after cannot be negative");
+        }
+
+        if (previousGlobalRank < 1 || newGlobalRank < 1) {
+            throw new IllegalArgumentException("Global ranks must be >= 1");
         }
 
         if (winStreakAfter < 0) {

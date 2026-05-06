@@ -22,6 +22,7 @@ public class ServerController implements Runnable {
     private final ServerModel serverModel;
     private final GameFactory gameFactory;
     private final RankingService rankingService;
+    private final RankingPayloadMapper rankingPayloadMapper;
     private final PingPongRoutine pingPongRoutine;
 
     // --- LE "PAGINE GIALLE" DEI CONTROLLER ATTIVI ---
@@ -36,6 +37,7 @@ public class ServerController implements Runnable {
         this.sessions = sessions;
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
         this.rankingService = rankingService;
+        this.rankingPayloadMapper = new RankingPayloadMapper();
 
         // Il Model assume la piena responsabilità dei controlli di business
         this.serverModel = new ServerModel(this.sessions);
@@ -98,6 +100,11 @@ public class ServerController implements Runnable {
                             this.createLobby(sessionId, p.chosenCapacity);
                         }
                         case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
+                        case LIST_GLOBAL_RANKING -> this.listGlobalRanking(sessionId);
+                        case LIST_MATCH_HISTORY -> {
+                            ListMatchHistoryPayload p = (ListMatchHistoryPayload) cmd.payload();
+                            this.listMatchHistory(sessionId, p.playerCount);
+                        }
                     }
                 } catch (IllegalArgumentException e) {
                     this.serverModel.reportPhaseError(sessionId);
@@ -120,6 +127,28 @@ public class ServerController implements Runnable {
     public void listOpenLobbies(String sessionId) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
         this.serverModel.listOpenLobbies(sessionId, clientView);
+    }
+
+    public void listGlobalRanking(String sessionId) {
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        if (this.rankingService == null) {
+            clientView.notifyUpdate(this.rankingPayloadMapper.globalRanking(java.util.List.of()));
+            return;
+        }
+        clientView.notifyUpdate(this.rankingPayloadMapper.globalRanking(this.rankingService.getLeaderboard()));
+    }
+
+    public void listMatchHistory(String sessionId, Integer playerCount) {
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        if (this.rankingService == null) {
+            clientView.notifyUpdate(this.rankingPayloadMapper.history(java.util.List.of()));
+            return;
+        }
+        if (playerCount == null) {
+            clientView.notifyUpdate(this.rankingPayloadMapper.history(this.rankingService.getMatchHistory()));
+            return;
+        }
+        clientView.notifyUpdate(this.rankingPayloadMapper.history(this.rankingService.getMatchHistory(playerCount)));
     }
 
     public void createLobby(String sessionId, int chosenCapacity) {

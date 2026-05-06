@@ -10,6 +10,9 @@ import java.util.Set;
  * Normalizes and validates ranking input values before database operations.
  */
 final class RankingInputValidator {
+    private static final int MAX_NICKNAME_LENGTH = 255;
+    private static final int MAX_GAME_ID_LENGTH = 255;
+
     private final int minPlayers;
     private final int maxPlayers;
 
@@ -31,17 +34,7 @@ final class RankingInputValidator {
      * @return trimmed nickname
      */
     String normalizeNickname(String nickname) {
-        if (nickname == null) {
-            throw new IllegalArgumentException("Nickname cannot be null");
-        }
-
-        String normalized = nickname.trim();
-
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("Nickname cannot be blank");
-        }
-
-        return normalized;
+        return this.normalizeRequiredText(nickname, "Nickname", MAX_NICKNAME_LENGTH);
     }
 
     /**
@@ -51,17 +44,7 @@ final class RankingInputValidator {
      * @return trimmed game id
      */
     String normalizeGameId(String gameId) {
-        if (gameId == null) {
-            throw new IllegalArgumentException("Game id cannot be null");
-        }
-
-        String normalized = gameId.trim();
-
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("Game id cannot be blank");
-        }
-
-        return normalized;
+        return this.normalizeRequiredText(gameId, "Game id", MAX_GAME_ID_LENGTH);
     }
 
     /**
@@ -86,7 +69,8 @@ final class RankingInputValidator {
      */
     int validatePlayerCount(int playerCount) {
         if (playerCount < this.minPlayers || playerCount > this.maxPlayers) {
-            throw new IllegalArgumentException("Player count must be between 2 and 5");
+            throw new IllegalArgumentException("Player count must be between "
+                    + this.minPlayers + " and " + this.maxPlayers);
         }
 
         return playerCount;
@@ -126,5 +110,23 @@ final class RankingInputValidator {
         }
 
         return List.copyOf(normalizedScores);
+    }
+
+    private String normalizeRequiredText(String value, String fieldName, int maxLength) {
+        if (value == null) {
+            throw new IllegalArgumentException(fieldName + " cannot be null");
+        }
+
+        String normalized = value.trim();
+
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " cannot be blank");
+        }
+
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(fieldName + " cannot be longer than " + maxLength + " characters");
+        }
+
+        return normalized;
     }
 }

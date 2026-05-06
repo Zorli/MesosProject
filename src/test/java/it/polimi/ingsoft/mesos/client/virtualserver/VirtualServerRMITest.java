@@ -5,19 +5,17 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingDeltaPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingStatus;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingEntryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 import org.junit.jupiter.api.Test;
@@ -47,17 +45,33 @@ class VirtualServerRMITest {
         );
         LobbyListPayload lobbyListPayload = new LobbyListPayload(List.of());
         GamePayload gamePayload = new GamePayload(1, "RUNNING", 1, null, null, List.of(), null);
+        GlobalRankingPayload globalRankingPayload = new GlobalRankingPayload(List.of(
+                new GlobalRankingEntryPayload("Alice", 1200, 1, 4, 2)
+        ));
+        FinalMatchRankingPayload finalMatchRankingPayload = new FinalMatchRankingPayload(
+                "game-1",
+                FinalMatchRankingStatus.RECORDED,
+                List.of(new FinalMatchRankingDeltaPayload("Alice", 1000, 1020, 3, 1)),
+                null
+        );
+        MatchHistoryPayload matchHistoryPayload = new MatchHistoryPayload(List.of());
 
         virtualServer.handleError(errorPayload);
         virtualServer.handlePreMatchUpdate(preMatchPayload);
         virtualServer.handleLobbyList(lobbyListPayload);
         virtualServer.handleGameUpdate(gamePayload);
+        virtualServer.handleGlobalRanking(globalRankingPayload);
+        virtualServer.handleFinalMatchRanking(finalMatchRankingPayload);
+        virtualServer.handleMatchHistory(matchHistoryPayload);
         virtualServer.close();
 
         assertSame(errorPayload, clientView.lastError);
         assertSame(preMatchPayload, clientView.lastPreMatchUpdate);
         assertSame(lobbyListPayload, clientView.lastLobbyList);
         assertSame(gamePayload, clientView.lastGameUpdate);
+        assertSame(globalRankingPayload, clientView.lastGlobalRanking);
+        assertSame(finalMatchRankingPayload, clientView.lastFinalMatchRanking);
+        assertSame(matchHistoryPayload, clientView.lastMatchHistory);
     }
 
     @Test
@@ -102,39 +116,7 @@ class VirtualServerRMITest {
         private final List<String> calls = new ArrayList<>();
 
         @Override
-        public void authenticate(AuthenticationPayload payload) {
-        }
-
-        @Override
-        public void listLobbies(ListLobbiesPayload payload) {
-        }
-
-        @Override
-        public void createLobby(CreateLobbyPayload payload) {
-        }
-
-        @Override
-        public void joinLobby(JoinLobbyPayload payload) {
-        }
-
-        @Override
-        public void exitLobby(ExitLobbyPayload payload) {
-        }
-
-        @Override
-        public void startLobby(StartLobbyPayload payload) {
-        }
-
-        @Override
-        public void moveTotem(MoveTotemPayload payload) {
-        }
-
-        @Override
-        public void chooseCard(ChooseCardPayload payload) {
-        }
-
-        @Override
-        public void extraDraw(ExtraDrawPayload payload) {
+        public void sendMessage(ClientPayload payload) {
         }
 
         @Override
@@ -152,6 +134,9 @@ class VirtualServerRMITest {
         private PreMatchUpdatePayload lastPreMatchUpdate;
         private LobbyListPayload lastLobbyList;
         private GamePayload lastGameUpdate;
+        private GlobalRankingPayload lastGlobalRanking;
+        private FinalMatchRankingPayload lastFinalMatchRanking;
+        private MatchHistoryPayload lastMatchHistory;
 
         @Override
         public void showError(ErrorPayload payload) {
@@ -171,6 +156,21 @@ class VirtualServerRMITest {
         @Override
         public void showGameUpdate(GamePayload payload) {
             this.lastGameUpdate = payload;
+        }
+
+        @Override
+        public void showGlobalRanking(GlobalRankingPayload payload) {
+            this.lastGlobalRanking = payload;
+        }
+
+        @Override
+        public void showFinalMatchRanking(FinalMatchRankingPayload payload) {
+            this.lastFinalMatchRanking = payload;
+        }
+
+        @Override
+        public void showMatchHistory(MatchHistoryPayload payload) {
+            this.lastMatchHistory = payload;
         }
     }
 }

@@ -1,20 +1,20 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: mesos-postgres
+  mysql:
+    image: mysql:8.4
+    container_name: mesos-mysql
     environment:
-      POSTGRES_DB: ${MESOS_POSTGRES_DB:-mesos}
-      POSTGRES_USER: ${MESOS_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${MESOS_POSTGRES_PASSWORD:-postgres}
+      MYSQL_DATABASE: ${MESOS_RANKING_DB_NAME:-mesos}
+      MYSQL_ROOT_PASSWORD: ${MESOS_RANKING_DB_PASSWORD:-root}
     ports:
-      - "${MESOS_POSTGRES_PORT:-5432}:5432"
+      - "${MESOS_RANKING_DB_PORT:-3306}:3306"
+    command: --default-time-zone=+00:00 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${MESOS_POSTGRES_USER:-postgres} -d ${MESOS_POSTGRES_DB:-mesos}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
 volumes:
-  postgres_data:
+  mysql_data:

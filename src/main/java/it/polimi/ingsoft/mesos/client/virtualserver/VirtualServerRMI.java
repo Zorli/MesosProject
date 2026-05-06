@@ -4,8 +4,11 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyRMI;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.rmi.NoSuchObjectException;
@@ -54,6 +57,21 @@ public class VirtualServerRMI implements VirtualServer, RmiClientService {
     @Override
     public void handleGameUpdate(GamePayload payload) {
         this.clientView.showGameUpdate(payload);
+    }
+
+    @Override
+    public void handleGlobalRanking(GlobalRankingPayload payload) {
+        this.clientView.showGlobalRanking(payload);
+    }
+
+    @Override
+    public void handleFinalMatchRanking(FinalMatchRankingPayload payload) {
+        this.clientView.showFinalMatchRanking(payload);
+    }
+
+    @Override
+    public void handleMatchHistory(MatchHistoryPayload payload) {
+        this.clientView.showMatchHistory(payload);
     }
 
     @Override

@@ -5,7 +5,10 @@ import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +33,9 @@ class ServerProxyTCPTest {
 
         proxy.authenticate("Alice");
         proxy.createLobby(2);
+        proxy.listGlobalRanking();
+        proxy.listMatchHistory();
+        proxy.listMatchHistory(4);
         proxy.sendPong();
         proxy.close();
 
@@ -38,7 +44,12 @@ class ServerProxyTCPTest {
         assertEquals("Alice", messagePayload(lines[0]).get("nickname").getAsString());
         assertEquals("CREATE_LOBBY", messageType(lines[1]));
         assertEquals(2, messagePayload(lines[1]).get("chosenCapacity").getAsInt());
-        assertEquals("PONG", messageType(lines[2]));
+        assertEquals("LIST_GLOBAL_RANKING", messageType(lines[2]));
+        assertEquals("LIST_MATCH_HISTORY", messageType(lines[3]));
+        assertFalse(messagePayload(lines[3]).has("playerCount"));
+        assertEquals("LIST_MATCH_HISTORY", messageType(lines[4]));
+        assertEquals(4, messagePayload(lines[4]).get("playerCount").getAsInt());
+        assertEquals("PONG", messageType(lines[5]));
     }
 
     @Test
@@ -142,6 +153,18 @@ class ServerProxyTCPTest {
 
         @Override
         public void showGameUpdate(GamePayload payload) {
+        }
+
+        @Override
+        public void showGlobalRanking(GlobalRankingPayload payload) {
+        }
+
+        @Override
+        public void showFinalMatchRanking(FinalMatchRankingPayload payload) {
+        }
+
+        @Override
+        public void showMatchHistory(MatchHistoryPayload payload) {
         }
     }
 }

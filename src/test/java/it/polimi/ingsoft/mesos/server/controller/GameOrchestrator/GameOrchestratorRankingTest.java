@@ -13,20 +13,27 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.LeaderboardEntry;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchHistory;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
+import it.polimi.ingsoft.mesos.server.model.ranking.PlayerRankingDelta;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class GameOrchestratorRankingTest {
 
@@ -112,6 +119,7 @@ class GameOrchestratorRankingTest {
         players.getFirst().gainPrestigePoints(10);
         players.get(1).gainPrestigePoints(4);
         RecordingRankingService rankingService = new RecordingRankingService();
+        RecordingListener listener = new RecordingListener();
 
         TrackingGameFactory gameFactory = new TrackingGameFactory(
                 new TrackingGame(players, GameStatus.IN_PROGRESS, true, false, false, false)
@@ -122,12 +130,14 @@ class GameOrchestratorRankingTest {
                 "Alice",
                 rankingService
         );
+        orchestrator.getGame().addListener(listener);
 
         orchestrator.setupMatch();
 
         assertEquals(1, gameFactory.getGame().getSetupCalls());
         assertEquals(1, rankingService.recordCalls);
-        assertEquals("7", rankingService.lastGameId);
+        assertDoesNotThrow(() -> UUID.fromString(rankingService.lastGameId));
+        assertNotEquals("7", rankingService.lastGameId);
         assertEquals(2, rankingService.lastPlayerCount);
         assertEquals("Alice", rankingService.requestingNickname);
         assertEquals(
@@ -135,6 +145,12 @@ class GameOrchestratorRankingTest {
                 rankingService.lastFinalScores
         );
         assertTrue(orchestrator.getFinalRankingResult().isPresent());
+        FinalMatchRankingPayload payload = listener.lastFinalMatchRanking();
+        assertEquals("Alice", payload.deltas.getFirst().username);
+        assertEquals(1000, payload.deltas.getFirst().oldScore);
+        assertEquals(1020, payload.deltas.getFirst().newScore);
+        assertEquals(3, payload.deltas.getFirst().previousGlobalRank);
+        assertEquals(1, payload.deltas.getFirst().newGlobalRank);
     }
 
     @Test
@@ -145,7 +161,7 @@ class GameOrchestratorRankingTest {
                 new TrackingGameFactory(game),
                 players,
                 "Alice",
-                null
+                (RankingService) null
         );
 
         orchestrator.setupMatch();
@@ -196,6 +212,26 @@ class GameOrchestratorRankingTest {
 
         assertEquals(0, rankingService.recordCalls);
         assertTrue(orchestratorNoFinish.getFinalRankingResult().isEmpty());
+    }
+
+    @Test
+    void noDbRankingServicePublishesDisabledFinalRankingWithoutFreezingMatch() {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        TrackingGame game = new TrackingGame(players, GameStatus.IN_PROGRESS, true, false, false, false);
+        RecordingListener listener = new RecordingListener();
+        GameOrchestrator orchestrator = new GameOrchestrator(
+                new TrackingGameFactory(game),
+                players,
+                "Alice",
+                NoOpRankingService.INSTANCE
+        );
+        orchestrator.getGame().addListener(listener);
+
+        orchestrator.setupMatch();
+
+        assertFalse(orchestrator.isFrozen());
+        assertTrue(orchestrator.getFinalRankingResult().isEmpty());
+        assertEquals(FinalMatchRankingStatus.DISABLED, listener.lastFinalMatchRanking().status);
     }
 
     @Test
@@ -268,6 +304,23 @@ class GameOrchestratorRankingTest {
 
         private TrackingGame getGame() {
             return this.game;
+        }
+    }
+
+    private static final class RecordingListener implements it.polimi.ingsoft.mesos.server.model.Listener {
+        private final List<Object> updates = new ArrayList<>();
+
+        @Override
+        public void notifyUpdate(Object payload) {
+            this.updates.add(payload);
+        }
+
+        private FinalMatchRankingPayload lastFinalMatchRanking() {
+            return this.updates.stream()
+                    .filter(FinalMatchRankingPayload.class::isInstance)
+                    .map(FinalMatchRankingPayload.class::cast)
+                    .reduce((first, second) -> second)
+                    .orElseThrow();
         }
     }
 
@@ -410,10 +463,10 @@ class GameOrchestratorRankingTest {
 
         @Override
         public RankingResult recordMatchAndGetRanking(String gameId,
-                                                     int playerCount,
-                                                     Instant playedAtUtc,
-                                                     String requestingNickname,
-                                                     List<MatchScore> finalScores) {
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
             throw new UnsupportedOperationException("Override in concrete service");
         }
 
@@ -442,10 +495,10 @@ class GameOrchestratorRankingTest {
 
         @Override
         public RankingResult recordMatchAndGetRanking(String gameId,
-                                                     int playerCount,
-                                                     Instant playedAtUtc,
-                                                     String requestingNickname,
-                                                     List<MatchScore> finalScores) {
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
             this.recordCalls++;
             this.lastGameId = gameId;
             this.lastPlayerCount = playerCount;
@@ -453,7 +506,8 @@ class GameOrchestratorRankingTest {
             this.lastFinalScores = List.copyOf(finalScores);
             return new RankingResult(
                     1,
-                    List.of(new LeaderboardEntry(requestingNickname, 1200, 0, 0, 1))
+                    List.of(new LeaderboardEntry(requestingNickname, 1200, 0, 0, 1)),
+                    List.of(new PlayerRankingDelta(requestingNickname, 1000, 1020, 3, 1))
             );
         }
     }
@@ -461,10 +515,10 @@ class GameOrchestratorRankingTest {
     private static final class FailingRankingService extends RecordingRankingServiceAdapter {
         @Override
         public RankingResult recordMatchAndGetRanking(String gameId,
-                                                     int playerCount,
-                                                     Instant playedAtUtc,
-                                                     String requestingNickname,
-                                                     List<MatchScore> finalScores) {
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
             throw new IllegalStateException("ranking backend unavailable");
         }
     }

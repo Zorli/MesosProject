@@ -8,8 +8,11 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.BufferedReader;
@@ -93,6 +96,21 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     }
 
     @Override
+    public void handleGlobalRanking(GlobalRankingPayload payload) {
+        this.clientView.showGlobalRanking(payload);
+    }
+
+    @Override
+    public void handleFinalMatchRanking(FinalMatchRankingPayload payload) {
+        this.clientView.showFinalMatchRanking(payload);
+    }
+
+    @Override
+    public void handleMatchHistory(MatchHistoryPayload payload) {
+        this.clientView.showMatchHistory(payload);
+    }
+
+    @Override
     public void close() throws IOException {
         this.serverProxy.closeConnection();
     }
@@ -107,6 +125,9 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
                 case ERROR -> this.handleError(payload);
                 case PRE_MATCH_UPDATE -> this.handlePreMatchUpdate(payload);
                 case LOBBY_LIST -> this.handleLobbyList(payload);
+                case GLOBAL_RANKING -> this.handleGlobalRanking(payload);
+                case FINAL_MATCH_RANKING -> this.handleFinalMatchRanking(payload);
+                case MATCH_HISTORY -> this.handleMatchHistory(payload);
                 case GAME_UPDATE -> this.handleGameUpdate(payload);
                 case PING -> this.handlePing();
             }
@@ -133,5 +154,20 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     private void handleGameUpdate(JsonElement payload) {
         GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
         this.handleGameUpdate(gamePayload);
+    }
+
+    private void handleGlobalRanking(JsonElement payload) {
+        GlobalRankingPayload rankingPayload = GSON.fromJson(payload, GlobalRankingPayload.class);
+        this.handleGlobalRanking(rankingPayload);
+    }
+
+    private void handleFinalMatchRanking(JsonElement payload) {
+        FinalMatchRankingPayload rankingPayload = GSON.fromJson(payload, FinalMatchRankingPayload.class);
+        this.handleFinalMatchRanking(rankingPayload);
+    }
+
+    private void handleMatchHistory(JsonElement payload) {
+        MatchHistoryPayload historyPayload = GSON.fromJson(payload, MatchHistoryPayload.class);
+        this.handleMatchHistory(historyPayload);
     }
 }

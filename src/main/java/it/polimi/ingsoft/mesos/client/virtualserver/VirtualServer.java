@@ -1,8 +1,11 @@
 package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.io.IOException;
@@ -21,6 +24,12 @@ public interface VirtualServer extends AutoCloseable {
     void handleLobbyList(LobbyListPayload payload);
 
     void handleGameUpdate(GamePayload payload);
+
+    void handleGlobalRanking(GlobalRankingPayload payload);
+
+    void handleFinalMatchRanking(FinalMatchRankingPayload payload);
+
+    void handleMatchHistory(MatchHistoryPayload payload);
 
     void handlePing();
 

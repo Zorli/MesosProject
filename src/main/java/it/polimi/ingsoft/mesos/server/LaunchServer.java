@@ -1,12 +1,14 @@
 package it.polimi.ingsoft.mesos.server;
 
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
+import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 
@@ -32,6 +34,8 @@ public final class LaunchServer {
 
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
+            ServerServices serverServices = ServerServicesFactory.create(ServerRuntimeConfig.fromEnvironment(environment));
+
             // ==========================================
             // 1. CORE ARCHITECTURE SETUP (The "Big Bang")
             // ==========================================
@@ -40,14 +44,16 @@ public final class LaunchServer {
             ServerSessionRegistry sessions = new ServerSessionRegistry();
 
             // B. Core Controllers
-            ServerController serverController = new ServerController(sessions);
+            ServerController serverController = new ServerController(
+                    DefaultGameFactory.getInstance(),
+                    serverServices.rankingService(),
+                    sessions
+            );
             Thread serverWorker = new Thread(serverController, "ServerController-Worker");
             serverWorker.start();
 
             // C. The globally shared Message Router
             MessageRouter router = new MessageRouter(sessions, serverController);
-
-            
 
             // ==========================================
             // 2. NETWORK LAYERS SETUP
@@ -64,6 +70,9 @@ public final class LaunchServer {
             acceptorThread.start();
 
             out.println("TCP listener active on port " + tcpPort);
+            if (serverServices.rankingService() == NoOpRankingService.INSTANCE) {
+                out.println("No-db mode active: ranking persistence disabled.");
+            }
             out.println("Mesos Server started successfully.");
             out.println("Waiting for players...");
             return 0;

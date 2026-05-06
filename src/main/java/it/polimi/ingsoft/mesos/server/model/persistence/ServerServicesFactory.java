@@ -1,10 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
-import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
-import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
-import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingService;
+import it.polimi.ingsoft.mesos.server.model.persistence.mysql.MySqlDatabaseBootstrap;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
+import it.polimi.ingsoft.mesos.server.model.ranking.MySqlRankingService;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -27,17 +26,14 @@ public final class ServerServicesFactory {
         Objects.requireNonNull(runtimeConfig, "Runtime config cannot be null");
 
         if (!runtimeConfig.dbEnabled()) {
-            return new ServerServices(null);
+            return new ServerServices(NoOpRankingService.INSTANCE);
         }
 
-        PostgresDatabaseBootstrap.getInstance().ensureReady(
-                runtimeConfig,
-                List.of(PostgresRankingSchemaModule.getInstance())
-        );
+        MySqlDatabaseBootstrap.ensureReady(runtimeConfig);
 
         return new ServerServices(
-                new PostgresRankingService(
-                        runtimeConfig.toPostgresConnectionConfig(),
+                new MySqlRankingService(
+                        runtimeConfig.toMySqlConnectionConfig(),
                         runtimeConfig.maxBusyRetries()
                 )
         );

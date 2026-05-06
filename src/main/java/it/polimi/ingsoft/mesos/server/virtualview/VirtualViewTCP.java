@@ -14,9 +14,12 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
@@ -189,6 +192,18 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
         if (payload instanceof LobbyListPayload lobbyListPayload) {
             this.sendServerMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
+            return;
+        }
+        if (payload instanceof GlobalRankingPayload globalRankingPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.GLOBAL_RANKING, globalRankingPayload));
+            return;
+        }
+        if (payload instanceof FinalMatchRankingPayload finalMatchRankingPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.FINAL_MATCH_RANKING, finalMatchRankingPayload));
+            return;
+        }
+        if (payload instanceof MatchHistoryPayload matchHistoryPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.MATCH_HISTORY, matchHistoryPayload));
             return;
         }
         if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {

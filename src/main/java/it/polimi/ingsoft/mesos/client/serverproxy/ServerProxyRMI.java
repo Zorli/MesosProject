@@ -10,7 +10,9 @@ import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListGlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.ListMatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
@@ -63,6 +65,36 @@ public class ServerProxyRMI implements ServerProxy {
             this.handleDisconnection(e);
         }
 
+    }
+
+    @Override
+    public void listGlobalRanking() {
+        if (!this.ensureConnected()) return;
+        try {
+            this.serverStub.sendMessage(new ListGlobalRankingPayload());
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    @Override
+    public void listMatchHistory() {
+        if (!this.ensureConnected()) return;
+        try {
+            this.serverStub.sendMessage(new ListMatchHistoryPayload());
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    @Override
+    public void listMatchHistory(int playerCount) {
+        if (!this.ensureConnected()) return;
+        try {
+            this.serverStub.sendMessage(new ListMatchHistoryPayload(playerCount));
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
     }
 
     @Override

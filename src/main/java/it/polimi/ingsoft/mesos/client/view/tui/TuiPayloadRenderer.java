@@ -3,9 +3,16 @@ package it.polimi.ingsoft.mesos.client.view.tui;
 import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingDeltaPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingEntryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryEntryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryStandingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
@@ -88,6 +95,92 @@ final class TuiPayloadRenderer {
 
         appendPlayers(builder, payload.players);
         appendBoard(builder, payload.board);
+        return builder.toString();
+    }
+
+    String renderGlobalRanking(GlobalRankingPayload payload) {
+        if (payload.entries == null || payload.entries.isEmpty()) {
+            return "[SERVER][GLOBAL RANKING] No ranking entries.";
+        }
+
+        StringBuilder builder = new StringBuilder("[SERVER][GLOBAL RANKING]");
+        for (GlobalRankingEntryPayload entry : payload.entries) {
+            builder.append(System.lineSeparator())
+                    .append("#")
+                    .append(entry.globalRank)
+                    .append(" ")
+                    .append(entry.username)
+                    .append(" score=")
+                    .append(entry.score)
+                    .append(" wins=")
+                    .append(entry.wins)
+                    .append(" streak=")
+                    .append(entry.winStreak);
+        }
+        return builder.toString();
+    }
+
+    String renderFinalMatchRanking(FinalMatchRankingPayload payload) {
+        StringBuilder builder = new StringBuilder("[SERVER][MATCH RANKING] game=")
+                .append(valueOrDash(payload.gameId))
+                .append(" status=")
+                .append(payload.status);
+
+        if (payload.message != null && !payload.message.isBlank()) {
+            builder.append(" | ").append(payload.message);
+        }
+
+        if (payload.deltas == null || payload.deltas.isEmpty()) {
+            return builder.toString();
+        }
+
+        for (FinalMatchRankingDeltaPayload delta : payload.deltas) {
+            builder.append(System.lineSeparator())
+                    .append(delta.username)
+                    .append(" score ")
+                    .append(delta.oldScore)
+                    .append(" -> ")
+                    .append(delta.newScore)
+                    .append(" rank ")
+                    .append(delta.previousGlobalRank)
+                    .append(" -> ")
+                    .append(delta.newGlobalRank);
+        }
+        return builder.toString();
+    }
+
+    String renderMatchHistory(MatchHistoryPayload payload) {
+        if (payload.matches == null || payload.matches.isEmpty()) {
+            return "[SERVER][MATCH HISTORY] No recorded matches.";
+        }
+
+        StringBuilder builder = new StringBuilder("[SERVER][MATCH HISTORY]");
+        for (MatchHistoryEntryPayload match : payload.matches) {
+            builder.append(System.lineSeparator())
+                    .append("- game=")
+                    .append(match.gameId)
+                    .append(" players=")
+                    .append(match.playerCount)
+                    .append(" at=")
+                    .append(match.playedAtUtc);
+            for (MatchHistoryStandingPayload standing : match.standings) {
+                builder.append(System.lineSeparator())
+                        .append("  #")
+                        .append(standing.placement)
+                        .append(" ")
+                        .append(standing.username)
+                        .append(" final=")
+                        .append(standing.finalScore)
+                        .append(" score ")
+                        .append(standing.oldScore)
+                        .append(" -> ")
+                        .append(standing.newScore)
+                        .append(" rank ")
+                        .append(standing.previousGlobalRank)
+                        .append(" -> ")
+                        .append(standing.newGlobalRank);
+            }
+        }
         return builder.toString();
     }
 

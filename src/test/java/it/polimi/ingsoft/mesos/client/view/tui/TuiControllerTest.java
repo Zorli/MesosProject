@@ -198,6 +198,21 @@ class TuiControllerTest {
         }
 
         @Override
+        public void listGlobalRanking() {
+            this.calls.add("listGlobalRanking");
+        }
+
+        @Override
+        public void listMatchHistory() {
+            this.calls.add("listMatchHistory");
+        }
+
+        @Override
+        public void listMatchHistory(int playerCount) {
+            this.calls.add("listMatchHistory:" + playerCount);
+        }
+
+        @Override
         public void createLobby(int chosenCapacity) {
             this.calls.add("createLobby:" + chosenCapacity);
         }

@@ -13,13 +13,16 @@ final class TuiCommandParser {
 
         boolean hasArgument = parts.length == 2;
         //If it has required args but was not provided with args we return the usage
-        if (parts.length > 2 || hasArgument != type.argumentRequired()) {
+        boolean optionalArgumentAllowed = type == TuiCommandType.MATCH_HISTORY;
+        if (parts.length > 2
+                || (type.argumentRequired() && !hasArgument)
+                || (!type.argumentRequired() && hasArgument && !optionalArgumentAllowed)) {
             throw new IllegalArgumentException("Usage: " + type.usage());
         }
         //parse the first argument
         String argument = hasArgument ? parts[1] : null;
         //If it's an int try to convert it
-        if (type.integerArgument()) {
+        if (type.integerArgument() && hasArgument) {
             try {
                 Integer.parseInt(argument);
             } catch (NumberFormatException exception) {
@@ -35,6 +38,8 @@ final class TuiCommandParser {
             case "help" -> TuiCommandType.HELP;
             case "auth" -> TuiCommandType.AUTH;
             case "list-lobbies", "lobbies" -> TuiCommandType.LIST_LOBBIES;
+            case "ranking", "leaderboard", "global-ranking" -> TuiCommandType.GLOBAL_RANKING;
+            case "history", "match-history", "ranking-history" -> TuiCommandType.MATCH_HISTORY;
             case "create-lobby", "create" -> TuiCommandType.CREATE_LOBBY;
             case "join-lobby", "join" -> TuiCommandType.JOIN_LOBBY;
             case "quit-lobby" -> TuiCommandType.QUIT_LOBBY;

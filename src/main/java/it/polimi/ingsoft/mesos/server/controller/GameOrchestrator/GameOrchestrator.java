@@ -2,12 +2,14 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.RankingPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -33,12 +36,24 @@ public class GameOrchestrator implements Runnable  {
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
     private final RankingService rankingService;
+    private final RankingPayloadMapper rankingPayloadMapper;
+    private final String rankingGameId;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
     private boolean frozen;
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
 // Constructors
+
+    /**
+     * Creates an orchestrator for a new match using the provided game factory and player list.
+     *
+     * @param gameFactory factory used to bootstrap the underlying game aggregate
+     * @param players players transferred from the lobby into the match
+     */
+    public GameOrchestrator(GameFactory gameFactory, ArrayList<Player> players) {
+        this(gameFactory, players, new ServerSessionRegistry());
+    }
 
     /**
      * Creates an orchestrator for a new match using the provided game factory and player list.
@@ -62,6 +77,19 @@ public class GameOrchestrator implements Runnable  {
      * @param gameFactory factory used to bootstrap the underlying game aggregate
      * @param players players transferred from the lobby into the match
      * @param hostNickname original host nickname associated with the match
+     */
+    public GameOrchestrator(GameFactory gameFactory,
+                            ArrayList<Player> players,
+                            String hostNickname) {
+        this(gameFactory, players, hostNickname, null, new ServerSessionRegistry());
+    }
+
+    /**
+     * Creates an orchestrator for a new match.
+     *
+     * @param gameFactory factory used to bootstrap the underlying game aggregate
+     * @param players players transferred from the lobby into the match
+     * @param hostNickname original host nickname associated with the match
      * @param sessions the server session registry
      */
     public GameOrchestrator(GameFactory gameFactory,
@@ -69,6 +97,21 @@ public class GameOrchestrator implements Runnable  {
                             String hostNickname,
                             ServerSessionRegistry sessions) {
         this(gameFactory, players, hostNickname, null, sessions);
+    }
+
+    /**
+     * Creates an orchestrator for a new match and wires final ranking registration.
+     *
+     * @param gameFactory factory used to bootstrap the underlying game aggregate
+     * @param players players transferred from the lobby into the match
+     * @param hostNickname original host nickname associated with the match
+     * @param rankingService ranking service used to register completed matches; nullable when disabled
+     */
+    public GameOrchestrator(GameFactory gameFactory,
+                            ArrayList<Player> players,
+                            String hostNickname,
+                            RankingService rankingService) {
+        this(gameFactory, players, hostNickname, rankingService, new ServerSessionRegistry());
     }
 
     /**
@@ -96,6 +139,8 @@ public class GameOrchestrator implements Runnable  {
         this.hostNickname = requireHostNickname(hostNickname);
         this.sessions = sessions;
         this.rankingService = rankingService;
+        this.rankingPayloadMapper = new RankingPayloadMapper();
+        this.rankingGameId = UUID.randomUUID().toString();
         this.finalRankingResult = Optional.empty();
     }
 
@@ -245,10 +290,15 @@ public class GameOrchestrator implements Runnable  {
         if (this.rankingService == null || this.rankingRecorded || this.game.getStatus() != GameStatus.FINISHED) {
             return;
         }
+        if (this.rankingService instanceof NoOpRankingService) {
+            this.rankingRecorded = true;
+            this.game.notifyExternalUpdate(this.rankingPayloadMapper.rankingDisabled(this.rankingGameId));
+            return;
+        }
 
         try {
             RankingResult rankingResult = this.rankingService.recordMatchAndGetRanking(
-                    String.valueOf(this.game.getId()),
+                    this.rankingGameId,
                     this.players.size(),
                     Instant.now(),
                     this.hostNickname,
@@ -256,6 +306,9 @@ public class GameOrchestrator implements Runnable  {
             );
             this.finalRankingResult = Optional.of(rankingResult);
             this.rankingRecorded = true;
+            this.game.notifyExternalUpdate(
+                    this.rankingPayloadMapper.finalMatchRanking(this.rankingGameId, rankingResult)
+            );
         } catch (RuntimeException exception) {
             this.frozen = true;
             throw new RankingFinalizationFailureException(exception);

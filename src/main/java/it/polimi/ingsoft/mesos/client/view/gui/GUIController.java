@@ -3,8 +3,11 @@ package it.polimi.ingsoft.mesos.client.view.gui;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.FinalMatchRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.GlobalRankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.server.MatchHistoryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
 import java.util.Objects;
@@ -36,6 +39,18 @@ public class GUIController implements ClientView {
 
     @Override
     public void showGameUpdate(GamePayload payload) {
+    }
+
+    @Override
+    public void showGlobalRanking(GlobalRankingPayload payload) {
+    }
+
+    @Override
+    public void showFinalMatchRanking(FinalMatchRankingPayload payload) {
+    }
+
+    @Override
+    public void showMatchHistory(MatchHistoryPayload payload) {
     }
 
 }

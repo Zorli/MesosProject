@@ -175,6 +175,10 @@ public class Game {
         this.notifyListeners(GamePayloadMapper.toErrorPayload(code, message));
     }
 
+    public void notifyExternalUpdate(Object payload) {
+        this.notifyListeners(payload);
+    }
+
     public void notifyActionError(Listener target) {
         if (target != null) {
             target.notifyUpdate(GamePayloadMapper.toErrorPayload("GAME_ACTION_ERROR", "Action non permitted in this phase."));

@@ -14,6 +14,12 @@ public interface ServerProxy extends AutoCloseable {
 
     void listLobbies();
 
+    void listGlobalRanking();
+
+    void listMatchHistory();
+
+    void listMatchHistory(int playerCount);
+
     void createLobby(int chosenCapacity);
 
     void joinLobby(int lobbyId);
