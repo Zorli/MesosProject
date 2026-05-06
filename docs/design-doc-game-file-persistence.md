@@ -107,9 +107,9 @@ public interface MatchPersistence {
 Planned implementations:
 
 - `FileMatchPersistence`: reads and writes JSON files under the configured
-  checkpoint directory.
-- `NoOpMatchPersistence`: default safe implementation for tests or disabled
-  persistence.
+  checkpoint directory. It also owns the disabled mode: when persistence is
+  disabled, `loadActiveMatches` returns an empty list and `save` / `delete`
+  return without touching the filesystem.
 
 Supporting components:
 
@@ -144,15 +144,6 @@ review and aligned with MVC boundaries.
     - `void save(SavedMatchSnapshot snapshot)`
     - `void delete(int gameId)`
   - Must not expose filesystem or JSON library types.
-
-- `NoOpMatchPersistence`
-  - Null-object implementation.
-  - Used by existing tests, disabled persistence mode, and backward-compatible
-    constructors.
-
-- `MatchPersistenceConfig`
-  - Record containing `enabled`, `checkpointDirectory`, and `schemaVersion`.
-  - Built from `ServerRuntimeConfig`.
 
 No custom persistence exception hierarchy is planned. Implementations should use
 standard Java exceptions at the boundary, such as `UncheckedIOException` for file
@@ -233,7 +224,12 @@ top-level records. Sub-shapes live as nested records inside `SavedMatchSnapshot`
   - Concrete `MatchPersistence`.
   - Owns JSON serialization and coordinates load/save/delete.
   - Suggested constructor:
-    - `FileMatchPersistence(Path checkpointDirectory, ObjectMapper objectMapper, Clock clock)`
+    - `FileMatchPersistence(boolean enabled, Path checkpointDirectory, ObjectMapper objectMapper, Clock clock)`
+  - Disabled behavior:
+    - `loadActiveMatches()` returns `List.of()`;
+    - `save(...)` returns immediately;
+    - `delete(...)` returns immediately;
+    - no filesystem access is attempted.
   - `save(SavedMatchSnapshot snapshot)`:
     - validates that the snapshot has a game id;
     - serializes the DTO to pretty JSON;
@@ -303,8 +299,6 @@ Planned changes:
 - Read environment:
   - `MESOS_GAME_PERSISTENCE_ENABLED`, default `true`
   - `MESOS_GAME_PERSISTENCE_DIR`, default `data/game-checkpoints`
-- Add method:
-  - `MatchPersistenceConfig toMatchPersistenceConfig()`
 
 This keeps configuration parsing centralized with the existing runtime config.
 
@@ -337,9 +331,10 @@ File: `src/main/java/it/polimi/ingsoft/mesos/server/model/persistence/ServerServ
 Planned changes:
 
 - Continue creating `RankingService` from DB config.
-- Independently create `MatchPersistence` from `MatchPersistenceConfig`.
-- Return `NoOpMatchPersistence` when game persistence is disabled.
-- Return `FileMatchPersistence` when enabled.
+- Independently create `FileMatchPersistence` from
+  `gamePersistenceEnabled` / `gamePersistenceDirectory`.
+- When game persistence is disabled, pass `enabled = false` to
+  `FileMatchPersistence` instead of using a separate no-op class.
 
 The factory is allowed to know concrete persistence implementations because it is
 part of composition/wiring.
@@ -367,7 +362,10 @@ Planned changes:
 - Add `MatchPersistence matchPersistence` field.
 - Add constructor accepting `GameFactory`, `RankingService`, `MatchPersistence`,
   and `ServerSessionRegistry`.
-- Existing constructors delegate to `NoOpMatchPersistence`.
+- Existing constructors should delegate to the main constructor with a
+  `MatchPersistence` supplied by test/bootstrap wiring. Production wiring creates
+  the concrete `FileMatchPersistence` in `ServerServicesFactory`, not inside the
+  controller.
 - Pass `matchPersistence` to each new `LobbyController`.
 - After successful authentication, check the registry for a resumable restored
   game for that nickname and attach the client if present.
@@ -397,7 +395,9 @@ Planned changes:
   - `MatchPersistence matchPersistence`
   - `GameSnapshotMapper snapshotMapper`
 - Add constructor overloads that accept these dependencies.
-- Existing constructors delegate to `NoOpMatchPersistence` and a default mapper.
+- Existing constructors delegate to the main constructor with a supplied
+  `MatchPersistence` and a default mapper. They should not instantiate
+  `FileMatchPersistence` directly.
 - Add a private wrapper:
 
 ```java
@@ -791,7 +791,8 @@ Add a flow test using a temporary directory and no TCP/RMI:
 
 Add config and service factory tests:
 
-- persistence can be disabled with `NoOpMatchPersistence`
+- persistence can be disabled through `MESOS_GAME_PERSISTENCE_ENABLED=false`
+  without creating a separate no-op implementation
 - checkpoint directory comes from `MESOS_GAME_PERSISTENCE_DIR`
 - default directory is `data/game-checkpoints`
 - ranking DB and file checkpoint persistence remain independent
