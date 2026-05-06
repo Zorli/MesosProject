@@ -82,9 +82,9 @@ public class Lobby {
         }, null);
     }
 
-    public void notifyActionError(Listener target, RuntimeException exception) {
+    public void notifyActionError(Listener target) {
         if (target != null) {
-            target.notifyUpdate(new ErrorPayload("LOBBY_ACTION_ERROR", exception.getMessage()));
+            target.notifyUpdate(new ErrorPayload("PHASE_ERROR", "Action non permitted in this phase."));
         }
     }
 

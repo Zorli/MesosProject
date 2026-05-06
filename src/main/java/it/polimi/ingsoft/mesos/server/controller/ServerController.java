@@ -100,7 +100,7 @@ public class ServerController implements Runnable {
                         case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
                     }
                 } catch (IllegalArgumentException e) {
-                    this.serverModel.reportPhaseError(sessionId, String.valueOf(cmd.payload()));
+                    this.serverModel.reportPhaseError(sessionId);
                 }
 
             } catch (InterruptedException e) {

@@ -165,7 +165,7 @@ public class GameOrchestrator implements Runnable  {
                         }
                     }
                 } catch (RuntimeException e) {
-                    this.notifySessionError(sessionId, e);
+                    this.notifyPhaseError(sessionId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -290,9 +290,9 @@ public class GameOrchestrator implements Runnable  {
         return hostNickname;
     }
 
-    private void notifySessionError(String sessionId, RuntimeException exception) {
+    private void notifyPhaseError(String sessionId) {
         try {
-            this.game.notifyActionError(this.sessions.getListenerOf(sessionId), exception);
+            this.game.notifyActionError(this.sessions.getListenerOf(sessionId));
         } catch (RuntimeException ignored) {
         }
     }

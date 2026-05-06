@@ -39,8 +39,8 @@ public class ServerModel {
         }
     }
 
-    public void reportPhaseError(String sessionId, String actionName) {
-        this.sendUnicastError(sessionId, "PHASE_ERROR", "Action '" + actionName + "' non permitted in this phase.");
+    public void reportPhaseError(String sessionId) {
+        this.sendUnicastError(sessionId, "PHASE_ERROR", "Action non permitted in this phase.");
     }
 
     public void reportJoinError(String sessionId, String message) {

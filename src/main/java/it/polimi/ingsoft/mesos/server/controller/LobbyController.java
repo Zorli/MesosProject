@@ -59,7 +59,7 @@ public class LobbyController implements Runnable {
                         default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
                     }
                 } catch (RuntimeException e) {
-                    this.notifySessionError(sessionId, e);
+                    this.notifyPhaseError(sessionId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -160,10 +160,10 @@ public class LobbyController implements Runnable {
         }, "match-countdown-" + this.lobby.getId()).start();
     }
 
-    private void notifySessionError(String sessionId, RuntimeException exception) {
+    private void notifyPhaseError(String sessionId) {
         try {
             Listener listener = this.sessions.getListenerOf(sessionId);
-            this.lobby.notifyActionError(listener, exception);
+            this.lobby.notifyActionError(listener);
         } catch (RuntimeException ignored) {
         }
     }
