@@ -12,14 +12,16 @@ public class ConnectionAcceptor implements Runnable{
     private final int port;
     private final ServerController serverController;
     private ServerSocket serverSocket;
+    private final MessageRouter router;
     private volatile boolean running;
 
-    public ConnectionAcceptor(int port, ServerController serverController) {
+    public ConnectionAcceptor(int port, ServerController serverController, MessageRouter router) {
         if (port < 0 || port > 65_535) {
             throw new IllegalArgumentException("Port must be between 0 and 65535");
         }
         this.port = port;
         this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
+        this.router = Objects.requireNonNull(router, "router cannot be null");
     }
 
     @Override
@@ -36,7 +38,7 @@ public class ConnectionAcceptor implements Runnable{
             while (this.running) {
                 try {
                     Socket clientSocket = this.serverSocket.accept();
-                    VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController);
+                    VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router );
                     Thread virtualViewThread = new Thread(
                             virtualView,
                             "mesos-virtual-view-" + clientSocket.getPort()

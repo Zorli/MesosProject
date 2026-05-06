@@ -12,10 +12,8 @@ import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ServerController implements Runnable {
@@ -34,8 +32,8 @@ public class ServerController implements Runnable {
     // --- CODA PRE-LOBBY ---
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
-    public ServerController(GameFactory gameFactory, RankingService rankingService) {
-        this.sessions = new ServerSessionRegistry();
+    public ServerController(GameFactory gameFactory, RankingService rankingService, ServerSessionRegistry sessions) {
+        this.sessions = sessions;
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
         this.rankingService = rankingService;
 
@@ -46,13 +44,15 @@ public class ServerController implements Runnable {
         this.pingPongRoutine.start();
     }
     //cacata
-    public ServerController(RankingService rankingService) {
-        this(DefaultGameFactory.getInstance(), rankingService);
+    public ServerController(ServerSessionRegistry sessions) {
+        this(DefaultGameFactory.getInstance(), null, sessions);
     }
-    public ServerController(GameFactory gameFactory) {
-        this(gameFactory, null);
+    public ServerController(GameFactory gameFactory, ServerSessionRegistry sessions) {
+        this(gameFactory,null, sessions);
     }
-    public ServerController() {this(DefaultGameFactory.getInstance(), null);}
+    public ServerController() {
+        this(new ServerSessionRegistry());
+    }
     // --- YELLOW PAGES GETTERS (Usati dalla VirtualView per l'instradamento) ---
 
 //    public LobbyController getLobbyController(int lobbyId) {
@@ -100,7 +100,7 @@ public class ServerController implements Runnable {
                         case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
                     }
                 } catch (IllegalArgumentException e) {
-                    this.serverModel.reportPhaseError(sessionId, String.valueOf(cmd.payload()));
+                    this.serverModel.reportPhaseError(sessionId);
                 }
 
             } catch (InterruptedException e) {
@@ -113,16 +113,19 @@ public class ServerController implements Runnable {
     // --- WRAPPER API PRE-LOBBY (Chiamati dai Command estratti dalla coda) ---
 
     public void authenticate(String sessionId, String nickname) {
-        this.serverModel.authenticate(sessionId, nickname);
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        this.serverModel.authenticate(sessionId, nickname,  clientView);
     }
 
     public void listOpenLobbies(String sessionId) {
-        this.serverModel.listOpenLobbies(sessionId);
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        this.serverModel.listOpenLobbies(sessionId, clientView);
     }
 
     public void createLobby(String sessionId, int chosenCapacity) {
         // 1. Chiamata al Model per logica ed eventuali errori
-        Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity);
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity, clientView);
 
         // 2. Transizione e Setup Controller se successo
         if (lobby != null) {
@@ -135,16 +138,29 @@ public class ServerController implements Runnable {
                     this.rankingService
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);
-            new Thread(lobbyController, "lobby-controller-" + lobby.getId()).start();
+            Thread lobbyWorker = new Thread(lobbyController, "Lobby-" + lobby.getId() + "-Worker");
+            lobbyWorker.start();
         }
     }
 
     public void joinLobby(String sessionId, int lobbyId) {
-        Lobby lobby = this.serverModel.joinLobby(sessionId, lobbyId);
-
-        if (lobby != null) {
-            this.sessions.enterLobby(sessionId, lobby.getId());
+        Listener clientView = this.sessions.getListenerOf(sessionId);
+        String nickname = this.sessions.nicknameOf(sessionId);
+        try{
+            this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId );
+            LobbyController target = this.sessions.getLobbyController(lobbyId);
+            if (target == null) {
+                this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
+                return;
+            }
+            target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
+        }catch (Exception e) {
+            this.serverModel.reportJoinError(sessionId, e.getMessage());
         }
+    }
+
+    public void reportRoutingError(String sessionId, String message) {
+        this.serverModel.reportRoutingError(sessionId, message);
     }
 
     // --- LIFECYCLE DELLA CONNESSIONE --- da spostare in altro luogo
