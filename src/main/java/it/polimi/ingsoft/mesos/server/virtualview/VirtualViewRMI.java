@@ -1,12 +1,9 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.model.Listener;
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
-import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
@@ -18,7 +15,7 @@ import it.polimi.ingsoft.mesos.shared.payload.server.*;
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.List;
+import java.io.PrintStream;
 /**
  * Dedicated RMI remote session for a single authenticated client.
  * <p>
@@ -31,25 +28,25 @@ import java.util.List;
  * delegating the domain logic to the central {@link ServerController}, and dispatching
  * outbound server updates back to the client via asynchronous RMI callbacks.
  */
-public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, Listener, PingPongConnection {
+public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, ClientConnection, Listener {
     private final ServerController serverController;
     private final RmiClientService clientCallback; // Per mandare gli update al client
     private final String sessionId;
     private final MessageRouter router;
-    private final PreMatchPayloadMapper payloadMapper;
+    private final PrintStream out;
     private boolean cleanupDone;
 
     public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router) throws RemoteException {
+        this(serverController, clientCallback, router, System.out);
+    }
+
+    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router, PrintStream out) throws RemoteException {
         super();
         this.serverController = serverController;
         this.clientCallback = clientCallback;
         this.sessionId = this.serverController.registerConnection(this);
         this.router = router;
-        this.payloadMapper = new PreMatchPayloadMapper();
-    }
-
-    public String getSessionId() {
-        return this.sessionId;
+        this.out = out;
     }
     // VirtualView should only handle transport/protocol errors.
     // Application errors are produced by the model and sent back through notifyUpdate.
@@ -60,6 +57,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void sendMessage(ClientPayload payload) throws RemoteException {
         try {
+            this.out.println("[RMI] Received " + this.describePayload(payload) + " from " + this.describeSession());
             this.router.routeMessage(this.sessionId, payload);
         } catch (RuntimeException exception) {
             this.sendError(exception);
@@ -97,11 +95,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     //Ping Pong Protocol
-    //TODO : Still WIP
-    public void recordPong() {
-        this.serverController.recordPong(this.sessionId);
-    }
-
     @Override
     public void sendPing() {
         try {
@@ -112,11 +105,27 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
 
     @Override
     public void pong(PongPayload payload) throws RemoteException {
+        this.out.println("[RMI] Received PONG from " + this.describeSession());
         if (payload == null) {
-            this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload("PONG_ERROR", "Malformed pong payload")));
+            this.sendError(new IllegalArgumentException("Malformed payload"));
             return;
         }
-        this.recordPong();
+        this.serverController.recordPong(this.sessionId);
+    }
+
+    private String describePayload(ClientPayload payload) {
+        if (payload == null) {
+            return "null";
+        }
+        return payload.getClass().getSimpleName();
+    }
+
+    private String describeSession() {
+        String nickname = this.serverController.getSessionRegistry().nicknameOf(this.sessionId);
+        if (nickname != null && !nickname.isBlank()) {
+            return nickname;
+        }
+        return "unauthenticated-client";
     }
 
     //metodi di chiusura pulita

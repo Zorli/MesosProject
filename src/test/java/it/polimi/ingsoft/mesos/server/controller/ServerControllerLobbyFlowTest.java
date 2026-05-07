@@ -13,7 +13,7 @@ import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.player.Tribe;
-import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
@@ -109,7 +109,7 @@ class ServerControllerLobbyFlowTest {
         assertEquals("Player disconnected: Alice", error.message);
     }
 
-    private static final class RecordingConnection implements PingPongConnection, Listener {
+    private static final class RecordingConnection implements ClientConnection, Listener {
         private final List<Object> updates = new ArrayList<>();
 
         @Override

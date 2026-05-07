@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.user.User;
-import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -114,7 +114,7 @@ public class ServerSessionRegistry {
     // GESTIONE CONNESSIONI E AUTENTICAZIONE
     // ==========================================
 
-    public synchronized String registerConnection(PingPongConnection connection) {
+    public synchronized String registerConnection(ClientConnection connection) {
         Objects.requireNonNull(connection, "connection cannot be null");
         String sessionId;
         do {
@@ -218,7 +218,7 @@ public class ServerSessionRegistry {
         return this.requireSession(sessionId).lobbyId;
     }
     public synchronized Listener getListenerOf(String sessionId) {
-        PingPongConnection connection = this.requireSession(sessionId).connection;
+        ClientConnection connection = this.requireSession(sessionId).connection;
         if (connection instanceof Listener listener) {
             return listener;
         }
@@ -228,7 +228,7 @@ public class ServerSessionRegistry {
         return this.requireSession(sessionId).gameId;
     }
 
-    public synchronized PingPongConnection connectionOf(String sessionId) {
+    public synchronized ClientConnection connectionOf(String sessionId) {
         return this.requireSession(sessionId).connection;
     }
 
@@ -294,14 +294,14 @@ public class ServerSessionRegistry {
     // ==========================================
 
     private static class SessionState {
-        private final PingPongConnection connection;
+        private final ClientConnection connection;
         private User user;
         private Phase phase = Phase.PRE_LOBBY;
         private Integer lobbyId;
         private Integer gameId;
         private long lastPongAt;
 
-        private SessionState(PingPongConnection connection, long lastPongAt) {
+        private SessionState(ClientConnection connection, long lastPongAt) {
             this.connection = connection;
             this.lastPongAt = lastPongAt;
         }
@@ -309,7 +309,7 @@ public class ServerSessionRegistry {
 
     public record SessionSnapshot(
             String sessionId,
-            PingPongConnection connection,
+            ClientConnection connection,
             User user,
             Phase phase,
             Integer lobbyId,

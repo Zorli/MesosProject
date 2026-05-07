@@ -2,12 +2,10 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.model.Listener;
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
@@ -16,7 +14,6 @@ import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
@@ -27,14 +24,13 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.PrintStream;
 import java.net.Socket;
-import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 //TCP implementation of the VirtualView contract.
 //It acts as the network boundary on the server side: it reads raw client messages,
 //delegates parsing/dispatch, and serializes the structured server response back on the socket.
-public class VirtualViewTCP implements VirtualView, Runnable, Listener{
+public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, Listener{
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket clientSocket;
@@ -44,7 +40,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     private final String sessionId;
     private final MessageRouter router;
     private final ClientCommandHandler commandHandler;
-    private final PreMatchPayloadMapper payloadMapper;
     private boolean cleanupDone;
 
     //Consutrctor
@@ -67,7 +62,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
         this.sessionId = this.serverController.registerConnection(this);
         this.commandHandler = new ClientCommandHandler(this.out, this);
-        this.payloadMapper = new PreMatchPayloadMapper();
     }
 
     // Main Loop on the socket
@@ -104,13 +98,13 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     }
 
     // I/O methods section---------------
-    public void sendServerMessage(ServerMessage message) {//low level call
+    private void sendServerMessage(ServerMessage message) {//low level call
         Objects.requireNonNull(message, "message cannot be null");
         this.writer.println(GSON.toJson(message));
     }
 
     // Error handling method
-    public void sendError(RuntimeException exception) {
+    private void sendError(RuntimeException exception) {
         Objects.requireNonNull(exception, "exception cannot be null");
         ErrorPayload errorPayload = ProtocolErrorMapper.toErrorPayload(exception);
         this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
@@ -156,11 +150,6 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
 
 
     //Ping Pong protocol
-    public void recordPong() {
-        this.serverController.recordPong(this.sessionId);
-    }
-
-    //TODO: questi vanno rivisti inolktre non possono fare entrambi parte dell'interfaccia
     @Override
     public void sendPing() {
         this.sendServerMessage(new ServerMessage(ServerMessageType.PING, null));
@@ -169,10 +158,10 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
     @Override
     public void pong(PongPayload payload) {
         if (payload == null) {
-            this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload("PONG_ERROR", "Malformed pong payload")));
+            this.sendError(new IllegalArgumentException("Malformed payload"));
             return;
         }
-        this.recordPong();
+        this.serverController.recordPong(this.sessionId);
     }
 
 

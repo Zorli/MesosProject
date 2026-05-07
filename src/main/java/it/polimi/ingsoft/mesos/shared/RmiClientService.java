@@ -1,7 +1,10 @@
 package it.polimi.ingsoft.mesos.shared;
 
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+
 /**
  * Remote contract for the client-side callback mechanism over RMI.
  * This interface is exposed by the client and directly invoked by the server
@@ -12,4 +15,7 @@ import java.rmi.RemoteException;
  * It must reside in the shared module as the server needs it to hold client references.
  * Keep it aligned with VirtualServer when pushed server events change.
  */
-public interface RmiClientService extends Remote, ClientEndpoint<RemoteException> {}
+public interface RmiClientService extends Remote {
+    void handleMessage(ServerMessage message) throws RemoteException;
+    void handlePing() throws RemoteException;
+}

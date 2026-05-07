@@ -50,7 +50,7 @@ public class ClientCommandHandler {
 
         // Se è un PONG, lo gestiamo istantaneamente bypassando la logica di gioco
         if (type == ClientMessageType.PONG) {
-            this.virtualView.recordPong();
+            this.virtualView.pong(new PongPayload());
             return; // Fine dell'esecuzione
         }
 

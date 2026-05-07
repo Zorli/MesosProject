@@ -8,7 +8,7 @@ import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.ServerModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 
@@ -24,10 +24,6 @@ public class ServerController implements Runnable {
     private final RankingService rankingService;
     private final PingPongRoutine pingPongRoutine;
 
-    // --- LE "PAGINE GIALLE" DEI CONTROLLER ATTIVI ---
-    //tutti i dati dentro
-//    private final Map<Integer, LobbyController> activeLobbyControllers = new ConcurrentHashMap<>();
-//    private final Map<Integer, GameOrchestrator> activeGames = new ConcurrentHashMap<>();
 
     // --- CODA PRE-LOBBY ---
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
@@ -40,28 +36,18 @@ public class ServerController implements Runnable {
         // Il Model assume la piena responsabilità dei controlli di business
         this.serverModel = new ServerModel(this.sessions);
 
-        this.pingPongRoutine = new PingPongRoutine(this.sessions, this::handleConnectionTimeout);
+        this.pingPongRoutine = new PingPongRoutine(this);
         this.pingPongRoutine.start();
     }
     //cacata
     public ServerController(ServerSessionRegistry sessions) {
         this(DefaultGameFactory.getInstance(), null, sessions);
     }
-    public ServerController(GameFactory gameFactory, ServerSessionRegistry sessions) {
-        this(gameFactory,null, sessions);
-    }
+
     public ServerController() {
         this(new ServerSessionRegistry());
     }
-    // --- YELLOW PAGES GETTERS (Usati dalla VirtualView per l'instradamento) ---
 
-//    public LobbyController getLobbyController(int lobbyId) {
-//        return this.activeLobbyControllers.get(lobbyId);
-//    }
-//
-//    public GameOrchestrator getGameOrchestrator(int gameId) {
-//        return this.activeGames.get(gameId);
-//    }
 
     public ServerSessionRegistry getSessionRegistry() {
         return this.sessions;
@@ -165,7 +151,7 @@ public class ServerController implements Runnable {
 
     // --- LIFECYCLE DELLA CONNESSIONE --- da spostare in altro luogo
 
-    public String registerConnection(PingPongConnection connection) {
+    public String registerConnection(ClientConnection connection) {
         String sessionId = this.sessions.registerConnection(connection);
         if (connection instanceof Listener listener) {
             this.serverModel.addGlobalListener(sessionId, listener);
@@ -204,9 +190,9 @@ public class ServerController implements Runnable {
         this.sessions.unregister(sessionId);
     }
 
-    private void handleConnectionTimeout(String sessionId) {
+    public void handleConnectionTimeout(String sessionId) {
         try {
-            this.sessions.connectionOf(sessionId).close();
+            this.sessions.connectionOf(sessionId).close(); //At runtime it's a virtualview basically
             this.disconnectSession(sessionId);
         } catch (Exception ignored) {
         }
