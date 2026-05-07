@@ -91,17 +91,18 @@ public class ServerModel {
         }
     }
 
-    public void joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
+    public boolean joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
         try {
             this.ensureSessionCanEnterLobby(sessionId);
 
             if (this.sessions.getLobbyModel(lobbyId).isEmpty()) {
                 throw new IllegalArgumentException("La lobby richiesta non esiste.");
             }
+            return true;
         } catch (Exception e) {
             // UNICAST DI ERRORE DAL MODEL (MVC Puro)
             clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR" , e.getMessage()));
-            throw e; // Rilanciamo per bloccare il Controller
+            return false;
         }
     }
 

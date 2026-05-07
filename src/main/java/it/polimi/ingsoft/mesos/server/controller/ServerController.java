@@ -132,17 +132,15 @@ public class ServerController implements Runnable {
     public void joinLobby(String sessionId, int lobbyId) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
         String nickname = this.sessions.nicknameOf(sessionId);
-        try{
-            this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId );
-            LobbyController target = this.sessions.getLobbyController(lobbyId);
-            if (target == null) {
-                this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
-                return;
-            }
-            target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
-        }catch (Exception e) {
-            this.serverModel.reportJoinError(sessionId, e.getMessage());
+        if (!this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId)) {
+            return;
         }
+        LobbyController target = this.sessions.getLobbyController(lobbyId);
+        if (target == null) {
+            this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
+            return;
+        }
+        target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
     }
 
     public void reportRoutingError(String sessionId, String message) {
