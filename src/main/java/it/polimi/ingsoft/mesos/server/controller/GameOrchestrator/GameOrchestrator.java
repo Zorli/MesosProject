@@ -146,6 +146,7 @@ public class GameOrchestrator implements Runnable  {
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
+
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
                 String nickname = sessions.nicknameOf(sessionId);
