@@ -114,6 +114,9 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             this.clientSocket.close();
         }
     }
+
+    //Chaiamata interna per mandare messaggio al router, in tcp deve essere chiamata
+    //dal deserializzatore
     @Override
     public void sendMessage(ClientPayload payload) {
         this.router.routeMessage(this.sessionId, payload);
@@ -126,6 +129,7 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         this.writer.println(GSON.toJson(message));
     }
 
+    //TODO: questi vanno rivisti inolktre non possono fare entrambi parte dell'interfaccia
     @Override
     public void sendPing() {
         this.sendServerMessage(new ServerMessage(ServerMessageType.PING, null));
@@ -198,25 +202,4 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
     }
 
-//    private void enterCurrentMatchIfAvailable() {
-//        Integer lobbyId = this.serverController.lobbyIdOf(this.sessionId);
-//        if (lobbyId != null) {
-//            this.enterMatchIfAvailable(lobbyId);
-//        }
-//    }
-//
-//    private void enterMatchIfAvailable(int lobbyId) {
-//        try {
-//            this.serverController.enterGameIfAvailable(this.sessionId, lobbyId);
-//        } catch (Exception ignored) {
-//        }
-//    }
-//
-//    private GameOrchestrator safeGame() {
-//        try {
-//            return this.serverController.gameOf(this.sessionId);
-//        } catch (RuntimeException ignored) {
-//            return null;
-//        }
-//    }
 }

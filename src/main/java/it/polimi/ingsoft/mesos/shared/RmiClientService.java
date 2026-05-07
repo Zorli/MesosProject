@@ -1,9 +1,11 @@
 package it.polimi.ingsoft.mesos.shared;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
 
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 /**
@@ -17,9 +19,7 @@ import java.rmi.RemoteException;
  * Keep it aligned with VirtualServer when pushed server events change.
  */
 public interface RmiClientService extends Remote{
-    void handleError(ErrorPayload payload) throws RemoteException;
-    void handlePreMatchUpdate(PreMatchUpdatePayload payload) throws RemoteException;
-    void handleLobbyList(LobbyListPayload payload) throws RemoteException;
-    void handleGameUpdate(GamePayload payload) throws RemoteException;
-    void handlePing() throws RemoteException;
+    void handleMessagge(ServerMessage message) throws RemoteException;
+    void handlePing() throws  RemoteException;
+
 }

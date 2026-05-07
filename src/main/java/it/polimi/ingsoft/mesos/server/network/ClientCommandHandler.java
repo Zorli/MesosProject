@@ -25,6 +25,7 @@ public class ClientCommandHandler {
     // =========================================================
     // L'UNICO PUNTO DI INGRESSO (Nota: Ritorna void, non più ServerMessage!)
     // =========================================================
+    //TODO : Migliorare eccezioni lanciate qua per essere più informative
     public void handle(String rawMessage) {
         JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
         if (root == null) {

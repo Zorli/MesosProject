@@ -9,6 +9,8 @@ import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.*;
 
@@ -66,7 +68,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void pong(PongPayload payload) throws RemoteException {
         if (payload == null) {
-            this.clientCallback.handleError(new ErrorPayload("PONG_ERROR", "Malformed pong payload"));
+            this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload("PONG_ERROR", "Malformed pong payload")));
             return;
         }
         this.recordPong();
@@ -114,11 +116,11 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void notifyUpdate(Object payload) {
         try {
             if (payload instanceof GamePayload gamePayload) {
-                this.clientCallback.handleGameUpdate(gamePayload);
+                this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
                 return;
             }
             if (payload instanceof ErrorPayload errorPayload) {
-                this.clientCallback.handleError(errorPayload);
+                this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.ERROR, errorPayload));
                 return;
             }
             if (payload instanceof LobbyListPayload lobbyListPayload) {
@@ -128,7 +130,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
                 if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
                 }
-                this.clientCallback.handlePreMatchUpdate(preMatchUpdatePayload);
+                this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
             }
         } catch (RemoteException ignored) {
         }

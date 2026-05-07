@@ -4,6 +4,8 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
@@ -165,7 +167,7 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     private void notifyLocalError(String code, String message) {
-        this.callbackReceiver.handleError(new ErrorPayload(code, message));
+        this.callbackReceiver.handleMessagge(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload(code, message)));
     }
 
     private boolean ensureConnected() {

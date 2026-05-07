@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.client.virtualserver;
 
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -14,14 +15,7 @@ import java.io.IOException;
 // On the server side, the concrete transport object acts as a proxy toward this contract.
 public interface VirtualServer extends AutoCloseable {
 
-    void handleError(ErrorPayload payload);
-
-    void handlePreMatchUpdate(PreMatchUpdatePayload payload);
-
-    void handleLobbyList(LobbyListPayload payload);
-
-    void handleGameUpdate(GamePayload payload);
-
+    void handleMessagge(ServerMessage message);
     void handlePing();
 
     @Override
