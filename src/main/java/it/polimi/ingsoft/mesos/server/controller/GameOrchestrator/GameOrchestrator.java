@@ -179,7 +179,7 @@ public class GameOrchestrator implements Runnable  {
     public void setupMatch() {
         this.ensureMatchIsWritable();
         this.game.setup();
-        this.recordRankingIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     /**
@@ -192,7 +192,7 @@ public class GameOrchestrator implements Runnable  {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.moveTotem(player, tile);
-        this.recordRankingIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     /**
@@ -205,7 +205,7 @@ public class GameOrchestrator implements Runnable  {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.chooseCard(player, cardId);
-        this.recordRankingIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     /**
@@ -218,7 +218,7 @@ public class GameOrchestrator implements Runnable  {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.extraDrawn(player, cardId);
-        this.recordRankingIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     public void freezeForDisconnectedPlayer(String nickname) {
@@ -242,7 +242,7 @@ public class GameOrchestrator implements Runnable  {
     }
 
     private void recordRankingIfFinished() {
-        if (this.rankingService == null || this.rankingRecorded || this.game.getStatus() != GameStatus.FINISHED) {
+        if (this.rankingService == null || this.rankingRecorded) {
             return;
         }
 
@@ -266,6 +266,31 @@ public class GameOrchestrator implements Runnable  {
         return this.players.stream()
                 .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
                 .toList();
+    }
+    private void checkGameEndAndCleanup() {
+        if (this.game.getStatus() != GameStatus.FINISHED) {
+            return;
+        }
+        try{
+            this.recordRankingIfFinished();
+        }catch (RankingFinalizationFailureException e){
+            //boh forse da aggiungere errore personalizzato su mancanza di dati registrati
+        }
+        finally {
+            this.teardownGame();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void teardownGame() {
+        List<ServerSessionRegistry.SessionSnapshot> playersInGame =
+                this.sessions.sessionsInGame(this.game.getId());
+
+        for (ServerSessionRegistry.SessionSnapshot snapshot : playersInGame) {
+            this.sessions.leaveGame(snapshot.sessionId());
+        }
+        this.sessions.removeGameOrchestrator(this.game.getId());
+
     }
 
     // Helper methods
