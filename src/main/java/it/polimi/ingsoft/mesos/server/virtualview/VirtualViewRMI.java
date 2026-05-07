@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
+import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
@@ -36,6 +37,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     private final String sessionId;
     private final MessageRouter router;
     private final PreMatchPayloadMapper payloadMapper;
+    private boolean cleanupDone;
 
     public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router) throws RemoteException {
         super();
@@ -49,9 +51,57 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public String getSessionId() {
         return this.sessionId;
     }
-    // attenzione vorrei dare alle virtualView, esse non devono avere blocchi try catch, gli errori vengono gestiti nel model
-    // infatti si può notare che il notify update è perfetto riguardo a tale implementazione. (allora andrà parallelizzato comportamento di
-    // gestione degli errori come nel game anche nella lobby ( o qualunque classe lato model simboleggi le lobby)
+    // VirtualView should only handle transport/protocol errors.
+    // Application errors are produced by the model and sent back through notifyUpdate.
+
+
+    //Gestione del messaggio in arrivo dal client, viene inoltrato al router che decidera chi ha
+    //la mansione di gestirlo
+    @Override
+    public void sendMessage(ClientPayload payload) throws RemoteException {
+        try {
+            this.router.routeMessage(this.sessionId, payload);
+        } catch (RuntimeException exception) {
+            this.sendError(exception);
+        }
+    }
+
+    private void sendError(RuntimeException exception) throws RemoteException {
+        ErrorPayload errorPayload = ProtocolErrorMapper.toErrorPayload(exception);
+        this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+    }
+
+    //Update in uscita
+    @Override
+    public void notifyUpdate(Object payload) {
+        try {
+            if (payload instanceof GamePayload gamePayload) {
+                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
+                return;
+            }
+            if (payload instanceof ErrorPayload errorPayload) {
+                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+                return;
+            }
+            if (payload instanceof LobbyListPayload lobbyListPayload) {
+                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
+                return;
+            }
+            if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
+                if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
+                }
+                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
+            }
+        } catch (RemoteException ignored) {
+        }
+    }
+
+    //Ping Pong Protocol
+    //TODO : Still WIP
+    public void recordPong() {
+        this.serverController.recordPong(this.sessionId);
+    }
+
     @Override
     public void sendPing() {
         try {
@@ -61,116 +111,32 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     @Override
-    public void sendMessage(ClientPayload payload) throws RemoteException {
-        this.router.routeMessage(this.sessionId, payload);
-    }
-
-    @Override
     public void pong(PongPayload payload) throws RemoteException {
         if (payload == null) {
-            this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload("PONG_ERROR", "Malformed pong payload")));
+            this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload("PONG_ERROR", "Malformed pong payload")));
             return;
         }
         this.recordPong();
     }
-    // da capire come sistemare (solo sessions da ServerController)
+
+    //metodi di chiusura pulita
 
     @Override
     public void closeSession() throws RemoteException {
-       // this.cleanup();
+        this.close();
     }
 
     @Override
-    public void close() {
-        //this.cleanup();
-    }
-
-//    private void cleanup() {
-//        GameOrchestrator game = this.safeGame();
-//        if (game != null) {
-//            game.getGame().removeListener(this);
-//        }
-//        this.serverController.disconnectSession(this.sessionId);
-//        try {
-//            UnicastRemoteObject.unexportObject(this, true);
-//        } catch (NoSuchObjectException ignored) {}
-//    }
-    private LobbySummaryPayload toLobbySummaryPayload(Lobby lobby) {
-        return new LobbySummaryPayload(
-                lobby.getId(),
-                lobby.getHostNickname(),
-                lobby.getPlayers().size(),
-                lobby.getChosenCapacity(),
-                lobby.getStatus().name()
-        );
-    }
-
-    private void logReceived(String command, String payload) {
-        System.out.println("[RMI] Received " + command
-                + " from " + this.describeSession()
-                + " payload=" + payload);
-    }
-
-
-    @Override
-    public void notifyUpdate(Object payload) {
+    public synchronized void close() {
+        if (this.cleanupDone) {
+            return;
+        }
+        this.cleanupDone = true;
+        this.serverController.disconnectSession(this.sessionId);
         try {
-            if (payload instanceof GamePayload gamePayload) {
-                this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
-                return;
-            }
-            if (payload instanceof ErrorPayload errorPayload) {
-                this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.ERROR, errorPayload));
-                return;
-            }
-            if (payload instanceof LobbyListPayload lobbyListPayload) {
-                this.clientCallback.handleLobbyList(lobbyListPayload);
-                return;
-            }
-            if (payload instanceof PreMatchUpdatePayload preMatchUpdatePayload) {
-                if (preMatchUpdatePayload.event == PreMatchEventType.LOBBY_STARTED) {
-                }
-                this.clientCallback.handleMessagge(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
-            }
-        } catch (RemoteException ignored) {
+            UnicastRemoteObject.unexportObject(this, true);
+        } catch (NoSuchObjectException ignored) {
         }
     }
 
-//    private void enterCurrentMatchIfAvailable() {
-//        Integer lobbyId = this.serverController.lobbyIdOf(this.sessionId);
-//        if (lobbyId != null) {
-//            this.enterMatchIfAvailable(lobbyId);
-//        }
-//    }
-//
-//    private void enterMatchIfAvailable(int lobbyId) {
-//        try {
-//            this.serverController.enterGameIfAvailable(this.sessionId, lobbyId);
-//        } catch (Exception ignored) {
-//        }
-//    }
-
-    public void recordPong() {
-        this.serverController.recordPong(this.sessionId);
-    }
-
-//    public boolean isAuthenticated() {
-//        return this.serverController.isAuthenticated(this.sessionId);
-//    }
-
-    public String describeSession() {
-        String nickname = this.serverController.getSessionRegistry().nicknameOf(this.sessionId);
-        if (nickname != null && !nickname.isBlank()) {
-            return nickname;
-        }
-        return "unauthenticated-client";
-    }
-
-//    private GameOrchestrator safeGame() {
-//        try {
-//            return this.serverController.gameOf(this.sessionId);
-//        } catch (RuntimeException ignored) {
-//            return null;
-//        }
-//    }
 }

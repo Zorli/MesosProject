@@ -167,7 +167,7 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     private void notifyLocalError(String code, String message) {
-        this.callbackReceiver.handleMessagge(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload(code, message)));
+        this.callbackReceiver.handleMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload(code, message)));
     }
 
     private boolean ensureConnected() {

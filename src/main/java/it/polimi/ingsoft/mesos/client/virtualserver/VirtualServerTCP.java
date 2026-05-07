@@ -21,8 +21,6 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-import static it.polimi.ingsoft.mesos.shared.messages.ClientMessageType.PONG;
-
 // TCP implementation of the server -> client channel.
 // It reads server messages from the socket and forwards them to the UI through ClientView.
 public class VirtualServerTCP implements VirtualServer, Runnable {
@@ -88,7 +86,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
                     return;
                 }
             };
-            this.handleMessagge(message);
+            this.handleMessage(message);
         } catch (RuntimeException exception) {
             this.handleError(new ErrorPayload("INVALID_SERVER_MESSAGE", serializedMessage));
         }
@@ -96,7 +94,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
 
 
     @Override
-    public void handleMessagge(ServerMessage message) {
+    public void handleMessage(ServerMessage message) {
         this.messageRouter.routeMessage(message);
     }
 

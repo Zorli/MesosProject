@@ -6,7 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
-import it.polimi.ingsoft.mesos.server.virtualview.VirtualView; // Assicurati che punti alla tua nuova TcpVirtualView unificata
+import it.polimi.ingsoft.mesos.server.virtualview.VirtualViewTCP;
 
 import java.io.PrintStream;
 import java.util.Objects;
@@ -15,16 +15,13 @@ public class ClientCommandHandler {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final PrintStream out;
-    private final VirtualView virtualView;
+    private final VirtualViewTCP virtualView;
 
-    public ClientCommandHandler(PrintStream out, VirtualView virtualView) {
+    public ClientCommandHandler(PrintStream out, VirtualViewTCP virtualView) {
         this.out = Objects.requireNonNull(out, "out cannot be null");
         this.virtualView = Objects.requireNonNull(virtualView, "virtualView cannot be null");
     }
 
-    // =========================================================
-    // L'UNICO PUNTO DI INGRESSO (Nota: Ritorna void, non più ServerMessage!)
-    // =========================================================
     //TODO : Migliorare eccezioni lanciate qua per essere più informative
     public void handle(String rawMessage) {
         JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);

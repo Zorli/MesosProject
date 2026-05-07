@@ -5,11 +5,11 @@ import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.network.AuthenticationException;
 import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
+import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.client.*;
@@ -103,45 +103,21 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         }
     }
 
-    @Override
-    public synchronized void close() throws IOException {
-        if (this.cleanupDone) {
-            return;
-        }
-        this.cleanupDone = true;
-        this.serverController.disconnectSession(this.sessionId);
-        if (!this.clientSocket.isClosed()) {
-            this.clientSocket.close();
-        }
-    }
-
-    //Chaiamata interna per mandare messaggio al router, in tcp deve essere chiamata
-    //dal deserializzatore
-    @Override
-    public void sendMessage(ClientPayload payload) {
-        this.router.routeMessage(this.sessionId, payload);
-    }
-
-
     // I/O methods section---------------
     public void sendServerMessage(ServerMessage message) {//low level call
         Objects.requireNonNull(message, "message cannot be null");
         this.writer.println(GSON.toJson(message));
     }
 
-    //TODO: questi vanno rivisti inolktre non possono fare entrambi parte dell'interfaccia
-    @Override
-    public void sendPing() {
-        this.sendServerMessage(new ServerMessage(ServerMessageType.PING, null));
-    }
-
-    @Override
-    public void recordPong() {
-        this.serverController.recordPong(this.sessionId);
+    // Error handling method
+    public void sendError(RuntimeException exception) {
+        Objects.requireNonNull(exception, "exception cannot be null");
+        ErrorPayload errorPayload = ProtocolErrorMapper.toErrorPayload(exception);
+        this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
     }
 
 
-    @Override
+    //Utils
     public String describeSession() {
         String nickname = this.serverController.getSessionRegistry().nicknameOf(this.sessionId);
         if (nickname != null && !nickname.isBlank()) {
@@ -150,36 +126,12 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
         return "unauthenticated-client";
     }
 
-    // Error handling methods section
-    public void sendError(Exception exception) {
-        Objects.requireNonNull(exception, "exception cannot be null");
-        ErrorPayload errorPayload = this.mapExceptionToErrorPayload(exception);
-        this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+    //Chaiamata interna per mandare messaggio al router, in tcp deve essere chiamata
+    //dal deserializzatore
+    @Override
+    public void sendMessage(ClientPayload payload) {
+        this.router.routeMessage(this.sessionId, payload);
     }
-
-    private ErrorPayload mapExceptionToErrorPayload(Exception exception) {
-        if (exception instanceof AuthenticationException) {
-            return new ErrorPayload("AUTH_ERROR", exception.getMessage());
-        }
-        if (exception instanceof IllegalArgumentException) {
-            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
-        }
-        if (exception instanceof UnsupportedOperationException) {
-            return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
-        }
-        return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
-    }
-
-    private LobbySummaryPayload toLobbySummaryPayload(Lobby lobby) {
-        return new LobbySummaryPayload(
-                lobby.getId(),
-                lobby.getHostNickname(),
-                lobby.getPlayers().size(),
-                lobby.getChosenCapacity(),
-                lobby.getStatus().name()
-        );
-    }
-
 
     @Override
     public void notifyUpdate(Object payload) {
@@ -201,5 +153,49 @@ public class VirtualViewTCP implements VirtualView, Runnable, Listener{
             this.sendServerMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchUpdatePayload));
         }
     }
+
+
+    //Ping Pong protocol
+    public void recordPong() {
+        this.serverController.recordPong(this.sessionId);
+    }
+
+    //TODO: questi vanno rivisti inolktre non possono fare entrambi parte dell'interfaccia
+    @Override
+    public void sendPing() {
+        this.sendServerMessage(new ServerMessage(ServerMessageType.PING, null));
+    }
+
+    @Override
+    public void pong(PongPayload payload) {
+        if (payload == null) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload("PONG_ERROR", "Malformed pong payload")));
+            return;
+        }
+        this.recordPong();
+    }
+
+
+    //Metodi di chiusura pulita
+    @Override
+    public void closeSession() {
+        try {
+            this.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    @Override
+    public synchronized void close() throws IOException {
+        if (this.cleanupDone) {
+            return;
+        }
+        this.cleanupDone = true;
+        this.serverController.disconnectSession(this.sessionId);
+        if (!this.clientSocket.isClosed()) {
+            this.clientSocket.close();
+        }
+    }
+
 
 }

@@ -17,7 +17,7 @@ import java.rmi.server.UnicastRemoteObject;
 
 // RMI implementation of the server -> client channel.
 // It receives server callbacks and forwards them to the UI through ClientView.
-public class VirtualServerRMI implements VirtualServer, RmiClientService {
+public class VirtualServerRMI implements RmiClientService {
 
     private final MessageRouter messageRouter;
     private final boolean exported;
@@ -35,7 +35,7 @@ public class VirtualServerRMI implements VirtualServer, RmiClientService {
         this.exported = exported;
     }
 
-    public void handleMessagge(ServerMessage message) {
+    public void handleMessage(ServerMessage message) {
         if(message.type.equals(ServerMessageType.PING)){
             this.handlePing();
             return;
@@ -55,7 +55,6 @@ public class VirtualServerRMI implements VirtualServer, RmiClientService {
         this.serverProxy.sendPong();
     }
 
-    @Override
     public void close() throws NoSuchObjectException {
         if (this.exported) {
             UnicastRemoteObject.unexportObject(this, true);
