@@ -79,6 +79,7 @@ public class GUIController implements ClientView {
     @FXML private VBox gamePage;
     @FXML private VBox endPage;
     @FXML private TextField nicknameField;
+    @FXML private Button loginButton;
     @FXML private Label loginStatusLabel;
     @FXML private Label sessionNicknameLabel;
     @FXML private Label lobbyStatusLabel;
@@ -151,10 +152,10 @@ public class GUIController implements ClientView {
             return;
         }
 
-        this.nickname = typedNickname;
-        this.sessionNicknameLabel.setText(this.nickname);
+        this.nicknameField.setDisable(true);
+        this.loginButton.setDisable(true);
         this.loginStatusLabel.setText("Signing in...");
-        this.callServer(() -> this.serverProxy.authenticate(this.nickname));
+        this.callServer(() -> this.serverProxy.authenticate(typedNickname));
     }
 
     @FXML
@@ -232,6 +233,8 @@ public class GUIController implements ClientView {
             String message = payload == null ? "Errore sconosciuto." : payload.message;
             if (this.loginPage.isVisible()) {
                 this.loginStatusLabel.setText(message);
+                this.nicknameField.setDisable(false);
+                this.loginButton.setDisable(false);
             } else {
                 this.lobbyStatusLabel.setText(message);
             }

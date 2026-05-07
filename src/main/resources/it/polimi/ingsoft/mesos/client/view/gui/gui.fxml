@@ -51,7 +51,7 @@
                                    promptText="es. Tartufo"
                                    onAction="#handleLogin"
                                    styleClass="text-input"/>
-                        <Button text="Log in" maxWidth="Infinity" onAction="#handleLogin" styleClass="primary-button"/>
+                        <Button fx:id="loginButton" text="Log in" maxWidth="Infinity" onAction="#handleLogin" styleClass="primary-button"/>
                         <Label fx:id="loginStatusLabel" text="" wrapText="true" styleClass="status-text"/>
                     </VBox>
                 </HBox>
