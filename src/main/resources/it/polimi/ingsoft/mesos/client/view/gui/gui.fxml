@@ -31,7 +31,7 @@
                 <Label text="Ranking" styleClass="nav-chip"/>
             </HBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label text="sessione" styleClass="muted"/>
+            <Label text="session" styleClass="muted"/>
             <Label fx:id="sessionNicknameLabel" text="Guest" styleClass="session-pill"/>
         </HBox>
     </top>
@@ -60,21 +60,19 @@
             <VBox fx:id="lobbyPage" spacing="18" styleClass="page lobby-page">
                 <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
                     <VBox spacing="2">
-                        <Label text="Lobby attive" styleClass="section-title"/>
-                        <Label fx:id="lobbyStatusLabel" text="Scegli una lobby o creane una nuova." styleClass="section-subtitle"/>
+                        <Label text="Active lobbies" styleClass="section-title"/>
+                        <Label fx:id="lobbyStatusLabel" text="Choose an open table or create your own lobby." styleClass="section-subtitle"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="lobbyCountLabel" text="0 tavoli" styleClass="session-pill"/>
+                    <Label fx:id="lobbyCountLabel" text="0 tables" styleClass="session-pill"/>
                     <Button text="Ranking" onAction="#handleRanking" styleClass="ghost-button"/>
-                    <Button text="Aggiorna" onAction="#handleRefreshLobbies" styleClass="secondary-button"/>
                 </HBox>
 
                 <HBox spacing="18" VBox.vgrow="ALWAYS">
                     <VBox spacing="14" styleClass="surface-panel list-panel" HBox.hgrow="ALWAYS">
                         <HBox alignment="CENTER_LEFT" spacing="12">
-                            <Label text="Tavoli disponibili" styleClass="panel-title"/>
+                            <Label text="Available tables" styleClass="panel-title"/>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <Label text="in tempo reale" styleClass="status-pill"/>
                         </HBox>
                         <ScrollPane fx:id="lobbyScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="clean-scroll">
                             <VBox fx:id="lobbyListContainer" spacing="12"/>
@@ -83,23 +81,33 @@
 
                     <VBox spacing="16" minWidth="316" prefWidth="340" styleClass="surface-panel command-panel">
                         <VBox spacing="2">
-                            <Label text="Crea tavolo" styleClass="panel-title-large"/>
-                            <Label text="Imposta la capienza e resta host della lobby." wrapText="true" styleClass="muted"/>
+                            <Label fx:id="lobbyActionTitleLabel" text="Create table" styleClass="panel-title-large"/>
+                            <Label fx:id="lobbyActionSubtitleLabel" text="Pick a table size from 2 to 5 players and become the host." wrapText="true" styleClass="muted"/>
                         </VBox>
-                        <Label text="Capienza" styleClass="field-label"/>
+                        <VBox spacing="8" styleClass="current-lobby-panel">
+                            <HBox alignment="CENTER_LEFT" spacing="8">
+                                <Label fx:id="currentLobbyTitleLabel" text="No lobby selected" styleClass="current-lobby-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="currentLobbyStateLabel" text="Waiting" styleClass="status-pill"/>
+                            </HBox>
+                            <Label fx:id="currentLobbyHostLabel" text="Host: -" styleClass="muted"/>
+                            <Label fx:id="currentLobbyPlayersLabel" text="Players: -" styleClass="muted"/>
+                        </VBox>
+                        <Label text="Players" styleClass="field-label"/>
                         <ComboBox fx:id="capacityComboBox" maxWidth="Infinity"/>
-                        <Button text="Crea lobby" onAction="#handleCreateLobby" maxWidth="Infinity" styleClass="primary-button"/>
+                        <Button fx:id="createLobbyButton" text="Create lobby" onAction="#handleCreateLobby" maxWidth="Infinity" styleClass="primary-button"/>
                         <Button fx:id="startLobbyButton"
-                                text="Avvia partita"
+                                text="Start match"
                                 disable="true"
                                 onAction="#handleStartLobby"
                                 maxWidth="Infinity"
                                 styleClass="secondary-button"/>
-                        <VBox spacing="8" styleClass="hint-panel">
-                            <Label text="Architettura client" styleClass="hint-title"/>
-                            <Label text="GUI -> ServerProxy -> server" styleClass="muted"/>
-                            <Label text="server -> VirtualServer -> GUI" styleClass="muted"/>
-                        </VBox>
+                        <Button fx:id="exitLobbyButton"
+                                text="Exit lobby"
+                                disable="true"
+                                onAction="#handleExitLobby"
+                                maxWidth="Infinity"
+                                styleClass="danger-button"/>
                     </VBox>
                 </HBox>
             </VBox>

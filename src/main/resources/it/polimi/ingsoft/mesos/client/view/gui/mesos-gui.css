@@ -142,6 +142,17 @@
     -fx-border-radius: 8;
 }
 
+.current-lobby-panel {
+    -fx-background-color:
+            linear-gradient(to bottom, rgba(255, 196, 92, 0.09), rgba(14, 110, 134, 0.10)),
+            #10191b;
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(231, 182, 79, 0.45);
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 14;
+}
+
 .section-title {
     -fx-text-fill: #fff4cf;
     -fx-font-size: 28px;
@@ -150,6 +161,7 @@
 
 .panel-title,
 .lobby-title,
+.current-lobby-title,
 .empty-title,
 .hint-title,
 .player-name,
@@ -161,6 +173,10 @@
 
 .panel-title {
     -fx-font-size: 15px;
+}
+
+.current-lobby-title {
+    -fx-font-size: 16px;
 }
 
 .panel-title-large {
@@ -209,6 +225,42 @@
     -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.28), 8, 0.2, 0, 2);
 }
 
+.combo-box {
+    -fx-min-height: 46;
+}
+
+.combo-box-base {
+    -fx-background-color: rgba(5, 13, 28, 0.88);
+}
+
+.combo-box .cell,
+.combo-box .list-cell,
+.combo-box-popup .list-cell {
+    -fx-text-fill: #fff4cf;
+    -fx-background-color: transparent;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #0b1624;
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(255, 213, 146, 0.46);
+    -fx-border-radius: 6;
+}
+
+.combo-box-popup .list-cell {
+    -fx-padding: 9 12;
+}
+
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #18364b;
+    -fx-text-fill: #ffe197;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #ffd16f;
+}
+
 .text-input:focused,
 .combo-box:focused {
     -fx-border-color: #ffb35c;
@@ -217,14 +269,10 @@
             innershadow(gaussian, rgba(0, 0, 0, 0.22), 8, 0.2, 0, 2);
 }
 
-.combo-box .list-cell {
-    -fx-text-fill: #fff4cf;
-    -fx-background-color: transparent;
-}
-
 .primary-button,
 .secondary-button,
 .ghost-button,
+.danger-button,
 .tile-button {
     -fx-background-radius: 6;
     -fx-border-radius: 6;
@@ -252,6 +300,11 @@
     -fx-text-fill: #ffe1b0;
 }
 
+.danger-button {
+    -fx-background-color: #69303a;
+    -fx-text-fill: #ffe6df;
+}
+
 .tile-button {
     -fx-background-color: #132d43;
     -fx-text-fill: #fff1c7;
@@ -263,8 +316,13 @@
 }
 
 .secondary-button:hover,
+.danger-button:hover,
 .tile-button:hover {
     -fx-background-color: #3d8779;
+}
+
+.danger-button:hover {
+    -fx-background-color: #8a3f46;
 }
 
 .ghost-button:hover {
@@ -287,6 +345,13 @@
 .lobby-card:hover {
     -fx-border-color: #e7b64f;
     -fx-background-color: #192323;
+}
+
+.current-lobby-card {
+    -fx-background-color:
+            linear-gradient(to right, rgba(231, 182, 79, 0.12), rgba(15, 111, 134, 0.08)),
+            #182120;
+    -fx-border-color: #e7b64f;
 }
 
 .winner-row {

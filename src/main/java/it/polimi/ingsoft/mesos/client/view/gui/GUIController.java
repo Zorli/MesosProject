@@ -68,6 +68,9 @@ public class GUIController implements ClientView {
     private PreMatchUpdatePayload lastPreMatchUpdatePayload;
     private PauseTransition authRedirectDelay;
     private Timeline lobbyRefreshTimer;
+    private Integer currentLobbyId;
+    private String currentLobbyHostNickname;
+    private String currentLobbyStatus = "WAITING";
 
     @FXML private StackPane pages;
     @FXML private HBox topBar;
@@ -80,13 +83,17 @@ public class GUIController implements ClientView {
     @FXML private Label sessionNicknameLabel;
     @FXML private Label lobbyStatusLabel;
     @FXML private Label lobbyCountLabel;
+    @FXML private Label lobbyActionTitleLabel;
+    @FXML private Label lobbyActionSubtitleLabel;
     @FXML private Label currentLobbyTitleLabel;
     @FXML private Label currentLobbyHostLabel;
     @FXML private Label currentLobbyPlayersLabel;
     @FXML private Label currentLobbyStateLabel;
     @FXML private ComboBox<Integer> capacityComboBox;
     @FXML private VBox lobbyListContainer;
+    @FXML private Button createLobbyButton;
     @FXML private Button startLobbyButton;
+    @FXML private Button exitLobbyButton;
     @FXML private Label matchTitleLabel;
     @FXML private Label matchMetaLabel;
     @FXML private Label turnLabel;
@@ -132,6 +139,7 @@ public class GUIController implements ClientView {
         this.showPage(this.loginPage);
         this.renderMockGame();
         this.renderNoCurrentLobby();
+        this.updateLobbyActions();
         this.configureLobbyAutoRefresh();
     }
 
@@ -150,11 +158,6 @@ public class GUIController implements ClientView {
     }
 
     @FXML
-    private void handleRefreshLobbies() {
-        this.callServer(this.serverProxy::listLobbies);
-    }
-
-    @FXML
     private void handleCreateLobby() {
         int capacity = this.capacityComboBox.getValue() == null ? 4 : this.capacityComboBox.getValue();
         this.callServer(() -> this.serverProxy.createLobby(capacity));
@@ -163,6 +166,11 @@ public class GUIController implements ClientView {
     @FXML
     private void handleStartLobby() {
         this.callServer(() -> this.serverProxy.startLobby());
+    }
+
+    @FXML
+    private void handleExitLobby() {
+        this.callServer(() -> this.serverProxy.exitLobby());
     }
 
     @FXML
@@ -237,24 +245,30 @@ public class GUIController implements ClientView {
             if (payload == null) {
                 return;
             }
-            if (payload.nickname != null && !payload.nickname.isBlank()) {
-                this.nickname = payload.nickname;
-                this.sessionNicknameLabel.setText(payload.nickname);
-            }
             String message = payload.message == null ? this.describePreMatchEvent(payload.event) : payload.message;
             if (payload.event == PreMatchEventType.AUTHENTICATED) {
+                if (payload.nickname != null && !payload.nickname.isBlank()) {
+                    this.nickname = payload.nickname;
+                    this.sessionNicknameLabel.setText(this.nickname);
+                }
                 this.loginStatusLabel.setText(message + "\nLoading lobby...");
                 this.scheduleAuthenticatedRedirect();
                 return;
             }
-            this.lobbyStatusLabel.setText(message);
+            if (payload.event != PreMatchEventType.LOBBY_LEFT || this.isCurrentUser(payload.nickname)) {
+                this.lobbyStatusLabel.setText(message);
+            }
             this.renderCurrentLobby(payload);
-            this.startLobbyButton.setDisable(payload.event != PreMatchEventType.LOBBY_CREATED
-                    && payload.event != PreMatchEventType.LOBBY_JOINED);
+            this.updateLobbyActions();
             if (payload.event == PreMatchEventType.LOBBY_CREATED
                     || payload.event == PreMatchEventType.LOBBY_JOINED
                     || payload.event == PreMatchEventType.LOBBY_LEFT) {
                 this.showPage(this.lobbyPage);
+                if (this.currentLobbyId == null) {
+                    this.requestLobbyList();
+                } else {
+                    this.renderLobbyListUnavailable();
+                }
             }
             if (payload.event == PreMatchEventType.LOBBY_STARTED) {
                 this.showPage(this.gamePage);
@@ -265,6 +279,12 @@ public class GUIController implements ClientView {
     @Override
     public void showLobbyList(LobbyListPayload payload) {
         this.runOnFx(() -> {
+            if (this.currentLobbyId != null) {
+                this.renderLobbyListUnavailable();
+                this.updateLobbyActions();
+                return;
+            }
+
             this.lastLobbyListPayload = payload;
             List<LobbySummaryPayload> lobbies = payload == null || payload.lobbies == null
                     ? List.of()
@@ -272,26 +292,28 @@ public class GUIController implements ClientView {
 
             this.lobbyListContainer.getChildren().clear();
             if (lobbies.isEmpty()) {
-                this.lobbyCountLabel.setText("0 tavoli");
+                this.lobbyCountLabel.setText("0 tables");
                 this.lobbyListContainer.getChildren().add(
-                        this.emptyState("Nessuna lobby attiva", "Crea una lobby e invita gli altri al tavolo."));
+                        this.emptyState("No active lobbies", "Create a table and wait for the other players."));
             } else {
-                this.lobbyCountLabel.setText(lobbies.size() == 1 ? "1 tavolo" : lobbies.size() + " tavoli");
+                this.lobbyCountLabel.setText(lobbies.size() == 1 ? "1 table" : lobbies.size() + " tables");
                 lobbies.stream()
                         .sorted(Comparator.comparingInt(lobby -> lobby.lobbyId))
                         .map(this::lobbyCard)
                         .forEach(this.lobbyListContainer.getChildren()::add);
             }
 
-            // Aggiorna il pannello "lobby corrente" con i dati freschi se si è già in una lobby
             if (this.lastPreMatchUpdatePayload != null
-                    && this.lastPreMatchUpdatePayload.lobbyId != null
-                    && payload != null
-                    && payload.lobbies != null) {
-                payload.lobbies.stream()
-                        .filter(l -> l.lobbyId == this.lastPreMatchUpdatePayload.lobbyId)
+                    && this.currentLobbyId != null
+                    && !lobbies.isEmpty()) {
+                lobbies.stream()
+                        .filter(l -> l.lobbyId == this.currentLobbyId)
                         .findFirst()
                         .ifPresent(l -> {
+                            this.currentLobbyHostNickname = l.hostNickname;
+                            this.currentLobbyStatus = l.status;
+                            this.currentLobbyTitleLabel.setText("Lobby #" + l.lobbyId);
+                            this.currentLobbyHostLabel.setText("Host: " + l.hostNickname);
                             this.currentLobbyPlayersLabel.setText(
                                     "Players: " + l.currentPlayers + "/" + l.maxPlayers);
                             this.currentLobbyStateLabel.setText(
@@ -299,7 +321,8 @@ public class GUIController implements ClientView {
                         });
             }
 
-            // Non tornare alla lobby se siamo già in partita o nella schermata finale
+            this.updateLobbyActions();
+
             if (!this.gamePage.isVisible() && !this.endPage.isVisible()) {
                 this.showPage(this.lobbyPage);
             }
@@ -492,12 +515,15 @@ public class GUIController implements ClientView {
     private HBox lobbyCard(LobbySummaryPayload lobby) {
         HBox card = new HBox(18);
         card.getStyleClass().add("lobby-card");
+        if (this.isCurrentLobby(lobby.lobbyId)) {
+            card.getStyleClass().add("current-lobby-card");
+        }
 
         VBox details = new VBox(4);
         Label title = new Label("Lobby #" + lobby.lobbyId);
         title.getStyleClass().add("lobby-title");
         Label subtitle = new Label("Host " + lobby.hostNickname
-                + "  |  " + lobby.currentPlayers + "/" + lobby.maxPlayers + " giocatori");
+                + "  |  " + lobby.currentPlayers + "/" + lobby.maxPlayers + " players");
         subtitle.getStyleClass().add("muted");
         HBox seats = this.seatTrack(lobby.currentPlayers, lobby.maxPlayers);
         details.getChildren().addAll(title, subtitle, seats);
@@ -505,16 +531,25 @@ public class GUIController implements ClientView {
         Label status = new Label(lobby.status);
         status.getStyleClass().add("status-pill");
 
-        Button joinButton = new Button("Entra");
-        joinButton.getStyleClass().add("secondary-button");
-        // FIX: nessun optimistic update locale — si aspetta la risposta del server
-        joinButton.setOnAction(event ->
-                this.callServer(() -> this.serverProxy.joinLobby(lobby.lobbyId))
-        );
-
-        card.getChildren().addAll(details, status, joinButton);
+        if (this.isCurrentLobby(lobby.lobbyId)) {
+            Label seatedLabel = new Label("Your table");
+            seatedLabel.getStyleClass().add("status-pill");
+            card.getChildren().addAll(details, status, seatedLabel);
+        } else {
+            Button joinButton = new Button("Join");
+            joinButton.getStyleClass().add("secondary-button");
+            joinButton.setDisable(this.currentLobbyId != null || this.isReadyLobby(lobby));
+            joinButton.setOnAction(event ->
+                    this.callServer(() -> this.serverProxy.joinLobby(lobby.lobbyId))
+            );
+            card.getChildren().addAll(details, status, joinButton);
+        }
         HBox.setHgrow(details, javafx.scene.layout.Priority.ALWAYS);
         return card;
+    }
+
+    private boolean isReadyLobby(LobbySummaryPayload lobby) {
+        return lobby.status != null && "READY".equalsIgnoreCase(lobby.status);
     }
 
     private HBox seatTrack(int currentPlayers, int maxPlayers) {
@@ -608,27 +643,43 @@ public class GUIController implements ClientView {
         this.authRedirectDelay = new PauseTransition(Duration.seconds(3));
         this.authRedirectDelay.setOnFinished(event -> {
             this.showPage(this.lobbyPage);
-            if (this.serverProxy != null) {
-                this.callServer(this.serverProxy::listLobbies);
-            }
+            this.requestLobbyList();
         });
         this.authRedirectDelay.play();
     }
 
     private void configureLobbyAutoRefresh() {
-        // FIX: refresh ogni 3 secondi (era 4s)
         this.lobbyRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(3), event -> {
-            // FIX: aggiunge guard esplicita su gamePage/endPage per evitare
-            // che il refresh forzi un ritorno alla lobby durante la partita
-            if (this.lobbyPage.isVisible()
-                    && !this.gamePage.isVisible()
-                    && !this.endPage.isVisible()
-                    && this.serverProxy != null
-                    && this.serverProxy.isConnected()) {
-                this.callServer(this.serverProxy::listLobbies);
+            if (!this.canAutoRefreshLobby()) {
+                return;
             }
+            this.requestLobbyList();
         }));
         this.lobbyRefreshTimer.setCycleCount(Timeline.INDEFINITE);
+    }
+
+    private boolean canAutoRefreshLobby() {
+        return this.lobbyPage.isVisible()
+                && !this.gamePage.isVisible()
+                && !this.endPage.isVisible()
+                && this.currentLobbyId == null
+                && this.serverProxy != null
+                && this.serverProxy.isConnected();
+    }
+
+    private void requestLobbyList() {
+        if (this.currentLobbyId != null) {
+            this.renderLobbyListUnavailable();
+            return;
+        }
+        this.callServer(() -> this.serverProxy.listLobbies());
+    }
+
+    private void renderLobbyListUnavailable() {
+        this.lobbyCountLabel.setText("In lobby");
+        this.lobbyListContainer.getChildren().clear();
+        this.lobbyListContainer.getChildren().add(
+                this.emptyState("Table list unavailable", "Exit your lobby to browse available tables."));
     }
 
     private void renderCurrentLobby(PreMatchUpdatePayload payload) {
@@ -636,7 +687,15 @@ public class GUIController implements ClientView {
             return;
         }
         if (payload.event == PreMatchEventType.LOBBY_LEFT) {
-            this.renderNoCurrentLobby();
+            if (this.isCurrentUser(payload.nickname)) {
+                this.currentLobbyId = null;
+                this.currentLobbyHostNickname = null;
+                this.currentLobbyStatus = "WAITING";
+                this.renderNoCurrentLobby();
+            } else {
+                this.renderCurrentLobbySnapshot(payload);
+                this.updateLobbyActions();
+            }
             return;
         }
         if (payload.event != PreMatchEventType.LOBBY_CREATED
@@ -645,6 +704,13 @@ public class GUIController implements ClientView {
             return;
         }
 
+        this.renderCurrentLobbySnapshot(payload);
+    }
+
+    private void renderCurrentLobbySnapshot(PreMatchUpdatePayload payload) {
+        this.currentLobbyId = payload.lobbyId;
+        this.currentLobbyHostNickname = payload.hostNickname;
+        this.currentLobbyStatus = this.statusFromPreMatchUpdate(payload);
         if (this.currentLobbyTitleLabel != null)
             this.currentLobbyTitleLabel.setText(
                     payload.lobbyId == null ? "Current lobby" : "Lobby #" + payload.lobbyId);
@@ -656,8 +722,7 @@ public class GUIController implements ClientView {
         if (this.currentLobbyPlayersLabel != null)
             this.currentLobbyPlayersLabel.setText("Players: " + currentPlayers + "/" + maxPlayers);
         if (this.currentLobbyStateLabel != null)
-            this.currentLobbyStateLabel.setText(
-                    payload.event == PreMatchEventType.LOBBY_STARTED ? "Starting" : "Waiting");
+            this.currentLobbyStateLabel.setText(this.displayLobbyStatus(this.currentLobbyStatus));
     }
 
     private void renderNoCurrentLobby() {
@@ -665,6 +730,52 @@ public class GUIController implements ClientView {
         if (this.currentLobbyHostLabel != null)    this.currentLobbyHostLabel.setText("Host: -");
         if (this.currentLobbyPlayersLabel != null) this.currentLobbyPlayersLabel.setText("Players: -");
         if (this.currentLobbyStateLabel != null)   this.currentLobbyStateLabel.setText("Waiting");
+    }
+
+    private String statusFromPreMatchUpdate(PreMatchUpdatePayload payload) {
+        if (payload.event == PreMatchEventType.LOBBY_STARTED) {
+            return "STARTING";
+        }
+        int currentPlayers = payload.players == null ? 0 : payload.players.size();
+        return payload.maxPlayers != null && currentPlayers >= payload.maxPlayers ? "READY" : "WAITING";
+    }
+
+    private String displayLobbyStatus(String status) {
+        if ("WAITING".equalsIgnoreCase(status)) {
+            return "Waiting";
+        }
+        if ("STARTING".equalsIgnoreCase(status)) {
+            return "Starting";
+        }
+        return status == null ? "Waiting" : status;
+    }
+
+    private boolean isCurrentLobby(int lobbyId) {
+        return this.currentLobbyId != null && this.currentLobbyId == lobbyId;
+    }
+
+    private boolean isCurrentUser(String nickname) {
+        return nickname != null && nickname.equals(this.nickname);
+    }
+
+    private boolean isCurrentUserHost() {
+        return this.currentLobbyId != null
+                && this.currentLobbyHostNickname != null
+                && this.currentLobbyHostNickname.equals(this.nickname);
+    }
+
+    private void updateLobbyActions() {
+        boolean inLobby = this.currentLobbyId != null;
+        boolean isHost = this.isCurrentUserHost();
+        boolean isReady = "READY".equalsIgnoreCase(this.currentLobbyStatus);
+        this.lobbyActionTitleLabel.setText(inLobby ? "Your table" : "Create table");
+        this.lobbyActionSubtitleLabel.setText(inLobby
+                ? "You are already seated. Use the table actions below or exit from the lobby list."
+                : "Pick a table size from 2 to 5 players and become the host.");
+        this.capacityComboBox.setDisable(inLobby);
+        this.createLobbyButton.setDisable(inLobby);
+        this.startLobbyButton.setDisable(!isHost || !isReady);
+        this.exitLobbyButton.setDisable(!inLobby);
     }
 
     private void runOnFx(Runnable runnable) {
