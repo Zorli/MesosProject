@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.network;
 
-import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.controller.ServerConnectionLifecycle;
+import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry.SessionSnapshot;
 
 import java.util.Objects;
@@ -11,11 +12,13 @@ import java.util.concurrent.TimeUnit;
 public class PingPongRoutine {
     private static final long PING_INTERVAL_SECONDS = 10;
 
-    private final ServerController serverController;
+    private final ServerSessionRegistry sessions;
+    private final ServerConnectionLifecycle connectionLifecycle;
     private final ScheduledExecutorService scheduler;
 
-    public PingPongRoutine(ServerController serverController) {
-        this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
+    public PingPongRoutine(ServerSessionRegistry sessions, ServerConnectionLifecycle connectionLifecycle) {
+        this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
+        this.connectionLifecycle = Objects.requireNonNull(connectionLifecycle, "connectionLifecycle cannot be null");
         /*
         Fancy way, instead of
           while (...) {
@@ -44,10 +47,10 @@ public class PingPongRoutine {
     }
 
     private void tick() {
-        for (SessionSnapshot session : this.serverController.getSessionRegistry().snapshots()) {
+        for (SessionSnapshot session : this.sessions.snapshots()) {
             if (session.timedOut()) {
                 System.out.println("Disconnected session " + session.sessionId());
-                this.serverController.handleConnectionTimeout(session.sessionId());
+                this.connectionLifecycle.handleConnectionTimeout(session.sessionId());
                 continue;
             }
 

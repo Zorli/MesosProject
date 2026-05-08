@@ -2,7 +2,6 @@ package it.polimi.ingsoft.mesos.server.controller;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.ServerModel;
@@ -22,6 +21,7 @@ public class ServerController implements Runnable {
     private final ServerModel serverModel;
     private final GameFactory gameFactory;
     private final RankingService rankingService;
+    private final ServerConnectionLifecycle connectionLifecycle;
     private final PingPongRoutine pingPongRoutine;
 
 
@@ -36,7 +36,8 @@ public class ServerController implements Runnable {
         // Il Model assume la piena responsabilità dei controlli di business
         this.serverModel = new ServerModel(this.sessions);
 
-        this.pingPongRoutine = new PingPongRoutine(this);
+        this.connectionLifecycle = new ServerConnectionLifecycle(this.sessions, this.serverModel);
+        this.pingPongRoutine = new PingPongRoutine(this.sessions, this.connectionLifecycle);
         this.pingPongRoutine.start();
     }
     //cacata
@@ -147,52 +148,17 @@ public class ServerController implements Runnable {
         this.serverModel.reportRoutingError(sessionId, message);
     }
 
-    // --- LIFECYCLE DELLA CONNESSIONE --- da spostare in altro luogo
+    // --- LIFECYCLE DELLA CONNESSIONE ---
 
     public String registerConnection(ClientConnection connection) {
-        String sessionId = this.sessions.registerConnection(connection);
-        if (connection instanceof Listener listener) {
-            this.serverModel.addGlobalListener(sessionId, listener);
-        }
-        return sessionId;
+        return this.connectionLifecycle.registerConnection(connection);
     }
 
     public void recordPong(String sessionId) {
-        this.sessions.recordPong(sessionId);
+        this.connectionLifecycle.recordPong(sessionId);
     }
 
     public void disconnectSession(String sessionId) {
-        this.serverModel.removeGlobalListener(sessionId);
-
-        ServerSessionRegistry.SessionSnapshot snapshot;
-        try {
-            snapshot = this.sessions.snapshotOf(sessionId);
-        } catch (RuntimeException ignored) {
-            return;
-        }
-
-        if (snapshot.phase() == ServerSessionRegistry.Phase.GAME && snapshot.gameId() != null) {
-            GameOrchestrator orchestrator = this.sessions.getGameOrchestrator(snapshot.gameId());
-            if (orchestrator != null) {
-                orchestrator.freezeForDisconnectedPlayer(snapshot.user().getNickname());
-            }
-        } else if (snapshot.phase() == ServerSessionRegistry.Phase.LOBBY && snapshot.lobbyId() != null) {
-            LobbyController controller = this.sessions.getLobbyController(snapshot.lobbyId());
-            if (controller != null) {
-                // Nota: se la coda del LobbyController è thread-safe, possiamo chiamare exitLobby
-                // in modo asincrono passandogli un comando. Se invece è chiamata sincrona, va bene così.
-                controller.exitLobby(sessionId);
-            }
-        }
-
-        this.sessions.unregister(sessionId);
-    }
-
-    public void handleConnectionTimeout(String sessionId) {
-        try {
-            this.sessions.connectionOf(sessionId).close(); //At runtime it's a virtualview basically
-            this.disconnectSession(sessionId);
-        } catch (Exception ignored) {
-        }
+        this.connectionLifecycle.disconnectSession(sessionId);
     }
 }
