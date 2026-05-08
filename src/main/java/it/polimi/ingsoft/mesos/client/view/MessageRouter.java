@@ -12,6 +12,7 @@ import static it.polimi.ingsoft.mesos.shared.messages.ServerMessageType.*;
 //Questa classe dovrebbe essere chiamata con metodo univoco dal virtualserver indipendentemente dalla tecnologia di rete
 //Ed in base al payload ricevuto che gli viene passato in mano dalla rete in entrata(virtualserver)
 //Decide quale metodo chiamare della clientview per renderizzare quel determinato tipo di server messagge
+//sa come, dato un payload, chiedere al generico UI di plottarlo
 public class MessageRouter {
     ClientView clientView;
     public MessageRouter(ClientView clientView) {

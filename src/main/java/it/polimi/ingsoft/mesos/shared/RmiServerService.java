@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.shared;
 
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.client.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -15,12 +16,7 @@ import java.rmi.RemoteException;
  * preserving RMI-specific signatures: extends Remote and throws RemoteException.
  */
 public interface RmiServerService extends Remote {
-
-    // 1. IL METODO UNIFICATO PER IL GIOCO
-    // Sostituisce createLobby, joinLobby, moveTotem, ecc.
-    // Viene passato al MessageRouter e finisce nelle code.
     void sendMessage(ClientPayload payload) throws RemoteException;
     void pong(PongPayload payload) throws RemoteException;
-
     void closeSession() throws RemoteException;
 }
