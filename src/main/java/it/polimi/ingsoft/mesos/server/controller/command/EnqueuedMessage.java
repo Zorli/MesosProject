@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 
 import java.util.Objects;
 

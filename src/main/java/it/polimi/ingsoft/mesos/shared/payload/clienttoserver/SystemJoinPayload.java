@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload.client;
+package it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
 
 import it.polimi.ingsoft.mesos.server.model.Listener;
 

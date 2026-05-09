@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload.client;
+package it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
 import java.io.Serializable;
 public class JoinLobbyPayload implements Serializable,ClientPayload {
     public final int lobbyId;

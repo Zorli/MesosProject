@@ -5,16 +5,16 @@ import it.polimi.ingsoft.mesos.server.model.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.board.offerpath.StartingBlock;
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.StartingBlockPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.TribePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.TurnStatePayload;
 
 import java.util.List;
 

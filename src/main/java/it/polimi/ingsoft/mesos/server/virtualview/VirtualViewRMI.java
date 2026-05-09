@@ -9,8 +9,8 @@ import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
-import it.polimi.ingsoft.mesos.shared.payload.server.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.*;
 
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;

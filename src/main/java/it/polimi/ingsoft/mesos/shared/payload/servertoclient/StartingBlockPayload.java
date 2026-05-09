@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload.server;
+package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
 import java.io.Serializable;
 public class StartingBlockPayload implements Serializable {
     public final int position;

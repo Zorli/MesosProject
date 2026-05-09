@@ -9,9 +9,9 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.SystemJoinPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.SystemJoinPayload;
 
 import java.util.ArrayList;
 import java.util.List;

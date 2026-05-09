@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload.server;
+package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
 
 public enum PreMatchEventType {
     AUTHENTICATED,

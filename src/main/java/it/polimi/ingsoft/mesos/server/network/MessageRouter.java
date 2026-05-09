@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.shared.payload.client.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 
 public class MessageRouter {
     private final ServerSessionRegistry registry;

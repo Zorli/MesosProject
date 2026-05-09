@@ -1,10 +1,10 @@
 package it.polimi.ingsoft.mesos.server.controller;
 
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.CreateLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ListLobbiesPayload;
 
 public enum PreLobbyCommandType {
     AUTHENTICATE,

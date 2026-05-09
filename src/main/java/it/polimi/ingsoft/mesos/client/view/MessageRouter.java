@@ -2,10 +2,10 @@ package it.polimi.ingsoft.mesos.client.view;
 
 
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.PreMatchUpdatePayload;
 
 import static it.polimi.ingsoft.mesos.shared.messages.ServerMessageType.*;
 

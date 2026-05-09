@@ -11,13 +11,13 @@
 
       opens it.polimi.ingsoft.mesos.client.view.gui to javafx.fxml, javafx.graphics;
       opens it.polimi.ingsoft.mesos.server to com.google.gson;
-      opens it.polimi.ingsoft.mesos.shared.payload.client to com.google.gson;
-      opens it.polimi.ingsoft.mesos.shared.payload.server to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.clienttoserver to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.servertoclient to com.google.gson;
       exports it.polimi.ingsoft.mesos.shared to java.rmi;
       exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
       exports it.polimi.ingsoft.mesos.client.virtualserver to java.rmi;
-      exports it.polimi.ingsoft.mesos.shared.payload.client;
-      exports it.polimi.ingsoft.mesos.shared.payload.server;
+      exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
+      exports it.polimi.ingsoft.mesos.shared.payload.servertoclient;
       exports it.polimi.ingsoft.mesos.client;
       exports it.polimi.ingsoft.mesos.client.view.gui;
       exports it.polimi.ingsoft.mesos.server;
