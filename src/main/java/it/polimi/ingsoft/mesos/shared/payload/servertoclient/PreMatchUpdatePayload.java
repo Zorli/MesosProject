@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
 import java.io.Serializable;
 import java.util.List;
 
-public class PreMatchUpdatePayload implements Serializable {
+public class PreMatchUpdatePayload implements Serializable, LobbyServerPayload {
     public final PreMatchEventType event;
     public final String nickname;
     public final String message;

@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
 import java.io.Serializable;
-public class ErrorPayload implements Serializable {
+public class ErrorPayload implements Serializable, ErrorServerPayload {
     public final String code;
     public final String message;
 

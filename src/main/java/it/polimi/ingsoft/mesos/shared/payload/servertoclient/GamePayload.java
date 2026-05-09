@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
 import java.io.Serializable;
 import java.util.List;
 //Upper class of the payload
-public class GamePayload implements Serializable {
+public class GamePayload implements Serializable, GameServerPayload {
     public final int id;
     public final String status;
     public final int currentEra;
