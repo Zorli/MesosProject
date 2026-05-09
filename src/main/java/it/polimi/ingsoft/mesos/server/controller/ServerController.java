@@ -2,7 +2,9 @@ package it.polimi.ingsoft.mesos.server.controller;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.ServerModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -71,17 +73,22 @@ public class ServerController implements Runnable {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
                 try {
-                    switch (PreLobbyCommandType.fromPayload(cmd.payload())) {
+                    if (!(cmd.command() instanceof ClientQueuedCommand clientCommand)) {
+                        this.serverModel.reportPhaseError(sessionId);
+                        continue;
+                    }
+                    ClientPayload payload = clientCommand.payload();
+                    switch (PreLobbyCommandType.fromPayload(payload)) {
                         case AUTHENTICATE -> {
-                            AuthenticationPayload p = (AuthenticationPayload) cmd.payload();
+                            AuthenticationPayload p = (AuthenticationPayload) payload;
                             this.authenticate(sessionId, p.nickname);
                         }
                         case JOIN_LOBBY -> {
-                            JoinLobbyPayload p = (JoinLobbyPayload) cmd.payload();
+                            JoinLobbyPayload p = (JoinLobbyPayload) payload;
                             this.joinLobby(sessionId, p.lobbyId);
                         }
                         case CREATE_LOBBY -> {
-                            CreateLobbyPayload p = (CreateLobbyPayload) cmd.payload();
+                            CreateLobbyPayload p = (CreateLobbyPayload) payload;
                             this.createLobby(sessionId, p.chosenCapacity);
                         }
                         case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
@@ -141,7 +148,7 @@ public class ServerController implements Runnable {
             this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
             return;
         }
-        target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinPayload(nickname, clientView)));
+        target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinCommand(nickname, clientView)));
     }
 
     public void reportRoutingError(String sessionId, String message) {

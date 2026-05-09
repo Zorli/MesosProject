@@ -3,7 +3,9 @@ package it.polimi.ingsoft.mesos.server.controller;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -11,7 +13,6 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.StartLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.SystemJoinPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,11 +53,15 @@ public class LobbyController implements Runnable {
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
                 try {
-                    switch(cmd.payload()){
-                        case StartLobbyPayload p -> {this.startLobby(sessionId);}
-                        case ExitLobbyPayload p -> {this.exitLobby(sessionId);}
-                        case SystemJoinPayload p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
-                        default -> throw new IllegalStateException("Unexpected payload: " + cmd.payload());
+                    switch(cmd.command()){
+                        case ClientQueuedCommand clientCommand -> {
+                            switch(LobbyCommandType.fromPayload(clientCommand.payload())){
+                                case START_LOBBY -> {this.startLobby(sessionId);}
+                                case EXIT_LOBBY -> {this.exitLobby(sessionId);}
+                            }
+                        }
+                        case SystemJoinCommand p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
+                        default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
                     }
                 } catch (RuntimeException e) {
                     this.notifyPhaseError(sessionId);
@@ -96,6 +101,7 @@ public class LobbyController implements Runnable {
             this.sessions.removeLobbyModel(this.lobby.getId());
         }
     }
+
 
     public void startLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);

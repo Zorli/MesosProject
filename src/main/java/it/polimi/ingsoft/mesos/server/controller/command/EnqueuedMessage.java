@@ -1,24 +1,22 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
-
 import java.util.Objects;
 
 public class EnqueuedMessage {
     private final String sessionId;
-    private final ClientPayload payload;
+    private final QueuedCommand command;
 
-    public EnqueuedMessage(String sessionId, ClientPayload payload) {
+    public EnqueuedMessage(String sessionId, QueuedCommand command) {
         this.sessionId = sessionId;
-        this.payload = payload;
+        this.command = command;
     }
 
     public String sessionId() {
         return this.sessionId;
     }
 
-    public ClientPayload payload() {
-        return this.payload;
+    public QueuedCommand command() {
+        return this.command;
     }
 
     @Override
@@ -30,16 +28,16 @@ public class EnqueuedMessage {
             return false;
         }
         return Objects.equals(this.sessionId, that.sessionId)
-                && Objects.equals(this.payload, that.payload);
+                && Objects.equals(this.command, that.command);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.sessionId, this.payload);
+        return Objects.hash(this.sessionId, this.command);
     }
 
     @Override
     public String toString() {
-        return "EnqueuedMessage[sessionId=" + this.sessionId + ", payload=" + this.payload + "]";
+        return "EnqueuedMessage[sessionId=" + this.sessionId + ", command=" + this.command + "]";
     }
 }

@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
@@ -149,21 +150,26 @@ public class GameOrchestrator implements Runnable  {
 
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                String nickname = sessions.nicknameOf(sessionId);
                 try {
-                    switch (GameCommandType.fromPayload(cmd.payload())) {
-                        case CHOOSE_CARD -> {
-                            ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
-                            this.chooseCard(nickname, p.cardId);
+                    switch (cmd.command()) {
+                        case ClientQueuedCommand clientCommand -> {
+                            String nickname = sessions.nicknameOf(sessionId);
+                            switch (GameCommandType.fromPayload(clientCommand.payload())) {
+                                case CHOOSE_CARD -> {
+                                    ChooseCardPayload p = (ChooseCardPayload) clientCommand.payload();
+                                    this.chooseCard(nickname, p.cardId);
+                                }
+                                case EXTRA_DRAW -> {
+                                    ExtraDrawPayload p = (ExtraDrawPayload) clientCommand.payload();
+                                    this.extraDrawn(nickname, p.cardId);
+                                }
+                                case MOVE_TOTEM -> {
+                                    MoveTotemPayload p = (MoveTotemPayload) clientCommand.payload();
+                                    this.moveTotem(nickname, p.tile);
+                                }
+                            }
                         }
-                        case EXTRA_DRAW -> {
-                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
-                            this.extraDrawn(nickname, p.cardId);
-                        }
-                        case MOVE_TOTEM -> {
-                            MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
-                            this.moveTotem(nickname, p.tile);
-                        }
+                        default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
                     }
                 } catch (RuntimeException e) {
                     this.notifyPhaseError(sessionId);
