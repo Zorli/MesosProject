@@ -11,11 +11,11 @@ public class EnqueuedMessage {
         this.command = command;
     }
 
-    public String sessionId() {
+    public String getSessionId() {
         return this.sessionId;
     }
 
-    public QueuedCommand command() {
+    public QueuedCommand getCommand() {
         return this.command;
     }
 

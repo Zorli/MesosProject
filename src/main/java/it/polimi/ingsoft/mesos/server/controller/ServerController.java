@@ -12,9 +12,6 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 
 import java.util.Objects;
@@ -75,9 +72,9 @@ public class ServerController implements Runnable {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 EnqueuedMessage cmd = this.commandQueue.take();
-                String sessionId = cmd.sessionId();
+                String sessionId = cmd.getSessionId();
                 try {
-                    if (!(cmd.command() instanceof ClientQueuedCommand clientCommand)) {
+                    if (!(cmd.getCommand() instanceof ClientQueuedCommand clientCommand)) {
                         this.serverModel.reportPhaseError(sessionId);
                         continue;
                     }
