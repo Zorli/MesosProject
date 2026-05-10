@@ -2,20 +2,19 @@ package it.polimi.ingsoft.mesos.client.view.gui;
 
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnStatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnStatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
@@ -75,6 +74,7 @@ public class GUIController implements ClientView {
     private int localUpperChoicesUsed;
     private int localLowerChoicesUsed;
     private String pendingDraftRow;
+    private boolean returnedToLobbyAfterMatch;
 
     @FXML private StackPane pages;
     @FXML private HBox topBar;
@@ -212,6 +212,7 @@ public class GUIController implements ClientView {
     private void handleBackToLobby() {
         this.resetAfterMatch();
         this.showPage(this.lobbyPage);
+        this.renderLobbyLoading();
         this.requestLobbyList();
     }
 
@@ -265,6 +266,7 @@ public class GUIController implements ClientView {
                 }
             }
             if (payload.event == PreMatchEventType.LOBBY_STARTED) {
+                this.returnedToLobbyAfterMatch = false;
                 this.showPage(this.gamePage);
             }
         });
@@ -326,6 +328,12 @@ public class GUIController implements ClientView {
     @Override
     public void showGameUpdate(GamePayload payload) {
         this.runOnFx(() -> {
+            if (this.returnedToLobbyAfterMatch && this.isFinalScoring(payload)) {
+                return;
+            }
+            if (payload != null && !this.isFinalScoring(payload)) {
+                this.returnedToLobbyAfterMatch = false;
+            }
             this.lastGamePayload = payload;
             if (payload == null) {
                 this.matchTitleLabel.setText("Match");
@@ -739,8 +747,12 @@ public class GUIController implements ClientView {
 
     private void renderFinalRanking(List<PlayerPayload> players) {
         this.finalRankingContainer.getChildren().clear();
-        List<PlayerPayload> rankedPlayers = new ArrayList<>(
-                players == null || players.isEmpty() ? this.mockPlayersForRanking() : players);
+        if (players == null || players.isEmpty()) {
+            this.finalRankingContainer.getChildren().add(
+                    this.emptyState("Final ranking unavailable", "Waiting for the final match payload."));
+            return;
+        }
+        List<PlayerPayload> rankedPlayers = new ArrayList<>(players);
         rankedPlayers.sort(Comparator.comparingInt((PlayerPayload player) -> player.prestigePoints).reversed());
         for (int i = 0; i < rankedPlayers.size(); i++) {
             PlayerPayload player = rankedPlayers.get(i);
@@ -1012,6 +1024,17 @@ public class GUIController implements ClientView {
                 this.emptyState("Table list unavailable", "Exit your lobby to browse available tables."));
     }
 
+    private void renderLobbyLoading() {
+        this.lobbyCountLabel.setText("Loading");
+        this.lobbyListContainer.getChildren().clear();
+        for (int index = 0; index < 3; index++) {
+            HBox row = new HBox(16);
+            row.getStyleClass().addAll("lobby-card", "skeleton-row");
+            row.getChildren().addAll(this.skeletonLine(170), this.skeletonLine(120), this.skeletonLine(74));
+            this.lobbyListContainer.getChildren().add(row);
+        }
+    }
+
     private void renderCurrentLobby(PreMatchUpdatePayload payload) {
         if (payload == null) {
             return;
@@ -1072,6 +1095,8 @@ public class GUIController implements ClientView {
         this.currentLobbyHostNickname = null;
         this.currentLobbyStatus = "WAITING";
         this.lastPreMatchUpdatePayload = null;
+        this.lastLobbyListPayload = null;
+        this.returnedToLobbyAfterMatch = true;
         this.renderNoCurrentLobby();
         this.updateLobbyActions();
         this.renderGameSkeleton();
@@ -1130,18 +1155,6 @@ public class GUIController implements ClientView {
         } else {
             Platform.runLater(runnable);
         }
-    }
-
-    private List<PlayerPayload> mockPlayersForRanking() {
-        return List.of(
-                new PlayerPayload(this.nickname, 5, 32, "A", new TribePayload(
-                        List.of(new CardPayload(4, "HUNTER", 1), new CardPayload(17, "ARTIST", 1)),
-                        List.of(new CardPayload(70, "INVENTION", 2))
-                )),
-                new PlayerPayload("Ada", 4, 39, "B", new TribePayload(List.of(), List.of())),
-                new PlayerPayload("Nico", 7, 25, "C", new TribePayload(List.of(), List.of())),
-                new PlayerPayload("Lia", 3, 29, "D", new TribePayload(List.of(), List.of()))
-        );
     }
 
     @FunctionalInterface
