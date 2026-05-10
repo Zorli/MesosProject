@@ -12,11 +12,8 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -154,9 +151,9 @@ public class GameOrchestrator implements Runnable  {
             try {
 
                 EnqueuedMessage cmd = this.commandQueue.take();
-                String sessionId = cmd.sessionId();
+                String sessionId = cmd.getSessionId();
                 try {
-                    switch (cmd.command()) {
+                    switch (cmd.getCommand()) {
                         case ClientQueuedCommand clientCommand -> {
                             String nickname = sessions.nicknameOf(sessionId);
                             switch (GameCommandType.fromPayload(clientCommand.payload())) {
@@ -175,7 +172,7 @@ public class GameOrchestrator implements Runnable  {
                             }
                         }
                         case SystemSetupMatchCommand ignored -> this.setupMatch();
-                        default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
+                        default -> throw new IllegalStateException("Unexpected command: " + cmd.getCommand());
                     }
                 } catch (RuntimeException e) {
                     this.notifyPhaseError(sessionId);

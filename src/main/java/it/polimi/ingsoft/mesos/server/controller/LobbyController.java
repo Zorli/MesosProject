@@ -13,8 +13,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.StartLobbyPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,9 +51,9 @@ public class LobbyController implements Runnable {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 EnqueuedMessage cmd = this.commandQueue.take();
-                String sessionId = cmd.sessionId();
+                String sessionId = cmd.getSessionId();
                 try {
-                    switch(cmd.command()){
+                    switch(cmd.getCommand()){
                         case ClientQueuedCommand clientCommand -> {
                             switch(LobbyCommandType.fromPayload(clientCommand.payload())){
                                 case START_LOBBY -> {this.startLobby(sessionId);}
@@ -64,7 +62,7 @@ public class LobbyController implements Runnable {
                         }
                         case SystemJoinCommand p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
                         case SystemLobbyDisconnectCommand p -> {this.disconnectUser(sessionId, p.nickname, p.leavingListener);}
-                        default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
+                        default -> throw new IllegalStateException("Unexpected command: " + cmd.getCommand());
                     }
                 } catch (RuntimeException e) {
                     this.notifyPhaseError(sessionId);
@@ -167,7 +165,7 @@ public class LobbyController implements Runnable {
         new Thread(() -> {
             try {
                 // Aspetta 5 secondi (5000 millisecondi)
-                Thread.sleep(5000);
+                Thread.sleep(2000);
 
                 // Poi avvia il setup se la partita è ancora in stato SETUP
                 if (orchestrator.getGame().getStatus() == GameStatus.SETUP) {
