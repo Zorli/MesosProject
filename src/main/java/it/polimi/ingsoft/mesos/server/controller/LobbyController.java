@@ -136,7 +136,7 @@ public class LobbyController implements Runnable {
             // 3. FSM SWITCH MASSIVO E PASSAGGIO DI CONSEGNE (IL TRUCCO È QUI)
             for (ServerSessionRegistry.SessionSnapshot session : lobbySessions) {
                 // A) Spostiamo l'utente nella tabella di routing (Registry)
-                this.sessions.enterGame(session.sessionId(), this.lobby.getId());
+                this.sessions.enterGame(session.sessionId(), orchestrator.getGame().getId());
 
                 // B) Recuperiamo il "cavo di rete" fisico
                 Listener playerListener = (Listener) session.connection();
@@ -151,10 +151,10 @@ public class LobbyController implements Runnable {
 
             // 4. Stacchiamo tutti dalla vecchia Lobby, ormai diventata inutile
             this.lobby.clearListeners();
-            this.sessions.registerGameOrchestrator(this.lobby.getId(), orchestrator);
+            this.sessions.registerGameOrchestrator(orchestrator.getGame().getId(), orchestrator);
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
-            Thread gameWorker = new Thread(orchestrator, "Game-" + this.lobby.getId() + "-Worker");
+            Thread gameWorker = new Thread(orchestrator, "Game-" + orchestrator.getGame().getId() + "-Worker");
             gameWorker.start();
             Thread.currentThread().interrupt();
             this.startMatchCountdown(orchestrator);
