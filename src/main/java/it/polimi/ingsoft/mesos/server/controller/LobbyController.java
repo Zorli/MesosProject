@@ -6,6 +6,8 @@ import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrat
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemLobbyDisconnectCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -61,6 +63,7 @@ public class LobbyController implements Runnable {
                             }
                         }
                         case SystemJoinCommand p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
+                        case SystemLobbyDisconnectCommand p -> {this.disconnectUser(sessionId, p.nickname, p.leavingListener);}
                         default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
                     }
                 } catch (RuntimeException e) {
@@ -86,7 +89,7 @@ public class LobbyController implements Runnable {
         // Se joinedSuccessfully è false, il Controller NON FA NULLA.
         // Il Model si è già occupato di inviare l'ErrorPayload (Unicast) al clientView.
     }
-    public void exitLobby(String sessionId) {
+    private void exitLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
 
         // Il Model fa controlli, aggiorna i suoi dati e spara il Broadcast.
@@ -102,8 +105,18 @@ public class LobbyController implements Runnable {
         }
     }
 
+    private void disconnectUser(String sessionId, String nickname, Listener leavingListener) {
+        if (this.lobby.removePlayer(nickname, leavingListener)) {
+            this.lobby.notifyPlayerLeft(nickname, leavingListener);
+        }
+        if (this.lobby.isEmpty()) {
+            this.sessions.removeLobbyController(this.lobby.getId());
+            this.sessions.removeLobbyModel(this.lobby.getId());
+        }
+        this.sessions.unregister(sessionId);
+    }
 
-    public void startLobby(String sessionId) {
+    private void startLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
 
         // Il Model verifica host, numero giocatori, aggiorna lo stato a STARTED e spara il Broadcast.
@@ -158,7 +171,7 @@ public class LobbyController implements Runnable {
 
                 // Poi avvia il setup se la partita è ancora in stato SETUP
                 if (orchestrator.getGame().getStatus() == GameStatus.SETUP) {
-                    orchestrator.setupMatch();
+                    orchestrator.enqueueMessage(new EnqueuedMessage(null, new SystemSetupMatchCommand()));
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

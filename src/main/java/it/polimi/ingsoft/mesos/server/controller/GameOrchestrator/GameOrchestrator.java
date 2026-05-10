@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
@@ -173,6 +174,7 @@ public class GameOrchestrator implements Runnable  {
                                 }
                             }
                         }
+                        case SystemSetupMatchCommand ignored -> this.setupMatch();
                         default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
                     }
                 } catch (RuntimeException e) {
@@ -187,7 +189,7 @@ public class GameOrchestrator implements Runnable  {
     /**
      * Performs match setup.
      */
-    public void setupMatch() {
+    private void setupMatch() {
         this.ensureMatchIsWritable();
         this.game.setup();
         this.checkGameEndAndCleanup();
@@ -199,7 +201,7 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname of the acting player
      * @param tile target offer-space code
      */
-    public void moveTotem(String nickname, String tile) {
+    private void moveTotem(String nickname, String tile) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.moveTotem(player, tile);
@@ -212,7 +214,7 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname of acting player
      * @param cardId of the chosen card
      */
-    public void chooseCard(String nickname, int cardId) {
+    private void chooseCard(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.chooseCard(player, cardId);
@@ -225,7 +227,7 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname acting player
      * @param cardId chosen extra-draw card
      */
-    public void extraDrawn(String nickname, int cardId) {
+    private void extraDrawn(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.extraDrawn(player, cardId);

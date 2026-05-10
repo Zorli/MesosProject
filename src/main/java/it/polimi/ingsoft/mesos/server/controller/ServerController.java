@@ -110,17 +110,17 @@ public class ServerController implements Runnable {
 
     // --- WRAPPER API PRE-LOBBY (Chiamati dai Command estratti dalla coda) ---
 
-    public void authenticate(String sessionId, String nickname) {
+    private void authenticate(String sessionId, String nickname) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
         this.serverModel.authenticate(sessionId, nickname,  clientView);
     }
 
-    public void listOpenLobbies(String sessionId) {
+    private void listOpenLobbies(String sessionId) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
         this.serverModel.listOpenLobbies(sessionId, clientView);
     }
 
-    public void createLobby(String sessionId, int chosenCapacity) {
+    private void createLobby(String sessionId, int chosenCapacity) {
         // 1. Chiamata al Model per logica ed eventuali errori
         Listener clientView = this.sessions.getListenerOf(sessionId);
         Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity, clientView);
@@ -141,7 +141,7 @@ public class ServerController implements Runnable {
         }
     }
 
-    public void joinLobby(String sessionId, int lobbyId) {
+    private void joinLobby(String sessionId, int lobbyId) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
         String nickname = this.sessions.nicknameOf(sessionId);
         if (!this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId)) {
