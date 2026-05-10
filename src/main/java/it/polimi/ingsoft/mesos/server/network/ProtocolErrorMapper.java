@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.network;
 
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 
 /**
  * Maps errors caught at the network boundary to protocol error payloads.

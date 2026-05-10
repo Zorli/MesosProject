@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
+package it.polimi.ingsoft.mesos.shared.payload.servertoclient.game;
 import java.io.Serializable;
 public class CardPayload implements Serializable {
     public final int id;

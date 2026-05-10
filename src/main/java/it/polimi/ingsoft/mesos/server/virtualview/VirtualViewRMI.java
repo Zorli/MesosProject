@@ -10,7 +10,15 @@ import it.polimi.ingsoft.mesos.shared.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.*;
 
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;

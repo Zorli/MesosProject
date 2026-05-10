@@ -1,14 +1,14 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbySummaryPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.util.ArrayList;
 import java.util.List;

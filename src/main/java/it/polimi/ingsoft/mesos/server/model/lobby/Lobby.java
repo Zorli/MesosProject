@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 //import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyPayload;
 
 import java.util.ArrayList;

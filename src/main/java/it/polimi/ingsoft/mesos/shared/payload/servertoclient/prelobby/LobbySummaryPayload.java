@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
+package it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby;
 import java.io.Serializable;
 public class LobbySummaryPayload  implements Serializable {
     public final int lobbyId;

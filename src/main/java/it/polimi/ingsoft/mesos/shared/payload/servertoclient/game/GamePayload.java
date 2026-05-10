@@ -1,4 +1,6 @@
-package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
+package it.polimi.ingsoft.mesos.shared.payload.servertoclient.game;
+
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.GameServerPayload;
 import java.io.Serializable;
 import java.util.List;
 //Upper class of the payload

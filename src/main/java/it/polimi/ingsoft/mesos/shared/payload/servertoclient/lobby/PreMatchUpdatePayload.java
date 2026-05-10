@@ -1,4 +1,6 @@
-package it.polimi.ingsoft.mesos.shared.payload.servertoclient;
+package it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby;
+
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyServerPayload;
 import java.io.Serializable;
 import java.util.List;
 

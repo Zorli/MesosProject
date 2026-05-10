@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.shared;
 
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.PongPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.PongPayload;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;

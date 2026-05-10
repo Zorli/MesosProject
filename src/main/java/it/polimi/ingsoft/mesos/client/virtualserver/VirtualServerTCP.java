@@ -9,10 +9,10 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.client.view.MessageRouter;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.io.BufferedReader;
 import java.io.IOException;

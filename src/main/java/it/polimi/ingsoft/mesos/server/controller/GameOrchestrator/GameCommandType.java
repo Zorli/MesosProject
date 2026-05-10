@@ -1,9 +1,9 @@
 package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ChooseCardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
 
 public enum GameCommandType {
     CHOOSE_CARD,

@@ -12,6 +12,10 @@ import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
