@@ -171,6 +171,12 @@ public class TuiController implements ClientView {
         this.render(this.payloadRenderer.renderGame(payload));
     }
 
+    @Override
+    public synchronized void showFinalGameResult(GamePayload payload) {
+        this.lastGamePayload = null;
+        this.render(this.payloadRenderer.renderFinalGameResult(payload));
+    }
+
     private void renderHelp() {
         this.render("""
                 General:

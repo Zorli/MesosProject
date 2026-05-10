@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 //This class offer the service of transforming into a string the received payload
 final class TuiPayloadRenderer {
@@ -88,6 +89,34 @@ final class TuiPayloadRenderer {
 
         appendPlayers(builder, payload.players);
         appendBoard(builder, payload.board);
+        return builder.toString();
+    }
+
+    String renderFinalGameResult(GamePayload payload) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[SERVER][GAME FINISHED] #")
+                .append(payload.id)
+                .append(System.lineSeparator())
+                .append("Final ranking:");
+
+        if (payload.players == null || payload.players.isEmpty()) {
+            builder.append(" -");
+            return builder.toString();
+        }
+
+        List<PlayerPayload> players = new ArrayList<>(payload.players);
+        players.sort(Comparator.comparingInt((PlayerPayload player) -> player.prestigePoints).reversed());
+
+        for (int i = 0; i < players.size(); i++) {
+            PlayerPayload player = players.get(i);
+            builder.append(System.lineSeparator())
+                    .append(i + 1)
+                    .append(". ")
+                    .append(player.nickname)
+                    .append(" prestige=")
+                    .append(player.prestigePoints);
+        }
+
         return builder.toString();
     }
 
