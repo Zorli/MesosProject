@@ -80,6 +80,11 @@
     -fx-background-color: linear-gradient(to bottom right, #071322, #21101a);
 }
 
+.game-scroll,
+.game-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
 .screen-header {
     -fx-padding: 0 0 6 0;
 }
@@ -347,6 +352,17 @@
     -fx-background-color: #192323;
 }
 
+.current-user-row {
+    -fx-border-color: #3e6a86;
+}
+
+.active-player-row {
+    -fx-background-color:
+            linear-gradient(to right, rgba(231, 182, 79, 0.15), rgba(15, 111, 134, 0.08)),
+            #192323;
+    -fx-border-color: #e7b64f;
+}
+
 .current-lobby-card {
     -fx-background-color:
             linear-gradient(to right, rgba(231, 182, 79, 0.12), rgba(15, 111, 134, 0.08)),
@@ -362,6 +378,7 @@
 .status-pill,
 .session-pill,
 .turn-pill,
+.action-hint-pill,
 .score-pill,
 .free-pill,
 .occupied-pill {
@@ -373,9 +390,17 @@
 .status-pill,
 .session-pill,
 .turn-pill,
+.action-hint-pill,
 .score-pill {
     -fx-background-color: #2b3c3f;
     -fx-text-fill: #fff0c0;
+}
+
+.action-hint-pill {
+    -fx-background-color: #1b3036;
+    -fx-border-color: #3e6a86;
+    -fx-border-radius: 999;
+    -fx-max-width: 340;
 }
 
 .turn-pill {
@@ -437,6 +462,12 @@
     -fx-translate-y: -4;
 }
 
+.card-frame:disabled,
+.disabled-card {
+    -fx-opacity: 0.36;
+    -fx-cursor: default;
+}
+
 .card-chip {
     -fx-background-color: rgba(15, 20, 21, 0.88);
     -fx-background-radius: 999;
@@ -453,6 +484,17 @@
     -fx-border-radius: 8;
     -fx-padding: 10;
     -fx-min-width: 112;
+    -fx-cursor: hand;
+}
+
+.offer-tile:hover {
+    -fx-border-color: #e7b64f;
+}
+
+.offer-tile:disabled,
+.disabled-tile {
+    -fx-opacity: 0.42;
+    -fx-cursor: default;
 }
 
 .offer-title,
@@ -480,6 +522,41 @@
 
 .tribe-panel {
     -fx-padding: 14;
+}
+
+.players-band {
+    -fx-padding: 12;
+}
+
+.player-tribe-section {
+    -fx-background-color: #101718;
+    -fx-background-radius: 8;
+    -fx-border-color: #31464a;
+    -fx-border-radius: 8;
+    -fx-padding: 12;
+}
+
+.skeleton-card,
+.skeleton-tile,
+.skeleton-row {
+    -fx-opacity: 0.72;
+}
+
+.skeleton-card {
+    -fx-background-color:
+            linear-gradient(to bottom, rgba(255, 241, 199, 0.08), rgba(15, 20, 21, 0.42)),
+            #101718;
+    -fx-border-color: #2f454a;
+}
+
+.skeleton-tile {
+    -fx-background-color: #11191a;
+    -fx-border-color: #2f454a;
+}
+
+.skeleton-line {
+    -fx-background-color: linear-gradient(to right, #243438, #40555a, #243438);
+    -fx-background-radius: 999;
 }
 
 .final-panel {

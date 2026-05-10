@@ -112,83 +112,72 @@
                 </HBox>
             </VBox>
 
-            <VBox fx:id="gamePage" spacing="14" styleClass="page game-page">
-                <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
-                    <VBox spacing="2">
-                        <Label fx:id="matchTitleLabel" text="Partita" styleClass="section-title"/>
-                        <Label fx:id="matchMetaLabel" text="Era - / stato -" styleClass="section-subtitle"/>
-                    </VBox>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="turnLabel" text="Turno in attesa" styleClass="turn-pill"/>
-                    <Button text="Fine mock" onAction="#handleMockEndMatch" styleClass="ghost-button"/>
-                </HBox>
+            <ScrollPane fx:id="gamePage" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="game-scroll">
+                <VBox spacing="14" styleClass="page game-page game-content">
+                    <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
+                        <VBox spacing="2">
+                            <Label fx:id="matchTitleLabel" text="Match" styleClass="section-title"/>
+                            <Label fx:id="matchMetaLabel" text="Era - / status -" styleClass="section-subtitle"/>
+                        </VBox>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="turnLabel" text="Waiting for turn" styleClass="turn-pill"/>
+                        <Label fx:id="selectedCardLabel" text="Waiting for match data." wrapText="true" styleClass="action-hint-pill"/>
+                    </HBox>
 
-                <HBox spacing="16" VBox.vgrow="ALWAYS">
-                    <VBox spacing="14" styleClass="board-panel" HBox.hgrow="ALWAYS">
+                    <VBox spacing="10" styleClass="surface-panel players-band">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Players" styleClass="panel-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="order and resources" styleClass="micro-pill"/>
+                        </HBox>
+                        <VBox fx:id="playerListContainer" spacing="8"/>
+                    </VBox>
+
+                    <VBox spacing="14" styleClass="board-panel" VBox.vgrow="ALWAYS">
                         <VBox spacing="8" styleClass="market-band">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Mercato superiore" styleClass="panel-title"/>
+                                <Label text="Upper market" styleClass="panel-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
-                                <Label text="clicca una carta" styleClass="micro-pill"/>
+                                <Label text="click a card" styleClass="micro-pill"/>
                             </HBox>
                             <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
                                 <HBox fx:id="upperRowContainer" spacing="12" styleClass="card-row"/>
                             </ScrollPane>
                         </VBox>
+                        <VBox spacing="8" styleClass="offer-band">
+                            <Label text="Offer path" styleClass="panel-title"/>
+                            <HBox fx:id="offerPathContainer" spacing="10"/>
+                        </VBox>
                         <VBox spacing="8" styleClass="market-band">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Mercato inferiore" styleClass="panel-title"/>
+                                <Label text="Lower market" styleClass="panel-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
-                                <Label text="scelta + pesca" styleClass="micro-pill"/>
+                                <Label text="choose + draw" styleClass="micro-pill"/>
                             </HBox>
                             <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
                                 <HBox fx:id="lowerRowContainer" spacing="12" styleClass="card-row"/>
                             </ScrollPane>
                         </VBox>
-                        <VBox spacing="8" styleClass="offer-band">
-                            <Label text="Percorso offerta" styleClass="panel-title"/>
-                            <HBox fx:id="offerPathContainer" spacing="10"/>
-                        </VBox>
                     </VBox>
 
-                    <VBox spacing="14" minWidth="318" prefWidth="340">
-                        <VBox spacing="10" styleClass="surface-panel">
-                            <Label text="Giocatori" styleClass="panel-title"/>
-                            <VBox fx:id="playerListContainer" spacing="10"/>
-                        </VBox>
-                        <VBox spacing="10" styleClass="surface-panel action-panel">
-                            <Label text="Azioni turno" styleClass="panel-title-large"/>
-                            <Label fx:id="selectedCardLabel" text="Nessuna carta selezionata" wrapText="true" styleClass="status-text"/>
-                            <HBox spacing="8">
-                                <Button text="A" onAction="#handleMoveTotemA" styleClass="tile-button"/>
-                                <Button text="B" onAction="#handleMoveTotemB" styleClass="tile-button"/>
-                                <Button text="C" onAction="#handleMoveTotemC" styleClass="tile-button"/>
-                            </HBox>
-                            <Button text="Scegli carta" onAction="#handleChooseCard" maxWidth="Infinity" styleClass="primary-button"/>
-                            <Button text="Pesca extra" onAction="#handleExtraDraw" maxWidth="Infinity" styleClass="secondary-button"/>
-                        </VBox>
+                    <VBox spacing="10" styleClass="surface-panel tribe-panel">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Tribe" styleClass="panel-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="personal cards by player" styleClass="micro-pill"/>
+                        </HBox>
+                        <VBox fx:id="tribeCardsContainer" spacing="12"/>
                     </VBox>
-                </HBox>
-
-                <VBox spacing="8" styleClass="surface-panel tribe-panel">
-                    <HBox alignment="CENTER_LEFT">
-                        <Label text="Tribu" styleClass="panel-title"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Label text="carte personali" styleClass="micro-pill"/>
-                    </HBox>
-                    <ScrollPane fitToHeight="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
-                        <HBox fx:id="tribeCardsContainer" spacing="10"/>
-                    </ScrollPane>
                 </VBox>
-            </VBox>
+            </ScrollPane>
 
             <VBox fx:id="endPage" alignment="CENTER" spacing="22" styleClass="page end-page">
                 <VBox alignment="CENTER" spacing="4">
-                    <Label text="Partita conclusa" styleClass="hero-title"/>
-                    <Label text="Classifica mock integrata in attesa del ranking reale." styleClass="hero-copy"/>
+                    <Label text="Match complete" styleClass="hero-title"/>
+                    <Label text="Final match ranking." styleClass="hero-copy"/>
                 </VBox>
                 <VBox fx:id="finalRankingContainer" spacing="10" maxWidth="560" styleClass="surface-panel final-panel"/>
-                <Button text="Torna alle lobby" onAction="#handleBackToLobby" styleClass="primary-button"/>
+                <Button text="Back to lobbies" onAction="#handleBackToLobby" styleClass="primary-button"/>
             </VBox>
         </StackPane>
     </center>

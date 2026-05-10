@@ -16,8 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -35,6 +37,7 @@ public class GameOrchestrator implements Runnable  {
     private final RankingService rankingService;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
+    private boolean sessionsReleased;
     private boolean frozen;
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -180,6 +183,7 @@ public class GameOrchestrator implements Runnable  {
         this.ensureMatchIsWritable();
         this.game.setup();
         this.recordRankingIfFinished();
+        this.releaseSessionsIfFinished();
     }
 
     /**
@@ -193,6 +197,7 @@ public class GameOrchestrator implements Runnable  {
         this.ensureMatchIsWritable();
         this.game.moveTotem(player, tile);
         this.recordRankingIfFinished();
+        this.releaseSessionsIfFinished();
     }
 
     /**
@@ -206,6 +211,7 @@ public class GameOrchestrator implements Runnable  {
         this.ensureMatchIsWritable();
         this.game.chooseCard(player, cardId);
         this.recordRankingIfFinished();
+        this.releaseSessionsIfFinished();
     }
 
     /**
@@ -219,6 +225,7 @@ public class GameOrchestrator implements Runnable  {
         this.ensureMatchIsWritable();
         this.game.extraDrawn(player, cardId);
         this.recordRankingIfFinished();
+        this.releaseSessionsIfFinished();
     }
 
     public void freezeForDisconnectedPlayer(String nickname) {
@@ -260,6 +267,27 @@ public class GameOrchestrator implements Runnable  {
             this.frozen = true;
             throw new RankingFinalizationFailureException(exception);
         }
+    }
+
+    private void releaseSessionsIfFinished() {
+        if (this.sessionsReleased || this.game.getStatus() != GameStatus.FINISHED) {
+            return;
+        }
+
+        Set<String> playerNicknames = this.players.stream()
+                .map(Player::getNickname)
+                .collect(Collectors.toSet());
+        this.sessions.snapshots().stream()
+                .filter(snapshot -> snapshot.phase() == ServerSessionRegistry.Phase.GAME)
+                .filter(snapshot -> snapshot.user() != null)
+                .filter(snapshot -> playerNicknames.contains(snapshot.user().getNickname()))
+                .forEach(snapshot -> {
+                    if (snapshot.gameId() != null) {
+                        this.sessions.removeGameOrchestrator(snapshot.gameId());
+                    }
+                    this.sessions.leaveGame(snapshot.sessionId());
+                });
+        this.sessionsReleased = true;
     }
 
     private List<MatchScore> buildFinalScores() {
