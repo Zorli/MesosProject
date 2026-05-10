@@ -3,12 +3,9 @@ package it.polimi.ingsoft.mesos.server;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.PrintStream;
 import java.rmi.registry.LocateRegistry;

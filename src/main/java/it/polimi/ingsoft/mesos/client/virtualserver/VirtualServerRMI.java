@@ -3,13 +3,9 @@ package it.polimi.ingsoft.mesos.client.virtualserver;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyRMI;
 import it.polimi.ingsoft.mesos.client.view.MessageRouter;
-import it.polimi.ingsoft.mesos.shared.RmiClientService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;

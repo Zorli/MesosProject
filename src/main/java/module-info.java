@@ -21,8 +21,7 @@
       opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.game to com.google.gson;
       opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby to com.google.gson;
       opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby to com.google.gson;
-      exports it.polimi.ingsoft.mesos.shared to java.rmi;
-      exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
+        exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
       exports it.polimi.ingsoft.mesos.client.virtualserver to java.rmi;
       exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
       exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection;
@@ -48,4 +47,5 @@
       exports it.polimi.ingsoft.mesos.shared.messages;
       opens it.polimi.ingsoft.mesos.shared.messages to com.google.gson;
       exports it.polimi.ingsoft.mesos.client.serverproxy to java.rmi;
+      exports it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces to java.rmi;
   }

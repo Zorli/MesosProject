@@ -2,8 +2,8 @@ package it.polimi.ingsoft.mesos.client.serverproxy;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
-import it.polimi.ingsoft.mesos.shared.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
