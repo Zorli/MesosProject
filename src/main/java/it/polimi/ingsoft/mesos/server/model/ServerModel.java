@@ -93,10 +93,17 @@ public class ServerModel {
 
     public boolean joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
         try {
-            this.ensureSessionCanEnterLobby(sessionId);
-
-            if (this.sessions.getLobbyModel(lobbyId).isEmpty()) {
-                throw new IllegalArgumentException("La lobby richiesta non esiste.");
+            if (this.sessions.lobbyIdOf(sessionId) != null) {
+                throw new IllegalStateException("Already in a lobby.");
+            }
+            String nickname = this.requireNickname(sessionId);
+            Lobby lobby = this.sessions.getLobbyModel(lobbyId)
+                    .orElseThrow(() -> new IllegalArgumentException("La lobby richiesta non esiste."));
+            if (this.sessions.isPlayerInAnyLobby(nickname) && !lobby.hasPlayer(nickname)) {
+                throw new IllegalArgumentException("Your nickname is already in a lobby.");
+            }
+            if (!lobby.canBeJoinedBy(nickname)) {
+                throw new IllegalStateException("Cannot join lobby with status: " + lobby.getStatus());
             }
             return true;
         } catch (Exception e) {
@@ -114,7 +121,7 @@ public class ServerModel {
         }
         String nickname = this.requireNickname(sessionId);
         if (this.sessions.isPlayerInAnyLobby(nickname)) {
-            throw new IllegalStateException("you're nickname is alredy in a lobby.");
+            throw new IllegalStateException("Your nickname is already in a lobby.");
         }
     }
 

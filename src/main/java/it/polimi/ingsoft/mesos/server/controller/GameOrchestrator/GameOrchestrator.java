@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 
-import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
@@ -10,17 +9,22 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
+import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
+import it.polimi.ingsoft.mesos.server.persistence.game.mapper.GameSnapshotMapper;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -31,74 +35,40 @@ import java.util.concurrent.LinkedBlockingQueue;
  * centralized.
  */
 public class GameOrchestrator implements Runnable  {
+    private static final Logger log = Logger.getLogger(GameOrchestrator.class.getName());
+    private static final String CHECKPOINT_ERROR_CODE = "CHECKPOINT_ERROR";
+
     private final Game game;
     private final List<Player> players;
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
     private final RankingService rankingService;
+    private final MatchPersistence matchPersistence;
+    private final GameSnapshotMapper gameSnapshotMapper;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
     private boolean frozen;
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
-// Constructors
+    // Constructors
 
-    /**
-     * Creates an orchestrator for a new match using the provided game factory and player list.
-     *
-     * @param gameFactory factory used to bootstrap the underlying game aggregate
-     * @param players players transferred from the lobby into the match
-     * @param sessions the server session registry
-     */
-    public GameOrchestrator(GameFactory gameFactory, ArrayList<Player> players, ServerSessionRegistry sessions) {
-        this(
-                gameFactory,
-                players,
-                resolveDefaultHostNickname(players),
-                sessions
-        );
-    }
-
-    /**
-     * Creates an orchestrator for a new match.
-     *
-     * @param gameFactory factory used to bootstrap the underlying game aggregate
-     * @param players players transferred from the lobby into the match
-     * @param hostNickname original host nickname associated with the match
-     * @param sessions the server session registry
-     */
-    public GameOrchestrator(GameFactory gameFactory,
-                            ArrayList<Player> players,
-                            String hostNickname,
-                            ServerSessionRegistry sessions) {
-        this(gameFactory, players, hostNickname, null, sessions);
-    }
-
-    /**
-     * Creates an orchestrator for a new match and wires final ranking registration.
-     *
-     * @param gameFactory factory used to bootstrap the underlying game aggregate
-     * @param players players transferred from the lobby into the match
-     * @param hostNickname original host nickname associated with the match
-     * @param rankingService ranking service used to register completed matches; nullable when disabled
-     * @param sessions the server session registry
-     */
-    public GameOrchestrator(GameFactory gameFactory,
-                            ArrayList<Player> players,
+    public GameOrchestrator(Game game,
                             String hostNickname,
                             RankingService rankingService,
+                            MatchPersistence matchPersistence,
                             ServerSessionRegistry sessions) {
-        Objects.requireNonNull(gameFactory, "Game factory cannot be null");
-        Objects.requireNonNull(sessions, "Server session registry cannot be null");
-        if (players == null || players.isEmpty()) {
+        Objects.requireNonNull(game, "Game cannot be null");
+        if (game.getPlayers() == null || game.getPlayers().isEmpty()) {
             throw new IllegalArgumentException("Players cannot be null or empty");
         }
 
-        this.game = gameFactory.createGame(players);
-        this.players = List.copyOf(players);
+        this.game = game;
+        this.players = List.copyOf(game.getPlayers());
         this.hostNickname = requireHostNickname(hostNickname);
-        this.sessions = sessions;
-        this.rankingService = rankingService;
+        this.sessions = sessions != null ? sessions : new ServerSessionRegistry();
+        this.rankingService = rankingService != null ? rankingService : NoOpRankingService.INSTANCE;
+        this.matchPersistence = matchPersistence != null ? matchPersistence : MatchPersistence.disabled();
+        this.gameSnapshotMapper = new GameSnapshotMapper();
         this.finalRankingResult = Optional.empty();
     }
 
@@ -140,8 +110,6 @@ public class GameOrchestrator implements Runnable  {
         return this.finalRankingResult;
     }
 
-    // Public gameplay API
-    //idem alla lobby
     public void enqueueMessage(EnqueuedMessage command) {
         this.commandQueue.add(command);
     }
@@ -149,7 +117,6 @@ public class GameOrchestrator implements Runnable  {
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.getSessionId();
                 try {
@@ -186,9 +153,8 @@ public class GameOrchestrator implements Runnable  {
     /**
      * Performs match setup.
      */
-    private void setupMatch() {
-        this.ensureMatchIsWritable();
-        this.game.setup();
+    public void setupMatch() {
+        this.persistAfterStateChange("setupMatch", this.game::setup);
         this.checkGameEndAndCleanup();
     }
 
@@ -200,8 +166,10 @@ public class GameOrchestrator implements Runnable  {
      */
     private void moveTotem(String nickname, String tile) {
         Player player = this.resolvePlayer(nickname);
-        this.ensureMatchIsWritable();
-        this.game.moveTotem(player, tile);
+        this.persistAfterStateChange(
+                "moveTotem",
+                () -> this.game.moveTotem(player, tile)
+        );
         this.checkGameEndAndCleanup();
     }
 
@@ -213,8 +181,10 @@ public class GameOrchestrator implements Runnable  {
      */
     private void chooseCard(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
-        this.ensureMatchIsWritable();
-        this.game.chooseCard(player, cardId);
+        this.persistAfterStateChange(
+                "chooseCard",
+                () -> this.game.chooseCard(player, cardId)
+        );
         this.checkGameEndAndCleanup();
     }
 
@@ -226,11 +196,18 @@ public class GameOrchestrator implements Runnable  {
      */
     private void extraDrawn(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
-        this.ensureMatchIsWritable();
-        this.game.extraDrawn(player, cardId);
+        this.persistAfterStateChange(
+                "extraDrawn",
+                () -> this.game.extraDrawn(player, cardId)
+        );
         this.checkGameEndAndCleanup();
     }
 
+    /**
+     * Freezes match flow due to disconnected player, preventing further state transitions.
+     *
+     * @param nickname disconnected player nickname
+     */
     public void freezeForDisconnectedPlayer(String nickname) {
         this.frozen = true;
         this.game.notifyError("PLAYER_DISCONNECTED", "Player disconnected: " + nickname);
@@ -252,7 +229,11 @@ public class GameOrchestrator implements Runnable  {
     }
 
     private void recordRankingIfFinished() {
-        if (this.rankingService == null || this.rankingRecorded) {
+        if (this.rankingRecorded) {
+            return;
+        }
+        if (!this.rankingService.isRankingEnabled()) {
+            this.rankingRecorded = true;
             return;
         }
 
@@ -277,19 +258,87 @@ public class GameOrchestrator implements Runnable  {
                 .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
                 .toList();
     }
+
+    /**
+     * Applies a state-changing command and persists the new checkpoint only if
+     * the game version changed.
+     *
+     * <p>Persistence is intentionally skipped when there is no observable state change so
+     * that repeated illegal transitions are not checkpointed.
+     *
+     * @param eventName event label used in checkpoint failure diagnostics
+     * @param action command to execute
+     */
+    private void persistAfterStateChange(String eventName, Runnable action) {
+        this.ensureMatchIsWritable();
+
+        long previousVersion = this.game.getStateVersion();
+        action.run();
+
+        if (this.game.getStateVersion() == previousVersion) {
+            return;
+        }
+
+        this.persistCurrentStateAfterStateChange(eventName);
+    }
+
+    private void persistCurrentStateAfterStateChange(String eventName) {
+        log.info("[Persistence] Triggering checkpoint after '" + eventName + "' (game=" + this.game.getId()
+                + ", version=" + this.game.getStateVersion() + ")");
+        try {
+            this.matchPersistence.save(this.snapshotCurrentState());
+        } catch (RuntimeException exception) {
+            log.log(Level.SEVERE, "[Persistence] Checkpoint FAILED after '" + eventName + "' (game=" + this.game.getId() + ")", exception);
+            this.freezeAfterPersistenceFailure(eventName, exception);
+            throw new IllegalStateException("Unable to persist match after " + eventName, exception);
+        }
+    }
+
+    private SavedMatchSnapshot snapshotCurrentState() {
+        return this.gameSnapshotMapper.toSnapshot(this.game, this.hostNickname);
+    }
+
+    private void freezeAfterPersistenceFailure(String eventName, RuntimeException cause) {
+        this.frozen = true;
+        this.game.notifyError(
+                CHECKPOINT_ERROR_CODE,
+                "Match frozen: unable to save state after " + eventName + " - " + cause.getMessage()
+        );
+    }
+
+    /**
+     * Finalizes completed matches: records ranking, deletes checkpoint and tears down session routing.
+     *
+     * <p>If ranking finalization fails the match is frozen, the checkpoint is kept and no further
+     * teardown is performed.
+     */
     private void checkGameEndAndCleanup() {
+        if (this.frozen) {
+            return;
+        }
+
         if (this.game.getStatus() != GameStatus.FINISHED) {
             return;
         }
-        try{
+        try {
             this.recordRankingIfFinished();
-        }catch (RankingFinalizationFailureException e){
-            //boh forse da aggiungere errore personalizzato su mancanza di dati registrati
+        } catch (RankingFinalizationFailureException ex) {
+            throw ex;
         }
-        finally {
-            this.teardownGame();
-            Thread.currentThread().interrupt();
+
+        if (this.frozen) {
+            return;
         }
+
+        log.info("[Persistence] Game " + this.game.getId() + " finished — deleting checkpoint.");
+        try {
+            this.matchPersistence.delete(this.game.getId());
+        } catch (RuntimeException ignored) {
+            // best-effort: a failed checkpoint delete must not block session teardown
+        }
+
+        this.teardownGame();
+        Thread.currentThread().interrupt();
     }
 
     private void teardownGame() {
@@ -300,23 +349,9 @@ public class GameOrchestrator implements Runnable  {
             this.sessions.leaveGame(snapshot.sessionId());
         }
         this.sessions.removeGameOrchestrator(this.game.getId());
-
     }
 
     // Helper methods
-
-    private static String resolveDefaultHostNickname(List<Player> players) {
-        if (players == null || players.isEmpty()) {
-            throw new IllegalArgumentException("Players cannot be null or empty");
-        }
-
-        Player host = players.getFirst();
-        if (host == null || host.getNickname() == null || host.getNickname().isBlank()) {
-            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
-        }
-
-        return requireHostNickname(host.getNickname());
-    }
 
     private static String requireHostNickname(String hostNickname) {
         if (hostNickname == null || hostNickname.isBlank()) {
@@ -331,4 +366,5 @@ public class GameOrchestrator implements Runnable  {
         } catch (RuntimeException ignored) {
         }
     }
+
 }

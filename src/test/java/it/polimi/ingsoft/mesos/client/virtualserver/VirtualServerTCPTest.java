@@ -1,10 +1,11 @@
 package it.polimi.ingsoft.mesos.client.serverproxy;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VirtualServerTCPTest {
+    private static final Gson GSON = new Gson();
 
     @Test
     void serverClosedConnectionNotifiesClientAndClosesProxy() throws Exception {

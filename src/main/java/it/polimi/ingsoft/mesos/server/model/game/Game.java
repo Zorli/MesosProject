@@ -86,6 +86,30 @@ public class Game {
         this.listeners = new ArrayList<>();
     }
 
+    /**
+     * Creates a game aggregate restored from a previously persisted snapshot.
+     *
+     * @param id unique game identifier
+     * @param players players participating in the match
+     * @param turnState restored turn-state machine
+     * @param turnOrderTrack restored round-order tracker
+     * @param board restored board state
+     * @param currentEra restored current era
+     * @param status restored lifecycle status
+     * @param stateVersion restored state version
+     */
+    public Game(int id,
+                List<Player> players,
+                TurnState turnState,
+                TurnOrderTrack turnOrderTrack,
+                Board board,
+                Era currentEra,
+                GameStatus status,
+                long stateVersion) {
+        this(id, players, turnState, turnOrderTrack, board, currentEra, status);
+        this.stateVersion = stateVersion;
+    }
+
     // Getters
 
     /**

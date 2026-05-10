@@ -1,6 +1,5 @@
 package it.polimi.ingsoft.mesos.server.controller;
 
-import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
@@ -11,6 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 
@@ -24,6 +24,7 @@ public class ServerController implements Runnable {
     private final ServerModel serverModel;
     private final GameFactory gameFactory;
     private final RankingService rankingService;
+    private final MatchPersistence matchPersistence;
     private final ServerConnectionLifecycle connectionLifecycle;
     private final PingPongRoutine pingPongRoutine;
 
@@ -31,34 +32,24 @@ public class ServerController implements Runnable {
     // --- CODA PRE-LOBBY ---
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
-    public ServerController(GameFactory gameFactory, RankingService rankingService, ServerSessionRegistry sessions) {
-        this.sessions = sessions;
+    public ServerController(GameFactory gameFactory,
+                           RankingService rankingService,
+                           MatchPersistence matchPersistence,
+                           ServerSessionRegistry sessions) {
+        this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
-        this.rankingService = rankingService;
+        this.rankingService = Objects.requireNonNull(rankingService, "rankingService cannot be null");
+        this.matchPersistence = Objects.requireNonNull(matchPersistence, "matchPersistence cannot be null");
 
-        // Il Model assume la piena responsabilità dei controlli di business
         this.serverModel = new ServerModel(this.sessions);
 
         this.connectionLifecycle = new ServerConnectionLifecycle(this.sessions, this.serverModel);
         this.pingPongRoutine = new PingPongRoutine(this.sessions, this.connectionLifecycle);
         this.pingPongRoutine.start();
     }
-    //cacata
-    public ServerController(ServerSessionRegistry sessions) {
-        this(DefaultGameFactory.getInstance(), null, sessions);
-    }
-
-    public ServerController() {
-        this(new ServerSessionRegistry());
-    }
-
 
     public ServerSessionRegistry getSessionRegistry() {
         return this.sessions;
-    }
-
-    public ServerModel getServerModel() {
-        return this.serverModel;
     }
 
     // --- GESTIONE DELLA CODA PRE-LOBBY ---
@@ -109,7 +100,7 @@ public class ServerController implements Runnable {
 
     private void authenticate(String sessionId, String nickname) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
-        this.serverModel.authenticate(sessionId, nickname,  clientView);
+        this.serverModel.authenticate(sessionId, nickname, clientView);
     }
 
     private void listOpenLobbies(String sessionId) {
@@ -118,11 +109,8 @@ public class ServerController implements Runnable {
     }
 
     private void createLobby(String sessionId, int chosenCapacity) {
-        // 1. Chiamata al Model per logica ed eventuali errori
         Listener clientView = this.sessions.getListenerOf(sessionId);
         Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity, clientView);
-
-        // 2. Transizione e Setup Controller se successo
         if (lobby != null) {
             this.sessions.enterLobby(sessionId, lobby.getId());
 
@@ -130,7 +118,8 @@ public class ServerController implements Runnable {
                     lobby,
                     this.sessions,
                     this.gameFactory,
-                    this.rankingService
+                    this.rankingService,
+                    this.matchPersistence
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);
             Thread lobbyWorker = new Thread(lobbyController, "Lobby-" + lobby.getId() + "-Worker");
@@ -169,5 +158,4 @@ public class ServerController implements Runnable {
     public void disconnectSession(String sessionId) {
         this.connectionLifecycle.disconnectSession(sessionId);
     }
-
 }

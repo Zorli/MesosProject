@@ -41,6 +41,11 @@ public final class NoOpRankingService implements RankingService {
     }
 
     @Override
+    public boolean isRankingEnabled() {
+        return false;
+    }
+
+    @Override
     public RankingResult recordMatchAndGetRanking(String gameId,
                                                   int playerCount,
                                                   Instant playedAtUtc,
