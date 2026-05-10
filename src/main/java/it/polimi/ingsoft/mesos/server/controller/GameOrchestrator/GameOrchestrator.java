@@ -3,14 +3,20 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -149,21 +155,27 @@ public class GameOrchestrator implements Runnable  {
 
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                String nickname = sessions.nicknameOf(sessionId);
                 try {
-                    switch (GameCommandType.fromPayload(cmd.payload())) {
-                        case CHOOSE_CARD -> {
-                            ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
-                            this.chooseCard(nickname, p.cardId);
+                    switch (cmd.command()) {
+                        case ClientQueuedCommand clientCommand -> {
+                            String nickname = sessions.nicknameOf(sessionId);
+                            switch (GameCommandType.fromPayload(clientCommand.payload())) {
+                                case CHOOSE_CARD -> {
+                                    ChooseCardPayload p = (ChooseCardPayload) clientCommand.payload();
+                                    this.chooseCard(nickname, p.cardId);
+                                }
+                                case EXTRA_DRAW -> {
+                                    ExtraDrawPayload p = (ExtraDrawPayload) clientCommand.payload();
+                                    this.extraDrawn(nickname, p.cardId);
+                                }
+                                case MOVE_TOTEM -> {
+                                    MoveTotemPayload p = (MoveTotemPayload) clientCommand.payload();
+                                    this.moveTotem(nickname, p.tile);
+                                }
+                            }
                         }
-                        case EXTRA_DRAW -> {
-                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
-                            this.extraDrawn(nickname, p.cardId);
-                        }
-                        case MOVE_TOTEM -> {
-                            MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
-                            this.moveTotem(nickname, p.tile);
-                        }
+                        case SystemSetupMatchCommand ignored -> this.setupMatch();
+                        default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
                     }
                 } catch (RuntimeException e) {
                     this.notifyPhaseError(sessionId);
@@ -177,7 +189,7 @@ public class GameOrchestrator implements Runnable  {
     /**
      * Performs match setup.
      */
-    public void setupMatch() {
+    private void setupMatch() {
         this.ensureMatchIsWritable();
         this.game.setup();
         this.checkGameEndAndCleanup();
@@ -189,7 +201,7 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname of the acting player
      * @param tile target offer-space code
      */
-    public void moveTotem(String nickname, String tile) {
+    private void moveTotem(String nickname, String tile) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.moveTotem(player, tile);
@@ -202,7 +214,7 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname of acting player
      * @param cardId of the chosen card
      */
-    public void chooseCard(String nickname, int cardId) {
+    private void chooseCard(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.chooseCard(player, cardId);
@@ -215,7 +227,7 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname acting player
      * @param cardId chosen extra-draw card
      */
-    public void extraDrawn(String nickname, int cardId) {
+    private void extraDrawn(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.extraDrawn(player, cardId);

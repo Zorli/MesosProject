@@ -5,7 +5,11 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 import it.polimi.ingsoft.mesos.server.virtualview.VirtualViewTCP;
 
 import java.io.PrintStream;

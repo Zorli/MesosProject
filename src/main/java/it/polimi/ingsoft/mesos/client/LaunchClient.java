@@ -6,7 +6,7 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.view.gui.GUIController;
 import it.polimi.ingsoft.mesos.client.view.tui.TuiController;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.rmi.Naming;
 import java.util.Scanner;

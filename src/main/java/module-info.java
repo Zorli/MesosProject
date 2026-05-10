@@ -11,13 +11,28 @@
 
       opens it.polimi.ingsoft.mesos.client.view.gui to javafx.fxml, javafx.graphics;
       opens it.polimi.ingsoft.mesos.server to com.google.gson;
-      opens it.polimi.ingsoft.mesos.shared.payload.client to com.google.gson;
-      opens it.polimi.ingsoft.mesos.shared.payload.server to com.google.gson;
-      exports it.polimi.ingsoft.mesos.shared to java.rmi;
-      exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
+      opens it.polimi.ingsoft.mesos.shared.payload.clienttoserver to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.servertoclient to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.error to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.game to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby to com.google.gson;
+      opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby to com.google.gson;
+        exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
       exports it.polimi.ingsoft.mesos.client.virtualserver to java.rmi;
-      exports it.polimi.ingsoft.mesos.shared.payload.client;
-      exports it.polimi.ingsoft.mesos.shared.payload.server;
+      exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
+      exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection;
+      exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game;
+      exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby;
+      exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby;
+      exports it.polimi.ingsoft.mesos.shared.payload.servertoclient;
+      exports it.polimi.ingsoft.mesos.shared.payload.servertoclient.error;
+      exports it.polimi.ingsoft.mesos.shared.payload.servertoclient.game;
+      exports it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby;
+      exports it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby;
       exports it.polimi.ingsoft.mesos.client;
       exports it.polimi.ingsoft.mesos.client.view.gui;
       exports it.polimi.ingsoft.mesos.server;
@@ -32,4 +47,5 @@
       exports it.polimi.ingsoft.mesos.shared.messages;
       opens it.polimi.ingsoft.mesos.shared.messages to com.google.gson;
       exports it.polimi.ingsoft.mesos.client.serverproxy to java.rmi;
+      exports it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces to java.rmi;
   }

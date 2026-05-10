@@ -1,10 +1,10 @@
 package it.polimi.ingsoft.mesos.server.controller;
 
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.util.List;
 

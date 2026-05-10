@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.model;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
 
 import java.util.List;

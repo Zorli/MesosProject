@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.server.controller;
 
-import it.polimi.ingsoft.mesos.shared.payload.client.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.StartLobbyPayload;
 
 public enum LobbyCommandType {
     START_LOBBY,

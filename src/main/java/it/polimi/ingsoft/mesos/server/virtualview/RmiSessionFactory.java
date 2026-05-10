@@ -2,9 +2,9 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
-import it.polimi.ingsoft.mesos.shared.RmiClientService;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
-import it.polimi.ingsoft.mesos.shared.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
