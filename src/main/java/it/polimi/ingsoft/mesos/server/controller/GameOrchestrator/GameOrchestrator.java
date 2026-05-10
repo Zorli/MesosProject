@@ -3,23 +3,27 @@ package it.polimi.ingsoft.mesos.server.controller.GameOrchestrator;
 
 import it.polimi.ingsoft.mesos.server.controller.Factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
-import it.polimi.ingsoft.mesos.shared.payload.client.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 /**
  * Coordinates one running match from the perspective of external callers.
@@ -37,7 +41,6 @@ public class GameOrchestrator implements Runnable  {
     private final RankingService rankingService;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
-    private boolean sessionsReleased;
     private boolean frozen;
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -149,23 +152,30 @@ public class GameOrchestrator implements Runnable  {
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
+
                 EnqueuedMessage cmd = this.commandQueue.take();
                 String sessionId = cmd.sessionId();
-                String nickname = sessions.nicknameOf(sessionId);
                 try {
-                    switch (GameCommandType.fromPayload(cmd.payload())) {
-                        case CHOOSE_CARD -> {
-                            ChooseCardPayload p = (ChooseCardPayload) cmd.payload();
-                            this.chooseCard(nickname, p.cardId);
+                    switch (cmd.command()) {
+                        case ClientQueuedCommand clientCommand -> {
+                            String nickname = sessions.nicknameOf(sessionId);
+                            switch (GameCommandType.fromPayload(clientCommand.payload())) {
+                                case CHOOSE_CARD -> {
+                                    ChooseCardPayload p = (ChooseCardPayload) clientCommand.payload();
+                                    this.chooseCard(nickname, p.cardId);
+                                }
+                                case EXTRA_DRAW -> {
+                                    ExtraDrawPayload p = (ExtraDrawPayload) clientCommand.payload();
+                                    this.extraDrawn(nickname, p.cardId);
+                                }
+                                case MOVE_TOTEM -> {
+                                    MoveTotemPayload p = (MoveTotemPayload) clientCommand.payload();
+                                    this.moveTotem(nickname, p.tile);
+                                }
+                            }
                         }
-                        case EXTRA_DRAW -> {
-                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.payload();
-                            this.extraDrawn(nickname, p.cardId);
-                        }
-                        case MOVE_TOTEM -> {
-                            MoveTotemPayload p = (MoveTotemPayload) cmd.payload();
-                            this.moveTotem(nickname, p.tile);
-                        }
+                        case SystemSetupMatchCommand ignored -> this.setupMatch();
+                        default -> throw new IllegalStateException("Unexpected command: " + cmd.command());
                     }
                 } catch (RuntimeException e) {
                     this.notifyPhaseError(sessionId);
@@ -179,11 +189,10 @@ public class GameOrchestrator implements Runnable  {
     /**
      * Performs match setup.
      */
-    public void setupMatch() {
+    private void setupMatch() {
         this.ensureMatchIsWritable();
         this.game.setup();
-        this.recordRankingIfFinished();
-        this.releaseSessionsIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     /**
@@ -192,12 +201,11 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname of the acting player
      * @param tile target offer-space code
      */
-    public void moveTotem(String nickname, String tile) {
+    private void moveTotem(String nickname, String tile) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.moveTotem(player, tile);
-        this.recordRankingIfFinished();
-        this.releaseSessionsIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     /**
@@ -206,12 +214,11 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname of acting player
      * @param cardId of the chosen card
      */
-    public void chooseCard(String nickname, int cardId) {
+    private void chooseCard(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.chooseCard(player, cardId);
-        this.recordRankingIfFinished();
-        this.releaseSessionsIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     /**
@@ -220,12 +227,11 @@ public class GameOrchestrator implements Runnable  {
      * @param nickname acting player
      * @param cardId chosen extra-draw card
      */
-    public void extraDrawn(String nickname, int cardId) {
+    private void extraDrawn(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
         this.ensureMatchIsWritable();
         this.game.extraDrawn(player, cardId);
-        this.recordRankingIfFinished();
-        this.releaseSessionsIfFinished();
+        this.checkGameEndAndCleanup();
     }
 
     public void freezeForDisconnectedPlayer(String nickname) {
@@ -249,7 +255,7 @@ public class GameOrchestrator implements Runnable  {
     }
 
     private void recordRankingIfFinished() {
-        if (this.rankingService == null || this.rankingRecorded || this.game.getStatus() != GameStatus.FINISHED) {
+        if (this.rankingService == null || this.rankingRecorded) {
             return;
         }
 
@@ -269,31 +275,35 @@ public class GameOrchestrator implements Runnable  {
         }
     }
 
-    private void releaseSessionsIfFinished() {
-        if (this.sessionsReleased || this.game.getStatus() != GameStatus.FINISHED) {
-            return;
-        }
-
-        Set<String> playerNicknames = this.players.stream()
-                .map(Player::getNickname)
-                .collect(Collectors.toSet());
-        this.sessions.snapshots().stream()
-                .filter(snapshot -> snapshot.phase() == ServerSessionRegistry.Phase.GAME)
-                .filter(snapshot -> snapshot.user() != null)
-                .filter(snapshot -> playerNicknames.contains(snapshot.user().getNickname()))
-                .forEach(snapshot -> {
-                    if (snapshot.gameId() != null) {
-                        this.sessions.removeGameOrchestrator(snapshot.gameId());
-                    }
-                    this.sessions.leaveGame(snapshot.sessionId());
-                });
-        this.sessionsReleased = true;
-    }
-
     private List<MatchScore> buildFinalScores() {
         return this.players.stream()
                 .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
                 .toList();
+    }
+    private void checkGameEndAndCleanup() {
+        if (this.game.getStatus() != GameStatus.FINISHED) {
+            return;
+        }
+        try{
+            this.recordRankingIfFinished();
+        }catch (RankingFinalizationFailureException e){
+            //boh forse da aggiungere errore personalizzato su mancanza di dati registrati
+        }
+        finally {
+            this.teardownGame();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void teardownGame() {
+        List<ServerSessionRegistry.SessionSnapshot> playersInGame =
+                this.sessions.sessionsInGame(this.game.getId());
+
+        for (ServerSessionRegistry.SessionSnapshot snapshot : playersInGame) {
+            this.sessions.leaveGame(snapshot.sessionId());
+        }
+        this.sessions.removeGameOrchestrator(this.game.getId());
+
     }
 
     // Helper methods

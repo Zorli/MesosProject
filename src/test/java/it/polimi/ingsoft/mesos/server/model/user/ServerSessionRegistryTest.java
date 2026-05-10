@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.user;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.network.PingPongConnection;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -50,7 +50,7 @@ class ServerSessionRegistryTest {
         assertEquals("Alice", newUser.getNickname());
     }
 
-    private static class DummyConnection implements PingPongConnection {
+    private static class DummyConnection implements ClientConnection {
         @Override
         public void sendPing() {
         }

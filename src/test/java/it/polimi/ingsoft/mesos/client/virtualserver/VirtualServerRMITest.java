@@ -5,16 +5,10 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
+import it.polimi.ingsoft.mesos.shared.payload.client.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -48,10 +42,10 @@ class VirtualServerRMITest {
         LobbyListPayload lobbyListPayload = new LobbyListPayload(List.of());
         GamePayload gamePayload = new GamePayload(1, "RUNNING", 1, null, null, List.of(), null);
 
-        virtualServer.handleError(errorPayload);
-        virtualServer.handlePreMatchUpdate(preMatchPayload);
-        virtualServer.handleLobbyList(lobbyListPayload);
-        virtualServer.handleGameUpdate(gamePayload);
+        virtualServer.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+        virtualServer.handleMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, preMatchPayload));
+        virtualServer.handleMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
+        virtualServer.handleMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
         virtualServer.close();
 
         assertSame(errorPayload, clientView.lastError);
@@ -102,39 +96,7 @@ class VirtualServerRMITest {
         private final List<String> calls = new ArrayList<>();
 
         @Override
-        public void authenticate(AuthenticationPayload payload) {
-        }
-
-        @Override
-        public void listLobbies(ListLobbiesPayload payload) {
-        }
-
-        @Override
-        public void createLobby(CreateLobbyPayload payload) {
-        }
-
-        @Override
-        public void joinLobby(JoinLobbyPayload payload) {
-        }
-
-        @Override
-        public void exitLobby(ExitLobbyPayload payload) {
-        }
-
-        @Override
-        public void startLobby(StartLobbyPayload payload) {
-        }
-
-        @Override
-        public void moveTotem(MoveTotemPayload payload) {
-        }
-
-        @Override
-        public void chooseCard(ChooseCardPayload payload) {
-        }
-
-        @Override
-        public void extraDraw(ExtraDrawPayload payload) {
+        public void sendMessage(ClientPayload payload) {
         }
 
         @Override

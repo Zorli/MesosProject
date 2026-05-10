@@ -4,16 +4,7 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiServerService;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.client.*;
 import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
@@ -97,48 +88,19 @@ class ServerProxyRMITest {
         private boolean failNextCall;
 
         @Override
-        public void authenticate(AuthenticationPayload payload) throws RemoteException {
-            this.record("authenticate:" + payload.nickname);
-        }
-
-        @Override
-        public void listLobbies(ListLobbiesPayload payload) throws RemoteException {
-            this.record("listLobbies");
-        }
-
-        @Override
-        public void createLobby(CreateLobbyPayload payload) throws RemoteException {
-            this.record("createLobby:" + payload.chosenCapacity);
-        }
-
-        @Override
-        public void joinLobby(JoinLobbyPayload payload) throws RemoteException {
-            this.record("joinLobby:" + payload.lobbyId);
-        }
-
-        @Override
-        public void exitLobby(ExitLobbyPayload payload) throws RemoteException {
-            this.record("exitLobby");
-        }
-
-        @Override
-        public void startLobby(StartLobbyPayload payload) throws RemoteException {
-            this.record("startLobby");
-        }
-
-        @Override
-        public void moveTotem(MoveTotemPayload payload) throws RemoteException {
-            this.record("moveTotem:" + payload.tile);
-        }
-
-        @Override
-        public void chooseCard(ChooseCardPayload payload) throws RemoteException {
-            this.record("chooseCard:" + payload.cardId);
-        }
-
-        @Override
-        public void extraDraw(ExtraDrawPayload payload) throws RemoteException {
-            this.record("extraDraw:" + payload.cardId);
+        public void sendMessage(ClientPayload payload) throws RemoteException {
+            switch (payload) {
+                case AuthenticationPayload p -> this.record("authenticate:" + p.nickname);
+                case ListLobbiesPayload p -> this.record("listLobbies");
+                case CreateLobbyPayload p -> this.record("createLobby:" + p.chosenCapacity);
+                case JoinLobbyPayload p -> this.record("joinLobby:" + p.lobbyId);
+                case ExitLobbyPayload p -> this.record("exitLobby");
+                case StartLobbyPayload p -> this.record("startLobby");
+                case MoveTotemPayload p -> this.record("moveTotem:" + p.tile);
+                case ChooseCardPayload p -> this.record("chooseCard:" + p.cardId);
+                case ExtraDrawPayload p -> this.record("extraDraw:" + p.cardId);
+                default -> this.record("unknown");
+            }
         }
 
         @Override

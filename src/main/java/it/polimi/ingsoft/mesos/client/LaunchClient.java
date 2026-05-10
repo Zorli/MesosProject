@@ -6,7 +6,7 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.view.gui.GUIController;
 import it.polimi.ingsoft.mesos.client.view.tui.TuiController;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.rmi.Naming;
 import java.util.Scanner;
@@ -36,10 +36,16 @@ public class LaunchClient {
     //   contratto usato dalla rete per consegnare al client i messaggi ricevuti dal server.
     //   In TCP legge i messaggi dalla socket tramite VirtualServerTCP.
     //   In RMI riceve callback remote tramite VirtualServerRMI.
+    //   Non decide lui quale metodo della view chiamare, ma passa un ServerMessage al MessageRouter.
+    //
+    // - MessageRouter:
+    //   classe che sta tra VirtualServer e ClientView.
+    //   Guarda il type del ServerMessage e decide quale metodo chiamare sulla view.
+    //   Cosi VirtualServer resta solo  rete, e la logica di instradamento sta in un posto solo.
     //
     // Quindi in generale il flusso da avere in testa è questo:
     // controller UI -> ServerProxy -> server
-    // server -> VirtualServer -> ClientView
+    // server -> VirtualServer -> MessageRouter -> ClientView
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);

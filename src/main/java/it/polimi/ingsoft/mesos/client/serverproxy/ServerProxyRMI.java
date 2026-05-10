@@ -2,19 +2,21 @@ package it.polimi.ingsoft.mesos.client.serverproxy;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
-import it.polimi.ingsoft.mesos.shared.RmiServerService;
-import it.polimi.ingsoft.mesos.shared.payload.client.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExitLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.JoinLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.ListLobbiesPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.MoveTotemPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.PongPayload;
-import it.polimi.ingsoft.mesos.shared.payload.client.StartLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.CreateLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.ExitLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.JoinLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.ListLobbiesPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.PongPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 
 import java.io.IOException;
 import java.rmi.RemoteException;
@@ -165,7 +167,7 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     private void notifyLocalError(String code, String message) {
-        this.callbackReceiver.handleError(new ErrorPayload(code, message));
+        this.callbackReceiver.handleMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload(code, message)));
     }
 
     private boolean ensureConnected() {

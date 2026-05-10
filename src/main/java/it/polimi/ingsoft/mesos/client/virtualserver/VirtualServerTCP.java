@@ -6,11 +6,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
+import it.polimi.ingsoft.mesos.client.view.MessageRouter;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -25,13 +27,13 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket socket;
-    private final ClientView clientView;
     private final ServerProxyTCP serverProxy;
     private boolean closeRequestedByClient;
+    private final MessageRouter messageRouter;
 
     public VirtualServerTCP(Socket socket, ClientView clientView, ServerProxyTCP serverProxy) {
         this.socket = Objects.requireNonNull(socket, "socket cannot be null");
-        this.clientView = Objects.requireNonNull(clientView, "clientView cannot be null");
+        this.messageRouter = new MessageRouter(clientView);
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
@@ -67,71 +69,47 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
         }
     }
 
-    @Override
-    public void handlePing() {
-        this.serverProxy.sendPong();
-    }
-
-    @Override
-    public void handleError(ErrorPayload payload) {
-        this.clientView.showError(payload);
-    }
-
-    @Override
-    public void handlePreMatchUpdate(PreMatchUpdatePayload payload) {
-        this.clientView.showPreMatchUpdate(payload);
-    }
-
-    @Override
-    public void handleLobbyList(LobbyListPayload payload) {
-        this.clientView.showLobbyList(payload);
-    }
-
-    @Override
-    public void handleGameUpdate(GamePayload payload) {
-        this.clientView.showGameUpdate(payload);
-    }
-
-    @Override
-    public void close() throws IOException {
-        this.serverProxy.closeConnection();
-    }
-
     private void handleServerMessage(String serializedMessage) {
         try {
             JsonObject root = GSON.fromJson(serializedMessage, JsonObject.class);
             ServerMessageType type = ServerMessageType.valueOf(root.get("type").getAsString());
             JsonElement payload = root.get("payload");
 
+            ServerMessage message = null;
             switch (type) {
-                case ERROR -> this.handleError(payload);
-                case PRE_MATCH_UPDATE -> this.handlePreMatchUpdate(payload);
-                case LOBBY_LIST -> this.handleLobbyList(payload);
-                case GAME_UPDATE -> this.handleGameUpdate(payload);
-                case PING -> this.handlePing();
-            }
+                case ERROR -> message = new ServerMessage(type, GSON.fromJson(payload, ErrorPayload.class));
+                case PRE_MATCH_UPDATE -> message = new ServerMessage(type, GSON.fromJson(payload, PreMatchUpdatePayload.class));
+                case LOBBY_LIST -> message = new ServerMessage(type, GSON.fromJson(payload, LobbyListPayload.class));
+                case GAME_UPDATE -> message= new ServerMessage(type, GSON.fromJson(payload, GamePayload.class));
+                case PING -> {
+                    this.handlePing();
+                    return;
+                }
+            };
+            this.handleMessage(message);
         } catch (RuntimeException exception) {
             this.handleError(new ErrorPayload("INVALID_SERVER_MESSAGE", serializedMessage));
         }
     }
 
-    private void handleError(JsonElement payload) {
-        ErrorPayload errorPayload = GSON.fromJson(payload, ErrorPayload.class);
-        this.handleError(errorPayload);
+
+    @Override
+    public void handleMessage(ServerMessage message) {
+        this.messageRouter.routeMessage(message);
     }
 
-    private void handlePreMatchUpdate(JsonElement payload) {
-        PreMatchUpdatePayload updatePayload = GSON.fromJson(payload, PreMatchUpdatePayload.class);
-        this.handlePreMatchUpdate(updatePayload);
+    @Override
+    public void handlePing() {
+        this.serverProxy.sendPong();
     }
 
-    private void handleLobbyList(JsonElement payload) {
-        LobbyListPayload lobbyListPayload = GSON.fromJson(payload, LobbyListPayload.class);
-        this.handleLobbyList(lobbyListPayload);
+
+    public void handleError(ErrorPayload payload) {
+        this.messageRouter.routeMessage(new ServerMessage(ServerMessageType.ERROR, payload));
     }
 
-    private void handleGameUpdate(JsonElement payload) {
-        GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
-        this.handleGameUpdate(gamePayload);
+    @Override
+    public void close() throws IOException {
+        this.serverProxy.closeConnection();
     }
 }

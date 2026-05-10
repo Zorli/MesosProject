@@ -3,17 +3,15 @@ package it.polimi.ingsoft.mesos.server;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
-import it.polimi.ingsoft.mesos.shared.RmiConnectionService;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.PrintStream;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Map;
+
 
 // From this class we bootstrap the server for BOTH TCP and RMI.
 // The Singleton MessageRouter and SessionRegistry are shared between both network layers,
@@ -29,7 +27,15 @@ public final class LaunchServer {
             System.exit(exitCode);
         }
     }
-
+    /*
+    Architettura del server:
+    - Virtualview RMI/TCP: Gestione delle connessioni in entrata ed in uscita, si occupano del relativo protocollo di rete
+      scambiandosi payload. Quello che la virtualview sa fare è ricevere e mandare in uscita payload, sul come instradarli
+      internamente se ne occupa il relativo router
+    - Harness vari protocol dependent delle virtualview : connection acceptor, commandhandler, etc
+    - Command Router: Dato un payload recuper lo snapshot della sessione del player e lo instrada correttamente
+    //TODO : Finire lo spiegone architetturale
+    */
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
             // ==========================================

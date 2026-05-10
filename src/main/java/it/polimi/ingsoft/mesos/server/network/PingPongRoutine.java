@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.network;
 
+import it.polimi.ingsoft.mesos.server.controller.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry.SessionSnapshot;
 
@@ -12,12 +13,19 @@ public class PingPongRoutine {
     private static final long PING_INTERVAL_SECONDS = 10;
 
     private final ServerSessionRegistry sessions;
+    private final ServerConnectionLifecycle connectionLifecycle;
     private final ScheduledExecutorService scheduler;
-    private final TimeoutHandler timeoutHandler;
 
-    public PingPongRoutine(ServerSessionRegistry sessions, TimeoutHandler timeoutHandler) {
+    public PingPongRoutine(ServerSessionRegistry sessions, ServerConnectionLifecycle connectionLifecycle) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
-        this.timeoutHandler = Objects.requireNonNull(timeoutHandler, "timeoutHandler cannot be null");
+        this.connectionLifecycle = Objects.requireNonNull(connectionLifecycle, "connectionLifecycle cannot be null");
+        /*
+        Fancy way, instead of
+          while (...) {
+              tick();
+              sleep(10s);
+          }
+         */
         this.scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "ping-pong-routine");
             thread.setDaemon(true);
@@ -40,20 +48,13 @@ public class PingPongRoutine {
 
     private void tick() {
         for (SessionSnapshot session : this.sessions.snapshots()) {
-            if (session.user() == null) {
-                continue;
-            }
             if (session.timedOut()) {
-                System.out.println("Disconnected User" + session.user().toString());
-                this.timeoutHandler.handle(session.sessionId());
+                System.out.println("Disconnected session " + session.sessionId());
+                this.connectionLifecycle.handleConnectionTimeout(session.sessionId());
                 continue;
             }
 
             session.connection().sendPing();
         }
-    }
-
-    public interface TimeoutHandler {
-        void handle(String sessionId);
     }
 }

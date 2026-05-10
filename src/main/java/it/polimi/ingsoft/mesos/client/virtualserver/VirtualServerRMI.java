@@ -2,11 +2,10 @@ package it.polimi.ingsoft.mesos.client.virtualserver;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyRMI;
-import it.polimi.ingsoft.mesos.shared.RmiClientService;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.client.view.MessageRouter;
+import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
@@ -14,9 +13,9 @@ import java.rmi.server.UnicastRemoteObject;
 
 // RMI implementation of the server -> client channel.
 // It receives server callbacks and forwards them to the UI through ClientView.
-public class VirtualServerRMI implements VirtualServer, RmiClientService {
+public class VirtualServerRMI implements RmiClientService {
 
-    private final ClientView clientView;
+    private final MessageRouter messageRouter;
     private final boolean exported;
     private ServerProxyRMI serverProxy;
 
@@ -28,32 +27,20 @@ public class VirtualServerRMI implements VirtualServer, RmiClientService {
         if (exported) {
             UnicastRemoteObject.exportObject(this, 0);
         }
-        this.clientView = clientView;
+        this.messageRouter= new MessageRouter(clientView);
         this.exported = exported;
+    }
+
+    public void handleMessage(ServerMessage message) {
+        if(message.type.equals(ServerMessageType.PING)){
+            this.handlePing();
+            return;
+        }
+        this.messageRouter.routeMessage(message);
     }
 
     public void attachServerProxy(ServerProxyRMI serverProxy) {
         this.serverProxy = serverProxy;
-    }
-
-    @Override
-    public void handleError(ErrorPayload payload) {
-        this.clientView.showError(payload);
-    }
-
-    @Override
-    public void handlePreMatchUpdate(PreMatchUpdatePayload payload) {
-        this.clientView.showPreMatchUpdate(payload);
-    }
-
-    @Override
-    public void handleLobbyList(LobbyListPayload payload) {
-        this.clientView.showLobbyList(payload);
-    }
-
-    @Override
-    public void handleGameUpdate(GamePayload payload) {
-        this.clientView.showGameUpdate(payload);
     }
 
     @Override
@@ -64,7 +51,6 @@ public class VirtualServerRMI implements VirtualServer, RmiClientService {
         this.serverProxy.sendPong();
     }
 
-    @Override
     public void close() throws NoSuchObjectException {
         if (this.exported) {
             UnicastRemoteObject.unexportObject(this, true);
