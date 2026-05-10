@@ -1,33 +1,62 @@
 # Mesos Project
 Progetto prova finale per l'esame di Ingegneria del Software.
+Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java, in modo da poter
+giocare con altri player, ognuno dal proprio device, collegandosi ad un server.
+È possibile giocare sia da interfaccia testuale che grafica. La versione qui implementata ha inoltre le seguenti
+feature aggiuntive:
+- supporto per multi-partita in parallelo sullo stesso server
+- persistenza in caso di crash del server, ovvero i client che erano in partita possono riprendere
+dall'ultimo stato del gioco prima del crash
+- Ranking di tutti i player con salvataggio su database
 
-## Workflow Git 
-In questo repository usiamo 3 tipi di branch:
+## Architettura del progetto
+In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
+sottosezioni verranno spiegati in dettaglio i particolari implementativi e i pattern applicati.
 
-- `main`: contiene la versione stabile.
-- `develop`: branch di integrazione, dove finiscono le feature completate.
-- `feat/<nome-feature>`: branch temporanei per sviluppo di una singola funzionalita (anche per bug-fix).
+Ad alto livello è stato applicato il [Model View Controller pattern distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
+MVC in cui la view si trova su una altra macchina rispetto al controller e il model, come si può vedere nella seguente immagine:
+![img.png](img.png)
+di mezzo tra client e server c'è la rete. 
 
-Regole base:
+### Design Patterns Presenti
 
-- Non si lavora direttamente su `main`.
-- Le feature vengono mergeate su `develop` tramite Merge Request.
-- `main` si aggiorna solo quando vogliamo rilasciare una versione stabile.
+### Architettura del Client
 
-## Flusso di lavoro 
-1. Aggiorna `develop` e crea una feature branch
-
-2. Sviluppa, fai commit piccoli e chiari, poi push
-
-3. Apri una Pull Request da `feature/nome-feature` verso `develop`.
-
-4. Dopo review e merge su `develop`
+### Architettura del Server
 
 
-## Documentazione tecnica (`docs/`)
-La cartella `docs/` e` dedicata ai design doc e alla documentazione delle decisioni tecniche.
 
-## Avvio PostgreSQL locale
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Usage
+### Avvio PostgreSQL locale
 Per sviluppo locale il repository include un `docker-compose.yml` con PostgreSQL.
 Il database viene usato per ranking e storico risultati; il salvataggio dello stato match non e'
 gestito da PostgreSQL.
