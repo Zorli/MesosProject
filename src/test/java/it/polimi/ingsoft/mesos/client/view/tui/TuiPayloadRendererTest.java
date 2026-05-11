@@ -1,17 +1,18 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
-import it.polimi.ingsoft.mesos.shared.payload.server.BoardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.LobbySummaryPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.OfferSpacePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PlayerPayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.server.PreMatchUpdatePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TribePayload;
-import it.polimi.ingsoft.mesos.shared.payload.server.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TribePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -24,14 +25,14 @@ class TuiPayloadRendererTest {
 
     @Test
     void rendersErrorWithoutLastGame() {
-        String rendered = this.renderer.renderError(new ErrorPayload("BAD_COMMAND", "Invalid command"), null);
+        String rendered = this.renderer.renderError(new ErrorPayload("BAD_COMMAND", "Invalid command"), null, "ada");
 
         assertEquals("[ERROR] BAD_COMMAND: Invalid command", rendered);
     }
 
     @Test
     void rendersErrorWithLastGame() {
-        String rendered = this.renderer.renderError(new ErrorPayload("MOVE_DENIED", "Tile occupied"), gamePayload());
+        String rendered = this.renderer.renderError(new ErrorPayload("MOVE_DENIED", "Tile occupied"), gamePayload(), "ada");
 
         assertTrue(rendered.contains("[ERROR] MOVE_DENIED: Tile occupied"));
         assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=2"));
@@ -77,16 +78,17 @@ class TuiPayloadRendererTest {
 
     @Test
     void rendersGameBasics() {
-        String rendered = this.renderer.renderGame(gamePayload());
+        String rendered = this.renderer.renderGame(gamePayload(), "ada");
 
         assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=2"));
+        assertTrue(rendered.contains("Your nickname: ada"));
         assertTrue(rendered.contains("Round 3 | phase=ACTION | current=ada"));
         assertTrue(rendered.contains("- ada food=3 prestige=5 totem=A1"));
         assertTrue(rendered.contains("- bob food=2 prestige=4 totem=-"));
-        assertTrue(rendered.contains("Upper row: #10 HUNTER era=1"));
-        assertTrue(rendered.contains("Lower row: #20 HUT era=2"));
-        assertTrue(rendered.contains("- A1 top=1 bottom=0 occupiedBy=ada"));
-        assertTrue(rendered.contains("- B2 top=0 bottom=1 occupiedBy=-"));
+        assertTrue(rendered.contains("UPPER  [10 HUNTER e1]"));
+        assertTrue(rendered.contains("LOWER  [20 HUT e2]"));
+        assertTrue(rendered.contains("OFFERS A1 top=1 bot=0 occ=ada | B2 top=0 bot=1 occ=-"));
+        assertTrue(rendered.contains("START  #1 food=+2 pp=+0 occ=- | #2 food=+0 pp=+1 occ=bob"));
     }
 
     private static GamePayload gamePayload() {
@@ -107,7 +109,10 @@ class TuiPayloadRendererTest {
                                 new OfferSpacePayload("A1", 1, 0, "ada"),
                                 new OfferSpacePayload("B2", 0, 1, null)
                         ),
-                        List.of()
+                        List.of(
+                                new StartingBlockPayload(1, 2, 0, null),
+                                new StartingBlockPayload(2, 0, 1, "bob")
+                        )
                 )
         );
     }
