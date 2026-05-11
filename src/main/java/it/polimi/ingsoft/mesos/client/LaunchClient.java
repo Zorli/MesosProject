@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyRMI;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
+import it.polimi.ingsoft.mesos.client.view.gui.GUIClientView;
 import it.polimi.ingsoft.mesos.client.view.gui.GUIController;
 import it.polimi.ingsoft.mesos.client.view.tui.TuiController;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
@@ -25,7 +26,7 @@ public class LaunchClient {
     // Per rendere intercambiabili queste scelte servono contratti chiari e comuni per evitare macello:
     //
     // - ClientView:
-    //   contratto implementato dalla UI.
+    //   contratto implementato dalla UI (da un adapter).
     //   Espone i metodi che la rete usa per mostrare errori, lobby e stato partita.
     //
     // - ServerProxy:
@@ -64,7 +65,7 @@ public class LaunchClient {
 
             String choice = scanner.nextLine().trim();
             if ("1".equals(choice)) {
-                return new GUIController();
+                return new GUIClientView(new GUIController());
             }
             if ("2".equals(choice)) {
                 return new TuiController(scanner, System.out);
@@ -104,7 +105,8 @@ public class LaunchClient {
             return;
         }
 
-        if (clientView instanceof GUIController guiController) {
+        if (clientView instanceof GUIClientView guiClientView) {
+            GUIController guiController = guiClientView.getController();
             guiController.attachServerProxy(serverProxy);
             guiController.start();
         }
