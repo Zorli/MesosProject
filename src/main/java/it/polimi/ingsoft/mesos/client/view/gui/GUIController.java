@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.client.view.gui;
 
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
-import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
@@ -48,12 +47,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * JavaFX implementation of the client view contract.
+ * JavaFX controller for the GUI scene.
  *
- * <p>The controller keeps the same separation documented in {@code LaunchClient}: GUI actions go
- * through {@link ServerProxy}, while server updates arrive through the {@link ClientView} methods.
+ * <p>GUI actions go through {@link ServerProxy}; server updates are received by {@link GUIClientView}
+ * and then forwarded here for rendering on the JavaFX thread.
  */
-public class GUIController implements ClientView {
+public class GUIController {
     private static final String FXML_RESOURCE = "gui.fxml";
     private static final String CSS_RESOURCE = "mesos-gui.css";
     private static final String CARD_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/cards/%d.jpg";
@@ -216,8 +215,7 @@ public class GUIController implements ClientView {
         this.requestLobbyList();
     }
 
-    @Override
-    public void showError(ErrorPayload payload) {
+    void displayError(ErrorPayload payload) {
         this.runOnFx(() -> {
             String message = payload == null ? "Errore sconosciuto." : payload.message;
             if (this.loginPage.isVisible()) {
@@ -233,8 +231,7 @@ public class GUIController implements ClientView {
         });
     }
 
-    @Override
-    public void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+    void displayPreMatchUpdate(PreMatchUpdatePayload payload) {
         this.runOnFx(() -> {
             this.lastPreMatchUpdatePayload = payload;
             if (payload == null) {
@@ -272,8 +269,7 @@ public class GUIController implements ClientView {
         });
     }
 
-    @Override
-    public void showLobbyList(LobbyListPayload payload) {
+    void displayLobbyList(LobbyListPayload payload) {
         this.runOnFx(() -> {
             if (this.currentLobbyId != null) {
                 this.renderLobbyListUnavailable();
@@ -325,8 +321,7 @@ public class GUIController implements ClientView {
         });
     }
 
-    @Override
-    public void showGameUpdate(GamePayload payload) {
+    void displayGameUpdate(GamePayload payload) {
         this.runOnFx(() -> {
             if (this.returnedToLobbyAfterMatch && this.isFinalScoring(payload)) {
                 return;
@@ -964,13 +959,13 @@ public class GUIController implements ClientView {
 
     private void callServer(ServerCall call) {
         if (this.serverProxy == null) {
-            this.showError(new ErrorPayload("CLIENT_GUI_ERROR", "ServerProxy non collegato."));
+            this.displayError(new ErrorPayload("CLIENT_GUI_ERROR", "ServerProxy non collegato."));
             return;
         }
         try {
             call.run();
         } catch (RuntimeException exception) {
-            this.showError(new ErrorPayload("CLIENT_GUI_ERROR", exception.getMessage()));
+            this.displayError(new ErrorPayload("CLIENT_GUI_ERROR", exception.getMessage()));
         }
     }
 
