@@ -8,8 +8,8 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdat
 /**
  * Network-facing contract used by the client message router to deliver server updates.
  *
- * <p>Concrete UIs may implement this directly, as the TUI does, or through an adapter that forwards
- * payloads to a framework-specific controller, as the JavaFX GUI does.
+ * <p>Concrete UI controllers implement this directly so the router can deliver typed payloads
+ * without knowing whether the client is running in TUI or GUI mode.
  */
 public interface ClientView {
     void showError(ErrorPayload payload);
