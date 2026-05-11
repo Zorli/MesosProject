@@ -10,9 +10,11 @@ import it.polimi.ingsoft.mesos.server.controller.command.SystemLobbyDisconnectCo
 import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
+import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,9 @@ public class LobbyController implements Runnable {
     private final ServerSessionRegistry sessions;
     private final GameFactory gameFactory;
     private final RankingService rankingService;
+    private final MatchPersistence matchPersistence;
     private final LobbyPlayerFactory lobbyPlayerFactory;
+    private final GameOrchestrator restoredOrchestrator;
 
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -34,12 +38,38 @@ public class LobbyController implements Runnable {
             ServerSessionRegistry sessions,
             GameFactory gameFactory,
             RankingService rankingService) {
+        this(lobby, sessions, gameFactory, rankingService, MatchPersistence.disabled());
+    }
+
+    public LobbyController(
+            Lobby lobby,
+            ServerSessionRegistry sessions,
+            GameFactory gameFactory,
+            RankingService rankingService,
+            MatchPersistence matchPersistence) {
 
         this.lobby = lobby;
         this.sessions = sessions;
         this.gameFactory = gameFactory;
         this.rankingService = rankingService;
+        this.matchPersistence = matchPersistence;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
+        this.restoredOrchestrator = null;
+    }
+
+    public LobbyController(
+            Lobby lobby,
+            ServerSessionRegistry sessions,
+            RankingService rankingService,
+            MatchPersistence matchPersistence,
+            GameOrchestrator restoredOrchestrator) {
+        this.lobby = lobby;
+        this.sessions = sessions;
+        this.gameFactory = null;
+        this.rankingService = rankingService;
+        this.matchPersistence = matchPersistence;
+        this.lobbyPlayerFactory = new LobbyPlayerFactory();
+        this.restoredOrchestrator = restoredOrchestrator;
     }
 
     public void enqueueMessage(EnqueuedMessage command) {
@@ -74,6 +104,14 @@ public class LobbyController implements Runnable {
         }
     }
     private void joinUser(String sessionId, String nickname, Listener clientView) {
+        if (this.lobby.getStatus() == LobbyStatus.RESUMABLE && this.lobby.isExpectedResumePlayer(nickname)) {
+            if (this.lobby.rejoinResumablePlayer(nickname, clientView)) {
+                this.sessions.enterLobby(sessionId, this.lobby.getId());
+                this.lobby.notifyPlayerJoined(nickname);
+            }
+            return;
+        }
+
         // 1. Deleghiamo al Model (che ora gestisce tutto: logica, Unicast di errore e Broadcast)
         boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView);
 
@@ -89,6 +127,7 @@ public class LobbyController implements Runnable {
     }
     private void exitLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
+        boolean wasResumable = this.lobby.getStatus() == LobbyStatus.RESUMABLE;
 
         // Il Model fa controlli, aggiorna i suoi dati e spara il Broadcast.
         // Se tutto va a buon fine (ritorna true), il Controller sposta l'utente nel Registry.
@@ -97,17 +136,18 @@ public class LobbyController implements Runnable {
             this.sessions.leaveLobby(sessionId);
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
-        if (this.lobby.isEmpty()) {
+        if (this.lobby.isEmpty() && !wasResumable) {
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
         }
     }
 
     private void disconnectUser(String sessionId, String nickname, Listener leavingListener) {
+        boolean wasResumable = this.lobby.getStatus() == LobbyStatus.RESUMABLE;
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
-        if (this.lobby.isEmpty()) {
+        if (this.lobby.isEmpty() && !wasResumable) {
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
         }
@@ -119,6 +159,10 @@ public class LobbyController implements Runnable {
 
         // Il Model verifica host, numero giocatori, aggiorna lo stato a STARTED e spara il Broadcast.
         if (this.lobby.startMatch(nickname)) {
+            if (this.restoredOrchestrator != null) {
+                this.startRestoredLobby();
+                return;
+            }
 
             // 1. Creiamo il GameOrchestrator (il Model del livello 3)
             List<Player> players = this.lobbyPlayerFactory.createPlayers(this.lobby.getPlayers());
@@ -127,6 +171,7 @@ public class LobbyController implements Runnable {
                     new ArrayList<>(players),
                     this.lobby.getHostNickname(),
                     this.rankingService,
+                    this.matchPersistence,
                     this.sessions
             );
 
@@ -159,6 +204,29 @@ public class LobbyController implements Runnable {
             Thread.currentThread().interrupt();
             this.startMatchCountdown(orchestrator);
         }
+    }
+
+    private void startRestoredLobby() {
+        GameOrchestrator orchestrator = this.restoredOrchestrator;
+        List<ServerSessionRegistry.SessionSnapshot> lobbySessions = this.sessions.sessionsInLobby(this.lobby.getId());
+
+        for (ServerSessionRegistry.SessionSnapshot session : lobbySessions) {
+            this.sessions.enterGame(session.sessionId(), orchestrator.getGame().getId());
+            Listener playerListener = (Listener) session.connection();
+            if (playerListener != null) {
+                this.lobby.notifyMatchStarted(session.user().getNickname(), playerListener);
+                orchestrator.getGame().addListener(playerListener);
+                playerListener.notifyUpdate(orchestrator.getGame().buildPayload());
+            }
+        }
+
+        this.lobby.clearListeners();
+        this.sessions.registerGameOrchestrator(orchestrator.getGame().getId(), orchestrator);
+        this.sessions.removeLobbyController(this.lobby.getId());
+        this.sessions.removeLobbyModel(this.lobby.getId());
+        Thread gameWorker = new Thread(orchestrator, "Game-" + orchestrator.getGame().getId() + "-Worker");
+        gameWorker.start();
+        Thread.currentThread().interrupt();
     }
 
     private void startMatchCountdown(GameOrchestrator orchestrator) {

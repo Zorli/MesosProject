@@ -114,6 +114,10 @@ public class OfferSpace {
         return this.minPlayers;
     }
 
+    public int getFoodBonus() {
+        return this.foodBonus;
+    }
+
     /**
      * Retrieves the exact number of cards the occupying player is allowed to draft
      * from the upper row.

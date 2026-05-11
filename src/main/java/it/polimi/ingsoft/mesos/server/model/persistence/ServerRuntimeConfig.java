@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.persistence;
 
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresConnectionConfig;
 
+import java.nio.file.Path;
 import java.util.Map;
 
 /**
@@ -12,13 +13,17 @@ public record ServerRuntimeConfig(String jdbcUrl,
                                   String username,
                                   String password,
                                   int maxBusyRetries,
-                                  boolean dbEnabled) {
+                                  boolean dbEnabled,
+                                  boolean gamePersistenceEnabled,
+                                  Path gamePersistenceDirectory) {
     private static final String DEFAULT_JDBC_URL = "jdbc:postgresql://localhost:5432/mesos";
     private static final String DEFAULT_ADMIN_DATABASE = "postgres";
     private static final String DEFAULT_USERNAME = "postgres";
     private static final String DEFAULT_PASSWORD = "postgres";
     private static final int DEFAULT_MAX_BUSY_RETRIES = 3;
     private static final boolean DEFAULT_DB_ENABLED = true;
+    private static final boolean DEFAULT_GAME_PERSISTENCE_ENABLED = false;
+    private static final Path DEFAULT_GAME_PERSISTENCE_DIR = Path.of("data", "game-checkpoints");
 
     /**
      * Backward-compatible constructor used by existing tests and bootstrap code.
@@ -34,7 +39,16 @@ public record ServerRuntimeConfig(String jdbcUrl,
                                String username,
                                String password,
                                int maxBusyRetries) {
-        this(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries, DEFAULT_DB_ENABLED);
+        this(
+                jdbcUrl,
+                adminJdbcUrl,
+                username,
+                password,
+                maxBusyRetries,
+                DEFAULT_DB_ENABLED,
+                DEFAULT_GAME_PERSISTENCE_ENABLED,
+                DEFAULT_GAME_PERSISTENCE_DIR
+        );
     }
 
     /**
@@ -57,6 +71,14 @@ public record ServerRuntimeConfig(String jdbcUrl,
                 Integer.toString(DEFAULT_MAX_BUSY_RETRIES)
         );
         String dbEnabledValue = environment.getOrDefault("MESOS_NO_DB", Boolean.toString(!DEFAULT_DB_ENABLED));
+        String gamePersistenceEnabledValue = environment.getOrDefault(
+                "MESOS_GAME_PERSISTENCE_ENABLED",
+                Boolean.toString(DEFAULT_GAME_PERSISTENCE_ENABLED)
+        );
+        String gamePersistenceDirectoryValue = environment.getOrDefault(
+                "MESOS_GAME_PERSISTENCE_DIR",
+                DEFAULT_GAME_PERSISTENCE_DIR.toString()
+        );
 
         int maxBusyRetries;
         try {
@@ -66,7 +88,17 @@ public record ServerRuntimeConfig(String jdbcUrl,
         }
 
         boolean dbEnabled = !Boolean.parseBoolean(dbEnabledValue);
-        return new ServerRuntimeConfig(jdbcUrl, adminJdbcUrl, username, password, maxBusyRetries, dbEnabled);
+        boolean gamePersistenceEnabled = Boolean.parseBoolean(gamePersistenceEnabledValue);
+        return new ServerRuntimeConfig(
+                jdbcUrl,
+                adminJdbcUrl,
+                username,
+                password,
+                maxBusyRetries,
+                dbEnabled,
+                gamePersistenceEnabled,
+                Path.of(gamePersistenceDirectoryValue)
+        );
     }
 
     /**
@@ -91,6 +123,10 @@ public record ServerRuntimeConfig(String jdbcUrl,
 
         if (maxBusyRetries < 0) {
             throw new IllegalArgumentException("Max busy retries cannot be negative");
+        }
+
+        if (gamePersistenceDirectory == null) {
+            throw new IllegalArgumentException("Game persistence directory cannot be null");
         }
     }
 

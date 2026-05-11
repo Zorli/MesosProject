@@ -21,6 +21,7 @@ public class Lobby {
     private final int id;
     private final int capacity;
     private final List<String> players;
+    private final List<String> resumableRoster;
     private String hostNickname;
     private LobbyStatus status;
     private long stateVersion;
@@ -36,10 +37,36 @@ public class Lobby {
         this.id = id;
         this.capacity = capacity;
         this.players = new ArrayList<>();
+        this.resumableRoster = List.of();
         this.hostNickname = validateNickname(hostNickname);
         this.status = LobbyStatus.WAITING;
         this.players.add(this.hostNickname);
 
+        this.stateVersion = 0L;
+        this.listeners = new ArrayList<>();
+        this.payloadMapper = new PreMatchPayloadMapper();
+    }
+
+    public Lobby(int id, String hostNickname, List<String> players, LobbyStatus status) {
+        if (players == null || players.size() < MIN_PLAYERS || players.size() > MAX_PLAYERS) {
+            throw new IllegalArgumentException("Capacity must be between " + MIN_PLAYERS + " and " + MAX_PLAYERS);
+        }
+
+        this.id = id;
+        this.capacity = players.size();
+        this.players = new ArrayList<>();
+        this.resumableRoster = new ArrayList<>();
+        this.hostNickname = validateNickname(hostNickname);
+        for (String player : players) {
+            String nickname = validateNickname(player);
+            if (!this.resumableRoster.contains(nickname)) {
+                this.resumableRoster.add(nickname);
+            }
+        }
+        if (!this.resumableRoster.contains(this.hostNickname)) {
+            throw new IllegalArgumentException("Restored lobby host must belong to players");
+        }
+        this.status = Objects.requireNonNull(status, "status cannot be null");
         this.stateVersion = 0L;
         this.listeners = new ArrayList<>();
         this.payloadMapper = new PreMatchPayloadMapper();
@@ -82,6 +109,13 @@ public class Lobby {
         }, null);
     }
 
+    public boolean rejoinResumablePlayer(String nickname, Listener requesterView) {
+        return this.executeLobbyAction(() -> {
+            this.rejoinResumablePlayerInternal(nickname);
+            this.addListener(requesterView);
+        }, requesterView);
+    }
+
     public void notifyActionError(Listener target) {
         if (target != null) {
             target.notifyUpdate(new ErrorPayload("PHASE_ERROR", "Action non permitted in this phase."));
@@ -113,7 +147,7 @@ public class Lobby {
         if (!this.isHost(nickname)) {
             throw new IllegalStateException("Only the lobby host can start the match");
         }
-        if (this.status != LobbyStatus.READY) {
+        if (this.status != LobbyStatus.READY && this.status != LobbyStatus.RESUMABLE) {
             throw new IllegalStateException("Cannot start lobby with status: " + this.status);
         }
         if (!this.canStart()) {
@@ -124,9 +158,24 @@ public class Lobby {
         this.markStateChanged();
     }
 
+    private void rejoinResumablePlayerInternal(String nickname) {
+        String validatedNickname = validateNickname(nickname);
+        if (this.status != LobbyStatus.RESUMABLE) {
+            throw new IllegalStateException("Cannot resume lobby with status: " + this.status);
+        }
+        if (!this.resumableRoster.contains(validatedNickname)) {
+            throw new IllegalStateException("User not allowed to resume this lobby: " + validatedNickname);
+        }
+        if (this.players.contains(validatedNickname)) {
+            throw new IllegalStateException("User already present in lobby: " + validatedNickname);
+        }
+        this.players.add(validatedNickname);
+        this.markStateChanged();
+    }
+
     private void addPlayerInternal(String nickname) {
         String validatedNickname = validateNickname(nickname);
-        if (this.status == LobbyStatus.CLOSED || this.status == LobbyStatus.STARTED) {
+        if (this.status == LobbyStatus.CLOSED || this.status == LobbyStatus.STARTED || this.status == LobbyStatus.RESUMABLE) {
             throw new IllegalStateException("Cannot join lobby with status: " + this.status);
         }
         if (this.players.contains(validatedNickname)) {
@@ -151,12 +200,12 @@ public class Lobby {
         }
 
         // Riassegnazione host
-        if (validatedNickname.equals(this.hostNickname)) {
+        if (validatedNickname.equals(this.hostNickname) && this.status != LobbyStatus.RESUMABLE) {
             this.hostNickname = this.players.isEmpty() ? null : this.players.get(0);
         }
 
         // Aggiornamento stato
-        if (this.isEmpty()) {
+        if (this.isEmpty() && this.status != LobbyStatus.RESUMABLE) {
             this.status = LobbyStatus.CLOSED;
         } else if (!this.canStart() && this.status == LobbyStatus.READY) {
             this.status = LobbyStatus.WAITING;
@@ -241,6 +290,7 @@ public class Lobby {
     public int getChosenCapacity() { return this.capacity; }
     public LobbyStatus getStatus() { return this.status; }
     public boolean hasPlayer(String nickname) { return this.players.contains(validateNickname(nickname)); }
+    public boolean isExpectedResumePlayer(String nickname) { return this.resumableRoster.contains(validateNickname(nickname)); }
     public boolean isHost(String nickname) { return this.hostNickname != null && this.hostNickname.equals(nickname); }
     public boolean canStart() { return this.players.size() == this.capacity; }
     public boolean isFull() { return this.players.size() >= this.capacity; }

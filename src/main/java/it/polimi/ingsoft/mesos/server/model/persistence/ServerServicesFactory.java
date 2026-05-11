@@ -1,8 +1,11 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingService;
+import it.polimi.ingsoft.mesos.server.persistence.game.FileMatchPersistence;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,9 +28,14 @@ public final class ServerServicesFactory {
      */
     public static ServerServices create(ServerRuntimeConfig runtimeConfig) {
         Objects.requireNonNull(runtimeConfig, "Runtime config cannot be null");
+        MatchPersistence matchPersistence = new FileMatchPersistence(
+                runtimeConfig.gamePersistenceEnabled(),
+                runtimeConfig.gamePersistenceDirectory(),
+                new ObjectMapper()
+        );
 
         if (!runtimeConfig.dbEnabled()) {
-            return new ServerServices(null);
+            return new ServerServices(null, matchPersistence);
         }
 
         PostgresDatabaseBootstrap.getInstance().ensureReady(
@@ -39,7 +47,8 @@ public final class ServerServicesFactory {
                 new PostgresRankingService(
                         runtimeConfig.toPostgresConnectionConfig(),
                         runtimeConfig.maxBusyRetries()
-                )
+                ),
+                matchPersistence
         );
     }
 }

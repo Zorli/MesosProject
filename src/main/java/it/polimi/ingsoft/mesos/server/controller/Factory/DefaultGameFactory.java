@@ -64,4 +64,8 @@ public class DefaultGameFactory implements GameFactory {
                 board
         );
     }
+
+    public void reserveGameIdsUpTo(int gameId) {
+        this.nextGameId.updateAndGet(current -> Math.max(current, gameId + 1));
+    }
 }

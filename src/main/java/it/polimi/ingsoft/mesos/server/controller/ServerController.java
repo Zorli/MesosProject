@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 
@@ -24,6 +25,7 @@ public class ServerController implements Runnable {
     private final ServerModel serverModel;
     private final GameFactory gameFactory;
     private final RankingService rankingService;
+    private final MatchPersistence matchPersistence;
     private final ServerConnectionLifecycle connectionLifecycle;
     private final PingPongRoutine pingPongRoutine;
 
@@ -32,9 +34,17 @@ public class ServerController implements Runnable {
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
     public ServerController(GameFactory gameFactory, RankingService rankingService, ServerSessionRegistry sessions) {
+        this(gameFactory, rankingService, MatchPersistence.disabled(), sessions);
+    }
+
+    public ServerController(GameFactory gameFactory,
+                            RankingService rankingService,
+                            MatchPersistence matchPersistence,
+                            ServerSessionRegistry sessions) {
         this.sessions = sessions;
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
         this.rankingService = rankingService;
+        this.matchPersistence = matchPersistence == null ? MatchPersistence.disabled() : matchPersistence;
 
         // Il Model assume la piena responsabilità dei controlli di business
         this.serverModel = new ServerModel(this.sessions);
@@ -130,7 +140,8 @@ public class ServerController implements Runnable {
                     lobby,
                     this.sessions,
                     this.gameFactory,
-                    this.rankingService
+                    this.rankingService,
+                    this.matchPersistence
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);
             Thread lobbyWorker = new Thread(lobbyController, "Lobby-" + lobby.getId() + "-Worker");

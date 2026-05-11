@@ -1,8 +1,15 @@
 package it.polimi.ingsoft.mesos.server;
 
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.persistence.RestoredMatchBootstrapper;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
+import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
@@ -44,9 +51,26 @@ public final class LaunchServer {
 
             // A. Shared Registry (Yellow Pages)
             ServerSessionRegistry sessions = new ServerSessionRegistry();
+            ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(environment);
+            ServerServices services = ServerServicesFactory.create(runtimeConfig);
+            RankingService rankingService = services.rankingService() == null
+                    ? NoOpRankingService.INSTANCE
+                    : services.rankingService();
+            int maxRestoredGameId = RestoredMatchBootstrapper.restoreActiveMatches(
+                    services.matchPersistence(),
+                    rankingService,
+                    sessions
+            );
+            DefaultGameFactory gameFactory = DefaultGameFactory.getInstance();
+            gameFactory.reserveGameIdsUpTo(maxRestoredGameId);
 
             // B. Core Controllers
-            ServerController serverController = new ServerController(sessions);
+            ServerController serverController = new ServerController(
+                    gameFactory,
+                    rankingService,
+                    services.matchPersistence(),
+                    sessions
+            );
             Thread serverWorker = new Thread(serverController, "ServerController-Worker");
             serverWorker.start();
 

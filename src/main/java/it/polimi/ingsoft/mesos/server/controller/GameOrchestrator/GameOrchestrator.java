@@ -10,8 +10,10 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
 import java.time.Instant;
@@ -36,6 +38,7 @@ public class GameOrchestrator implements Runnable  {
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
     private final RankingService rankingService;
+    private final MatchPersistence matchPersistence;
     private Optional<RankingResult> finalRankingResult;
     private boolean rankingRecorded;
     private boolean frozen;
@@ -88,6 +91,15 @@ public class GameOrchestrator implements Runnable  {
                             String hostNickname,
                             RankingService rankingService,
                             ServerSessionRegistry sessions) {
+        this(gameFactory, players, hostNickname, rankingService, MatchPersistence.disabled(), sessions);
+    }
+
+    public GameOrchestrator(GameFactory gameFactory,
+                            ArrayList<Player> players,
+                            String hostNickname,
+                            RankingService rankingService,
+                            MatchPersistence matchPersistence,
+                            ServerSessionRegistry sessions) {
         Objects.requireNonNull(gameFactory, "Game factory cannot be null");
         Objects.requireNonNull(sessions, "Server session registry cannot be null");
         if (players == null || players.isEmpty()) {
@@ -98,7 +110,28 @@ public class GameOrchestrator implements Runnable  {
         this.players = List.copyOf(players);
         this.hostNickname = requireHostNickname(hostNickname);
         this.sessions = sessions;
-        this.rankingService = rankingService;
+        this.rankingService = rankingService == null ? NoOpRankingService.INSTANCE : rankingService;
+        this.matchPersistence = matchPersistence == null ? MatchPersistence.disabled() : matchPersistence;
+        this.finalRankingResult = Optional.empty();
+    }
+
+    public GameOrchestrator(Game game,
+                            String hostNickname,
+                            RankingService rankingService,
+                            MatchPersistence matchPersistence,
+                            ServerSessionRegistry sessions) {
+        Objects.requireNonNull(game, "Game cannot be null");
+        Objects.requireNonNull(sessions, "Server session registry cannot be null");
+        if (game.getPlayers() == null || game.getPlayers().isEmpty()) {
+            throw new IllegalArgumentException("Players cannot be null or empty");
+        }
+
+        this.game = game;
+        this.players = List.copyOf(game.getPlayers());
+        this.hostNickname = requireHostNickname(hostNickname);
+        this.sessions = sessions;
+        this.rankingService = rankingService == null ? NoOpRankingService.INSTANCE : rankingService;
+        this.matchPersistence = matchPersistence == null ? MatchPersistence.disabled() : matchPersistence;
         this.finalRankingResult = Optional.empty();
     }
 
@@ -186,9 +219,8 @@ public class GameOrchestrator implements Runnable  {
     /**
      * Performs match setup.
      */
-    private void setupMatch() {
-        this.ensureMatchIsWritable();
-        this.game.setup();
+    public void setupMatch() {
+        this.persistAfterStateChange(() -> this.game.setup());
         this.checkGameEndAndCleanup();
     }
 
@@ -200,8 +232,7 @@ public class GameOrchestrator implements Runnable  {
      */
     private void moveTotem(String nickname, String tile) {
         Player player = this.resolvePlayer(nickname);
-        this.ensureMatchIsWritable();
-        this.game.moveTotem(player, tile);
+        this.persistAfterStateChange(() -> this.game.moveTotem(player, tile));
         this.checkGameEndAndCleanup();
     }
 
@@ -213,8 +244,7 @@ public class GameOrchestrator implements Runnable  {
      */
     private void chooseCard(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
-        this.ensureMatchIsWritable();
-        this.game.chooseCard(player, cardId);
+        this.persistAfterStateChange(() -> this.game.chooseCard(player, cardId));
         this.checkGameEndAndCleanup();
     }
 
@@ -226,8 +256,7 @@ public class GameOrchestrator implements Runnable  {
      */
     private void extraDrawn(String nickname, int cardId) {
         Player player = this.resolvePlayer(nickname);
-        this.ensureMatchIsWritable();
-        this.game.extraDrawn(player, cardId);
+        this.persistAfterStateChange(() -> this.game.extraDrawn(player, cardId));
         this.checkGameEndAndCleanup();
     }
 
@@ -252,7 +281,7 @@ public class GameOrchestrator implements Runnable  {
     }
 
     private void recordRankingIfFinished() {
-        if (this.rankingService == null || this.rankingRecorded) {
+        if (this.rankingRecorded || this.rankingService instanceof NoOpRankingService) {
             return;
         }
 
@@ -277,6 +306,22 @@ public class GameOrchestrator implements Runnable  {
                 .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
                 .toList();
     }
+
+    private void persistAfterStateChange(Runnable action) {
+        this.ensureMatchIsWritable();
+        long previousVersion = this.game.getStateVersion();
+        action.run();
+        if (this.game.getStateVersion() != previousVersion) {
+            try {
+                this.matchPersistence.save(this.game, this.hostNickname);
+            } catch (RuntimeException exception) {
+                this.frozen = true;
+                this.game.notifyError("CHECKPOINT_ERROR", "Match frozen: unable to save state.");
+                throw exception;
+            }
+        }
+    }
+
     private void checkGameEndAndCleanup() {
         if (this.game.getStatus() != GameStatus.FINISHED) {
             return;
@@ -287,6 +332,10 @@ public class GameOrchestrator implements Runnable  {
             //boh forse da aggiungere errore personalizzato su mancanza di dati registrati
         }
         finally {
+            try {
+                this.matchPersistence.delete(this.game.getId());
+            } catch (RuntimeException ignored) {
+            }
             this.teardownGame();
             Thread.currentThread().interrupt();
         }

@@ -21,6 +21,7 @@
       opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.game to com.google.gson;
       opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby to com.google.gson;
       opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby to com.google.gson;
+      opens it.polimi.ingsoft.mesos.server.persistence.game to com.fasterxml.jackson.databind;
         exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
       exports it.polimi.ingsoft.mesos.client.virtualserver to java.rmi;
       exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver;

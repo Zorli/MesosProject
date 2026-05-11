@@ -54,6 +54,12 @@ public class ServerSessionRegistry {
         return lobby;
     }
 
+    public synchronized void registerLobbyModel(Lobby lobby) {
+        Objects.requireNonNull(lobby, "lobby cannot be null");
+        this.lobbyModels.put(lobby.getId(), lobby);
+        this.nextLobbyId.updateAndGet(current -> Math.max(current, lobby.getId() + 1));
+    }
+
     public synchronized Optional<Lobby> getLobbyModel(int lobbyId) {
         return Optional.ofNullable(this.lobbyModels.get(lobbyId));
     }

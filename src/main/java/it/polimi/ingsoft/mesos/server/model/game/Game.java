@@ -75,6 +75,17 @@ public class Game {
                 Board board,
                 Era currentEra,
                 GameStatus status) {
+        this(id, players, turnState, turnOrderTrack, board, currentEra, status, 0L);
+    }
+
+    public Game(int id,
+                List<Player> players,
+                TurnState turnState,
+                TurnOrderTrack turnOrderTrack,
+                Board board,
+                Era currentEra,
+                GameStatus status,
+                long stateVersion) {
         this.id = id;
         this.players = List.copyOf(Objects.requireNonNull(players, "Players cannot be null"));
         this.turnState = turnState;
@@ -82,7 +93,7 @@ public class Game {
         this.board = board;
         this.currentEra = currentEra;
         this.status = status;
-        this.stateVersion = 0L;
+        this.stateVersion = stateVersion;
         this.listeners = new ArrayList<>();
     }
 
