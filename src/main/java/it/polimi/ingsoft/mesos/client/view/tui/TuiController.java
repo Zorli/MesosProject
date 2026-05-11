@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.io.IOException;
@@ -21,6 +22,7 @@ public class TuiController implements ClientView {
     private GamePayload lastGamePayload;
     private LobbyListPayload lastLobbyListPayload;
     private PreMatchUpdatePayload lastPreMatchUpdatePayload;
+    private String localNickname;
     private ServerProxy serverProxy;
 
     public TuiController() {
@@ -152,11 +154,14 @@ public class TuiController implements ClientView {
     //Metodi per plottare
     @Override
     public synchronized void showError(ErrorPayload payload) {
-        this.render(this.payloadRenderer.renderError(payload, this.lastGamePayload));
+        this.render(this.payloadRenderer.renderError(payload, this.lastGamePayload, this.localNickname));
     }
 
     @Override
     public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+        if (payload.event == PreMatchEventType.AUTHENTICATED) {
+            this.localNickname = payload.nickname;
+        }
         this.render(this.payloadRenderer.renderPreMatchUpdate(payload));
     }
 
@@ -168,7 +173,7 @@ public class TuiController implements ClientView {
     @Override
     public synchronized void showGameUpdate(GamePayload payload) {
         this.lastGamePayload = payload;
-        this.render(this.payloadRenderer.renderGame(payload));
+        this.render(this.payloadRenderer.renderGame(payload, this.localNickname));
     }
 
     @Override
