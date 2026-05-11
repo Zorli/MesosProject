@@ -8,13 +8,15 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListP
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 //This class offer the service of transforming into a string the received payload
 final class TuiPayloadRenderer {
-    String renderError(ErrorPayload payload, GamePayload lastGamePayload) {
+    String renderError(ErrorPayload payload, GamePayload lastGamePayload, String localNickname) {
         StringBuilder builder = new StringBuilder();
         builder.append("[ERROR] ")
                 .append(payload.code)
@@ -24,7 +26,7 @@ final class TuiPayloadRenderer {
         if (lastGamePayload != null) {
             builder.append(System.lineSeparator())
                     .append(System.lineSeparator())
-                    .append(this.renderGame(lastGamePayload));
+                    .append(this.renderGame(lastGamePayload, localNickname));
         }
 
         return builder.toString();
@@ -67,7 +69,7 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
-    String renderGame(GamePayload payload) {
+    String renderGame(GamePayload payload, String localNickname) {
         StringBuilder builder = new StringBuilder();
         builder.append("[SERVER][GAME] #")
                 .append(payload.id)
@@ -75,6 +77,10 @@ final class TuiPayloadRenderer {
                 .append(payload.status)
                 .append(" era=")
                 .append(payload.currentEra + 1);
+
+        builder.append(System.lineSeparator())
+                .append("Your nickname: ")
+                .append(valueOrDash(localNickname));
 
         if (payload.turnOrder != null) {
             builder.append(System.lineSeparator())
@@ -88,6 +94,34 @@ final class TuiPayloadRenderer {
 
         appendPlayers(builder, payload.players);
         appendBoard(builder, payload.board);
+        return builder.toString();
+    }
+
+    String renderFinalGameResult(GamePayload payload) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[SERVER][GAME FINISHED] #")
+                .append(payload.id)
+                .append(System.lineSeparator())
+                .append("Final ranking:");
+
+        if (payload.players == null || payload.players.isEmpty()) {
+            builder.append(" -");
+            return builder.toString();
+        }
+
+        List<PlayerPayload> players = new ArrayList<>(payload.players);
+        players.sort(Comparator.comparingInt((PlayerPayload player) -> player.prestigePoints).reversed());
+
+        for (int i = 0; i < players.size(); i++) {
+            PlayerPayload player = players.get(i);
+            builder.append(System.lineSeparator())
+                    .append(i + 1)
+                    .append(". ")
+                    .append(player.nickname)
+                    .append(" prestige=")
+                    .append(player.prestigePoints);
+        }
+
         return builder.toString();
     }
 
@@ -117,25 +151,24 @@ final class TuiPayloadRenderer {
         }
 
         builder.append(System.lineSeparator())
-                .append("Upper row: ")
+                .append("Board:")
+                .append(System.lineSeparator())
+                .append("UPPER  ")
                 .append(formatCards(board.upperRow))
                 .append(System.lineSeparator())
-                .append("Lower row: ")
+                .append("LOWER  ")
                 .append(formatCards(board.lowerRow));
 
         if (board.offerSpaces != null && !board.offerSpaces.isEmpty()) {
-            builder.append(System.lineSeparator()).append("Offer spaces:");
-            for (OfferSpacePayload offerSpace : board.offerSpaces) {
-                builder.append(System.lineSeparator())
-                        .append("- ")
-                        .append(offerSpace.code)
-                        .append(" top=")
-                        .append(offerSpace.topRowCardsToTake)
-                        .append(" bottom=")
-                        .append(offerSpace.bottomRowCardsToTake)
-                        .append(" occupiedBy=")
-                        .append(valueOrDash(offerSpace.occupiedByNickname));
-            }
+            builder.append(System.lineSeparator())
+                    .append("OFFERS ")
+                    .append(formatOfferSpaces(board.offerSpaces));
+        }
+
+        if (board.startingBlocks != null && !board.startingBlocks.isEmpty()) {
+            builder.append(System.lineSeparator())
+                    .append("START  ")
+                    .append(formatStartingBlocks(board.startingBlocks));
         }
     }
 
@@ -146,9 +179,39 @@ final class TuiPayloadRenderer {
 
         List<String> renderedCards = new ArrayList<>();
         for (CardPayload card : cards) {
-            renderedCards.add("#" + card.id + " " + card.type + " era=" + (card.era + 1));
+            renderedCards.add("[" + card.id + " " + card.type + " e" + (card.era + 1) + "]");
         }
-        return String.join(", ", renderedCards);
+        return String.join(" ", renderedCards);
+    }
+
+    private static String formatOfferSpaces(List<OfferSpacePayload> offerSpaces) {
+        List<String> renderedOfferSpaces = new ArrayList<>();
+        for (OfferSpacePayload offerSpace : offerSpaces) {
+            renderedOfferSpaces.add(
+                    offerSpace.code
+                            + " top=" + offerSpace.topRowCardsToTake
+                            + " bot=" + offerSpace.bottomRowCardsToTake
+                            + " occ=" + valueOrDash(offerSpace.occupiedByNickname)
+            );
+        }
+        return String.join(" | ", renderedOfferSpaces);
+    }
+
+    private static String formatStartingBlocks(List<StartingBlockPayload> startingBlocks) {
+        List<String> renderedStartingBlocks = new ArrayList<>();
+        for (StartingBlockPayload startingBlock : startingBlocks) {
+            renderedStartingBlocks.add(
+                    "#" + startingBlock.position
+                            + " food=" + formatModifier(startingBlock.foodModifier)
+                            + " pp=" + formatModifier(startingBlock.prestigeModifier)
+                            + " occ=" + valueOrDash(startingBlock.occupiedByNickname)
+            );
+        }
+        return String.join(" | ", renderedStartingBlocks);
+    }
+
+    private static String formatModifier(int value) {
+        return value >= 0 ? "+" + value : String.valueOf(value);
     }
 
     private static String valueOrDash(Object value) {

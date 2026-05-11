@@ -24,7 +24,14 @@ public class MessageRouter {
             case ERROR -> clientView.showError((ErrorPayload) message.payload);
             case PRE_MATCH_UPDATE -> clientView.showPreMatchUpdate((PreMatchUpdatePayload) message.payload);
             case LOBBY_LIST -> clientView.showLobbyList((LobbyListPayload) message.payload);
-            case GAME_UPDATE -> clientView.showGameUpdate((GamePayload) message.payload);
+            case GAME_UPDATE -> {
+                GamePayload payload = (GamePayload) message.payload;
+                if ("FINISHED".equals(payload.status)) {
+                    clientView.showFinalGameResult(payload);
+                } else {
+                    clientView.showGameUpdate(payload);
+                }
+            }
         }
     }
 

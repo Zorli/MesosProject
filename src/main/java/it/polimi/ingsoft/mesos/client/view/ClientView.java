@@ -19,4 +19,8 @@ public interface ClientView {
     void showLobbyList(LobbyListPayload payload);
 
     void showGameUpdate(GamePayload payload);
+
+    default void showFinalGameResult(GamePayload payload) {
+        showGameUpdate(payload);
+    }
 }
