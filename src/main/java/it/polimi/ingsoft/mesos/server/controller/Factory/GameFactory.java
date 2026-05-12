@@ -11,10 +11,25 @@ import java.util.List;
  */
 public interface GameFactory {
     /**
-     * Creates a new game for the provided players.
+     * Creates a new game for the provided players using game ID 0.
+     * Intended for test use only — production code must always supply an explicit game ID.
      *
      * @param players players that will participate in the match
      * @return a newly initialized game instance
      */
-    Game createGame(List<Player> players);
+    default Game createGame(List<Player> players) {
+        return this.createGame(0, players);
+    }
+
+    /**
+     * Creates a new game with the provided identifier.
+     *
+     * <p>Lobby-driven matches use the lobby id as the game id so routing, logs, and checkpoint
+     * file names stay aligned across the lobby-to-game transition.
+     *
+     * @param gameId identifier to assign to the new game
+     * @param players players that will participate in the match
+     * @return a newly initialized game instance
+     */
+    Game createGame(int gameId, List<Player> players);
 }

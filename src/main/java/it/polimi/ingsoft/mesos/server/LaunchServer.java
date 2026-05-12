@@ -1,16 +1,26 @@
 package it.polimi.ingsoft.mesos.server;
 
+import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.persistence.RestoredMatchBootstrapper;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
+import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
+import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 
 // From this class we bootstrap the server for BOTH TCP and RMI.
@@ -38,6 +48,12 @@ public final class LaunchServer {
     */
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
+            Map<String, String> mergedEnv = mergeWithDotEnv(environment);
+            ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(mergedEnv);
+            printConfig(config, out);
+            ServerServices serverServices = ServerServicesFactory.create(config);
+            Objects.requireNonNull(serverServices, "serverServices cannot be null");
+
             // ==========================================
             // 1. CORE ARCHITECTURE SETUP (The "Big Bang")
             // ==========================================
@@ -46,14 +62,19 @@ public final class LaunchServer {
             ServerSessionRegistry sessions = new ServerSessionRegistry();
 
             // B. Core Controllers
-            ServerController serverController = new ServerController(sessions);
+            ServerController serverController = new ServerController(
+                    DefaultGameFactory.getInstance(),
+                    serverServices.rankingService(),
+                    serverServices.matchPersistence(),
+                    sessions
+            );
+            bootstrapRestores(serverServices, sessions);
+
             Thread serverWorker = new Thread(serverController, "ServerController-Worker");
             serverWorker.start();
 
             // C. The globally shared Message Router
             MessageRouter router = new MessageRouter(sessions, serverController);
-
-            
 
             // ==========================================
             // 2. NETWORK LAYERS SETUP
@@ -61,7 +82,7 @@ public final class LaunchServer {
 
             // Start RMI (Passing the shared router and registry)
             int rmiPort = resolveRmiPort(environment);
-            startRmiServer(serverController, router, sessions, rmiPort, out);
+            startRmiServer(serverController, router, rmiPort, out);
 
             // Start TCP (Passing the shared router and registry)
             int tcpPort = resolveTcpPort(environment);
@@ -70,6 +91,9 @@ public final class LaunchServer {
             acceptorThread.start();
 
             out.println("TCP listener active on port " + tcpPort);
+            if (serverServices.rankingService() == NoOpRankingService.INSTANCE) {
+                out.println("No-db mode active: ranking persistence disabled.");
+            }
             out.println("Mesos Server started successfully.");
             out.println("Waiting for players...");
             return 0;
@@ -81,7 +105,56 @@ public final class LaunchServer {
         }
     }
 
-    private static void startRmiServer(ServerController controller, MessageRouter router, ServerSessionRegistry sessions, int port, PrintStream out) throws Exception {
+    /**
+     * Merges system environment with entries from a {@code .env} file in the working directory.
+     * Lines starting with {@code #} are ignored. Existing env vars are NOT overwritten —
+     * the shell always wins over the file.
+     */
+    private static void printConfig(ServerRuntimeConfig config, PrintStream out) {
+        out.println("--- Mesos Server Configuration ---");
+        out.println("  DB enabled:          " + config.dbEnabled());
+        out.println("  Game persistence:    " + config.gamePersistenceEnabled());
+        out.println("  Checkpoint dir:      " + config.gamePersistenceDirectory());
+        out.println("  Checkpoint dir abs:  " + java.nio.file.Path.of(config.gamePersistenceDirectory()).toAbsolutePath());
+        out.println("----------------------------------");
+    }
+
+    private static Map<String, String> mergeWithDotEnv(Map<String, String> base) {
+        Path dotEnv = Path.of(".env");
+        if (!Files.exists(dotEnv)) {
+            return base;
+        }
+        Map<String, String> merged = new HashMap<>(base);
+        try {
+            for (String line : Files.readAllLines(dotEnv)) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                    continue;
+                }
+                int eq = trimmed.indexOf('=');
+                if (eq <= 0) {
+                    continue;
+                }
+                String key = trimmed.substring(0, eq).trim();
+                String value = trimmed.substring(eq + 1).trim();
+                merged.putIfAbsent(key, value);
+            }
+        } catch (Exception ignored) {
+            // .env read failure is non-fatal
+        }
+        return merged;
+    }
+
+    private static void bootstrapRestores(ServerServices serverServices,
+                                         ServerSessionRegistry sessions) {
+        RestoredMatchBootstrapper.restoreActiveMatches(
+                serverServices.matchPersistence(),
+                serverServices.rankingService(),
+                sessions
+        );
+    }
+
+    private static void startRmiServer(ServerController controller, MessageRouter router, int port, PrintStream out) throws Exception {
         // Pass dependencies down to the RMI Factory
         RmiConnectionService rmiFactory = new RmiSessionFactory(controller, router);
         LocateRegistry.createRegistry(port);

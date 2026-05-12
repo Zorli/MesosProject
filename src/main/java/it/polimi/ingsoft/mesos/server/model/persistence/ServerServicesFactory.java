@@ -1,45 +1,42 @@
 package it.polimi.ingsoft.mesos.server.model.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.polimi.ingsoft.mesos.server.model.persistence.postgres.PostgresDatabaseBootstrap;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingSchemaModule;
 import it.polimi.ingsoft.mesos.server.model.ranking.PostgresRankingService;
+import it.polimi.ingsoft.mesos.server.persistence.game.FileMatchPersistence;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Factory responsible for wiring the runtime services selected for the current server mode.
- */
+/** Wires the runtime services selected by the current server configuration. */
 public final class ServerServicesFactory {
-    /**
-     * Prevents instantiation of the utility factory class.
-     */
-    private ServerServicesFactory() {
-    }
+    private ServerServicesFactory() {}
 
-    /**
-     * Creates the runtime service container for the provided configuration.
-     *
-     * @param runtimeConfig runtime configuration
-     * @return initialized runtime services
-     */
-    public static ServerServices create(ServerRuntimeConfig runtimeConfig) {
-        Objects.requireNonNull(runtimeConfig, "Runtime config cannot be null");
+    public static ServerServices create(ServerRuntimeConfig config) {
+        Objects.requireNonNull(config, "config cannot be null");
 
-        if (!runtimeConfig.dbEnabled()) {
-            return new ServerServices(null);
+        MatchPersistence matchPersistence = new FileMatchPersistence(
+                config.gamePersistenceEnabled(),
+                Path.of(config.gamePersistenceDirectory()),
+                new ObjectMapper()
+        );
+
+        if (!config.dbEnabled()) {
+            return new ServerServices(NoOpRankingService.INSTANCE, matchPersistence);
         }
 
         PostgresDatabaseBootstrap.getInstance().ensureReady(
-                runtimeConfig,
+                config,
                 List.of(PostgresRankingSchemaModule.getInstance())
         );
 
         return new ServerServices(
-                new PostgresRankingService(
-                        runtimeConfig.toPostgresConnectionConfig(),
-                        runtimeConfig.maxBusyRetries()
-                )
+                new PostgresRankingService(config.toPostgresConnectionConfig(), config.maxBusyRetries()),
+                matchPersistence
         );
     }
 }

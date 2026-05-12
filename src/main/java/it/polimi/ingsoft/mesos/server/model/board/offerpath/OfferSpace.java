@@ -115,6 +115,15 @@ public class OfferSpace {
     }
 
     /**
+     * Retrieves the immediate food bonus granted by this space.
+     *
+     * @return the number of food points this space grants
+     */
+    public int getFoodBonus() {
+        return this.foodBonus;
+    }
+
+    /**
      * Retrieves the exact number of cards the occupying player is allowed to draft
      * from the upper row.
      *

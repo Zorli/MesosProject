@@ -34,6 +34,20 @@ public class Tribe {
     }
 
     /**
+     * Creates a tribe with an explicit initial owned card collection.
+     * <p>
+     * This constructor is primarily used by the persistence restoration path to rehydrate
+     * historical states without re-triggering draw-time side effects.
+     *
+     * @param characters initial character cards
+     * @param buildings initial building cards
+     */
+    public Tribe(List<CharacterCard> characters, List<BuildingCard> buildings) {
+        this.characters = new ArrayList<>(characters == null ? List.of() : characters);
+        this.buildings = new ArrayList<>(buildings == null ? List.of() : buildings);
+    }
+
+    /**
      * Adds a character card to the tribe.
      *
      * @param c character card to add

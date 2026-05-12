@@ -4,7 +4,7 @@ import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
