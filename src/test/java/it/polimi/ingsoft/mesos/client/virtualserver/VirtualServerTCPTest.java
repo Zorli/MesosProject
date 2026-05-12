@@ -4,8 +4,8 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 import com.google.gson.Gson;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -118,7 +118,7 @@ class VirtualServerTCPTest {
         }
 
         @Override
-        public void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+        public void showLobbyUpdate(LobbyUpdatePayload payload) {
         }
 
         @Override

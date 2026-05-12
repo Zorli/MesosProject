@@ -4,8 +4,8 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +30,11 @@ class MessageRouterTest {
     }
 
     @Test
-    void routesPreMatchUpdatePayloadToClientView() {
+    void routesLobbyUpdatePayloadToClientView() {
         RecordingClientView view = new RecordingClientView();
         MessageRouter router = new MessageRouter(view);
-        PreMatchUpdatePayload payload = new PreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_JOINED,
+        LobbyUpdatePayload payload = new LobbyUpdatePayload(
+                LobbyEventType.LOBBY_JOINED,
                 "ada",
                 "joined",
                 1,
@@ -43,10 +43,10 @@ class MessageRouterTest {
                 2
         );
 
-        router.routeMessage(new ServerMessage(ServerMessageType.PRE_MATCH_UPDATE, payload));
+        router.routeMessage(new ServerMessage(ServerMessageType.LOBBY_UPDATE, payload));
 
-        assertEquals("showPreMatchUpdate", view.lastCall);
-        assertSame(payload, view.preMatchUpdatePayload);
+        assertEquals("showLobbyUpdate", view.lastCall);
+        assertSame(payload, view.lobbyUpdatePayload);
     }
 
     @Test
@@ -128,7 +128,7 @@ class MessageRouterTest {
     private static final class RecordingClientView implements ClientView {
         private String lastCall;
         private ErrorPayload errorPayload;
-        private PreMatchUpdatePayload preMatchUpdatePayload;
+        private LobbyUpdatePayload lobbyUpdatePayload;
         private LobbyListPayload lobbyListPayload;
         private GamePayload gamePayload;
         private GamePayload finalGamePayload;
@@ -140,9 +140,9 @@ class MessageRouterTest {
         }
 
         @Override
-        public void showPreMatchUpdate(PreMatchUpdatePayload payload) {
-            this.lastCall = "showPreMatchUpdate";
-            this.preMatchUpdatePayload = payload;
+        public void showLobbyUpdate(LobbyUpdatePayload payload) {
+            this.lastCall = "showLobbyUpdate";
+            this.lobbyUpdatePayload = payload;
         }
 
         @Override

@@ -12,7 +12,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -78,7 +78,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
             ServerMessage message = null;
             switch (type) {
                 case ERROR -> message = new ServerMessage(type, GSON.fromJson(payload, ErrorPayload.class));
-                case PRE_MATCH_UPDATE -> message = new ServerMessage(type, GSON.fromJson(payload, PreMatchUpdatePayload.class));
+                case LOBBY_UPDATE -> message = new ServerMessage(type, GSON.fromJson(payload, LobbyUpdatePayload.class));
                 case LOBBY_LIST -> message = new ServerMessage(type, GSON.fromJson(payload, LobbyListPayload.class));
                 case GAME_UPDATE -> message= new ServerMessage(type, GSON.fromJson(payload, GamePayload.class));
                 case PING -> {
@@ -91,7 +91,6 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
             this.handleError(new ErrorPayload("INVALID_SERVER_MESSAGE", serializedMessage));
         }
     }
-
 
     @Override
     public void handleMessage(ServerMessage message) {
