@@ -27,7 +27,11 @@ ai blocchi core del pattern.
 
 ### Architettura del Client
 
+
 ### Architettura del Server
+
+
+#### Session Registry 
 
 
 
