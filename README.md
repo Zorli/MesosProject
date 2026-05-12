@@ -13,12 +13,17 @@ dall'ultimo stato del gioco prima del crash
 In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
 sottosezioni verranno spiegati in dettaglio i particolari implementativi e i pattern applicati.
 
-Ad alto livello è stato applicato il [Model View Controller pattern distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
+Il design pattern principale del progetto è quello del  [Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
 MVC in cui la view si trova su una altra macchina rispetto al controller e il model, come si può vedere nella seguente immagine:
 ![img.png](img.png)
-di mezzo tra client e server c'è la rete. 
 
-### Design Patterns Presenti
+L'idea è quindi quella di applicare il pattern ma nascondere la presenza delle rete
+ai blocchi core del pattern. 
+
+
+### Design della rete
+
+
 
 ### Architettura del Client
 
