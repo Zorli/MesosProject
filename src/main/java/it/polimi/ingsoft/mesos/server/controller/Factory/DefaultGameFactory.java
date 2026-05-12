@@ -9,25 +9,19 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Default singleton implementation of {@link GameFactory}.
  *
  * <p>The factory reuses the immutable {@link DeckTemplate} parsed at startup and creates a fully
  * initialized {@link Game} with fresh decks, a new board, and turn-tracking components for each
- * request. An internal counter assigns a unique progressive identifier to every game instance.
+ * request. The game ID is always supplied by the caller (lobby ID) — the factory never generates IDs.
  */
 public class DefaultGameFactory implements GameFactory {
-    private AtomicInteger nextGameId = new AtomicInteger(0);
     private static final DefaultGameFactory instance = new DefaultGameFactory();
     private static final DeckTemplate deckTemplate = ParserJson.getDeckTemplate();
 
-    /**
-     * Creates the singleton factory instance and resets the game id counter.
-     */
     private DefaultGameFactory() {
-        this.nextGameId = new AtomicInteger(0);
     }
 
     /**
@@ -40,24 +34,21 @@ public class DefaultGameFactory implements GameFactory {
     }
 
     /**
-     * Builds a complete game model for the provided players.
+     * Builds a complete game model using an externally provided identifier.
      *
-     * <p>The method creates building decks, prepares the board fed by
-     * those decks, initializes the turn state and turn order tracker, and finally packages all of
-     * them into a new {@link Game}.
-     *
+     * @param gameId identifier to assign to the game
      * @param players players that will participate in the match
      * @return a fully initialized game ready to be orchestrated
      */
     @Override
-    public Game createGame(List<Player> players) {
+    public Game createGame(int gameId, List<Player> players) {
         TribeDeck tribeDeck = deckTemplate.createTribeDeck(players.size());
         BuildingDeck buildingDeck = deckTemplate.createBuildingDeck();
         Board board = new Board(tribeDeck, buildingDeck, players);
         TurnState turnState = new TurnState();
         TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
         return new Game(
-                nextGameId.getAndIncrement(),
+                gameId,
                 players,
                 turnState,
                 turnOrderTrack,

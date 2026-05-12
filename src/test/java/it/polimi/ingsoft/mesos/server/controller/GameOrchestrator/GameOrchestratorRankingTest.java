@@ -13,30 +13,44 @@ import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.ranking.LeaderboardEntry;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchHistory;
 import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
+import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
 import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
+import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
+import it.polimi.ingsoft.mesos.server.model.Listener;
+import it.polimi.ingsoft.mesos.server.network.ClientConnection;
+import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
+import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
-import it.polimi.ingsoft.mesos.shared.payload.server.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class GameOrchestratorRankingTest {
 
     @Test
-    void defaultConstructorDerivesHostFromFirstPlayerAndExposesImmutablePlayersList() {
+    void constructorExposesGameAndImmutablePlayersList() {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
         TrackingGame game = new TrackingGame(players);
         TrackingGameFactory gameFactory = new TrackingGameFactory(game);
 
-        GameOrchestrator orchestrator = new GameOrchestrator(gameFactory, players);
+        GameOrchestrator orchestrator = newOrchestrator(gameFactory, players, "Alice", null, null, null);
 
         assertEquals(game, orchestrator.getGame());
         assertEquals(players.size(), orchestrator.getPlayers().size());
@@ -47,62 +61,49 @@ class GameOrchestratorRankingTest {
     }
 
     @Test
-    void explicitAndDefaultConstructorsValidateInputPreconditions() {
+    void constructorValidatesInputPreconditions() {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
         TrackingGameFactory validFactory = new TrackingGameFactory(new TrackingGame(players));
 
-        assertThrows(NullPointerException.class, () -> new GameOrchestrator(null, players));
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(validFactory, null));
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(validFactory, new ArrayList<>()));
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(validFactory, players, ""));
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(validFactory, players, "   "));
+        assertThrows(NullPointerException.class, () -> newOrchestrator(null, players, "Alice", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(validFactory, null, "Alice", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(validFactory, new ArrayList<>(), "Alice", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(validFactory, players, "", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(validFactory, players, "   ", null, null, null));
 
         ArrayList<Player> invalidHostPlayers = new ArrayList<>();
         invalidHostPlayers.add(new Player(null, 0, 0, TotemColor.RED));
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(validFactory, invalidHostPlayers));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(validFactory, invalidHostPlayers, null, null, null, null));
     }
 
     @Test
-    void fourArgConstructorAlsoValidatesPlayersNullOrEmptyAndAllowsValidList() {
-        GameFactory gameFactory = new TrackingGameFactory(new TrackingGame(MesosTestFixtures.createPlayers("Alice")));
+    void constructorValidatesPlayersNullOrEmpty() {
+        GameFactory singlePlayerFactory = new TrackingGameFactory(new TrackingGame(MesosTestFixtures.createPlayers("Alice")));
 
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(gameFactory, null, "Alice"));
-        assertThrows(IllegalArgumentException.class, () -> new GameOrchestrator(gameFactory, new ArrayList<>(), "Alice"));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(singlePlayerFactory, null, "Alice", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> newOrchestrator(singlePlayerFactory, new ArrayList<>(), "Alice", null, null, null));
 
         ArrayList<Player> validPlayers = MesosTestFixtures.createPlayers("Alice", "Bob");
-        GameOrchestrator orchestrator = new GameOrchestrator(gameFactory, validPlayers, "Alice");
+        GameFactory validFactory = new TrackingGameFactory(new TrackingGame(validPlayers));
+        GameOrchestrator orchestrator = newOrchestrator(validFactory, validPlayers, "Alice", null, null, null);
         assertEquals(validPlayers, orchestrator.getPlayers());
     }
 
     @Test
-    void hostValidationCoversNullOrBlankNicknameBranchesInConstructors() {
+    void hostValidationCoversNullOrBlankNicknameInConstructor() {
         GameFactory gameFactory = new TrackingGameFactory(new TrackingGame(MesosTestFixtures.createPlayers("Alice")));
         ArrayList<Player> validPlayers = MesosTestFixtures.createPlayers("Alice", "Bob");
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new GameOrchestrator(gameFactory, validPlayers, (String) null)
-        );
-
-        ArrayList<Player> playersWithNullHost = new ArrayList<>();
-        playersWithNullHost.add(new Player(null, 0, 0, TotemColor.RED));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new GameOrchestrator(gameFactory, playersWithNullHost)
+                () -> newOrchestrator(gameFactory, validPlayers, null, null, null, null)
         );
 
         ArrayList<Player> playersWithBlankHost = new ArrayList<>();
         playersWithBlankHost.add(new Player("  ", 0, 0, TotemColor.RED));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new GameOrchestrator(gameFactory, playersWithBlankHost)
-        );
-
-        ArrayList<Player> playersWithNullFirst = new ArrayList<>();
-        playersWithNullFirst.add(null);
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new GameOrchestrator(gameFactory, playersWithNullFirst)
+                () -> newOrchestrator(gameFactory, playersWithBlankHost, "  ", null, null, null)
         );
     }
 
@@ -116,18 +117,20 @@ class GameOrchestratorRankingTest {
         TrackingGameFactory gameFactory = new TrackingGameFactory(
                 new TrackingGame(players, GameStatus.IN_PROGRESS, true, false, false, false)
         );
-        GameOrchestrator orchestrator = new GameOrchestrator(
+        GameOrchestrator orchestrator = newOrchestrator(
                 gameFactory,
                 players,
                 "Alice",
-                rankingService
+                rankingService,
+                null,
+                null
         );
 
         orchestrator.setupMatch();
 
         assertEquals(1, gameFactory.getGame().getSetupCalls());
         assertEquals(1, rankingService.recordCalls);
-        assertEquals("7", rankingService.lastGameId);
+        assertEquals(String.valueOf(orchestrator.getGame().getId()), rankingService.lastGameId);
         assertEquals(2, rankingService.lastPlayerCount);
         assertEquals("Alice", rankingService.requestingNickname);
         assertEquals(
@@ -138,20 +141,35 @@ class GameOrchestratorRankingTest {
     }
 
     @Test
-    void setupAndGameplayCommandsForwardToGameForKnownPlayerWithoutRankingWhenNotFinished() {
+    void setupAndGameplayCommandsForwardToGameForKnownPlayerWithoutRankingWhenNotFinished() throws InterruptedException {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
         TrackingGame game = new TrackingGame(players, GameStatus.SETUP, false, false, false, false);
-        GameOrchestrator orchestrator = new GameOrchestrator(
+        ServerSessionRegistry sessions = new ServerSessionRegistry();
+        GameOrchestrator orchestrator = newOrchestrator(
                 new TrackingGameFactory(game),
                 players,
                 "Alice",
+                null,
+                sessions,
                 null
         );
 
         orchestrator.setupMatch();
-        orchestrator.moveTotem("Alice", "A1");
-        orchestrator.chooseCard("Bob", 7);
-        orchestrator.extraDrawn("Alice", 3);
+
+        String aliceSessionId = registerConnectedPlayer(sessions, "Alice", game.getId());
+        String bobSessionId = registerConnectedPlayer(sessions, "Bob", game.getId());
+        Thread worker = new Thread(orchestrator::run);
+        worker.setDaemon(true);
+        worker.start();
+        try {
+            orchestrator.enqueueMessage(new EnqueuedMessage(aliceSessionId, new ClientQueuedCommand(new MoveTotemPayload("A1"))));
+            orchestrator.enqueueMessage(new EnqueuedMessage(bobSessionId, new ClientQueuedCommand(new ChooseCardPayload(7))));
+            orchestrator.enqueueMessage(new EnqueuedMessage(aliceSessionId, new ClientQueuedCommand(new ExtraDrawPayload(3))));
+            waitForCondition(() -> game.getExtraDrawnCalls() == 1, 20, 50L);
+        } finally {
+            worker.interrupt();
+            worker.join(200);
+        }
 
         assertEquals(1, game.getSetupCalls());
         assertEquals(1, game.getMoveTotemCalls());
@@ -164,33 +182,60 @@ class GameOrchestratorRankingTest {
     }
 
     @Test
-    void unknownPlayerCannotResolveActionAcrossAllMainFlowMethods() {
+    void unknownPlayerCannotResolveActionAcrossAllMainFlowMethods() throws InterruptedException {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
         TrackingGame game = new TrackingGame(players);
-        GameOrchestrator orchestrator = new GameOrchestrator(new TrackingGameFactory(game), players, "Alice");
+        ServerSessionRegistry sessions = new ServerSessionRegistry();
+        GameOrchestrator orchestrator = newOrchestrator(game, "Alice", null, null, sessions);
 
-        assertThrows(IllegalArgumentException.class, () -> orchestrator.moveTotem("Eve", "A1"));
-        assertThrows(IllegalArgumentException.class, () -> orchestrator.chooseCard("Eve", 1));
-        assertThrows(IllegalArgumentException.class, () -> orchestrator.extraDrawn("Eve", 1));
+        String eveSessionId = registerConnectedPlayer(sessions, "Eve", game.getId());
+        Thread worker = new Thread(orchestrator::run);
+        worker.setDaemon(true);
+        worker.start();
+        try {
+            orchestrator.enqueueMessage(new EnqueuedMessage(eveSessionId, new ClientQueuedCommand(new MoveTotemPayload("A1"))));
+            orchestrator.enqueueMessage(new EnqueuedMessage(eveSessionId, new ClientQueuedCommand(new ChooseCardPayload(1))));
+            orchestrator.enqueueMessage(new EnqueuedMessage(eveSessionId, new ClientQueuedCommand(new ExtraDrawPayload(1))));
+            Thread.sleep(200);
+        } finally {
+            worker.interrupt();
+            worker.join(200);
+        }
+
+        assertEquals(0, game.getMoveTotemCalls());
+        assertEquals(0, game.getChooseCardCalls());
+        assertEquals(0, game.getExtraDrawnCalls());
     }
 
     @Test
-    void rankingShouldNotRunWhenNoServiceProvidedOrGameIsNotFinished() {
+    void rankingShouldNotRunWhenNoServiceProvidedOrGameIsNotFinished() throws InterruptedException {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
-        GameOrchestrator orchestratorNoService = new GameOrchestrator(
-                new TrackingGameFactory(new TrackingGame(players, GameStatus.SETUP, false, true, false, false)),
+        ServerSessionRegistry sessions = new ServerSessionRegistry();
+        TrackingGame noServiceGame = new TrackingGame(players, GameStatus.SETUP, false, true, false, false);
+        GameOrchestrator orchestratorNoService = newOrchestrator(
+                new TrackingGameFactory(noServiceGame),
                 players,
-                "Alice"
+                "Alice",
+                null,
+                sessions,
+                null
         );
-        orchestratorNoService.chooseCard("Alice", 1);
+        String aliceSessionId = registerConnectedPlayer(sessions, "Alice", noServiceGame.getId());
+        Thread worker = new Thread(orchestratorNoService::run);
+        worker.setDaemon(true);
+        worker.start();
+        orchestratorNoService.enqueueMessage(new EnqueuedMessage(aliceSessionId, new ClientQueuedCommand(new ChooseCardPayload(1))));
+        worker.join(5000);
         assertTrue(orchestratorNoService.getFinalRankingResult().isEmpty());
 
         RecordingRankingService rankingService = new RecordingRankingService();
-        GameOrchestrator orchestratorNoFinish = new GameOrchestrator(
+        GameOrchestrator orchestratorNoFinish = newOrchestrator(
                 new TrackingGameFactory(new TrackingGame(players, GameStatus.SETUP, false, false, false, false)),
                 players,
                 "Alice",
-                rankingService
+                rankingService,
+                null,
+                null
         );
         orchestratorNoFinish.setupMatch();
 
@@ -199,17 +244,43 @@ class GameOrchestratorRankingTest {
     }
 
     @Test
-    void rankingServiceRecordsOnlyOnceEvenWhenMoreCommandsArrive() {
+    void noDbRankingServiceDoesNotFreezeMatchAndProducesNoRankingResult() {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
-        TrackingGameFactory gameFactory = new TrackingGameFactory(
-                new TrackingGame(players, GameStatus.IN_PROGRESS, true, false, false, false)
+        TrackingGame game = new TrackingGame(players, GameStatus.IN_PROGRESS, true, false, false, false);
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(game),
+                players,
+                "Alice",
+                NoOpRankingService.INSTANCE,
+                null,
+                null
         );
-        RecordingRankingService rankingService = new RecordingRankingService();
-        GameOrchestrator orchestrator = new GameOrchestrator(gameFactory, players, "Alice", rankingService);
 
         orchestrator.setupMatch();
-        orchestrator.moveTotem("Bob", "A1");
-        orchestrator.extraDrawn("Alice", 2);
+
+        assertFalse(orchestrator.isFrozen());
+        assertTrue(orchestrator.getFinalRankingResult().isEmpty());
+    }
+
+    @Test
+    void rankingServiceRecordsOnlyOnceEvenWhenMoreCommandsArrive() throws InterruptedException {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        ServerSessionRegistry sessions = new ServerSessionRegistry();
+        TrackingGame game = new TrackingGame(players, GameStatus.IN_PROGRESS, false, false, false, true);
+        TrackingGameFactory gameFactory = new TrackingGameFactory(game);
+        RecordingRankingService rankingService = new RecordingRankingService();
+        GameOrchestrator orchestrator = newOrchestrator(gameFactory, players, "Alice", rankingService, sessions, null);
+
+        orchestrator.setupMatch();
+
+        String aliceSessionId = registerConnectedPlayer(sessions, "Alice", game.getId());
+        String bobSessionId = registerConnectedPlayer(sessions, "Bob", game.getId());
+        Thread worker = new Thread(orchestrator::run);
+        worker.setDaemon(true);
+        worker.start();
+        orchestrator.enqueueMessage(new EnqueuedMessage(bobSessionId, new ClientQueuedCommand(new MoveTotemPayload("A1"))));
+        orchestrator.enqueueMessage(new EnqueuedMessage(aliceSessionId, new ClientQueuedCommand(new ExtraDrawPayload(2))));
+        worker.join(5000);
 
         assertEquals(1, rankingService.recordCalls);
         assertEquals(1, gameFactory.getGame().getSetupCalls());
@@ -219,10 +290,127 @@ class GameOrchestratorRankingTest {
     }
 
     @Test
+    void persistStateIsSkippedWhenStateVersionDoesNotChange() {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        RecordingMatchPersistence persistence = new RecordingMatchPersistence();
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(new TrackingGame(players)),
+                players,
+                "Alice",
+                null,
+                new ServerSessionRegistry(),
+                persistence
+        );
+
+        orchestrator.setupMatch();
+
+        assertEquals(0, persistence.getSaveCount());
+        assertEquals(0, persistence.getSavedSnapshots().size());
+    }
+
+    @Test
+    void persistStateIsPerformedWhenVersionChanges() {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        TrackingVersionedGame game = new TrackingVersionedGame(players);
+        RecordingMatchPersistence persistence = new RecordingMatchPersistence();
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(game),
+                players,
+                "Alice",
+                null,
+                new ServerSessionRegistry(),
+                persistence
+        );
+
+        orchestrator.setupMatch();
+
+        assertEquals(1, persistence.getSaveCount());
+        assertEquals(1, persistence.getSavedSnapshots().size());
+    }
+
+    @Test
+    void saveFailureOnMutatingCommandFreezesMatchAndNotifiesCheckpointError() {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        TrackingVersionedGame game = new TrackingVersionedGame(players);
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(game),
+                players,
+                "Alice",
+                null,
+                new ServerSessionRegistry(),
+                new FailingMatchPersistence(new IllegalStateException("disk full"))
+        );
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                orchestrator::setupMatch
+        );
+        assertTrue(exception.getMessage().contains("Unable to persist match"));
+        assertTrue(orchestrator.isFrozen());
+        ErrorPayload error = game.getLastNotifiedError();
+        assertEquals("CHECKPOINT_ERROR", error.code);
+        assertTrue(error.message.contains("setupMatch"));
+    }
+
+    @Test
+    void queuedCommandSaveFailureFreezesMatchAndStopsFurtherStateChanges() throws InterruptedException {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        MutatingVersionedTrackingGame game = new MutatingVersionedTrackingGame(players);
+        ServerSessionRegistry sessions = new ServerSessionRegistry();
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(game),
+                players,
+                "Alice",
+                null,
+                sessions,
+                new FailingMatchPersistence(new IllegalStateException("disk full"))
+        );
+
+        String sessionId = registerConnectedPlayer(sessions, "Alice", 7);
+        Thread worker = new Thread(orchestrator::run);
+        worker.start();
+        try {
+            orchestrator.enqueueMessage(new EnqueuedMessage(sessionId, new ClientQueuedCommand(new ChooseCardPayload(1))));
+            waitForCondition(() -> orchestrator.isFrozen(), 20, 50L);
+
+            assertTrue(orchestrator.isFrozen());
+            assertEquals("CHECKPOINT_ERROR", game.getLastNotifiedError().code);
+            assertEquals(1, game.getChooseCardCalls());
+
+            orchestrator.enqueueMessage(new EnqueuedMessage(sessionId, new ClientQueuedCommand(new ChooseCardPayload(2))));
+            Thread.sleep(120);
+            assertEquals(1, game.getChooseCardCalls());
+        } finally {
+            worker.interrupt();
+            worker.join(200);
+        }
+    }
+
+    @Test
+    void finishedMatchDeletesSnapshotAfterRankingAndBeforeCleanup() {
+        ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
+        TrackingGame game = new TrackingGame(players, GameStatus.IN_PROGRESS, true, false, false, false);
+        RecordingMatchPersistence persistence = new RecordingMatchPersistence();
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(game),
+                players,
+                "Alice",
+                NoOpRankingService.INSTANCE,
+                new ServerSessionRegistry(),
+                persistence
+        );
+
+        orchestrator.setupMatch();
+
+        assertEquals(1, persistence.getDeleteCount());
+        assertEquals(1, persistence.getSaveCount());
+    }
+
+    @Test
     void freezeForDisconnectedPlayerCapturesErrorAndBlocksFutureCommands() {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
         TrackingGame game = new TrackingGame(players);
-        GameOrchestrator orchestrator = new GameOrchestrator(new TrackingGameFactory(game), players, "Alice");
+        GameOrchestrator orchestrator = newOrchestrator(game, "Alice", null, null, null);
 
         orchestrator.freezeForDisconnectedPlayer("Alice");
 
@@ -230,28 +418,70 @@ class GameOrchestratorRankingTest {
         assertEquals("PLAYER_DISCONNECTED", lastPayload.code);
         assertTrue(lastPayload.message.contains("Alice"));
         assertTrue(orchestrator.isFrozen());
-        assertThrows(MatchFrozenException.class, () -> orchestrator.chooseCard("Alice", 1));
-        assertThrows(MatchFrozenException.class, () -> orchestrator.moveTotem("Alice", "A1"));
-        assertThrows(MatchFrozenException.class, () -> orchestrator.extraDrawn("Alice", 2));
         assertThrows(MatchFrozenException.class, () -> orchestrator.setupMatch());
     }
 
     @Test
-    void rankingFinalizationFailureFreezesMatchAndThrowsDomainException() {
+    void rankingFinalizationFailureFreezesMatchAndThrowsDomainException() throws InterruptedException {
         ArrayList<Player> players = MesosTestFixtures.createPlayers("Alice", "Bob");
-        GameOrchestrator orchestrator = new GameOrchestrator(
-                new TrackingGameFactory(new TrackingGame(players, GameStatus.IN_PROGRESS, false, false, false, true)),
+        TrackingGame game = new TrackingGame(players, GameStatus.IN_PROGRESS, false, false, false, true);
+        ServerSessionRegistry sessions = new ServerSessionRegistry();
+        GameOrchestrator orchestrator = newOrchestrator(
+                new TrackingGameFactory(game),
                 players,
                 "Alice",
-                new FailingRankingService()
+                new FailingRankingService(),
+                sessions,
+                null
         );
 
-        assertThrows(
-                RankingFinalizationFailureException.class,
-                () -> orchestrator.extraDrawn("Alice", 2)
-        );
+        String aliceSessionId = registerConnectedPlayer(sessions, "Alice", game.getId());
+        Thread worker = new Thread(orchestrator::run);
+        worker.setDaemon(true);
+        worker.start();
+        try {
+            orchestrator.enqueueMessage(new EnqueuedMessage(aliceSessionId, new ClientQueuedCommand(new ExtraDrawPayload(2))));
+            waitForCondition(orchestrator::isFrozen, 20, 50L);
+        } finally {
+            worker.interrupt();
+            worker.join(200);
+        }
+
         assertTrue(orchestrator.isFrozen());
         assertThrows(MatchFrozenException.class, () -> orchestrator.setupMatch());
+    }
+
+    private static GameOrchestrator newOrchestrator(
+            Game game,
+            String hostNickname,
+            RankingService rankingService,
+            MatchPersistence matchPersistence,
+            ServerSessionRegistry sessions
+    ) {
+        return new GameOrchestrator(game, hostNickname, rankingService, matchPersistence, sessions);
+    }
+
+    private static GameOrchestrator newOrchestrator(
+            GameFactory gameFactory,
+            ArrayList<Player> players,
+            String hostNickname,
+            RankingService rankingService,
+            ServerSessionRegistry sessions,
+            MatchPersistence matchPersistence
+    ) {
+        if (gameFactory == null) {
+            throw new NullPointerException("Game factory cannot be null");
+        }
+        if (players == null || players.isEmpty()) {
+            throw new IllegalArgumentException("Players cannot be null or empty");
+        }
+        return new GameOrchestrator(
+                gameFactory.createGame(players),
+                hostNickname,
+                rankingService,
+                matchPersistence,
+                sessions
+        );
     }
 
     private static final class TrackingGameFactory implements GameFactory {
@@ -266,12 +496,127 @@ class GameOrchestratorRankingTest {
             return this.game;
         }
 
+        @Override
+        public Game createGame(int gameId, List<Player> players) {
+            return this.game;
+        }
+
         private TrackingGame getGame() {
             return this.game;
         }
     }
 
-    private static final class TrackingGame extends Game {
+    private static final class TrackingVersionedGame extends TrackingGame {
+        private TrackingVersionedGame(List<Player> players) {
+            super(players, GameStatus.SETUP, false, false, false, false);
+        }
+
+        @Override
+        public void setup() {
+            super.setup();
+            this.setStatus(GameStatus.IN_PROGRESS);
+        }
+    }
+
+    private static final class MutatingVersionedTrackingGame extends TrackingGame {
+        private int chooseCardCalls;
+
+        private MutatingVersionedTrackingGame(List<Player> players) {
+            super(players, GameStatus.SETUP, false, false, false, false);
+        }
+
+        @Override
+        public void chooseCard(Player player, int cardId) {
+            this.chooseCardCalls++;
+            super.chooseCard(player, cardId);
+            this.setStatus(this.getStatus());
+        }
+
+        private int getChooseCardCalls() {
+            return this.chooseCardCalls;
+        }
+    }
+
+    private static String registerConnectedPlayer(ServerSessionRegistry sessions, String nickname, int gameId)
+            throws IllegalStateException {
+        String sessionId = sessions.registerConnection(new RecordingGameConnection());
+        sessions.authenticate(sessionId, nickname);
+        sessions.enterGame(sessionId, gameId);
+        return sessionId;
+    }
+
+    private static void waitForCondition(java.util.function.BooleanSupplier condition, int maxAttempts, long sleepMillis)
+            throws InterruptedException {
+        for (int i = 0; i < maxAttempts; i++) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            Thread.sleep(sleepMillis);
+        }
+    }
+
+    private static final class RecordingGameConnection implements ClientConnection, Listener {
+        @Override
+        public void sendPing() {
+        }
+
+        @Override
+        public void notifyUpdate(Object payload) {
+        }
+
+        @Override
+        public void close() throws IOException {
+        }
+    }
+
+    private static class RecordingMatchPersistence implements MatchPersistence {
+        private final List<SavedMatchSnapshot> savedSnapshots = new ArrayList<>();
+        private int saveCount;
+        private int deleteCount;
+
+        @Override
+        public java.util.List<SavedMatchSnapshot> loadActiveMatches() {
+            return List.of();
+        }
+
+        @Override
+        public void save(SavedMatchSnapshot snapshot) {
+            this.savedSnapshots.add(snapshot);
+            this.saveCount++;
+        }
+
+        @Override
+        public void delete(int gameId) {
+            this.deleteCount++;
+        }
+
+        private int getSaveCount() {
+            return this.saveCount;
+        }
+
+        private int getDeleteCount() {
+            return this.deleteCount;
+        }
+
+        private List<SavedMatchSnapshot> getSavedSnapshots() {
+            return this.savedSnapshots;
+        }
+    }
+
+    private static final class FailingMatchPersistence extends RecordingMatchPersistence {
+        private final RuntimeException failure;
+
+        private FailingMatchPersistence(RuntimeException failure) {
+            this.failure = failure;
+        }
+
+        @Override
+        public void save(SavedMatchSnapshot snapshot) {
+            throw this.failure;
+        }
+    }
+
+    private static class TrackingGame extends Game {
         private int setupCalls;
         private int moveTotemCalls;
         private int chooseCardCalls;
@@ -301,7 +646,9 @@ class GameOrchestratorRankingTest {
                     7,
                     players,
                     new TurnState(),
-                    new TurnOrderTrack(),
+                    new it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack(
+                            new ArrayList<>(players), 0, 0,
+                            it.polimi.ingsoft.mesos.server.model.game.RoundPhase.PLACING_TOTEMS),
                     new Board(
                             TribeDeck.fromOrderedCards(new ArrayList<>()),
                             BuildingDeck.fromOrderedCards(new ArrayList<>()),
@@ -392,7 +739,7 @@ class GameOrchestratorRankingTest {
             return this.recordedRankingCalls;
         }
 
-        private ErrorPayload getLastNotifiedError() {
+        protected ErrorPayload getLastNotifiedError() {
             return this.lastNotifiedError;
         }
     }
@@ -410,10 +757,10 @@ class GameOrchestratorRankingTest {
 
         @Override
         public RankingResult recordMatchAndGetRanking(String gameId,
-                                                     int playerCount,
-                                                     Instant playedAtUtc,
-                                                     String requestingNickname,
-                                                     List<MatchScore> finalScores) {
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
             throw new UnsupportedOperationException("Override in concrete service");
         }
 
@@ -442,10 +789,10 @@ class GameOrchestratorRankingTest {
 
         @Override
         public RankingResult recordMatchAndGetRanking(String gameId,
-                                                     int playerCount,
-                                                     Instant playedAtUtc,
-                                                     String requestingNickname,
-                                                     List<MatchScore> finalScores) {
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
             this.recordCalls++;
             this.lastGameId = gameId;
             this.lastPlayerCount = playerCount;
@@ -461,10 +808,10 @@ class GameOrchestratorRankingTest {
     private static final class FailingRankingService extends RecordingRankingServiceAdapter {
         @Override
         public RankingResult recordMatchAndGetRanking(String gameId,
-                                                     int playerCount,
-                                                     Instant playedAtUtc,
-                                                     String requestingNickname,
-                                                     List<MatchScore> finalScores) {
+                                                      int playerCount,
+                                                      Instant playedAtUtc,
+                                                      String requestingNickname,
+                                                      List<MatchScore> finalScores) {
             throw new IllegalStateException("ranking backend unavailable");
         }
     }

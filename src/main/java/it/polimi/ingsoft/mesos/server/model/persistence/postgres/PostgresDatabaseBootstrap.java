@@ -16,46 +16,32 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Singleton responsible for bootstrapping PostgreSQL and verifying schema health at application startup.
+ * Singleton that bootstraps PostgreSQL at startup: creates the database if absent,
+ * runs DDL, and verifies schema health.
  */
 public final class PostgresDatabaseBootstrap {
-    private final Set<String> initializedTargets;
+    private final Set<String> initializedTargets = ConcurrentHashMap.newKeySet();
 
-    /**
-     * Creates the singleton bootstrap and initializes the per-target bootstrap cache.
-     */
-    private PostgresDatabaseBootstrap() {
-        this.initializedTargets = ConcurrentHashMap.newKeySet();
-    }
+    private PostgresDatabaseBootstrap() {}
 
-    /**
-     * Returns the shared singleton instance.
-     *
-     * @return singleton bootstrap instance
-     */
     public static PostgresDatabaseBootstrap getInstance() {
         return Holder.INSTANCE;
     }
 
     /**
      * Ensures the target database exists, is reachable, and contains every required table.
-     *
-     * @param runtimeConfig runtime configuration
-     * @param schemaModules modular schema definitions to initialize and verify
+     * Idempotent: skips work when the same target + module set was already bootstrapped.
      */
     public void ensureReady(ServerRuntimeConfig runtimeConfig, List<PostgresSchemaModule> schemaModules) {
         Objects.requireNonNull(runtimeConfig, "Runtime config cannot be null");
-        this.validateSchemaModules(schemaModules);
+        if (schemaModules == null || schemaModules.isEmpty())
+            throw new IllegalArgumentException("Schema modules cannot be null or empty");
 
-        String cacheKey = this.buildCacheKey(runtimeConfig, schemaModules);
-        if (this.initializedTargets.contains(cacheKey)) {
-            return;
-        }
+        String cacheKey = buildCacheKey(runtimeConfig, schemaModules);
+        if (this.initializedTargets.contains(cacheKey)) return;
 
         synchronized (this) {
-            if (this.initializedTargets.contains(cacheKey)) {
-                return;
-            }
+            if (this.initializedTargets.contains(cacheKey)) return;
 
             this.ensureDatabaseExists(runtimeConfig);
             this.verifyReachability(runtimeConfig.toPostgresConnectionConfig());
@@ -66,191 +52,112 @@ public final class PostgresDatabaseBootstrap {
         }
     }
 
-    /**
-     * Validates that at least one schema module has been provided.
-     */
-    private void validateSchemaModules(List<PostgresSchemaModule> schemaModules) {
-        if (schemaModules == null || schemaModules.isEmpty()) {
-            throw new IllegalArgumentException("Schema modules cannot be null or empty");
-        }
-    }
-
-    /**
-     * Creates the target database if it does not already exist.
-     */
-    private void ensureDatabaseExists(ServerRuntimeConfig runtimeConfig) {
-        try (Connection connection = this.openConnection(
-                runtimeConfig.adminJdbcUrl(),
-                runtimeConfig.username(),
-                runtimeConfig.password()
-        );
-             PreparedStatement statement = connection.prepareStatement(
-                     "SELECT 1 FROM pg_database WHERE datname = ?"
-             )) {
-            connection.setAutoCommit(true);
-            statement.setString(1, runtimeConfig.databaseName());
-
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    return;
-                }
+    private void ensureDatabaseExists(ServerRuntimeConfig config) {
+        try (Connection conn = openConnection(config.adminJdbcUrl(), config.username(), config.password());
+             PreparedStatement check = conn.prepareStatement("SELECT 1 FROM pg_database WHERE datname = ?")) {
+            conn.setAutoCommit(true);
+            check.setString(1, config.databaseName());
+            try (ResultSet rs = check.executeQuery()) {
+                if (rs.next()) return;
             }
-
-            try (Statement createDatabase = connection.createStatement()) {
-                createDatabase.execute("CREATE DATABASE " + this.quoteIdentifier(runtimeConfig.databaseName()));
+            try (Statement create = conn.createStatement()) {
+                create.execute("CREATE DATABASE " + quoteIdentifier(config.databaseName()));
             }
-        } catch (SQLException exception) {
-            PostgresDatabaseHealthException.Reason reason = this.isConnectionFailure(exception)
+        } catch (SQLException e) {
+            PostgresDatabaseHealthException.Reason reason = isConnectionFailure(e)
                     ? PostgresDatabaseHealthException.Reason.UNREACHABLE
                     : PostgresDatabaseHealthException.Reason.UNHEALTHY;
-
-            String message = reason == PostgresDatabaseHealthException.Reason.UNREACHABLE
-                    ? "PostgreSQL admin database is not reachable: " + exception.getMessage()
-                    : "PostgreSQL is reachable but the target database cannot be created: " + exception.getMessage();
-
-            throw new PostgresDatabaseHealthException(reason, message, exception);
+            String msg = reason == PostgresDatabaseHealthException.Reason.UNREACHABLE
+                    ? "PostgreSQL admin database is not reachable: " + e.getMessage()
+                    : "PostgreSQL is reachable but the target database cannot be created: " + e.getMessage();
+            throw new PostgresDatabaseHealthException(reason, msg, e);
         }
     }
 
-    /**
-     * Verifies that the target database accepts queries.
-     */
-    private void verifyReachability(PostgresConnectionConfig connectionConfig) {
-        try (Connection connection = this.openConnection(
-                connectionConfig.jdbcUrl(),
-                connectionConfig.username(),
-                connectionConfig.password()
-        );
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery("SELECT 1")) {
-            if (!resultSet.next() || resultSet.getInt(1) != 1) {
+    private void verifyReachability(PostgresConnectionConfig conn) {
+        try (Connection c = openConnection(conn.jdbcUrl(), conn.username(), conn.password());
+             Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery("SELECT 1")) {
+            if (!rs.next() || rs.getInt(1) != 1)
                 throw new PostgresDatabaseHealthException(
                         PostgresDatabaseHealthException.Reason.UNHEALTHY,
                         "PostgreSQL responded but health probe returned an unexpected result"
                 );
-            }
-        } catch (SQLException exception) {
+        } catch (SQLException e) {
             throw new PostgresDatabaseHealthException(
                     PostgresDatabaseHealthException.Reason.UNREACHABLE,
-                    "PostgreSQL target database is not reachable: " + exception.getMessage(),
-                    exception
+                    "PostgreSQL target database is not reachable: " + e.getMessage(), e
             );
         }
     }
 
-    /**
-     * Executes all DDL statements contributed by registered schema modules.
-     */
-    private void initializeSchema(PostgresConnectionConfig connectionConfig, List<PostgresSchemaModule> schemaModules) {
-        try (Connection connection = this.openConnection(
-                connectionConfig.jdbcUrl(),
-                connectionConfig.username(),
-                connectionConfig.password()
-        );
-             Statement statement = connection.createStatement()) {
-            for (PostgresSchemaModule schemaModule : schemaModules) {
-                for (String ddl : schemaModule.createStatements()) {
-                    statement.execute(ddl);
+    private void initializeSchema(PostgresConnectionConfig conn, List<PostgresSchemaModule> modules) {
+        try (Connection c = openConnection(conn.jdbcUrl(), conn.username(), conn.password());
+             Statement s = c.createStatement()) {
+            for (PostgresSchemaModule module : modules) {
+                for (String ddl : module.createStatements()) {
+                    s.execute(ddl);
                 }
             }
-        } catch (SQLException exception) {
+        } catch (SQLException e) {
             throw new PostgresDatabaseHealthException(
                     PostgresDatabaseHealthException.Reason.UNHEALTHY,
-                    "PostgreSQL schema initialization failed: " + exception.getMessage(),
-                    exception
+                    "PostgreSQL schema initialization failed: " + e.getMessage(), e
             );
         }
     }
 
-    /**
-     * Verifies that every required table declared by the registered modules exists.
-     */
-    private void verifySchemaHealth(PostgresConnectionConfig connectionConfig, List<PostgresSchemaModule> schemaModules) {
-        Set<String> missingTables = new LinkedHashSet<>();
-
-        try (Connection connection = this.openConnection(
-                connectionConfig.jdbcUrl(),
-                connectionConfig.username(),
-                connectionConfig.password()
-        );
-             PreparedStatement statement = connection.prepareStatement("""
-                     SELECT 1
-                     FROM information_schema.tables
-                     WHERE table_schema = current_schema()
-                     AND table_name = ?
+    private void verifySchemaHealth(PostgresConnectionConfig conn, List<PostgresSchemaModule> modules) {
+        Set<String> missing = new LinkedHashSet<>();
+        try (Connection c = openConnection(conn.jdbcUrl(), conn.username(), conn.password());
+             PreparedStatement s = c.prepareStatement("""
+                     SELECT 1 FROM information_schema.tables
+                     WHERE table_schema = current_schema() AND table_name = ?
                      """)) {
-            for (PostgresSchemaModule schemaModule : schemaModules) {
-                for (String table : schemaModule.requiredTables()) {
-                    statement.setString(1, table);
-
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            missingTables.add(table);
-                        }
+            for (PostgresSchemaModule module : modules) {
+                for (String table : module.requiredTables()) {
+                    s.setString(1, table);
+                    try (ResultSet rs = s.executeQuery()) {
+                        if (!rs.next()) missing.add(table);
                     }
                 }
             }
-        } catch (SQLException exception) {
+        } catch (SQLException e) {
             throw new PostgresDatabaseHealthException(
                     PostgresDatabaseHealthException.Reason.UNHEALTHY,
-                    "PostgreSQL schema verification failed: " + exception.getMessage(),
-                    exception
+                    "PostgreSQL schema verification failed: " + e.getMessage(), e
             );
         }
-
-        if (!missingTables.isEmpty()) {
+        if (!missing.isEmpty())
             throw new PostgresDatabaseHealthException(
                     PostgresDatabaseHealthException.Reason.UNHEALTHY,
-                    "PostgreSQL schema is not healthy. Missing tables: " + missingTables
+                    "PostgreSQL schema is not healthy. Missing tables: " + missing
             );
-        }
     }
 
-    /**
-     * Opens a JDBC connection with the provided settings.
-     */
-    private Connection openConnection(String jdbcUrl, String username, String password) throws SQLException {
-        return DriverManager.getConnection(jdbcUrl, username, password);
+    private static Connection openConnection(String url, String user, String password) throws SQLException {
+        return DriverManager.getConnection(url, user, password);
     }
 
-    /**
-     * Returns true when the SQL state indicates that the server cannot be contacted.
-     */
-    private boolean isConnectionFailure(SQLException exception) {
-        String sqlState = exception.getSQLState();
-        return sqlState == null || sqlState.startsWith("08");
+    private static boolean isConnectionFailure(SQLException e) {
+        String state = e.getSQLState();
+        return state == null || state.startsWith("08");
     }
 
-    /**
-     * Quotes a PostgreSQL identifier safely.
-     */
-    private String quoteIdentifier(String identifier) {
+    private static String quoteIdentifier(String identifier) {
         return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
-    /**
-     * Builds the cache key used to avoid repeated bootstrap on the same target and module set.
-     */
-    private String buildCacheKey(ServerRuntimeConfig runtimeConfig, List<PostgresSchemaModule> schemaModules) {
-        String modulesFingerprint = schemaModules.stream()
+    private static String buildCacheKey(ServerRuntimeConfig config, List<PostgresSchemaModule> modules) {
+        String fingerprint = modules.stream()
                 .map(PostgresSchemaModule::moduleName)
                 .sorted()
-                .reduce((left, right) -> left + "|" + right)
+                .reduce((a, b) -> a + "|" + b)
                 .orElse("");
-
-        return runtimeConfig.jdbcUrl() + "|" + modulesFingerprint;
+        return config.jdbcUrl() + "|" + fingerprint;
     }
 
-    /**
-     * Singleton holder idiom.
-     */
     private static final class Holder {
         private static final PostgresDatabaseBootstrap INSTANCE = new PostgresDatabaseBootstrap();
-
-        /**
-         * Prevents instantiation of the holder utility class.
-         */
-        private Holder() {
-        }
     }
 }

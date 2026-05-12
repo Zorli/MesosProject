@@ -7,6 +7,8 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
 
+import java.util.Objects;
+
 import static it.polimi.ingsoft.mesos.shared.messages.ServerMessageType.*;
 
 //Questa classe dovrebbe essere chiamata con metodo univoco dal virtualserver indipendentemente dalla tecnologia di rete
@@ -14,17 +16,28 @@ import static it.polimi.ingsoft.mesos.shared.messages.ServerMessageType.*;
 //Decide quale metodo chiamare della clientview per renderizzare quel determinato tipo di server messagge
 //sa come, dato un payload, chiedere al generico UI di plottarlo
 public class MessageRouter {
-    ClientView clientView;
+    private final ClientView clientView;
+
     public MessageRouter(ClientView clientView) {
-        this.clientView = clientView;
+        this.clientView = Objects.requireNonNull(clientView, "clientView cannot be null");
     }
 
     public void routeMessage(ServerMessage message) {
+        Objects.requireNonNull(message, "message cannot be null");
+
         switch (message.type) {
             case ERROR -> clientView.showError((ErrorPayload) message.payload);
             case PRE_MATCH_UPDATE -> clientView.showPreMatchUpdate((PreMatchUpdatePayload) message.payload);
             case LOBBY_LIST -> clientView.showLobbyList((LobbyListPayload) message.payload);
-            case GAME_UPDATE -> clientView.showGameUpdate((GamePayload) message.payload);
+            case GAME_UPDATE -> {
+                GamePayload payload = (GamePayload) message.payload;
+                if ("FINISHED".equals(payload.status)) {
+                    clientView.showFinalGameResult(payload);
+                } else {
+                    clientView.showGameUpdate(payload);
+                }
+            }
+            case PING -> throw new IllegalArgumentException("PING must be handled by the virtual server");
         }
     }
 

@@ -18,6 +18,7 @@
         <pitest.junit5.plugin.version>1.2.2</pitest.junit5.plugin.version>
         <surefireArgLine></surefireArgLine>
         <failsafeArgLine></failsafeArgLine>
+        <integrationExcludedGroups>integration</integrationExcludedGroups>
     </properties>
 
     <dependencies>
@@ -151,7 +152,7 @@
                 <configuration>
                     <useModulePath>false</useModulePath>
                     <argLine>@{surefireArgLine}</argLine>
-                    <excludedGroups>integration</excludedGroups>
+                    <excludedGroups>${integrationExcludedGroups}</excludedGroups>
                 </configuration>
             </plugin>
             <plugin>
@@ -193,6 +194,12 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>integration</id>
+            <properties>
+                <integrationExcludedGroups></integrationExcludedGroups>
+            </properties>
+        </profile>
         <profile>
             <id>pit</id>
             <build>

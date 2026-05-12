@@ -25,6 +25,14 @@ public interface RankingService {
     boolean isNicknameAvailable(String nickname);
 
     /**
+     * Returns whether this service persists match rankings.
+     * No-op implementations return {@code false}.
+     */
+    default boolean isRankingEnabled() {
+        return true;
+    }
+
+    /**
      * Stores one completed match atomically and returns updated global ranking information.
      *
      * @param gameId unique match id used to prevent duplicate inserts
