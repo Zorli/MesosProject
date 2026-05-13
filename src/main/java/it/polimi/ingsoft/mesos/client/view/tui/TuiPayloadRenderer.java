@@ -1,21 +1,45 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-//This class offer the service of transforming into a string the received payload
+
+/**
+ * Converts server payloads into plain text for the text user interface.
+ *
+ * <p>The renderer does not read user input, does not print directly to the terminal,
+ * and does not send messages to the server. Its only responsibility is formatting:
+ * {@link TuiController} gives it payload objects, and this class returns strings
+ * that can be printed with a {@link java.io.PrintStream}.
+ *
+ * <p>The class is stateless. Every method depends only on its parameters, so the
+ * controller can safely keep one renderer instance and reuse it for all server
+ * updates.
+ */
 final class TuiPayloadRenderer {
+    /**
+     * Formats an error message.
+     *
+     * <p>When a game state is available, the method appends the rendered game state
+     * after the error. This keeps the current board visible after errors such as an
+     * invalid move.
+     *
+     * @param payload error payload received from the server or created by the client
+     * @param lastGamePayload last known game state, or {@code null} outside a match
+     * @param localNickname nickname of this client, or {@code null} before authentication
+     * @return text to print in the TUI
+     */
     String renderError(ErrorPayload payload, GamePayload lastGamePayload, String localNickname) {
         StringBuilder builder = new StringBuilder();
         builder.append("[ERROR] ")
@@ -32,6 +56,15 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
+    /**
+     * Formats a lobby update.
+     *
+     * <p>The output always contains the lobby event. Optional fields are appended
+     * only when present: message, lobby id, and player list.
+     *
+     * @param payload lobby update received from the server
+     * @return text to print in the TUI
+     */
     String renderLobbyUpdate(LobbyUpdatePayload payload) {
         StringBuilder builder = new StringBuilder("[SERVER][LOBBY] ");
         builder.append(payload.event);
@@ -47,6 +80,12 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
+    /**
+     * Formats the list of lobbies available before joining a match.
+     *
+     * @param payload lobby list received from the server
+     * @return text to print in the TUI
+     */
     String renderLobbyList(LobbyListPayload payload) {
         if (payload.lobbies == null || payload.lobbies.isEmpty()) {
             return "[SERVER][LOBBIES] No open lobbies.";
@@ -69,6 +108,16 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
+    /**
+     * Formats the current game state.
+     *
+     * <p>The result contains the game header, the local nickname, turn information,
+     * players, and board. Missing optional values are rendered as {@code -}.
+     *
+     * @param payload game state received from the server
+     * @param localNickname nickname of this client, or {@code null} before authentication
+     * @return text to print in the TUI
+     */
     String renderGame(GamePayload payload, String localNickname) {
         StringBuilder builder = new StringBuilder();
         builder.append("[SERVER][GAME] #")
@@ -97,6 +146,15 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
+    /**
+     * Formats the final game result.
+     *
+     * <p>Players are copied into a new list and sorted by prestige points in
+     * descending order. The original payload is not modified.
+     *
+     * @param payload final game state received from the server
+     * @return text to print in the TUI
+     */
     String renderFinalGameResult(GamePayload payload) {
         StringBuilder builder = new StringBuilder();
         builder.append("[SERVER][GAME FINISHED] #")
@@ -110,7 +168,12 @@ final class TuiPayloadRenderer {
         }
 
         List<PlayerPayload> players = new ArrayList<>(payload.players);
-        players.sort(Comparator.comparingInt((PlayerPayload player) -> player.prestigePoints).reversed());
+        players.sort(new Comparator<PlayerPayload>() {
+            @Override
+            public int compare(PlayerPayload firstPlayer, PlayerPayload secondPlayer) {
+                return Integer.compare(secondPlayer.prestigePoints, firstPlayer.prestigePoints);
+            }
+        });
 
         for (int i = 0; i < players.size(); i++) {
             PlayerPayload player = players.get(i);
@@ -125,6 +188,9 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
+    /**
+     * Appends the player section to an existing game rendering.
+     */
     private static void appendPlayers(StringBuilder builder, List<PlayerPayload> players) {
         builder.append(System.lineSeparator()).append("Players:");
         if (players == null || players.isEmpty()) {
@@ -145,6 +211,11 @@ final class TuiPayloadRenderer {
         }
     }
 
+    /**
+     * Appends the board section to an existing game rendering.
+     *
+     * <p>If the board is missing, nothing is appended.
+     */
     private static void appendBoard(StringBuilder builder, BoardPayload board) {
         if (board == null) {
             return;
@@ -172,6 +243,12 @@ final class TuiPayloadRenderer {
         }
     }
 
+    /**
+     * Formats one row of cards.
+     *
+     * <p>Each card is rendered as {@code [id type era]}. The era printed to the
+     * user is one-based, so internal era {@code 0} is shown as {@code e1}.
+     */
     private static String formatCards(List<CardPayload> cards) {
         if (cards == null || cards.isEmpty()) {
             return "-";
@@ -184,6 +261,9 @@ final class TuiPayloadRenderer {
         return String.join(" ", renderedCards);
     }
 
+    /**
+     * Formats all offer spaces of the board.
+     */
     private static String formatOfferSpaces(List<OfferSpacePayload> offerSpaces) {
         List<String> renderedOfferSpaces = new ArrayList<>();
         for (OfferSpacePayload offerSpace : offerSpaces) {
@@ -197,6 +277,9 @@ final class TuiPayloadRenderer {
         return String.join(" | ", renderedOfferSpaces);
     }
 
+    /**
+     * Formats all starting blocks of the board.
+     */
     private static String formatStartingBlocks(List<StartingBlockPayload> startingBlocks) {
         List<String> renderedStartingBlocks = new ArrayList<>();
         for (StartingBlockPayload startingBlock : startingBlocks) {
@@ -210,11 +293,28 @@ final class TuiPayloadRenderer {
         return String.join(" | ", renderedStartingBlocks);
     }
 
+    /**
+     * Formats signed board modifiers.
+     *
+     * <p>Positive and zero values are printed with {@code +}; negative values keep
+     * their normal minus sign.
+     */
     private static String formatModifier(int value) {
-        return value >= 0 ? "+" + value : String.valueOf(value);
+        if (value >= 0) {
+            return "+" + value;
+        }
+
+        return String.valueOf(value);
     }
 
+    /**
+     * Converts missing optional values to a dash for compact terminal output.
+     */
     private static String valueOrDash(Object value) {
-        return value == null ? "-" : String.valueOf(value);
+        if (value == null) {
+            return "-";
+        }
+
+        return String.valueOf(value);
     }
 }
