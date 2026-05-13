@@ -205,6 +205,16 @@ public class TuiController implements ClientView {
                 lobbies -> list-lobbies
                 create -> create-lobby
                 join -> join-lobby
+                h -> help
+                ll -> list-lobbies
+                cl -> create-lobby
+                jl -> join-lobby
+                ql -> quit-lobby
+                sl -> start-lobby
+                mt -> move-totem
+                cc -> choose-card
+                ed -> extra-draw
+                q -> quit
                 """);
     }
 
