@@ -3,16 +3,16 @@ package it.polimi.ingsoft.mesos.server.controller;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.util.List;
 
-public final class PreMatchPayloadMapper {
+public final class LobbyPayloadMapper {
 
-    public PreMatchUpdatePayload authenticated(String nickname) {
-        return new PreMatchUpdatePayload(
-                PreMatchEventType.AUTHENTICATED,
+    public LobbyUpdatePayload authenticated(String nickname) {
+        return new LobbyUpdatePayload(
+                LobbyEventType.AUTHENTICATED,
                 nickname,
                 "Authentication completed successfully",
                 null,
@@ -22,18 +22,18 @@ public final class PreMatchPayloadMapper {
         );
     }
 
-    public PreMatchUpdatePayload lobbyCreated(String nickname, Lobby lobby) {
-        return this.fromLobby(PreMatchEventType.LOBBY_CREATED, nickname, "Lobby created successfully", lobby);
+    public LobbyUpdatePayload lobbyCreated(String nickname, Lobby lobby) {
+        return this.fromLobby(LobbyEventType.LOBBY_CREATED, nickname, "Lobby created successfully", lobby);
     }
 
-    public PreMatchUpdatePayload lobbyJoined(String nickname, Lobby lobby) {
-        return this.fromLobby(PreMatchEventType.LOBBY_JOINED, nickname, "Lobby joined successfully", lobby);
+    public LobbyUpdatePayload lobbyJoined(String nickname, Lobby lobby) {
+        return this.fromLobby(LobbyEventType.LOBBY_JOINED, nickname, "Lobby joined successfully", lobby);
     }
 
-    public PreMatchUpdatePayload lobbyLeft(String nickname, Lobby lobby, int lobbyId) {
+    public LobbyUpdatePayload lobbyLeft(String nickname, Lobby lobby, int lobbyId) {
         if (lobby == null) {
-            return new PreMatchUpdatePayload(
-                    PreMatchEventType.LOBBY_LEFT,
+            return new LobbyUpdatePayload(
+                    LobbyEventType.LOBBY_LEFT,
                     nickname,
                     "Lobby closed",
                     lobbyId,
@@ -43,11 +43,11 @@ public final class PreMatchPayloadMapper {
             );
         }
 
-        return this.fromLobby(PreMatchEventType.LOBBY_LEFT, nickname, "Lobby left successfully", lobby);
+        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Lobby left successfully", lobby);
     }
 
-    public PreMatchUpdatePayload lobbyStarted(String nickname, Lobby lobby) {
-        return this.fromLobby(PreMatchEventType.LOBBY_STARTED, nickname, "Match has started", lobby);
+    public LobbyUpdatePayload lobbyStarted(String nickname, Lobby lobby) {
+        return this.fromLobby(LobbyEventType.LOBBY_STARTED, nickname, "Match has started", lobby);
     }
 
     public LobbyListPayload lobbyList(List<Lobby> lobbies) {
@@ -66,13 +66,13 @@ public final class PreMatchPayloadMapper {
         );
     }
 
-    private PreMatchUpdatePayload fromLobby(
-            PreMatchEventType event,
+    private LobbyUpdatePayload fromLobby(
+            LobbyEventType event,
             String nickname,
             String message,
             Lobby lobby
     ) {
-        return new PreMatchUpdatePayload(
+        return new LobbyUpdatePayload(
                 event,
                 nickname,
                 message,

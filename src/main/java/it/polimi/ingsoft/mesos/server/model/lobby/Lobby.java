@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
+import it.polimi.ingsoft.mesos.server.controller.LobbyPayloadMapper;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
@@ -25,7 +25,7 @@ public class Lobby {
     private LobbyStatus status;
 
     private final transient List<Listener> listeners;
-    private final transient PreMatchPayloadMapper payloadMapper;
+    private final transient LobbyPayloadMapper payloadMapper;
 
     public Lobby(int id, String hostNickname, int capacity) {
         if (capacity < MIN_PLAYERS || capacity > MAX_PLAYERS) {
@@ -41,7 +41,7 @@ public class Lobby {
         this.players.add(this.hostNickname);
 
         this.listeners = new ArrayList<>();
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.payloadMapper = new LobbyPayloadMapper();
     }
 
     public Lobby(int id, String hostNickname, List<String> players, LobbyStatus status) {
@@ -69,7 +69,7 @@ public class Lobby {
         this.status = Objects.requireNonNull(status, "status cannot be null");
 
         this.listeners = new ArrayList<>();
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.payloadMapper = new LobbyPayloadMapper();
     }
 
     // --- GESTIONE LISTENER (Identica a Game) ---

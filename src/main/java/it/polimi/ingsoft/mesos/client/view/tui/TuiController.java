@@ -5,8 +5,8 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -21,7 +21,6 @@ public class TuiController implements ClientView {
     private final TuiPayloadRenderer payloadRenderer;
     private GamePayload lastGamePayload;
     private LobbyListPayload lastLobbyListPayload;
-    private PreMatchUpdatePayload lastPreMatchUpdatePayload;
     private String localNickname;
     private ServerProxy serverProxy;
 
@@ -158,11 +157,11 @@ public class TuiController implements ClientView {
     }
 
     @Override
-    public synchronized void showPreMatchUpdate(PreMatchUpdatePayload payload) {
-        if (payload.event == PreMatchEventType.AUTHENTICATED) {
+    public synchronized void showLobbyUpdate(LobbyUpdatePayload payload) {
+        if (payload.event == LobbyEventType.AUTHENTICATED) {
             this.localNickname = payload.nickname;
         }
-        this.render(this.payloadRenderer.renderPreMatchUpdate(payload));
+        this.render(this.payloadRenderer.renderLobbyUpdate(payload));
     }
 
     @Override

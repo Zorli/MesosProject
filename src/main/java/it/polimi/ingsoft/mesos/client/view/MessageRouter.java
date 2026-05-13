@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.util.Objects;
 
@@ -27,7 +27,7 @@ public class MessageRouter {
 
         switch (message.type) {
             case ERROR -> clientView.showError((ErrorPayload) message.payload);
-            case PRE_MATCH_UPDATE -> clientView.showPreMatchUpdate((PreMatchUpdatePayload) message.payload);
+            case LOBBY_UPDATE -> clientView.showLobbyUpdate((LobbyUpdatePayload) message.payload);
             case LOBBY_LIST -> clientView.showLobbyList((LobbyListPayload) message.payload);
             case GAME_UPDATE -> {
                 GamePayload payload = (GamePayload) message.payload;

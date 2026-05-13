@@ -1,4 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
 
-public interface ClientPayload {
+import java.io.Serializable;
+
+public interface ClientPayload extends Serializable {
 }

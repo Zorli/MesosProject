@@ -7,9 +7,9 @@ import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrat
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.GameClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.LobbyClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.PreLobbyClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.GameClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.LobbyClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.PreLobbyClientPayload;
 
 public class MessageRouter {
     private final ServerSessionRegistry registry;

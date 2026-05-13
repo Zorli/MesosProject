@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.model;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
+import it.polimi.ingsoft.mesos.server.controller.LobbyPayloadMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -13,14 +13,14 @@ public class ServerModel {
 //    private final LobbyRegistry lobbyRegistry;
     // Serve per leggere i nickname e controllare se un utente è già in una fase avanzata
     private final ServerSessionRegistry sessions;
-    private final PreMatchPayloadMapper payloadMapper;
+    private final LobbyPayloadMapper payloadMapper;
 
     // Mappa globale dei Listener (Livello 1 - Tutte le VirtualView connesse)
     private final Map<String, Listener> globalListeners = new ConcurrentHashMap<>();
 
     public ServerModel(ServerSessionRegistry sessions) {
         this.sessions = sessions;
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.payloadMapper = new LobbyPayloadMapper();
     }
 
 
