@@ -74,6 +74,57 @@ Per serializzare e deserializzare i messaggi in TCP viene usata GSON, che inferi
 se abbastanza semplice, come serializzare e deserializzare, in questo modo è sufficiente dichiarare i payload come classi con i campi,
 e GSON si occupa di tutto il resto, inoltre è possibile usare i payload anche in RMI, in questo modo si mantiene coerenza tra i due protocolli.
 
+#### Come viene usata GSON
+GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
+Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo, non oggetti Java.
+
+Quando il client invia un comando, `ServerProxyTCP` crea un `ClientMessage`, composto da:
+- `type`: indica il tipo di messaggio, ad esempio `AUTHENTICATE`
+- `payload`: contiene i dati necessari per quel messaggio, ad esempio il nickname
+
+Un messaggio client -> server serializzato in JSON ha quindi questa forma:
+```json
+{
+  "type": "AUTHENTICATE",
+  "payload": {
+    "nickname": "ada"
+  }
+}
+```
+
+La serializzazione avviene con:
+```java
+GSON.toJson(message)
+```
+
+La deserializzazione avviene con:
+```java
+GSON.fromJson(json, ClasseDaCreare.class)
+```
+
+Nei punti in cui il codice deve prima capire il tipo del messaggio, il JSON viene letto come `JsonObject`.
+Questo permette di leggere prima il campo `type` e poi scegliere la classe corretta del payload:
+```java
+JsonObject message = GSON.fromJson(line, JsonObject.class);
+String type = message.get("type").getAsString();
+JsonObject payload = message.getAsJsonObject("payload");
+```
+
+Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`ServerMessage` è generico.
+GSON può serializzarlo facilmente, ma quando deve deserializzarlo deve sapere quale classe concreta usare.
+Per questo il codice legge prima il `type` e poi associa quel tipo alla classe di payload corretta.
+
+Nei test sul TCP si usa lo stesso ragionamento: si legge la riga JSON scritta sulla socket,
+la si converte in `JsonObject` e si verificano i campi osservabili:
+```java
+JsonObject message = GSON.fromJson(line, JsonObject.class);
+
+assertEquals("AUTHENTICATE", message.get("type").getAsString());
+
+JsonObject payload = message.getAsJsonObject("payload");
+assertEquals("ada", payload.get("nickname").getAsString());
+```
+
 Per RMI invece la situazione è più semplice, poiche il remote method invocation si occupa di tutto il meccanismo di comunicazione, 
 è sufficiente implementare le interfacce e registrare gli stub, inoltre RMI gestisce in automatico la serializzazione degli oggetti, 
 quindi non è necessario gestire i dettagli di basso livello.
