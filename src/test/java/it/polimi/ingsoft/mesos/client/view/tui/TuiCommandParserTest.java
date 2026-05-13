@@ -29,6 +29,16 @@ class TuiCommandParserTest {
         assertCommand("create 3", TuiCommandType.CREATE_LOBBY, "3");
         assertCommand("join 5", TuiCommandType.JOIN_LOBBY, "5");
         assertCommand("exit", TuiCommandType.QUIT, null);
+        assertCommand("h", TuiCommandType.HELP, null);
+        assertCommand("ll", TuiCommandType.LIST_LOBBIES, null);
+        assertCommand("cl 4",TuiCommandType.CREATE_LOBBY, "4");
+        assertCommand("jl 3",TuiCommandType.JOIN_LOBBY, "3");
+        assertCommand("ql",TuiCommandType.QUIT_LOBBY, null);
+        assertCommand("sl", TuiCommandType.START_LOBBY, null);
+        assertCommand("mt A1", TuiCommandType.MOVE_TOTEM, "A1");
+        assertCommand("cc 11", TuiCommandType.CHOOSE_CARD, "11");
+        assertCommand("ed 12", TuiCommandType.EXTRA_DRAW, "12");
+        assertCommand("q", TuiCommandType.QUIT, null);
     }
 
     @Test
