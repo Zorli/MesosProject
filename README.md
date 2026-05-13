@@ -7,7 +7,7 @@ feature aggiuntive:
 - supporto per multi-partita in parallelo sullo stesso server
 - persistenza in caso di crash del server, ovvero i client che erano in partita possono riprendere
 dall'ultimo stato del gioco prima del crash
-- Resilienza alle disconessioni da parte dei client
+- Resilienza alle disconnessioni da parte dei client
 
 ## Architettura del progetto
 In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
@@ -15,7 +15,7 @@ sottosezioni verranno spiegati in dettaglio i particolari implementativi e i pat
 
 Il design pattern principale del progetto è quello del[Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
 MVC in cui la view si trova su una altra macchina rispetto al controller e il model, come si può vedere nella seguente immagine:
-![img.png](img.png)
+![project-architecture.png](assets/project-architecture.png)
 
 L'idea è quindi quella di applicare il pattern classico nascondendo però la presenza della rete
 ai blocchi core del pattern.
@@ -28,20 +28,20 @@ https://www.geeksforgeeks.org/system-design/mvc-design-pattern/
 ### Protocollo di comunicazione
 Come da specifica di progetto, supportiamo connessioni sia con il protocollo TCP che con 
 il protocollo RMI. Per riuscire a mantenere coerenza tra questi due protocolli è stato necessario fissare
-in modo chiaro i contratti che devono essere offerti dalla rete per poter comunicare tra il client ed il server.
+in modo chiaro i contratti che devono essere offerti dalla rete per poter comunicare tra il client e il server.
 In particolare sono stati fissati i seguenti contratti:
 - Servizi che il client espone al server per ricevere messaggi server -> client: Interfaccia `VirtualServer`
 - Servizi che il server espone al client per ricevere comandi client -> server: Interfaccia `VirtualView`
 - Messaggi che vengono scambiati via rete tramite questi servizi di rete
 
-I nomi delle interfacce possono essere fuorvianti poichè sullo stesso blocco logico
+I nomi delle interfacce possono essere fuorvianti poiché sullo stesso blocco logico
 convivono MVC distribuito e Remote Proxy Pattern:
 - Nel MVC distribuito la `VirtualView` è la rappresentazione lato server della view remota del client.
   In questo modo il server può aggiornare una view senza sapere se dietro ci sia TCP, RMI o una view locale.
 - Sempre in questa ottica, il `VirtualServer` è il punto di ingresso lato client per i messaggi provenienti dal server.
   Non è il proxy usato dal client per chiamare il server, ma il contratto che permette al server di notificare il client.
 - Il `ServerProxy`, invece, è il vero proxy remoto lato client: viene usato dalla UI per inviare comandi al server
-  come se il server fosse un oggetto locale. Non ha un equivalente simmetrico lato server perchè quel ruolo
+  come se il server fosse un oggetto locale. Non ha un equivalente simmetrico lato server perché quel ruolo
   è già coperto dalla `VirtualView` e il server non necessita di chiamare servizi applicativi del client,
   oltre alle sole notifiche verso la view.
 
@@ -60,7 +60,7 @@ per poter richiedere lo stub.
 #### Differenze tra TCP e RMI
 Il protocollo TCP è un protocollo di comunicazione a basso livello, in cui i messaggi vengono scambiati come stringhe 
 tramite json, è quindi è necessario avere delle classi helper per serializzare e deserializzare i messaggi, inoltre è necessario
-conoscere a priori il payload che si sta gestendo, nella sezione successiva verrano infatti spiegati i payload che rappresentano
+conoscere a priori il payload che si sta gestendo, nella sezione successiva verranno infatti spiegati i payload che rappresentano
 il contratto del contenuto informativo condiviso fra i due protocolli scambiato via rete.
 
 In particolare per TCP è necessario gestire i socket, canali di streaming di dati in formato di stringa, 
@@ -73,6 +73,57 @@ perchè la scrittura viene fatta direttamente quando c'è un messaggio da inviar
 Per serializzare e deserializzare i messaggi in TCP viene usata GSON, che inferisce dalla dichiarazione della classe, 
 se abbastanza semplice, come serializzare e deserializzare, in questo modo è sufficiente dichiarare i payload come classi con i campi,
 e GSON si occupa di tutto il resto, inoltre è possibile usare i payload anche in RMI, in questo modo si mantiene coerenza tra i due protocolli.
+
+#### Come viene usata GSON
+GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
+Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo, non oggetti Java.
+
+Quando il client invia un comando, `ServerProxyTCP` crea un `ClientMessage`, composto da:
+- `type`: indica il tipo di messaggio, ad esempio `AUTHENTICATE`
+- `payload`: contiene i dati necessari per quel messaggio, ad esempio il nickname
+
+Un messaggio client -> server serializzato in JSON ha quindi questa forma:
+```json
+{
+  "type": "AUTHENTICATE",
+  "payload": {
+    "nickname": "ada"
+  }
+}
+```
+
+La serializzazione avviene con:
+```java
+GSON.toJson(message)
+```
+
+La deserializzazione avviene con:
+```java
+GSON.fromJson(json, ClasseDaCreare.class)
+```
+
+Nei punti in cui il codice deve prima capire il tipo del messaggio, il JSON viene letto come `JsonObject`.
+Questo permette di leggere prima il campo `type` e poi scegliere la classe corretta del payload:
+```java
+JsonObject message = GSON.fromJson(line, JsonObject.class);
+String type = message.get("type").getAsString();
+JsonObject payload = message.getAsJsonObject("payload");
+```
+
+Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`ServerMessage` è generico.
+GSON può serializzarlo facilmente, ma quando deve deserializzarlo deve sapere quale classe concreta usare.
+Per questo il codice legge prima il `type` e poi associa quel tipo alla classe di payload corretta.
+
+Nei test sul TCP si usa lo stesso ragionamento: si legge la riga JSON scritta sulla socket,
+la si converte in `JsonObject` e si verificano i campi osservabili:
+```java
+JsonObject message = GSON.fromJson(line, JsonObject.class);
+
+assertEquals("AUTHENTICATE", message.get("type").getAsString());
+
+JsonObject payload = message.getAsJsonObject("payload");
+assertEquals("ada", payload.get("nickname").getAsString());
+```
 
 Per RMI invece la situazione è più semplice, poiche il remote method invocation si occupa di tutto il meccanismo di comunicazione, 
 è sufficiente implementare le interfacce e registrare gli stub, inoltre RMI gestisce in automatico la serializzazione degli oggetti, 
@@ -101,7 +152,7 @@ dal client al server ed è composto da un `ClientMessageType` e da un payload. I
 implementano invece l'interfaccia `ClientPayload`, che rappresenta il contratto di base per i dati inviati
 dal client al server.
 
-`ClientPayload` viene poi specializzato dalle sottointerfacce relative alle varie fasi di comunicazione:
+`ClientPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
 `PreLobbyClientPayload`, `LobbyClientPayload`, `GameClientPayload` e `ConnectionClientPayload`.
 
 Fra i payload che implementano `PreLobbyClientPayload` abbiamo:
@@ -127,7 +178,7 @@ tra messaggio e payload: `ServerMessage` rappresenta il messaggio inviato dal se
 da un `ServerMessageType` e da un payload. I payload veri e propri implementano l'interfaccia `ServerPayload`,
 che rappresenta il contratto di base per i dati inviati dal server al client.
 
-`ServerPayload` viene poi specializzato dalle sottointerfacce relative alle varie fasi di comunicazione:
+`ServerPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
 `PreLobbyServerPayload`, `LobbyServerPayload`, `GameServerPayload` ed `ErrorServerPayload`.
 
 Fra i payload che implementano `PreLobbyServerPayload` abbiamo:
@@ -149,78 +200,55 @@ Alcuni payload, come `LobbySummaryPayload`, `BoardPayload`, `PlayerPayload`, `Ca
 non sono messaggi principali inviati direttamente,
 ma payload di supporto contenuti dentro payload più grandi.
 
-Il wrapper `ClientMessage`/`ServerMessage` serve soprattutto nel caso TCP, perchè il messaggio arriva come stringa JSON e
+Il wrapper `ClientMessage`/`ServerMessage` serve soprattutto nel caso TCP, perché il messaggio arriva come stringa JSON e
 GSON non può sapere da solo quale classe concreta usare per deserializzare il payload generico.
 Per questo nel wrapper viene sempre inserito anche il `type`: prima si legge il type del messaggio,
 poi in base a quel type si deserializza il payload nella relativa classe concreta.
 In RMI invece la serializzazione degli oggetti viene gestita direttamente RMI.
 
-
-
-
 ### Architettura del Client
-    // Nota su architettura del client
-    // La UI può essere TUI o GUI
-    // La rete può essere TCP o RMI
-    // Per rendere intercambiabili queste scelte servono contratti chiari e comuni per evitare macello:
-    //
-    // - ClientView:
-    //   contratto implementato dalla UI.
-    //   Espone i metodi che la rete usa per mostrare errori, lobby e stato partita.
-    //
-    // - ServerProxy:
-    //   contratto usato dal controller UI per inviare comandi al server.
-    //   Ha implementazioni TCP e RMI: ServerProxyTCP e ServerProxyRMI.
-    //
-    // - VirtualServer:
-    //   contratto usato dalla rete per consegnare al client i messaggi ricevuti dal server.
-    //   In TCP legge i messaggi dalla socket tramite VirtualServerTCP.
-    //   In RMI riceve callback remote tramite VirtualServerRMI.
-    //   Non decide lui quale metodo della view chiamare, ma passa un ServerMessage al MessageRouter.
-    //
-    // - MessageRouter:
-    //   classe che sta tra VirtualServer e ClientView.
-    //   Guarda il type del ServerMessage e decide quale metodo chiamare sulla view.
-    //   Cosi VirtualServer resta solo  rete, e la logica di instradamento sta in un posto solo.
-    //
-    // Quindi in generale il flusso da avere in testa è questo:
-    // controller UI -> ServerProxy -> server
-    // server -> VirtualServer -> MessageRouter -> ClientView
+Ricordiamo che il client deve poter scegliere sia la tipologia di user interface (che può essere di tipo
+testuale o grafica) sia la tipologia di protocollo di rete (che può essere TCP o RMI). 
+Il punto di avvio del client è la classe `LaunchClient` che si occupa di leggere da riga di comando
+prima la scelta della UI e poi la scelta del protocollo di rete, in base a queste scelte istanzia i blocchi necessari 
+per poter avviare il client. In particolare a gestire la user interface è un oggetto controller.
+Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view. 
+Il modo in cui vengono mostrate le informazioni dipende dalla 
+UI scelta. Di seguito una immagine della architettura del client, che renderà più chiaro il discorso:
+![client_architecture.png](assets/client-architecture.png)
+
+I blocchi principali dell'architettura client sono:
+- `ClientView`: è l'interfaccia che rappresenta i metodi per modificare la view del client
+- `ServerProxy`: è l'interfaccia che rappresenta il proxy per comunicare con il server
+- `VirtualServer`: è l'interfaccia che rappresenta il punto di ingresso per i messaggi provenienti dal server
+- `MessageRouter`: è la classe che si occupa di instradare i messaggi ricevuti dal server alla view, in base al type del messaggio
+Chiaramente non sono tutti gli oggetti che vengono creati, ma sono i principali oggetti per capire come
+è stato strutturato il client.
+
+Queste interfacce e classi esistono principalmente per rendere facilmente interscambiabili a livello di logica
+il servizio di rete e il servizio di UI. In particolare andando nel dettaglio, il significato delle interfacce è il seguente:
+- Lato User Interface indipendentemente che sia testuale o grafica, deve sapere come poter 
+comunicare con il server su richiesta dell'utente, indipendentemente che poi il messaggio viaggi 
+via TCP o RMI. Per questo è stato creato il contratto `ServerProxy`, che espone i metodi che il client può usare per mandare messaggi
+via rete al server.
+- Lato rete il server deve sapere come recapitare i messaggi al client, indipendentemente che ci sia TCP o RMI come protocollo,
+esiste quindi il contratto `VirtualServer`, che espone i metodi che il server può usare per notificare il client, indipendentemente da come questi messaggi arrivano.
+- Lato `VirtualServer`, una volta ricevuto il messaggio bisogna sapere quale metodo chiamare sulla view per poterlo
+mostrare all'utente. Poiché ogni messaggio necessita di essere mostrato e gestito in una certa maniera, la logica di scelta del metodo è stata
+centralizzata in `MessageRouter`, che in base al tipo di payload sceglie quale metodo del contratto `ClientView` chiamare.
+Usato sia da TCP che da RMI.
+- Lato `messageRouter` deve poter sapere come chiamare il servizio di update della view per mostrare un dato pacchetto,
+indipendentemente dal tipo concreto di UI che si trova dall'altra parte. Per questo motivo sono stati fissati i servizi per poter mostrare
+al client un dato messaggio nell'interfaccia `ClientView`. 
+
+Le implementazioni concrete seguono direttamente queste astrazioni:
+- `ServerProxyTCP` e `ServerProxyRMI` implementano `ServerProxy`, quindi espongono alla UI gli stessi metodi per comunicare con il server, cambiando solo il protocollo usato.
+- `VirtualServerTCP` e `VirtualServerRMI` rappresentano i due modi in cui il client riceve messaggi dal server. Entrambi ricevono un `ServerMessage` e lo passano al `MessageRouter`.
+- `TuiController` e `GUIController` implementano `ClientView`, quindi il `MessageRouter` può aggiornare la view senza sapere se l'utente sta usando TUI o GUI.
+
+Quindi riassumendo il flusso dei messaggi è il seguente:
+- In uscita: controller UI -> ServerProxy -> server
+- In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ### Architettura del Server
-
-
 #### Session Registry 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Usage

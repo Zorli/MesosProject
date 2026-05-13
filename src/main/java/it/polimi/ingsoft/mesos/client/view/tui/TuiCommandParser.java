@@ -43,7 +43,10 @@ final class TuiCommandParser {
             throw new IllegalArgumentException("Usage: " + type.usage());
         }
 
-        String argument = hasArgument ? parts[1] : null;
+        String argument = null;
+        if (hasArgument) {
+            argument = parts[1];
+        }
 
         if (type.integerArgument()) {
             try {
@@ -83,6 +86,7 @@ final class TuiCommandParser {
      * @throws IllegalArgumentException if the keyword is not a known command or alias
      */
     private static TuiCommandType parseType(String keyword) {
+        String s = keyword.toLowerCase();
         return switch (keyword) {
             case "help", "h" -> TuiCommandType.HELP;
             case "auth", "a" -> TuiCommandType.AUTH;

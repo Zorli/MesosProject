@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.CreateLobbyPayload;
@@ -21,19 +22,47 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import java.io.IOException;
 import java.rmi.RemoteException;
 
-// RMI implementation of the client -> server channel.
-// The UI controllers use only the ServerProxy contract, without knowing if the network is TCP or RMI.
-// This class owns the RMI server stub: every outbound client message, including PONG replies,
-// must pass through here.
+/**
+ * RMI implementation of the {@link ServerProxy} contract.
+ * <p>
+ * This class is the client-side remote proxy used by the user interface to send commands to the server.
+ * The UI talks to the {@link ServerProxy} interface, so it does not need to know whether the concrete
+ * connection is implemented with TCP or RMI.
+ * <p>
+ * In the RMI implementation, outgoing user commands are sent by calling methods on the remote
+ * {@link RmiServerService} stub returned by the connection service. Incoming server messages travel in the
+ * opposite direction through {@link VirtualServerRMI}, which is passed to the server as the client callback.
+ * <p>
+ * This class owns the outbound direction and the connection state. If a remote call fails, the proxy marks
+ * itself as disconnected and reports a local connection error to the client view through the callback receiver.
+ */
 public class ServerProxyRMI implements ServerProxy {
     private RmiServerService serverStub;
     private final VirtualServerRMI callbackReceiver;
     private boolean connected;
 
+    /**
+     * Opens an RMI connection to the server and exports the client callback used for incoming messages.
+     *
+     * @param connectionService remote service used to create the client session
+     * @param clientView        view contract used to show server updates and local connection errors
+     * @throws RemoteException if the callback cannot be exported or the server cannot create the session
+     */
     public ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView) throws RemoteException {
         this(connectionService, clientView, true);
     }
 
+    /**
+     * Creates the proxy with explicit control over callback export.
+     * <p>
+     * This constructor is package-private because tests can use it to avoid exporting a real RMI object while
+     * still exercising the same client-side proxy logic.
+     *
+     * @param connectionService remote service used to create the client session
+     * @param clientView        view contract used to show server updates and local connection errors
+     * @param exportCallback    {@code true} to export the callback for real RMI usage, {@code false} for tests
+     * @throws RemoteException if the callback cannot be exported or the server cannot create the session
+     */
     ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView, boolean exportCallback) throws RemoteException {
         this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback);
         this.serverStub = connectionService.connect(this.callbackReceiver);
@@ -41,118 +70,166 @@ public class ServerProxyRMI implements ServerProxy {
         this.connected = true;
     }
 
+    /**
+     * Returns whether this proxy currently considers the RMI session usable for outgoing messages.
+     *
+     * @return {@code true} if the proxy has an active server stub, {@code false} after a close or remote failure
+     */
     @Override
     public boolean isConnected() {
         return this.connected;
     }
 
+    /**
+     * Sends one already-built client payload to the remote server.
+     * <p>
+     * This is the low-level sending primitive used by all public command methods except {@link #sendPong()},
+     * because PONG replies use a dedicated remote method on {@link RmiServerService}.
+     *
+     * @param payload application-level payload to send to the server
+     */
+    private void send(ClientPayload payload) {
+        if (!this.ensureConnected()) {
+            return;
+        }
+
+        try {
+            this.serverStub.sendMessage(payload);
+        } catch (RemoteException e) {
+            this.handleDisconnection(e);
+        }
+    }
+
+    /**
+     * Sends the nickname chosen by the user to authenticate the client on the server.
+     *
+     * @param nickname nickname chosen by the user
+     */
     @Override
     public void authenticate(String nickname) {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new AuthenticationPayload(nickname));
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        AuthenticationPayload payload = new AuthenticationPayload(nickname);
+        this.send(payload);
     }
 
+    /**
+     * Requests the list of lobbies currently available on the server.
+     */
     @Override
     public void listLobbies() {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new ListLobbiesPayload());
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
-
+        ListLobbiesPayload payload = new ListLobbiesPayload();
+        this.send(payload);
     }
 
+    /**
+     * Requests the creation of a new lobby with the selected capacity.
+     *
+     * @param chosenCapacity number of players expected in the new lobby
+     */
     @Override
-    public void createLobby(int chosenCapacity){
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new CreateLobbyPayload(chosenCapacity));
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+    public void createLobby(int chosenCapacity) {
+        CreateLobbyPayload payload = new CreateLobbyPayload(chosenCapacity);
+        this.send(payload);
     }
 
+    /**
+     * Requests to join an existing lobby.
+     *
+     * @param lobbyId identifier of the lobby to join
+     */
     @Override
     public void joinLobby(int lobbyId) {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new JoinLobbyPayload(lobbyId));
-
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        JoinLobbyPayload payload = new JoinLobbyPayload(lobbyId);
+        this.send(payload);
     }
 
+    /**
+     * Requests to leave the current lobby.
+     */
     @Override
     public void exitLobby() {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new ExitLobbyPayload());
-
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        ExitLobbyPayload payload = new ExitLobbyPayload();
+        this.send(payload);
     }
 
+    /**
+     * Requests to start the current lobby.
+     */
     @Override
     public void startLobby() {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new StartLobbyPayload());
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        StartLobbyPayload payload = new StartLobbyPayload();
+        this.send(payload);
     }
 
+    /**
+     * Sends the tile selected by the user for the totem movement.
+     *
+     * @param tile identifier of the destination tile
+     */
     @Override
     public void moveTotem(String tile) {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new MoveTotemPayload(tile));
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        MoveTotemPayload payload = new MoveTotemPayload(tile);
+        this.send(payload);
     }
 
+    /**
+     * Sends the card selected by the user during the normal card choice phase.
+     *
+     * @param cardId identifier of the selected card
+     */
     @Override
     public void chooseCard(int cardId) {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new ChooseCardPayload(cardId));
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        ChooseCardPayload payload = new ChooseCardPayload(cardId);
+        this.send(payload);
     }
 
+    /**
+     * Sends the card selected by the user during the extra draw phase.
+     *
+     * @param cardId identifier of the selected card
+     */
     @Override
     public void extraDraw(int cardId) {
-        if (!this.ensureConnected()) return;
-        try {
-            this.serverStub.sendMessage(new ExtraDrawPayload(cardId));
-        } catch (RemoteException e) {
-            this.handleDisconnection(e);
-        }
+        ExtraDrawPayload payload = new ExtraDrawPayload(cardId);
+        this.send(payload);
     }
 
+    /**
+     * Sends a PONG message to the server.
+     * <p>
+     * This method is called by {@link VirtualServerRMI} when a PING message is received from the server.
+     * It is part of the RMI connection keep-alive flow, not a command entered directly by the user.
+     */
     public void sendPong() {
-        if (!this.ensureConnected()) return;
+        if (!this.ensureConnected()) {
+            return;
+        }
+
         try {
-            this.serverStub.pong(new PongPayload());
+            PongPayload payload = new PongPayload();
+            this.serverStub.pong(payload);
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
     }
 
+    /**
+     * Marks the proxy as disconnected after a failed remote call and reports the failure locally.
+     *
+     * @param e remote failure raised by the RMI server stub
+     */
     private void handleDisconnection(RemoteException e) {
         this.connected = false;
         this.notifyLocalError("CONNECTION_CLOSED", e.getMessage());
     }
 
+    /**
+     * Closes the RMI session owned by this proxy.
+     * <p>
+     * The remote session is closed first when a server stub exists. The local callback receiver is closed in
+     * the {@code finally} block so that local callback resources are released even if the remote close fails.
+     *
+     * @throws IOException if the remote session or the local callback receiver cannot be closed
+     */
     @Override
     public void close() throws IOException {
         this.connected = false;
@@ -166,10 +243,28 @@ public class ServerProxyRMI implements ServerProxy {
         }
     }
 
+    /**
+     * Sends a local connection error to the client view through the same callback receiver used for server messages.
+     * <p>
+     * These errors are generated by the client networking layer itself, not received from the server.
+     *
+     * @param code    machine-readable error code
+     * @param message human-readable error message
+     */
     private void notifyLocalError(String code, String message) {
-        this.callbackReceiver.handleMessage(new ServerMessage(ServerMessageType.ERROR, new ErrorPayload(code, message)));
+        ErrorPayload payload = new ErrorPayload(code, message);
+        ServerMessage serverMessage = new ServerMessage(ServerMessageType.ERROR, payload);
+        this.callbackReceiver.handleMessage(serverMessage);
     }
 
+    /**
+     * Checks whether a command can still be sent.
+     * <p>
+     * If the proxy is already disconnected, this method reports a local connection error and tells the caller
+     * to stop before touching the remote server stub.
+     *
+     * @return {@code true} if a command can be sent, {@code false} if the proxy is disconnected
+     */
     private boolean ensureConnected() {
         if (this.connected) {
             return true;

@@ -5,75 +5,147 @@ import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ServerProxyTCPTest {
     private static final Gson GSON = new Gson();
 
     @Test
-    void outboundCommandsAreSerializedAsClientMessages() throws Exception {
-        RecordingClientView clientView = new RecordingClientView();
-        BlockingSocket socket = new BlockingSocket();
-        ServerProxyTCP proxy = new ServerProxyTCP(socket, clientView);
+    void authenticateWritesJsonMessage() throws Exception {
+        try (TcpHarness harness = new TcpHarness()) {
+            harness.proxy.authenticate("ada");
 
-        proxy.authenticate("Alice");
-        proxy.createLobby(2);
-        proxy.sendPong();
-        proxy.close();
+            JsonObject message = harness.readClientMessage();
+            JsonObject payload = message.getAsJsonObject("payload");
 
-        String[] lines = socket.sentText().strip().split("\\R");
-        assertEquals("AUTHENTICATE", messageType(lines[0]));
-        assertEquals("Alice", messagePayload(lines[0]).get("nickname").getAsString());
-        assertEquals("CREATE_LOBBY", messageType(lines[1]));
-        assertEquals(2, messagePayload(lines[1]).get("chosenCapacity").getAsInt());
-        assertEquals("PONG", messageType(lines[2]));
+            assertEquals("AUTHENTICATE", message.get("type").getAsString());
+            assertEquals("ada", payload.get("nickname").getAsString());
+        }
     }
 
     @Test
-    void sendOnClosedSocketNotifiesClientView() throws Exception {
+    void createLobbyWritesJsonMessage() throws Exception {
+        try (TcpHarness harness = new TcpHarness()) {
+            harness.proxy.createLobby(4);
+
+            JsonObject message = harness.readClientMessage();
+            JsonObject payload = message.getAsJsonObject("payload");
+
+
+            assertEquals("CREATE_LOBBY", message.get("type").getAsString());
+            assertEquals(4, payload.get("chosenCapacity").getAsInt());
+        }
+    }
+    @Test
+    void createLobbyListWritesJsonMessage() throws Exception {
+        try (TcpHarness harness = new TcpHarness()) {
+
+            harness.proxy.listLobbies();
+
+            JsonObject message = harness.readClientMessage();
+            JsonObject payload = message.getAsJsonObject("payload");
+
+            assertEquals("LIST_LOBBIES", message.get("type").getAsString());
+        }
+    }
+
+    @Test
+    void createJoinLobbyWritesJsonMessage() throws Exception {
+        try (TcpHarness harness = new TcpHarness()) {
+
+            harness.proxy.joinLobby(7);
+
+            JsonObject message = harness.readClientMessage();
+            JsonObject payload = message.getAsJsonObject("payload");
+
+
+            assertEquals("JOIN_LOBBY", message.get("type").getAsString());
+            assertEquals(7, payload.get("lobbyId").getAsInt());
+        }
+    }
+
+    @Test
+    void closedSocketReportsConnectionClosed() throws Exception {
         RecordingClientView clientView = new RecordingClientView();
-        BlockingSocket socket = new BlockingSocket();
+        NotConnectedSocket socket = new NotConnectedSocket();
+
         ServerProxyTCP proxy = new ServerProxyTCP(socket, clientView);
 
-        proxy.close();
-        proxy.listLobbies();
+        proxy.authenticate("ada");
 
         assertEquals("CONNECTION_CLOSED", clientView.lastError.code);
         assertEquals("Client is not connected", clientView.lastError.message);
-        assertFalse(proxy.isConnected());
+
+        proxy.closeConnection();
     }
 
-    private static String messageType(String serializedMessage) {
-        return GSON.fromJson(serializedMessage, JsonObject.class)
-                .get("type")
-                .getAsString();
+    @Test
+    void closeClosesSocket() throws Exception {
+        try (TcpHarness harness = new TcpHarness()) {
+            harness.proxy.close();
+
+
+            assertTrue(harness.clientSocketIsClosed());
+        }
     }
 
-    private static JsonObject messagePayload(String serializedMessage) {
-        return GSON.fromJson(serializedMessage, JsonObject.class)
-                .getAsJsonObject("payload");
+    private static final class TcpHarness implements AutoCloseable {
+        private final ServerSocket serverSocket;
+        private final RecordingClientView clientView;
+        private final ServerProxyTCP proxy;
+        private final Socket serverSideSocket;
+        private final BufferedReader reader;
+
+        private TcpHarness() throws Exception {
+            this.serverSocket = new ServerSocket(0);
+            this.clientView = new RecordingClientView();
+            this.proxy = new ServerProxyTCP("localhost", this.serverSocket.getLocalPort(), this.clientView);
+            this.serverSideSocket = this.serverSocket.accept();
+            this.reader = new BufferedReader(new InputStreamReader(
+                    this.serverSideSocket.getInputStream(),
+                    StandardCharsets.UTF_8
+            ));
+        }
+
+        private JsonObject readClientMessage() throws Exception {
+            String line = this.reader.readLine();
+            return GSON.fromJson(line, JsonObject.class);
+        }
+
+        private boolean clientSocketIsClosed() {
+            return !this.proxy.isConnected();
+        }
+
+        @Override
+        public void close() throws Exception {
+            this.proxy.closeConnection();
+            this.serverSideSocket.close();
+            this.serverSocket.close();
+        }
     }
 
-    private static final class BlockingSocket extends Socket {
-        private final BlockingInputStream inputStream = new BlockingInputStream();
+    private static final class NotConnectedSocket extends Socket {
         private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        private final BlockingInputStream inputStream = new BlockingInputStream();
         private boolean closed;
 
         @Override
         public boolean isConnected() {
-            return true;
+            return false;
         }
 
         @Override
@@ -82,13 +154,13 @@ class ServerProxyTCPTest {
         }
 
         @Override
-        public InputStream getInputStream() {
-            return this.inputStream;
+        public OutputStream getOutputStream() {
+            return this.outputStream;
         }
 
         @Override
-        public OutputStream getOutputStream() {
-            return this.outputStream;
+        public java.io.InputStream getInputStream() {
+            return this.inputStream;
         }
 
         @Override
@@ -96,26 +168,23 @@ class ServerProxyTCPTest {
             this.closed = true;
             this.inputStream.closeInput();
         }
-
-        private String sentText() {
-            return this.outputStream.toString(StandardCharsets.UTF_8);
-        }
     }
 
-    private static final class BlockingInputStream extends InputStream {
+    private static final class BlockingInputStream extends java.io.InputStream {
         private boolean closed;
 
         @Override
-        public synchronized int read() throws IOException {
+        public synchronized int read() throws java.io.IOException {
             while (!this.closed) {
                 try {
                     this.wait();
                 } catch (InterruptedException exception) {
                     Thread.currentThread().interrupt();
-                    throw new IOException("Interrupted", exception);
+                    throw new java.io.IOException("Interrupted", exception);
                 }
             }
-            throw new IOException("Socket closed");
+
+            throw new java.io.IOException("Socket closed");
         }
 
         private synchronized void closeInput() {

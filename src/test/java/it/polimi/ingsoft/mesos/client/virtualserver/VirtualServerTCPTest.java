@@ -1,61 +1,216 @@
-package it.polimi.ingsoft.mesos.client.serverproxy;
+package it.polimi.ingsoft.mesos.client.virtualserver;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import com.google.gson.Gson;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VirtualServerTCPTest {
     private static final Gson GSON = new Gson();
 
     @Test
-    void serverClosedConnectionNotifiesClientAndClosesProxy() throws Exception {
-        RecordingClientView clientView = new RecordingClientView();
-        TestSocket socket = new TestSocket(new ByteArrayInputStream(new byte[0]));
-        ServerProxyTCP proxy = new ServerProxyTCP(socket, clientView);
+    void errorMessageIsRoutedToClientView() throws Exception {
+        try (ServerProxyHarness harness = new ServerProxyHarness()) {
+            String serverMessage = """
+              {"type":"ERROR","payload":{"code":"SERVER_ERROR","message":"no"}}
+              """;
 
-        proxy.waitForVirtualServer();
+            RecordingClientView clientView = new RecordingClientView();
+            ScriptedSocket socket = new ScriptedSocket(serverMessage);
 
-        assertEquals("CONNECTION_CLOSED", clientView.lastError.code);
-        assertEquals("Connection closed by server", clientView.lastError.message);
-        assertTrue(socket.closed);
+            VirtualServerTCP virtualServer = new VirtualServerTCP(
+                    socket,
+                    clientView,
+                    harness.proxy
+            );
+
+            virtualServer.requestCloseByClient();
+
+            virtualServer.run();
+
+            assertEquals("SERVER_ERROR", clientView.lastError.code);
+            assertEquals("no", clientView.lastError.message);
+        }
     }
 
     @Test
-    void clientCloseDoesNotRenderConnectionClosedError() throws Exception {
-        RecordingClientView clientView = new RecordingClientView();
-        CloseAwareInputStream inputStream = new CloseAwareInputStream();
-        TestSocket socket = new TestSocket(inputStream);
-        ServerProxyTCP proxy = new ServerProxyTCP(socket, clientView);
+    void lobbyListMessageIsRoutedToClientView() throws Exception {
+        try (ServerProxyHarness harness = new ServerProxyHarness()) {
+            String serverMessage = """
+                    {"type":"LOBBY_LIST","payload":{"lobbies":[{"lobbyId":7,"hostNickname":"ada","currentPlayers":1,"maxPlayers":4,"status":"WAITING"}]}}
+                    """;
 
-        proxy.close();
-        proxy.waitForVirtualServer();
+            RecordingClientView clientView = new RecordingClientView();
+            ScriptedSocket socket = new ScriptedSocket(serverMessage);
 
-        assertNull(clientView.lastError);
-        assertTrue(socket.closed);
+            VirtualServerTCP virtualServer = new VirtualServerTCP(
+                    socket,
+                    clientView,
+                    harness.proxy
+            );
+
+            virtualServer.requestCloseByClient();
+
+            virtualServer.run();
+
+            assertEquals(1, clientView.lastLobbyList.lobbies.size());
+            assertEquals(7, clientView.lastLobbyList.lobbies.get(0).lobbyId);
+            assertEquals("ada", clientView.lastLobbyList.lobbies.get(0).hostNickname);
+            assertNull(clientView.lastError);
+        }
     }
 
-    private static final class TestSocket extends Socket {
-        private final InputStream inputStream;
-        private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        private boolean closed;
+    @Test
+    void pingSendsPongWithoutRoutingToView() throws Exception {
+        try (ServerProxyHarness harness = new ServerProxyHarness()) {
+            String serverMessage = """
+                    {"type":"PING","payload":{}}
+                    """;
 
-        private TestSocket(InputStream inputStream) {
-            this.inputStream = inputStream;
+            RecordingClientView clientView = new RecordingClientView();
+            ScriptedSocket socket = new ScriptedSocket(serverMessage);
+
+            VirtualServerTCP virtualServer = new VirtualServerTCP(
+                    socket,
+                    clientView,
+                    harness.proxy
+            );
+
+            virtualServer.requestCloseByClient();
+
+            virtualServer.run();
+
+            JsonObject clientMessage = harness.readClientMessage();
+
+            assertEquals("PONG", clientMessage.get("type").getAsString());
+            assertNull(clientView.lastError);
+            assertNull(clientView.lastLobbyList);
+            assertNull(clientView.lastLobbyUpdate);
+            assertNull(clientView.lastGameUpdate);
+            assertNull(clientView.lastFinalGameResult);
+        }
+    }
+
+    @Test
+    void invalidJsonReportsInvalidServerMessage() throws Exception {
+        try (ServerProxyHarness harness = new ServerProxyHarness()) {
+            String serverMessage = "not-json\n";
+
+            RecordingClientView clientView = new RecordingClientView();
+            ScriptedSocket socket = new ScriptedSocket(serverMessage);
+
+            VirtualServerTCP virtualServer = new VirtualServerTCP(
+                    socket,
+                    clientView,
+                    harness.proxy
+            );
+
+            virtualServer.requestCloseByClient();
+
+            virtualServer.run();
+
+            assertEquals("INVALID_SERVER_MESSAGE", clientView.lastError.code);
+            assertEquals("not-json", clientView.lastError.message);
+        }
+    }
+
+    @Test
+    void serverEofReportsConnectionClosed() throws Exception {
+        try (ServerProxyHarness harness = new ServerProxyHarness()) {
+            RecordingClientView clientView = new RecordingClientView();
+            ScriptedSocket socket = new ScriptedSocket("");
+
+            VirtualServerTCP virtualServer = new VirtualServerTCP(
+                    socket,
+                    clientView,
+                    harness.proxy
+            );
+
+            virtualServer.run();
+
+            assertEquals("CONNECTION_CLOSED", clientView.lastError.code);
+            assertEquals("Connection closed by server", clientView.lastError.message);
+        }
+    }
+
+    @Test
+    void clientRequestedCloseDoesNotReportConnectionClosed() throws Exception {
+        try (ServerProxyHarness harness = new ServerProxyHarness()) {
+            RecordingClientView clientView = new RecordingClientView();
+            ScriptedSocket socket = new ScriptedSocket("");
+
+            VirtualServerTCP virtualServer = new VirtualServerTCP(
+                    socket,
+                    clientView,
+                    harness.proxy
+            );
+
+            virtualServer.requestCloseByClient();
+
+            virtualServer.run();
+
+            assertNull(clientView.lastError);
+        }
+    }
+
+    private static final class ServerProxyHarness implements AutoCloseable {
+        private final ServerSocket serverSocket;
+        private final Socket serverSideSocket;
+        private final BufferedReader serverReader;
+        private final ServerProxyTCP proxy;
+
+        private ServerProxyHarness() throws Exception {
+            this.serverSocket = new ServerSocket(0);
+            this.proxy = new ServerProxyTCP(
+                    "localhost",
+                    this.serverSocket.getLocalPort(),
+                    new RecordingClientView()
+            );
+            this.serverSideSocket = this.serverSocket.accept();
+            this.serverReader = new BufferedReader(new InputStreamReader(
+                    this.serverSideSocket.getInputStream(),
+                    StandardCharsets.UTF_8
+            ));
+        }
+
+        private JsonObject readClientMessage() throws Exception {
+            String line = this.serverReader.readLine();
+            return GSON.fromJson(line, JsonObject.class);
+        }
+
+        @Override
+        public void close() throws Exception {
+            this.proxy.closeConnection();
+            this.serverSideSocket.close();
+            this.serverSocket.close();
+        }
+    }
+
+    private static final class ScriptedSocket extends Socket {
+        private final ByteArrayInputStream inputStream;
+        private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        private ScriptedSocket(String serverInput) {
+            byte[] bytes = serverInput.getBytes(StandardCharsets.UTF_8);
+            this.inputStream = new ByteArrayInputStream(bytes);
         }
 
         @Override
@@ -72,45 +227,14 @@ class VirtualServerTCPTest {
         public OutputStream getOutputStream() {
             return this.outputStream;
         }
-
-        @Override
-        public synchronized void close() {
-            this.closed = true;
-            if (this.inputStream instanceof CloseAwareInputStream closeAwareInputStream) {
-                closeAwareInputStream.closeInput();
-            }
-        }
-
-        @Override
-        public boolean isClosed() {
-            return this.closed;
-        }
-    }
-
-    private static final class CloseAwareInputStream extends InputStream {
-        private boolean closed;
-
-        @Override
-        public synchronized int read() throws IOException {
-            while (!this.closed) {
-                try {
-                    this.wait();
-                } catch (InterruptedException exception) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("Interrupted", exception);
-                }
-            }
-            throw new IOException("Socket closed");
-        }
-
-        private synchronized void closeInput() {
-            this.closed = true;
-            this.notifyAll();
-        }
     }
 
     private static final class RecordingClientView implements ClientView {
         private ErrorPayload lastError;
+        private LobbyUpdatePayload lastLobbyUpdate;
+        private LobbyListPayload lastLobbyList;
+        private GamePayload lastGameUpdate;
+        private GamePayload lastFinalGameResult;
 
         @Override
         public void showError(ErrorPayload payload) {
@@ -119,14 +243,22 @@ class VirtualServerTCPTest {
 
         @Override
         public void showLobbyUpdate(LobbyUpdatePayload payload) {
+            this.lastLobbyUpdate = payload;
         }
 
         @Override
         public void showLobbyList(LobbyListPayload payload) {
+            this.lastLobbyList = payload;
         }
 
         @Override
         public void showGameUpdate(GamePayload payload) {
+            this.lastGameUpdate = payload;
+        }
+
+        @Override
+        public void showFinalGameResult(GamePayload payload) {
+            this.lastFinalGameResult = payload;
         }
     }
 }

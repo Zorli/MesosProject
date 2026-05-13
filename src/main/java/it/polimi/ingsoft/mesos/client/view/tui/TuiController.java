@@ -14,20 +14,51 @@ import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.Scanner;
 
+/**
+ * Text user interface controller for the client application.
+ *
+ * <p>This class has two architectural roles:
+ * <ul>
+ *     <li>it reads user commands from a {@link Scanner}, parses them with
+ *     {@link TuiCommandParser}, and forwards them to the attached {@link ServerProxy};</li>
+ *     <li>it implements {@link ClientView}, so the networking layer can call it when
+ *     the server sends updates that must be printed on the terminal.</li>
+ * </ul>
+ *
+ * <p>The TUI normally collaborates with two threads. The main client thread runs
+ * {@link #start()} and reads user input. A networking thread may call the
+ * {@link ClientView} methods when server messages arrive. With TCP, that second
+ * thread is the {@code VirtualServerTCP} reader thread. With RMI, it is an RMI
+ * callback thread.
+ *
+ * <p>For this reason, the methods that print output are synchronized: command
+ * output and server updates must not write to the terminal at the same time.
+ */
 public class TuiController implements ClientView {
     private final Scanner scanner;
     private final PrintStream out;
     private final TuiCommandParser commandParser;
     private final TuiPayloadRenderer payloadRenderer;
     private GamePayload lastGamePayload;
-    private LobbyListPayload lastLobbyListPayload;
     private String localNickname;
     private ServerProxy serverProxy;
 
+    /**
+     * Creates a TUI connected to the real standard input and standard output.
+     */
     public TuiController() {
         this(new Scanner(System.in), System.out);
     }
 
+    /**
+     * Creates a TUI using explicit input and output streams.
+     *
+     * <p>This constructor is mainly useful in tests, where the input can be a
+     * scripted {@link Scanner} and the output can be captured in memory.
+     *
+     * @param scanner source of user command lines
+     * @param out destination used to print TUI output
+     */
     public TuiController(Scanner scanner, PrintStream out) {
         this.scanner = Objects.requireNonNull(scanner, "scanner cannot be null");
         this.out = Objects.requireNonNull(out, "out cannot be null");
@@ -35,23 +66,30 @@ public class TuiController implements ClientView {
         this.payloadRenderer = new TuiPayloadRenderer();
     }
 
+    /**
+     * Attaches the network-side proxy used to send user commands to the server.
+     *
+     * <p>The proxy must be attached before {@link #start()} is called.
+     *
+     * @param serverProxy proxy connected to the remote server
+     */
     public void attachServerProxy(ServerProxy serverProxy) {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
-    /*
-    Analisi dei thread che stanno girando nel caso del tuicontroller con le due tech di rete:
-
-    Caso TCP.
-    1. Main thread su cui gira tuicontroller
-    2. Thread su cui gira virtualserver con loop di lettura messaggi da server
-
-    Caso RMI:
-    1. Thread del controller
-    2. Thread RMI
-
-    Abbiamo sempre quindi due soli thread, è quindi molto importante che i metodi per plottare a schermo siano thread-safe
-
+    /**
+     * Starts the blocking input loop of the text user interface.
+     *
+     * <p>The method prints the initial message, then reads one line at a time.
+     * Blank lines only redraw the prompt. Non-blank lines are parsed and
+     * dispatched to the server proxy. The loop stops when the user enters
+     * {@code quit}, when a connection error happens, or when the scanner reaches
+     * end of input.
+     *
+     * <p>If input ends without an explicit {@code quit}, the controller still
+     * closes the attached server proxy.
+     *
+     * @throws IllegalStateException if no server proxy was attached before start
      */
     public void start() {
         if (this.serverProxy == null) {
@@ -73,7 +111,6 @@ public class TuiController implements ClientView {
             }
         }
 
-        //In ogni caso faccio close
         this.closeServerProxy();
     }
 
@@ -84,10 +121,7 @@ public class TuiController implements ClientView {
         } catch (IllegalArgumentException exception) {
             this.showError(new ErrorPayload("CLIENT_COMMAND_ERROR", exception.getMessage()));
             return false;
-        } catch (IOException exception) {
-            this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
-            return true;
-        } catch (UncheckedIOException exception) {
+        } catch (IOException | UncheckedIOException exception) {
             this.showError(new ErrorPayload("CONNECTION_CLOSED", exception.getMessage()));
             return true;
         } catch (RuntimeException exception) {
@@ -150,12 +184,28 @@ public class TuiController implements ClientView {
 
 
 
-    //Metodi per plottare
+    /**
+     * Prints a server or client error.
+     *
+     * <p>If a game state was already received, the renderer prints it again after
+     * the error so the player does not lose the current board context.
+     *
+     * @param payload error data to show
+     */
     @Override
     public synchronized void showError(ErrorPayload payload) {
         this.render(this.payloadRenderer.renderError(payload, this.lastGamePayload, this.localNickname));
     }
 
+    /**
+     * Prints a lobby update received from the server.
+     *
+     * <p>When authentication succeeds, this method stores the local nickname.
+     * Later game rendering uses that nickname to show which player is using this
+     * client.
+     *
+     * @param payload lobby update to show
+     */
     @Override
     public synchronized void showLobbyUpdate(LobbyUpdatePayload payload) {
         if (payload.event == LobbyEventType.AUTHENTICATED) {
@@ -164,17 +214,39 @@ public class TuiController implements ClientView {
         this.render(this.payloadRenderer.renderLobbyUpdate(payload));
     }
 
+    /**
+     * Prints the list of open lobbies received from the server.
+     *
+     * @param payload lobby list to show
+     */
     @Override
     public synchronized void showLobbyList(LobbyListPayload payload) {
         this.render(this.payloadRenderer.renderLobbyList(payload));
     }
 
+    /**
+     * Prints the current game state received from the server.
+     *
+     * <p>The payload is stored as the last known game state. If an error happens
+     * during the match, {@link #showError(ErrorPayload)} can render this state
+     * again after the error message.
+     *
+     * @param payload current game state to show
+     */
     @Override
     public synchronized void showGameUpdate(GamePayload payload) {
         this.lastGamePayload = payload;
         this.render(this.payloadRenderer.renderGame(payload, this.localNickname));
     }
 
+    /**
+     * Prints the final game result and clears the stored game state.
+     *
+     * <p>After the final result, the match is over, so errors should no longer
+     * reprint the old board.
+     *
+     * @param payload final game state to show
+     */
     @Override
     public synchronized void showFinalGameResult(GamePayload payload) {
         this.lastGamePayload = null;
