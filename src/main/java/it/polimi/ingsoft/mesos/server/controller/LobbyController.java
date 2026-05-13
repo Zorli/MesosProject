@@ -14,7 +14,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 
 import java.util.ArrayList;
@@ -28,7 +27,6 @@ public class LobbyController implements Runnable {
     private final Lobby lobby;
     private final ServerSessionRegistry sessions;
     private final GameFactory gameFactory;
-    private final RankingService rankingService;
     private final MatchPersistence matchPersistence;
     private final LobbyPlayerFactory lobbyPlayerFactory;
     private final GameOrchestrator restoredOrchestrator;
@@ -38,23 +36,20 @@ public class LobbyController implements Runnable {
     public LobbyController(
             Lobby lobby,
             ServerSessionRegistry sessions,
-            GameFactory gameFactory,
-            RankingService rankingService) {
+            GameFactory gameFactory) {
 
-        this(lobby, sessions, gameFactory, rankingService, MatchPersistence.disabled());
+        this(lobby, sessions, gameFactory, MatchPersistence.disabled());
     }
 
     public LobbyController(
             Lobby lobby,
             ServerSessionRegistry sessions,
             GameFactory gameFactory,
-            RankingService rankingService,
             MatchPersistence matchPersistence) {
 
         this.lobby = lobby;
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
-        this.rankingService = Objects.requireNonNull(rankingService, "rankingService cannot be null");
         this.matchPersistence = Objects.requireNonNull(matchPersistence, "matchPersistence cannot be null");
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
         this.restoredOrchestrator = null;
@@ -63,14 +58,12 @@ public class LobbyController implements Runnable {
     public LobbyController(
             Lobby lobby,
             ServerSessionRegistry sessions,
-            RankingService rankingService,
             MatchPersistence matchPersistence,
             GameOrchestrator restoredOrchestrator) {
 
         this.lobby = Objects.requireNonNull(lobby, "lobby cannot be null");
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = null;
-        this.rankingService = Objects.requireNonNull(rankingService, "rankingService cannot be null");
         this.matchPersistence = Objects.requireNonNull(matchPersistence, "matchPersistence cannot be null");
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
         this.restoredOrchestrator = Objects.requireNonNull(restoredOrchestrator, "restoredOrchestrator cannot be null");
@@ -187,7 +180,6 @@ public class LobbyController implements Runnable {
         GameOrchestrator orchestrator = new GameOrchestrator(
                 game,
                 this.lobby.getHostNickname(),
-                this.rankingService,
                 this.matchPersistence,
                 this.sessions
         );
