@@ -9,7 +9,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySumma
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,8 +32,8 @@ final class TuiPayloadRenderer {
         return builder.toString();
     }
 
-    String renderPreMatchUpdate(PreMatchUpdatePayload payload) {
-        StringBuilder builder = new StringBuilder("[SERVER][PRE-MATCH] ");
+    String renderLobbyUpdate(LobbyUpdatePayload payload) {
+        StringBuilder builder = new StringBuilder("[SERVER][LOBBY] ");
         builder.append(payload.event);
         if (payload.message != null && !payload.message.isBlank()) {
             builder.append(" | ").append(payload.message);

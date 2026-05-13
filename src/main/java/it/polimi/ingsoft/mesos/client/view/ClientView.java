@@ -4,17 +4,13 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
-
-/**
- * Network-facing contract used by the client message router to deliver server updates.
- *
- * <p>Concrete UI controllers implement this directly so the router can deliver typed payloads
- * without knowing whether the client is running in TUI or GUI mode.
- */
+//This interface should be used to define the contract of what should be displayed, today it's only text and it's implemented
+// by the TUI controller, sooner it will be implemneted by the GUicontroller and we should handle the graphic based on
+//the payload
 public interface ClientView {
     void showError(ErrorPayload payload);
 
-    void showPreMatchUpdate(PreMatchUpdatePayload payload);
+    void showLobbyUpdate(LobbyUpdatePayload payload);
 
     void showLobbyList(LobbyListPayload payload);
 

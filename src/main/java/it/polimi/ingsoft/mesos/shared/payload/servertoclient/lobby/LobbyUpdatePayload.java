@@ -1,11 +1,10 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby;
 
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyServerPayload;
 import java.io.Serializable;
 import java.util.List;
 
-public class PreMatchUpdatePayload implements Serializable, LobbyServerPayload {
-    public final PreMatchEventType event;
+public class LobbyUpdatePayload implements Serializable, LobbyServerPayload {
+    public final LobbyEventType event;
     public final String nickname;
     public final String message;
     public final Integer lobbyId;
@@ -13,8 +12,8 @@ public class PreMatchUpdatePayload implements Serializable, LobbyServerPayload {
     public final String hostNickname;
     public final Integer maxPlayers;
 
-    public PreMatchUpdatePayload(
-            PreMatchEventType event,
+    public LobbyUpdatePayload(
+            LobbyEventType event,
             String nickname,
             String message,
             Integer lobbyId,

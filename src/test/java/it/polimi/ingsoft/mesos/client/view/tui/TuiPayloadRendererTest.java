@@ -9,8 +9,8 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySumma
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TribePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
 import org.junit.jupiter.api.Test;
@@ -40,9 +40,9 @@ class TuiPayloadRendererTest {
     }
 
     @Test
-    void rendersPreMatchUpdate() {
-        String rendered = this.renderer.renderPreMatchUpdate(new PreMatchUpdatePayload(
-                PreMatchEventType.LOBBY_JOINED,
+    void rendersLobbyUpdate() {
+        String rendered = this.renderer.renderLobbyUpdate(new LobbyUpdatePayload(
+                LobbyEventType.LOBBY_JOINED,
                 "ada",
                 "Lobby joined successfully",
                 9,
@@ -52,7 +52,7 @@ class TuiPayloadRendererTest {
         ));
 
         assertEquals(
-                "[SERVER][PRE-MATCH] LOBBY_JOINED | Lobby joined successfully | lobby=9 | players=ada, bob",
+                "[SERVER][LOBBY] LOBBY_JOINED | Lobby joined successfully | lobby=9 | players=ada, bob",
                 rendered
         );
     }

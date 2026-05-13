@@ -1,70 +1,226 @@
-# Mesos Project
+# Mesos 
 Progetto prova finale per l'esame di Ingegneria del Software.
+Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java, in modo da poter
+giocare con altri player, ognuno dal proprio device, collegandosi a un server.
+È possibile giocare sia da interfaccia testuale che grafica. La versione qui implementata ha inoltre le seguenti
+feature aggiuntive:
+- supporto per multi-partita in parallelo sullo stesso server
+- persistenza in caso di crash del server, ovvero i client che erano in partita possono riprendere
+dall'ultimo stato del gioco prima del crash
+- Resilienza alle disconessioni da parte dei client
 
-## Workflow Git 
-In questo repository usiamo 3 tipi di branch:
+## Architettura del progetto
+In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
+sottosezioni verranno spiegati in dettaglio i particolari implementativi e i pattern applicati.
 
-- `main`: contiene la versione stabile.
-- `develop`: branch di integrazione, dove finiscono le feature completate.
-- `feat/<nome-feature>`: branch temporanei per sviluppo di una singola funzionalita (anche per bug-fix).
+Il design pattern principale del progetto è quello del[Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
+MVC in cui la view si trova su una altra macchina rispetto al controller e il model, come si può vedere nella seguente immagine:
+![img.png](img.png)
 
-Regole base:
-
-- Non si lavora direttamente su `main`.
-- Le feature vengono mergeate su `develop` tramite Merge Request.
-- `main` si aggiorna solo quando vogliamo rilasciare una versione stabile.
-
-## Flusso di lavoro 
-1. Aggiorna `develop` e crea una feature branch
-
-2. Sviluppa, fai commit piccoli e chiari, poi push
-
-3. Apri una Pull Request da `feature/nome-feature` verso `develop`.
-
-4. Dopo review e merge su `develop`
+L'idea è quindi quella di applicare il pattern classico nascondendo però la presenza della rete
+ai blocchi core del pattern.
+Resources:
+https://developer.mozilla.org/en-US/docs/Glossary/MVC
+https://www.geeksforgeeks.org/system-design/proxy-design-pattern/
+https://www.geeksforgeeks.org/system-design/mvc-design-pattern/
 
 
-## Documentazione tecnica (`docs/`)
-La cartella `docs/` e` dedicata ai design doc e alla documentazione delle decisioni tecniche.
+### Protocollo di comunicazione
+Come da specifica di progetto, supportiamo connessioni sia con il protocollo TCP che con 
+il protocollo RMI. Per riuscire a mantenere coerenza tra questi due protocolli è stato necessario fissare
+in modo chiaro i contratti che devono essere offerti dalla rete per poter comunicare tra il client ed il server.
+In particolare sono stati fissati i seguenti contratti:
+- Servizi che il client espone al server per ricevere messaggi server -> client: Interfaccia `VirtualServer`
+- Servizi che il server espone al client per ricevere comandi client -> server: Interfaccia `VirtualView`
+- Messaggi che vengono scambiati via rete tramite questi servizi di rete
 
-## Avvio PostgreSQL locale
-Per sviluppo locale il repository include un `docker-compose.yml` con PostgreSQL.
-Il database viene usato per ranking e storico risultati; il salvataggio dello stato match non e'
-gestito da PostgreSQL.
+I nomi delle interfacce possono essere fuorvianti poichè sullo stesso blocco logico
+convivono MVC distribuito e Remote Proxy Pattern:
+- Nel MVC distribuito la `VirtualView` è la rappresentazione lato server della view remota del client.
+  In questo modo il server può aggiornare una view senza sapere se dietro ci sia TCP, RMI o una view locale.
+- Sempre in questa ottica, il `VirtualServer` è il punto di ingresso lato client per i messaggi provenienti dal server.
+  Non è il proxy usato dal client per chiamare il server, ma il contratto che permette al server di notificare il client.
+- Il `ServerProxy`, invece, è il vero proxy remoto lato client: viene usato dalla UI per inviare comandi al server
+  come se il server fosse un oggetto locale. Non ha un equivalente simmetrico lato server perchè quel ruolo
+  è già coperto dalla `VirtualView` e il server non necessita di chiamare servizi applicativi del client,
+  oltre alle sole notifiche verso la view.
 
-1. Avvia il database:
-```bash
-docker compose up -d postgres
-```
+Il primo passo è stato quindi fissare i servizi che il server e il client devono offrire reciprocamente, 
+in modo da poter poi implementare questi servizi sia in TCP che in RMI. Per fissarli abbiamo 
+creato le relativi interfacce con i metodi, sorge pero un problema tecnico, ovvero che RMI
+negli stessi metodi di TCP deve dichiarare che lanciano RemoteException, mentre in TCP non è necessario. 
+Inoltre il funzionamento di RMI prescrive che le interfacce debanno essere shared tra client e server, 
+pertanto fisicamente abbiamo le interfacce di rete duplicate a livello fisico, ma a livello logico 
+rappresentano lo stesso contratto, il must è tenerle allineate, in particolare si ha che:
+- Interfaccia `VirtualServer` e `RmiClientService` sono lo stesso contratto logico
+- Interfaccia `VirtualView` e `RmiServerService` sono lo stesso contratto logico
+Per motivi tecnici RMI ha inoltre anche un altra interfaccia, quella del RMIConnectionService, necessario
+per poter richiedere lo stub.
 
-2. Configura le variabili ambiente del server. Puoi partire da `.env.server.example`.
+#### Differenze tra TCP e RMI
+Il protocollo TCP è un protocollo di comunicazione a basso livello, in cui i messaggi vengono scambiati come stringhe 
+tramite json, è quindi è necessario avere delle classi helper per serializzare e deserializzare i messaggi, inoltre è necessario
+conoscere a priori il payload che si sta gestendo, nella sezione successiva verrano infatti spiegati i payload che rappresentano
+il contratto del contenuto informativo condiviso fra i due protocolli scambiato via rete.
 
-Variabili supportate:
-- `MESOS_DB_URL`
-- `MESOS_DB_ADMIN_URL`
-- `MESOS_DB_USER`
-- `MESOS_DB_PASSWORD`
-- `MESOS_DB_MAX_BUSY_RETRIES`
-- `MESOS_NO_DB`
+In particolare per TCP è necessario gestire i socket, canali di streaming di dati in formato di stringa, 
+è quindi necessario avere un thread che esegua la continua lettura dei messaggi in arrivo sulla socket, essendo la read bloccante.
+Come vedremo nelle sezioni successive istanziamo sia sul client che sul server appositi thread per gestire questo fatto.
+La socket è full-duplex, quindi lettura e scrittura possono avvenire indipendentemente:
+il thread dedicato serve per restare in ascolto dei messaggi in arrivo, mentre in uscita non serve un thread dedicato,
+perchè la scrittura viene fatta direttamente quando c'è un messaggio da inviare.
 
-Default locali:
-- `jdbc:postgresql://localhost:5432/mesos`
-- admin DB `jdbc:postgresql://localhost:5432/postgres`
-- utente `postgres`
-- password `postgres`
+Per serializzare e deserializzare i messaggi in TCP viene usata GSON, che inferisce dalla dichiarazione della classe, 
+se abbastanza semplice, come serializzare e deserializzare, in questo modo è sufficiente dichiarare i payload come classi con i campi,
+e GSON si occupa di tutto il resto, inoltre è possibile usare i payload anche in RMI, in questo modo si mantiene coerenza tra i due protocolli.
 
-3. Avvia il server:
-```bash
-MESOS_DB_URL=jdbc:postgresql://localhost:5432/mesos \
-MESOS_DB_ADMIN_URL=jdbc:postgresql://localhost:5432/postgres \
-MESOS_DB_USER=postgres \
-MESOS_DB_PASSWORD=postgres \
-./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
-```
+Per RMI invece la situazione è più semplice, poiche il remote method invocation si occupa di tutto il meccanismo di comunicazione, 
+è sufficiente implementare le interfacce e registrare gli stub, inoltre RMI gestisce in automatico la serializzazione degli oggetti, 
+quindi non è necessario gestire i dettagli di basso livello.
+Non serve quindi un ciclo esplicito di lettura sulla socket, perchè la ricezione dei messaggi avviene tramite invocazione
+dei metodi remoti esposti dagli stub.
 
-Per avvio naive senza PostgreSQL:
-```bash
-MESOS_NO_DB=true ./mvnw -q -Dexec.mainClass=it.polimi.ingsoft.mesos.server.LaunchServer exec:java
-```
+#### Payload condivisi
+Come già detto per comunicare via rete è stato necessario fissare i contratti dei messaggi scambiati, in modo tale 
+da poter implementare sia TCP che RMI in modo coerente. In particolare si è cercato di mantenere i payload il più possibile 
+semplici e snelli in modo da ridurre la quantità di dati scambiati e riuscire ad avere la gestione semplice fornita da GSON.
 
-All'avvio il server crea il database se manca, inizializza lo schema ranking, verifica la connettivita' verso PostgreSQL e fallisce con un errore esplicito se il DB e' irraggiungibile o non healthy.
+Per comodità abbiamo suddiviso in maniera gerarchica i payload rispetto alla fase di gioco a cui fanno riferimento,
+ovvero:
+- pre-lobby: payload usati per la fase di pre-lobby
+- lobby: payload usati per la fase di lobby
+- in-game: payload usati per la fase di gioco
+
+Abbiamo inoltre la suddivisione rispetto al senso di comunicazione, ovvero:
+- client -> server: payload usati per i messaggi inviati dal client al server(package `clienttoserver`)
+- server -> client: payload usati per i messaggi inviati dal server al client(package `servertoclient`)
+
+Ora vediamo in dettaglio i payload che vengono usati dal client per comunicare con il server.
+Nel codice bisogna distinguere tra messaggio e payload: `ClientMessage` rappresenta il messaggio inviato
+dal client al server ed è composto da un `ClientMessageType` e da un payload. I payload veri e propri
+implementano invece l'interfaccia `ClientPayload`, che rappresenta il contratto di base per i dati inviati
+dal client al server.
+
+`ClientPayload` viene poi specializzato dalle sottointerfacce relative alle varie fasi di comunicazione:
+`PreLobbyClientPayload`, `LobbyClientPayload`, `GameClientPayload` e `ConnectionClientPayload`.
+
+Fra i payload che implementano `PreLobbyClientPayload` abbiamo:
+- `AuthenticationPayload`, che contiene il nickname scelto dal client
+- `CreateLobbyPayload`, che contiene la dimensione scelta per la lobby
+- `JoinLobbyPayload`, che contiene l'id della lobby a cui unirsi
+- `ListLobbiesPayload`, che non contiene campi e serve solo a richiedere la lista delle lobby
+
+Fra i payload che implementano `LobbyClientPayload` abbiamo:
+- `StartLobbyPayload`, usato per richiedere l'avvio della lobby
+- `ExitLobbyPayload`, usato per uscire dalla lobby
+
+Fra i payload che implementano `GameClientPayload` abbiamo:
+- `MoveTotemPayload`, che contiene la tile su cui spostare il totem
+- `ChooseCardPayload`, che contiene l'id della carta scelta
+- `ExtraDrawPayload`, che contiene l'id della carta scelta per la pescata extra
+
+Infine, fra i payload di connessione abbiamo `PongPayload`, che implementa `ConnectionClientPayload`
+e viene usato per rispondere al ping del server(spiegato in una sezione successiva)
+
+Per quanto riguarda invece i payload che vengono inviati dal server al client, anche qui bisogna distinguere
+tra messaggio e payload: `ServerMessage` rappresenta il messaggio inviato dal server al client ed è composto
+da un `ServerMessageType` e da un payload. I payload veri e propri implementano l'interfaccia `ServerPayload`,
+che rappresenta il contratto di base per i dati inviati dal server al client.
+
+`ServerPayload` viene poi specializzato dalle sottointerfacce relative alle varie fasi di comunicazione:
+`PreLobbyServerPayload`, `LobbyServerPayload`, `GameServerPayload` ed `ErrorServerPayload`.
+
+Fra i payload che implementano `PreLobbyServerPayload` abbiamo:
+- `LobbyListPayload`, che contiene la lista delle lobby disponibili tramite oggetti `LobbySummaryPayload`
+
+Fra i payload che implementano `LobbyServerPayload` abbiamo:
+- `LobbyUpdatePayload`, che rappresenta un aggiornamento della fase di lobby, ad esempio autenticazione,
+  creazione lobby, join, uscita o avvio della partita
+
+Fra i payload che implementano `GameServerPayload` abbiamo:
+- `GamePayload`, che rappresenta lo stato della partita inviato al client, contenente stato del gioco,
+  era corrente, ordine dei turni, stato del turno, giocatori e board
+
+Fra i payload di errore abbiamo:
+- `ErrorPayload`, che contiene codice e messaggio dell'errore
+
+Alcuni payload, come `LobbySummaryPayload`, `BoardPayload`, `PlayerPayload`, `CardPayload`,
+`OfferSpacePayload`, `StartingBlockPayload`, `TribePayload`, `TurnOrderPayload` e `TurnStatePayload`,
+non sono messaggi principali inviati direttamente,
+ma payload di supporto contenuti dentro payload più grandi.
+
+Il wrapper `ClientMessage`/`ServerMessage` serve soprattutto nel caso TCP, perchè il messaggio arriva come stringa JSON e
+GSON non può sapere da solo quale classe concreta usare per deserializzare il payload generico.
+Per questo nel wrapper viene sempre inserito anche il `type`: prima si legge il type del messaggio,
+poi in base a quel type si deserializza il payload nella relativa classe concreta.
+In RMI invece la serializzazione degli oggetti viene gestita direttamente RMI.
+
+
+
+
+### Architettura del Client
+    // Nota su architettura del client
+    // La UI può essere TUI o GUI
+    // La rete può essere TCP o RMI
+    // Per rendere intercambiabili queste scelte servono contratti chiari e comuni per evitare macello:
+    //
+    // - ClientView:
+    //   contratto implementato dalla UI.
+    //   Espone i metodi che la rete usa per mostrare errori, lobby e stato partita.
+    //
+    // - ServerProxy:
+    //   contratto usato dal controller UI per inviare comandi al server.
+    //   Ha implementazioni TCP e RMI: ServerProxyTCP e ServerProxyRMI.
+    //
+    // - VirtualServer:
+    //   contratto usato dalla rete per consegnare al client i messaggi ricevuti dal server.
+    //   In TCP legge i messaggi dalla socket tramite VirtualServerTCP.
+    //   In RMI riceve callback remote tramite VirtualServerRMI.
+    //   Non decide lui quale metodo della view chiamare, ma passa un ServerMessage al MessageRouter.
+    //
+    // - MessageRouter:
+    //   classe che sta tra VirtualServer e ClientView.
+    //   Guarda il type del ServerMessage e decide quale metodo chiamare sulla view.
+    //   Cosi VirtualServer resta solo  rete, e la logica di instradamento sta in un posto solo.
+    //
+    // Quindi in generale il flusso da avere in testa è questo:
+    // controller UI -> ServerProxy -> server
+    // server -> VirtualServer -> MessageRouter -> ClientView
+
+### Architettura del Server
+
+
+#### Session Registry 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Usage

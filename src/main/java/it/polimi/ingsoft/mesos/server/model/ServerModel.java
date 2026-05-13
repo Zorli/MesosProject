@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.model;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
+import it.polimi.ingsoft.mesos.server.controller.LobbyPayloadMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -13,14 +13,14 @@ public class ServerModel {
 //    private final LobbyRegistry lobbyRegistry;
     // Serve per leggere i nickname e controllare se un utente è già in una fase avanzata
     private final ServerSessionRegistry sessions;
-    private final PreMatchPayloadMapper payloadMapper;
+    private final LobbyPayloadMapper payloadMapper;
 
     // Mappa globale dei Listener (Livello 1 - Tutte le VirtualView connesse)
     private final Map<String, Listener> globalListeners = new ConcurrentHashMap<>();
 
     public ServerModel(ServerSessionRegistry sessions) {
         this.sessions = sessions;
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.payloadMapper = new LobbyPayloadMapper();
     }
 
 
@@ -93,10 +93,17 @@ public class ServerModel {
 
     public boolean joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
         try {
-            this.ensureSessionCanEnterLobby(sessionId);
-
-            if (this.sessions.getLobbyModel(lobbyId).isEmpty()) {
-                throw new IllegalArgumentException("La lobby richiesta non esiste.");
+            if (this.sessions.lobbyIdOf(sessionId) != null) {
+                throw new IllegalStateException("Already in a lobby.");
+            }
+            String nickname = this.requireNickname(sessionId);
+            Lobby lobby = this.sessions.getLobbyModel(lobbyId)
+                    .orElseThrow(() -> new IllegalArgumentException("La lobby richiesta non esiste."));
+            if (this.sessions.isPlayerInAnyLobby(nickname) && !lobby.hasPlayer(nickname)) {
+                throw new IllegalArgumentException("Your nickname is already in a lobby.");
+            }
+            if (!lobby.canBeJoinedBy(nickname)) {
+                throw new IllegalStateException("Cannot join lobby with status: " + lobby.getStatus());
             }
             return true;
         } catch (Exception e) {
@@ -114,7 +121,7 @@ public class ServerModel {
         }
         String nickname = this.requireNickname(sessionId);
         if (this.sessions.isPlayerInAnyLobby(nickname)) {
-            throw new IllegalStateException("you're nickname is alredy in a lobby.");
+            throw new IllegalStateException("Your nickname is already in a lobby.");
         }
     }
 

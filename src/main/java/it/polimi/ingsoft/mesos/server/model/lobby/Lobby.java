@@ -1,10 +1,9 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.controller.PreMatchPayloadMapper;
+import it.polimi.ingsoft.mesos.server.controller.LobbyPayloadMapper;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
-//import it.polimi.ingsoft.mesos.shared.payload.servertoclient.LobbyPayload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,12 +20,12 @@ public class Lobby {
     private final int id;
     private final int capacity;
     private final List<String> players;
+    private final List<String> resumableRoster;
     private String hostNickname;
     private LobbyStatus status;
-    private long stateVersion;
 
     private final transient List<Listener> listeners;
-    private final transient PreMatchPayloadMapper payloadMapper;
+    private final transient LobbyPayloadMapper payloadMapper;
 
     public Lobby(int id, String hostNickname, int capacity) {
         if (capacity < MIN_PLAYERS || capacity > MAX_PLAYERS) {
@@ -36,13 +35,41 @@ public class Lobby {
         this.id = id;
         this.capacity = capacity;
         this.players = new ArrayList<>();
+        this.resumableRoster = List.of();
         this.hostNickname = validateNickname(hostNickname);
         this.status = LobbyStatus.WAITING;
         this.players.add(this.hostNickname);
 
-        this.stateVersion = 0L;
         this.listeners = new ArrayList<>();
-        this.payloadMapper = new PreMatchPayloadMapper();
+        this.payloadMapper = new LobbyPayloadMapper();
+    }
+
+    public Lobby(int id, String hostNickname, List<String> players, LobbyStatus status) {
+        if (players == null || players.isEmpty()) {
+            throw new IllegalArgumentException("Players cannot be null or empty");
+        }
+        if (players.size() < MIN_PLAYERS || players.size() > MAX_PLAYERS) {
+            throw new IllegalArgumentException("Capacity must be between " + MIN_PLAYERS + " and " + MAX_PLAYERS);
+        }
+
+        this.id = id;
+        this.capacity = players.size();
+        this.players = new ArrayList<>();
+        this.resumableRoster = new ArrayList<>();
+        this.hostNickname = validateNickname(hostNickname);
+        for (String player : players) {
+            String validatedNickname = validateNickname(player);
+            if (!this.resumableRoster.contains(validatedNickname)) {
+                this.resumableRoster.add(validatedNickname);
+            }
+        }
+        if (!this.resumableRoster.contains(this.hostNickname)) {
+            throw new IllegalArgumentException("Restored lobby host must belong to players");
+        }
+        this.status = Objects.requireNonNull(status, "status cannot be null");
+
+        this.listeners = new ArrayList<>();
+        this.payloadMapper = new LobbyPayloadMapper();
     }
 
     // --- GESTIONE LISTENER (Identica a Game) ---
@@ -82,6 +109,13 @@ public class Lobby {
         }, null);
     }
 
+    public boolean rejoinResumablePlayer(String nickname, Listener requesterView) {
+        return this.executeLobbyAction(() -> {
+            this.rejoinResumablePlayerInternal(nickname);
+            this.addListener(requesterView);
+        }, requesterView);
+    }
+
     public void notifyActionError(Listener target) {
         if (target != null) {
             target.notifyUpdate(new ErrorPayload("PHASE_ERROR", "Action non permitted in this phase."));
@@ -113,7 +147,7 @@ public class Lobby {
         if (!this.isHost(nickname)) {
             throw new IllegalStateException("Only the lobby host can start the match");
         }
-        if (this.status != LobbyStatus.READY) {
+        if (this.status != LobbyStatus.READY && this.status != LobbyStatus.RESUMABLE) {
             throw new IllegalStateException("Cannot start lobby with status: " + this.status);
         }
         if (!this.canStart()) {
@@ -121,7 +155,6 @@ public class Lobby {
         }
 
         this.status = LobbyStatus.STARTED;
-        this.markStateChanged();
     }
 
     private void addPlayerInternal(String nickname) {
@@ -140,7 +173,20 @@ public class Lobby {
         if (this.canStart()) {
             this.status = LobbyStatus.READY;
         }
-        this.markStateChanged();
+    }
+
+    private void rejoinResumablePlayerInternal(String nickname) {
+        String validatedNickname = validateNickname(nickname);
+        if (this.status != LobbyStatus.RESUMABLE) {
+            throw new IllegalStateException("Cannot resume lobby with status: " + this.status);
+        }
+        if (!this.resumableRoster.contains(validatedNickname)) {
+            throw new IllegalStateException("User not allowed to resume this lobby: " + validatedNickname);
+        }
+        if (this.players.contains(validatedNickname)) {
+            throw new IllegalStateException("User already present in lobby: " + validatedNickname);
+        }
+        this.players.add(validatedNickname);
     }
 
     private void removePlayerInternal(String nickname) {
@@ -161,42 +207,22 @@ public class Lobby {
         } else if (!this.canStart() && this.status == LobbyStatus.READY) {
             this.status = LobbyStatus.WAITING;
         }
-        this.markStateChanged();
     }
 
-    // --- MOTORE CENTRALE DI ESECUZIONE E BROADCAST ---
+    // --- MOTORE CENTRALE DI ESECUZIONE ---
 
-    private void markStateChanged() {
-        this.stateVersion++;
-    }
-
-    /**
-     * Esegue l'azione, aggiorna la versione e fa Broadcast a tutti.
-     * Ritorna TRUE se l'azione ha avuto successo, FALSE se c'è stata un'eccezione,
-     * permettendo al Controller di aggiornare la FSM di conseguenza.
-     */
     private boolean executeLobbyAction(Runnable action, Listener errorUnicastTarget) {
-        long previousVersion = this.stateVersion;
         try {
             action.run();
-            if (this.stateVersion != previousVersion) {
-                // SUCCESSO: Broadcast sempre a tutti del nuovo stato (LobbyPayload)
-                //this.notifyListeners(this.buildPayload());
-            }
             return true;
         } catch (IllegalArgumentException | IllegalStateException exception) {
-
             ErrorPayload errorPayload = new ErrorPayload(
                     exception.getClass().getSimpleName(),
                     exception.getMessage()
             );
-
-            // GESTIONE DINAMICA DELL'ERRORE
             if (errorUnicastTarget != null) {
-                // Caso AddPlayer: Unicast al diretto interessato
                 errorUnicastTarget.notifyUpdate(errorPayload);
             } else {
-                // Caso StartMatch / RemovePlayer: Broadcast a tutta la lobby
                 this.notifyListeners(errorPayload);
             }
             return false;
@@ -210,19 +236,6 @@ public class Lobby {
         }
     }
 
-    /**
-     * Costruisce il payload totale della Lobby (esattamente come buildPayload() di Game).
-     */
-//    //dubbio se farlo cosi o meno
-//    public LobbyPayload buildPayload() {
-//        return new LobbyPayload(
-//                this.id,
-//                this.hostNickname,
-//                this.capacity,
-//                List.copyOf(this.players),
-//                this.status.name()
-//        );
-//    }
     public void clearListeners() {
         this.listeners.clear();
     }
@@ -241,6 +254,17 @@ public class Lobby {
     public int getChosenCapacity() { return this.capacity; }
     public LobbyStatus getStatus() { return this.status; }
     public boolean hasPlayer(String nickname) { return this.players.contains(validateNickname(nickname)); }
+    public boolean isExpectedResumePlayer(String nickname) { return this.resumableRoster.contains(validateNickname(nickname)); }
+    public boolean canBeJoinedBy(String nickname) {
+        String validatedNickname = validateNickname(nickname);
+        if (this.status == LobbyStatus.RESUMABLE) {
+            return this.resumableRoster.contains(validatedNickname) && !this.players.contains(validatedNickname);
+        }
+        return this.status != LobbyStatus.CLOSED
+                && this.status != LobbyStatus.STARTED
+                && !this.players.contains(validatedNickname)
+                && !this.isFull();
+    }
     public boolean isHost(String nickname) { return this.hostNickname != null && this.hostNickname.equals(nickname); }
     public boolean canStart() { return this.players.size() == this.capacity; }
     public boolean isFull() { return this.players.size() >= this.capacity; }

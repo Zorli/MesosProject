@@ -49,6 +49,11 @@ public final class ScriptedGameFactory implements GameFactory {
      */
     @Override
     public Game createGame(List<Player> players) {
+        return this.createGame(this.nextGameId.getAndIncrement(), players);
+    }
+
+    @Override
+    public Game createGame(int gameId, List<Player> players) {
         TribeDeck tribeDeck = TribeDeck.fromOrderedCards(this.instantiateCardsById(
                 ParserJson.parseTribeDeck(5).getCardsInOrder(),
                 this.tribeDeckCardIds
@@ -60,7 +65,7 @@ public final class ScriptedGameFactory implements GameFactory {
 
         Board board = new Board(tribeDeck, buildingDeck, players);
         return new Game(
-                this.nextGameId.getAndIncrement(),
+                gameId,
                 players,
                 new TurnState(),
                 new TurnOrderTrack(),

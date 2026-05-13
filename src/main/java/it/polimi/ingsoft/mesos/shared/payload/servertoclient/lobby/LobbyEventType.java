@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby;
 
-public enum PreMatchEventType {
+public enum LobbyEventType {
     AUTHENTICATED,
     LOBBY_CREATED,
     LOBBY_JOINED,

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,6 +53,15 @@ public class ServerSessionRegistry {
         Lobby lobby = new Lobby(lobbyId, hostNickname, capacity);
         this.lobbyModels.put(lobby.getId(), lobby);
         return lobby;
+    }
+
+    public synchronized void registerLobbyModel(Lobby lobby) {
+        Objects.requireNonNull(lobby, "lobby cannot be null");
+        if (this.lobbyModels.containsKey(lobby.getId())) {
+            throw new IllegalArgumentException("Lobby already registered: " + lobby.getId());
+        }
+        this.lobbyModels.put(lobby.getId(), lobby);
+        this.nextLobbyId.updateAndGet(current -> Math.max(current, lobby.getId() + 1));
     }
 
     public synchronized Optional<Lobby> getLobbyModel(int lobbyId) {
@@ -251,7 +261,7 @@ public class ServerSessionRegistry {
     public synchronized List<SessionSnapshot> sessionsInGame(int gameId) {
         List<SessionSnapshot> snapshots = new ArrayList<>();
         for (Map.Entry<String, SessionState> entry : this.sessionsById.entrySet()) {
-            if (entry.getValue().gameId != null && entry.getValue().gameId == gameId) {
+            if (Objects.equals(entry.getValue().gameId, gameId)) {
                 snapshots.add(this.toSnapshot(entry.getKey(), entry.getValue()));
             }
         }
@@ -261,7 +271,7 @@ public class ServerSessionRegistry {
     public synchronized List<SessionSnapshot> sessionsInLobby(int lobbyId) {
         List<SessionSnapshot> snapshots = new ArrayList<>();
         for (Map.Entry<String, SessionState> entry : this.sessionsById.entrySet()) {
-            if (entry.getValue().lobbyId != null && entry.getValue().lobbyId == lobbyId) {
+            if (Objects.equals(entry.getValue().lobbyId, lobbyId)) {
                 snapshots.add(this.toSnapshot(entry.getKey(), entry.getValue()));
             }
         }
