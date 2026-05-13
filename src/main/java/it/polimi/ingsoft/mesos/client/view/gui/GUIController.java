@@ -1149,6 +1149,10 @@ public class GUIController implements ClientView {
         this.exitLobbyButton.setDisable(!inLobby);
     }
 
+
+    //remember that this code will be runned both by the thread that is charge of displaying the UI
+    //(platform thread) and by the thread that is charge of receiving the server updates (server listener thread),
+    // so we need to make sure that any update to the UI is runned on the platform thread
     private void runOnFx(Runnable runnable) {
         if (Platform.isFxApplicationThread()) {
             runnable.run();
