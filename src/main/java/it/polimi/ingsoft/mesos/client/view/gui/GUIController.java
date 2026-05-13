@@ -11,8 +11,8 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnStatePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchEventType;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.PreMatchUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import javafx.animation.KeyFrame;
@@ -64,7 +64,7 @@ public class GUIController implements ClientView {
     private String nickname = "Guest";
     private GamePayload lastGamePayload;
     private LobbyListPayload lastLobbyListPayload;
-    private PreMatchUpdatePayload lastPreMatchUpdatePayload;
+    private LobbyUpdatePayload lastLobbyUpdatePayload;
     private PauseTransition authRedirectDelay;
     private Timeline lobbyRefreshTimer;
     private Integer currentLobbyId;
@@ -234,14 +234,14 @@ public class GUIController implements ClientView {
     }
 
     @Override
-    public void showPreMatchUpdate(PreMatchUpdatePayload payload) {
+    public void showLobbyUpdate(LobbyUpdatePayload payload) {
         this.runOnFx(() -> {
-            this.lastPreMatchUpdatePayload = payload;
+            this.lastLobbyUpdatePayload = payload;
             if (payload == null) {
                 return;
             }
-            String message = payload.message == null ? this.describePreMatchEvent(payload.event) : payload.message;
-            if (payload.event == PreMatchEventType.AUTHENTICATED) {
+            String message = payload.message == null ? this.describeLobbyEvent(payload.event) : payload.message;
+            if (payload.event == LobbyEventType.AUTHENTICATED) {
                 if (payload.nickname != null && !payload.nickname.isBlank()) {
                     this.nickname = payload.nickname;
                     this.sessionNicknameLabel.setText(this.nickname);
@@ -250,14 +250,14 @@ public class GUIController implements ClientView {
                 this.scheduleAuthenticatedRedirect();
                 return;
             }
-            if (payload.event != PreMatchEventType.LOBBY_LEFT || this.isCurrentUser(payload.nickname)) {
+            if (payload.event != LobbyEventType.LOBBY_LEFT || this.isCurrentUser(payload.nickname)) {
                 this.lobbyStatusLabel.setText(message);
             }
             this.renderCurrentLobby(payload);
             this.updateLobbyActions();
-            if (payload.event == PreMatchEventType.LOBBY_CREATED
-                    || payload.event == PreMatchEventType.LOBBY_JOINED
-                    || payload.event == PreMatchEventType.LOBBY_LEFT) {
+            if (payload.event == LobbyEventType.LOBBY_CREATED
+                    || payload.event == LobbyEventType.LOBBY_JOINED
+                    || payload.event == LobbyEventType.LOBBY_LEFT) {
                 this.showPage(this.lobbyPage);
                 if (this.currentLobbyId == null) {
                     this.requestLobbyList();
@@ -265,7 +265,7 @@ public class GUIController implements ClientView {
                     this.renderLobbyListUnavailable();
                 }
             }
-            if (payload.event == PreMatchEventType.LOBBY_STARTED) {
+            if (payload.event == LobbyEventType.LOBBY_STARTED) {
                 this.returnedToLobbyAfterMatch = false;
                 this.showPage(this.gamePage);
             }
@@ -299,7 +299,7 @@ public class GUIController implements ClientView {
                         .forEach(this.lobbyListContainer.getChildren()::add);
             }
 
-            if (this.lastPreMatchUpdatePayload != null
+            if (this.lastLobbyUpdatePayload != null
                     && this.currentLobbyId != null
                     && !lobbies.isEmpty()) {
                 lobbies.stream()
@@ -932,7 +932,7 @@ public class GUIController implements ClientView {
         return currentEra + 1;
     }
 
-    private String describePreMatchEvent(PreMatchEventType event) {
+    private String describeLobbyEvent(LobbyEventType event) {
         if (event == null) {
             return "Aggiornamento lobby ricevuto.";
         }
@@ -1035,11 +1035,11 @@ public class GUIController implements ClientView {
         }
     }
 
-    private void renderCurrentLobby(PreMatchUpdatePayload payload) {
+    private void renderCurrentLobby(LobbyUpdatePayload payload) {
         if (payload == null) {
             return;
         }
-        if (payload.event == PreMatchEventType.LOBBY_LEFT) {
+        if (payload.event == LobbyEventType.LOBBY_LEFT) {
             if (this.isCurrentUser(payload.nickname)) {
                 this.currentLobbyId = null;
                 this.currentLobbyHostNickname = null;
@@ -1051,19 +1051,19 @@ public class GUIController implements ClientView {
             }
             return;
         }
-        if (payload.event != PreMatchEventType.LOBBY_CREATED
-                && payload.event != PreMatchEventType.LOBBY_JOINED
-                && payload.event != PreMatchEventType.LOBBY_STARTED) {
+        if (payload.event != LobbyEventType.LOBBY_CREATED
+                && payload.event != LobbyEventType.LOBBY_JOINED
+                && payload.event != LobbyEventType.LOBBY_STARTED) {
             return;
         }
 
         this.renderCurrentLobbySnapshot(payload);
     }
 
-    private void renderCurrentLobbySnapshot(PreMatchUpdatePayload payload) {
+    private void renderCurrentLobbySnapshot(LobbyUpdatePayload payload) {
         this.currentLobbyId = payload.lobbyId;
         this.currentLobbyHostNickname = payload.hostNickname;
-        this.currentLobbyStatus = this.statusFromPreMatchUpdate(payload);
+        this.currentLobbyStatus = this.statusFromLobbyUpdate(payload);
         if (this.currentLobbyTitleLabel != null)
             this.currentLobbyTitleLabel.setText(
                     payload.lobbyId == null ? "Current lobby" : "Lobby #" + payload.lobbyId);
@@ -1079,10 +1079,10 @@ public class GUIController implements ClientView {
     }
 
     private void renderNoCurrentLobby() {
-        if (this.currentLobbyTitleLabel != null)   this.currentLobbyTitleLabel.setText("No lobby selected");
-        if (this.currentLobbyHostLabel != null)    this.currentLobbyHostLabel.setText("Host: -");
+        if (this.currentLobbyTitleLabel != null) this.currentLobbyTitleLabel.setText("No lobby selected");
+        if (this.currentLobbyHostLabel != null) this.currentLobbyHostLabel.setText("Host: -");
         if (this.currentLobbyPlayersLabel != null) this.currentLobbyPlayersLabel.setText("Players: -");
-        if (this.currentLobbyStateLabel != null)   this.currentLobbyStateLabel.setText("Waiting");
+        if (this.currentLobbyStateLabel != null) this.currentLobbyStateLabel.setText("Waiting");
     }
 
     private void resetAfterMatch() {
@@ -1094,7 +1094,7 @@ public class GUIController implements ClientView {
         this.currentLobbyId = null;
         this.currentLobbyHostNickname = null;
         this.currentLobbyStatus = "WAITING";
-        this.lastPreMatchUpdatePayload = null;
+        this.lastLobbyUpdatePayload = null;
         this.lastLobbyListPayload = null;
         this.returnedToLobbyAfterMatch = true;
         this.renderNoCurrentLobby();
@@ -1103,8 +1103,8 @@ public class GUIController implements ClientView {
         this.lobbyStatusLabel.setText("Match complete. Choose a new lobby or create one.");
     }
 
-    private String statusFromPreMatchUpdate(PreMatchUpdatePayload payload) {
-        if (payload.event == PreMatchEventType.LOBBY_STARTED) {
+    private String statusFromLobbyUpdate(LobbyUpdatePayload payload) {
+        if (payload.event == LobbyEventType.LOBBY_STARTED) {
             return "STARTING";
         }
         int currentPlayers = payload.players == null ? 0 : payload.players.size();
