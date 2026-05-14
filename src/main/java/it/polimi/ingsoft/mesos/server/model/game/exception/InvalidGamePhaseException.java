@@ -1,4 +1,6 @@
-package it.polimi.ingsoft.mesos.server.model.game;
+package it.polimi.ingsoft.mesos.server.model.game.exception;
+
+import it.polimi.ingsoft.mesos.server.model.game.enums.RoundPhase;
 
 /**
  * Signals that a requested action is not compatible with the current round or game phase.

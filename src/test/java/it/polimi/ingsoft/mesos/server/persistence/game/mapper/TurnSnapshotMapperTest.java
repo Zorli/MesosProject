@@ -3,7 +3,6 @@ package it.polimi.ingsoft.mesos.server.persistence.game.mapper;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
-import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

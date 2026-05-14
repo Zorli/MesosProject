@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.model.game;
+package it.polimi.ingsoft.mesos.server.model.game.exception;
 
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 

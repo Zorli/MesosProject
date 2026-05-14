@@ -43,13 +43,9 @@ public class DefaultGameFactory implements GameFactory {
         TribeDeck tribeDeck = deckTemplate.createTribeDeck(players.size());
         BuildingDeck buildingDeck = deckTemplate.createBuildingDeck();
         Board board = new Board(tribeDeck, buildingDeck, players);
-        PlayersTurnFSM playersTurnFSM = new PlayersTurnFSM();
-        TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
         return new Game(
                 gameId,
                 players,
-                playersTurnFSM,
-                turnOrderTrack,
                 board
         );
     }

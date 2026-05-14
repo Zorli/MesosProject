@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.model.game;
+package it.polimi.ingsoft.mesos.server.model.game.exception;
 
 import it.polimi.ingsoft.mesos.server.model.cards.Card;
 import it.polimi.ingsoft.mesos.server.model.player.Player;

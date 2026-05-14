@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.model.game;
+package it.polimi.ingsoft.mesos.server.model.game.exception;
 
 /**
  * Signals that the selected tile cannot be chosen because it is not available.
