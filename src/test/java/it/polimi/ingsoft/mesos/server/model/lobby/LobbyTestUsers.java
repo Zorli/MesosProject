@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.user.User;
+import it.polimi.ingsoft.mesos.server.model.server.User;
 
 /**
  * Small factory of lobby test users used to keep lobby-focused tests concise.

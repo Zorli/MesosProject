@@ -1,11 +1,12 @@
 package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.StartingBlock;
+import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.StartingTile;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -142,18 +143,6 @@ class StartingTileTest {
         unsupportedTile.setup(List.of(new Player("Solo", 2, 0, TotemColor.RED, null)));
 
         assertTrue(unsupportedTile.getStartingBlocks().isEmpty(), "Con un numero non supportato di giocatori non vanno creati blocchi");
-    }
-
-    @Test
-    void restoredConstructorAndGetter_CreateDefensiveCopies() {
-        ArrayList<StartingBlock> restoredBlocks = new ArrayList<>(startingTile.getStartingBlocks());
-        StartingTile restoredTile = new StartingTile(restoredBlocks);
-
-        restoredBlocks.clear();
-        List<StartingBlock> exposedBlocks = restoredTile.getStartingBlocks();
-        exposedBlocks.clear();
-
-        assertEquals(3, restoredTile.getStartingBlocks().size(), "Lo stato ripristinato non deve dipendere dalle liste esterne");
     }
 
     @Test

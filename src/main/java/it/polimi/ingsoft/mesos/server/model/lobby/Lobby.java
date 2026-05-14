@@ -1,8 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.controller.LobbyPayloadMapper;
-import it.polimi.ingsoft.mesos.server.model.Listener;
-import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyPayloadMapper;
+import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 
 import java.util.ArrayList;
@@ -39,34 +39,6 @@ public class Lobby {
         this.hostNickname = validateNickname(hostNickname);
         this.status = LobbyStatus.WAITING;
         this.players.add(this.hostNickname);
-
-        this.listeners = new ArrayList<>();
-        this.payloadMapper = new LobbyPayloadMapper();
-    }
-
-    public Lobby(int id, String hostNickname, List<String> players, LobbyStatus status) {
-        if (players == null || players.isEmpty()) {
-            throw new IllegalArgumentException("Players cannot be null or empty");
-        }
-        if (players.size() < MIN_PLAYERS || players.size() > MAX_PLAYERS) {
-            throw new IllegalArgumentException("Capacity must be between " + MIN_PLAYERS + " and " + MAX_PLAYERS);
-        }
-
-        this.id = id;
-        this.capacity = players.size();
-        this.players = new ArrayList<>();
-        this.resumableRoster = new ArrayList<>();
-        this.hostNickname = validateNickname(hostNickname);
-        for (String player : players) {
-            String validatedNickname = validateNickname(player);
-            if (!this.resumableRoster.contains(validatedNickname)) {
-                this.resumableRoster.add(validatedNickname);
-            }
-        }
-        if (!this.resumableRoster.contains(this.hostNickname)) {
-            throw new IllegalArgumentException("Restored lobby host must belong to players");
-        }
-        this.status = Objects.requireNonNull(status, "status cannot be null");
 
         this.listeners = new ArrayList<>();
         this.payloadMapper = new LobbyPayloadMapper();

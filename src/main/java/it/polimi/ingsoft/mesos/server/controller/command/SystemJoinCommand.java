@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
-import it.polimi.ingsoft.mesos.server.model.Listener;
+import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 
 import java.util.Objects;
 

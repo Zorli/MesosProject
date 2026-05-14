@@ -1,9 +1,11 @@
 package it.polimi.ingsoft.mesos.server.model.player;
 
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Builder;
-import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Builder;
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.player.Tribe;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
