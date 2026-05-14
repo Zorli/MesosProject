@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class ServerMessage implements Serializable {
-
     public final ServerMessageType type;
     public final Object payload;
 

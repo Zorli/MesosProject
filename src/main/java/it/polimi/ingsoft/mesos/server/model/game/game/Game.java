@@ -10,6 +10,7 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -51,11 +52,61 @@ public class Game {
     private final PlayerDraftState playerDraftState;
     private final List<Listener> listeners;
 
+    //This map is updated as soon as the ping pong discovers that a player is not longer connected
+    //the modification to this map has still to pass through the controller queue
+    private Map<Player,Boolean> connectedPlayers;
+
+    //In this map instead we have the player that are actively playing the next round
+    //It's needed because if a player shows up in the middle of a round we cannot insert it asap,
+    //but we need to wait untile another round starts
+    private Map<Player, Boolean> playingRoundPlayers;
+
+    //The logic is that in the round flow class i have a list of the player currently plaing that round, if
+    // a player disconnected but was subscribed to that round we have to check that is still online to complete it's turn othwerise we skip it
+    // when a round has finished and we see that a player is now connected and ready to play we can
+    //update the current playing players
+
+    //Scenario 1: all the players are connected but during a round a players diconnects, so someone update our list of
+    //connected players and we now have false on that player as soon as possible we remove that player from the turnflow
+    //and we go on with the normal order, when we have finished the round and before resetting things we can check if
+    //all the players that are signed as active are in the list of playing players, if so we re insert that player in the list
+
+    //I receive the command to update the active players list, but now immagine that he was the last player of something
+    //we have to call advance passive phase to see for example if he was the last of draw and we can skip him.
+
+    //What happens to the totem of that player when it's not playing? We can assume that he has still to receive the malus
+    //So maybe in the next round for default it's in the last starting tile and still gaining malus
+
+
+    /*
+    Flow del gioco:
+    1) Uno alla volta in ordine piazzano i totem
+    2) Si sceglie l'ordine di risoluzione di pescaggio , inteso come l'ordine con il quale
+    i player pescheranno le carte(fornito dall board in ordine da sinistra a destra), nel caso particolare
+    di qualcuno sulla casella A viene risolto subito e riportato allo starting tile
+    3) Uno alla volta seguendo tale ordine si effettua il pescaggio con le quantità indicate e dopo aver pesacto
+    viene riportato allo starting tile e vengon applicati i bonugs/malus
+     */
+
+
+
     private final GameActionExecutor actionExecutor;
     private final TotemPlacementHandler totemPlacementHandler;
     private final StandardCardDraftHandler standardCardDraftHandler;
     private final ExtraCardDraftHandler extraCardDraftHandler;
     private final PassiveRoundPhaseHandler passiveRoundPhaseHandler;
+
+
+    public void updateActivePlayerMap(Player player, boolean isActive) {
+        //Potrebbe succedere in qualsiasi momento, il player potrebbe avere già fatto move totem
+        //Potrebbe essere sullo starting tile
+        //Potrebbe avere fatto move totme ma dover ancora fare pescaggio delle carte
+        //Cosa succede in questi casi?
+        this.playingRoundPlayers.put(player, isActive);
+        if(!isActive){
+            this.roundFlow.handleDisconnectedPlayer(player);
+        }
+    }
 
     /**
      * Creates a new match in setup status.
@@ -78,6 +129,8 @@ public class Game {
         this.status = GameStatus.SETUP;
         this.stateVersion = 0L;
         this.listeners = new ArrayList<>();
+
+
 
         this.actionExecutor = new GameActionExecutor(this);
         this.totemPlacementHandler = new TotemPlacementHandler(this, this.board, this.roundFlow, this.playerDraftState);

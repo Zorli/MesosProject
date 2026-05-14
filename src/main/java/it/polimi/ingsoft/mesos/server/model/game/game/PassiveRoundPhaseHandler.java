@@ -108,6 +108,8 @@ public class PassiveRoundPhaseHandler {
         this.board.resolveLowerEvents();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
         this.game.markStateChanged();
+        //Here I should insert the update to the list of the current playing players for real
+
     }
 
     /**

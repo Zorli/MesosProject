@@ -192,4 +192,33 @@ public class RoundFlow {
             throw new IllegalStateException("Current phase order has not been initialized");
         }
     }
+
+    public void handleDisconnectedPlayer(Player player) {
+        //1)Cosa succede se la disconessione arriva durante movetotem?
+
+        //Se il player ha già messo il suo totem, ma adesso è il turno di un altro player allora chiedo alla board
+        // di rimuovere il totem di quel player e di metterlo sull'ultima casella dello starting tile, cosi rimane li fermo per n turni e riceve malus
+        //e per l'intero turno non verra più considerato per il pescaggio etc
+
+        //Se è il turno di questo player allora lo salto e muovo in su di una posizione tutti i player sulla starting tile
+        // e lo metto per ultimo e faccio in modo che non venga più considerato come player valido per il pescaggio etc
+
+        //Se il turno del player deve ancora venire faccio come prima
+
+
+
+
+        //2)Cosa succede se la disconnesione avviene durante il pescaggio?
+        //Se il player ha già pescato devo chiedere alla board di metterlo in ultima posizione sullo starting tile
+
+        //Se è il turno del player lo skippo ed evito che venga considerato per extradraw
+
+        //Se deve ancora arrivare lo salto
+
+        //Essendo che le chiamate sono atomiche devo usare execute game action per eseguire connessione o disconnesione
+        //Cosi intanto mando payload di update e gestisco eventuali errori
+
+
+    }
+
 }
