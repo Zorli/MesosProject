@@ -23,7 +23,6 @@ import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
 import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.persistence.game.FileMatchPersistence;
 import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
@@ -67,7 +66,6 @@ class MatchLifecyclePersistenceIntegrationTest {
         GameOrchestrator orchestrator = new GameOrchestrator(
                 game,
                 players.getFirst().getNickname(),
-                null,
                 persistence,
                 sessions
         );
@@ -105,7 +103,6 @@ class MatchLifecyclePersistenceIntegrationTest {
         GameOrchestrator original = new GameOrchestrator(
                 originalGame,
                 players.getFirst().getNickname(),
-                null,
                 persistence,
                 bootstrapSessions
         );
@@ -124,7 +121,6 @@ class MatchLifecyclePersistenceIntegrationTest {
         ServerSessionRegistry restoredSessions = new ServerSessionRegistry();
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                NoOpRankingService.INSTANCE,
                 restoredSessions
         );
 
@@ -152,7 +148,6 @@ class MatchLifecyclePersistenceIntegrationTest {
 
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                NoOpRankingService.INSTANCE,
                 restoredSessions
         );
 
@@ -179,7 +174,6 @@ class MatchLifecyclePersistenceIntegrationTest {
         ServerSessionRegistry restoredSessions = new ServerSessionRegistry();
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                NoOpRankingService.INSTANCE,
                 restoredSessions
         );
 
@@ -200,7 +194,6 @@ class MatchLifecyclePersistenceIntegrationTest {
         GameOrchestrator original = new GameOrchestrator(
                 originalGame,
                 players.getFirst().getNickname(),
-                null,
                 persistence,
                 originalSessions
         );
@@ -219,11 +212,10 @@ class MatchLifecyclePersistenceIntegrationTest {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                NoOpRankingService.INSTANCE,
                 sessions
         );
 
-        ServerController controller = new ServerController(DefaultGameFactory.getInstance(), NoOpRankingService.INSTANCE, MatchPersistence.disabled(), sessions);
+        ServerController controller = new ServerController(DefaultGameFactory.getInstance(), MatchPersistence.disabled(), sessions);
         RecordingConnection aliceConnection = new RecordingConnection();
         String aliceSessionId = controller.registerConnection(aliceConnection);
 

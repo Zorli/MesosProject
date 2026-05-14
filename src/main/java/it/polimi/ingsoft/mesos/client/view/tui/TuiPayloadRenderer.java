@@ -160,7 +160,7 @@ final class TuiPayloadRenderer {
         builder.append("[SERVER][GAME FINISHED] #")
                 .append(payload.id)
                 .append(System.lineSeparator())
-                .append("Final ranking:");
+                .append("Final results:");
 
         if (payload.players == null || payload.players.isEmpty()) {
             builder.append(" -");

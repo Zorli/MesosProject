@@ -11,24 +11,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ServerRuntimeConfigTest {
 
     @Test
-    void defaultsPointToLocalPostgres() {
+    void defaultsEnableGamePersistence() {
         ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(Map.of());
 
-        assertEquals("jdbc:postgresql://localhost:5432/mesos", config.jdbcUrl());
-        assertEquals("jdbc:postgresql://localhost:5432/postgres", config.adminJdbcUrl());
-        assertEquals("postgres", config.username());
-        assertEquals("postgres", config.password());
-        assertEquals("mesos", config.databaseName());
-        assertTrue(config.dbEnabled());
         assertTrue(config.gamePersistenceEnabled());
         assertEquals("data/game-checkpoints", config.gamePersistenceDirectory());
-    }
-
-    @Test
-    void disablesDatabaseWithNoDbFlag() {
-        ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(Map.of("MESOS_NO_DB", "true"));
-
-        assertFalse(config.dbEnabled());
     }
 
     @Test

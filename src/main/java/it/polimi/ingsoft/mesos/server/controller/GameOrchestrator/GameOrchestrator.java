@@ -8,19 +8,13 @@ import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.Game;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.ranking.MatchScore;
-import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
-import it.polimi.ingsoft.mesos.server.model.ranking.RankingResult;
-import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
 import it.polimi.ingsoft.mesos.server.persistence.game.mapper.GameSnapshotMapper;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -42,11 +36,8 @@ public class GameOrchestrator implements Runnable  {
     private final List<Player> players;
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
-    private final RankingService rankingService;
     private final MatchPersistence matchPersistence;
     private final GameSnapshotMapper gameSnapshotMapper;
-    private Optional<RankingResult> finalRankingResult;
-    private boolean rankingRecorded;
     private boolean frozen;
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
@@ -54,7 +45,6 @@ public class GameOrchestrator implements Runnable  {
 
     public GameOrchestrator(Game game,
                             String hostNickname,
-                            RankingService rankingService,
                             MatchPersistence matchPersistence,
                             ServerSessionRegistry sessions) {
         Objects.requireNonNull(game, "Game cannot be null");
@@ -66,10 +56,8 @@ public class GameOrchestrator implements Runnable  {
         this.players = List.copyOf(game.getPlayers());
         this.hostNickname = requireHostNickname(hostNickname);
         this.sessions = sessions != null ? sessions : new ServerSessionRegistry();
-        this.rankingService = rankingService != null ? rankingService : NoOpRankingService.INSTANCE;
         this.matchPersistence = matchPersistence != null ? matchPersistence : MatchPersistence.disabled();
         this.gameSnapshotMapper = new GameSnapshotMapper();
-        this.finalRankingResult = Optional.empty();
     }
 
     // Getters
@@ -99,15 +87,6 @@ public class GameOrchestrator implements Runnable  {
      */
     public boolean isFrozen() {
         return this.frozen;
-    }
-
-    /**
-     * Returns the ranking result produced when the match was finalized.
-     *
-     * @return final ranking result, empty when ranking is disabled or the match is not finished
-     */
-    public Optional<RankingResult> getFinalRankingResult() {
-        return this.finalRankingResult;
     }
 
     public void enqueueMessage(EnqueuedMessage command) {
@@ -228,37 +207,6 @@ public class GameOrchestrator implements Runnable  {
         }
     }
 
-    private void recordRankingIfFinished() {
-        if (this.rankingRecorded) {
-            return;
-        }
-        if (!this.rankingService.isRankingEnabled()) {
-            this.rankingRecorded = true;
-            return;
-        }
-
-        try {
-            RankingResult rankingResult = this.rankingService.recordMatchAndGetRanking(
-                    String.valueOf(this.game.getId()),
-                    this.players.size(),
-                    Instant.now(),
-                    this.hostNickname,
-                    this.buildFinalScores()
-            );
-            this.finalRankingResult = Optional.of(rankingResult);
-            this.rankingRecorded = true;
-        } catch (RuntimeException exception) {
-            this.frozen = true;
-            throw new RankingFinalizationFailureException(exception);
-        }
-    }
-
-    private List<MatchScore> buildFinalScores() {
-        return this.players.stream()
-                .map(player -> new MatchScore(player.getNickname(), player.getPrestigePoints()))
-                .toList();
-    }
-
     /**
      * Applies a state-changing command and persists the new checkpoint only if
      * the game version changed.
@@ -307,10 +255,7 @@ public class GameOrchestrator implements Runnable  {
     }
 
     /**
-     * Finalizes completed matches: records ranking, deletes checkpoint and tears down session routing.
-     *
-     * <p>If ranking finalization fails the match is frozen, the checkpoint is kept and no further
-     * teardown is performed.
+     * Finalizes completed matches: deletes checkpoint and tears down session routing.
      */
     private void checkGameEndAndCleanup() {
         if (this.frozen) {
@@ -318,15 +263,6 @@ public class GameOrchestrator implements Runnable  {
         }
 
         if (this.game.getStatus() != GameStatus.FINISHED) {
-            return;
-        }
-        try {
-            this.recordRankingIfFinished();
-        } catch (RankingFinalizationFailureException ex) {
-            throw ex;
-        }
-
-        if (this.frozen) {
             return;
         }
 

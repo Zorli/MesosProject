@@ -4,22 +4,18 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 
 class ServerServicesFactoryTest {
 
     @Test
-    void noDbModeDisablesRankingServiceWithoutRemovingRankingCode() {
-        ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(Map.of(
-                "MESOS_NO_DB",
-                "true"
-        ));
+    void createsMatchPersistenceService() {
+        ServerRuntimeConfig runtimeConfig = ServerRuntimeConfig.fromEnvironment(Map.of());
 
         ServerServices services = ServerServicesFactory.create(runtimeConfig);
 
-        assertSame(NoOpRankingService.INSTANCE, services.rankingService());
+        assertNotNull(services.matchPersistence());
     }
 
     @Test
