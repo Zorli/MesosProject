@@ -4,7 +4,6 @@ import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.controller.ServerController;
 import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.persistence.RestoredMatchBootstrapper;
-import it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService;
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
 import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
@@ -64,7 +63,6 @@ public final class LaunchServer {
             // B. Core Controllers
             ServerController serverController = new ServerController(
                     DefaultGameFactory.getInstance(),
-                    serverServices.rankingService(),
                     serverServices.matchPersistence(),
                     sessions
             );
@@ -91,9 +89,6 @@ public final class LaunchServer {
             acceptorThread.start();
 
             out.println("TCP listener active on port " + tcpPort);
-            if (serverServices.rankingService() == NoOpRankingService.INSTANCE) {
-                out.println("No-db mode active: ranking persistence disabled.");
-            }
             out.println("Mesos Server started successfully.");
             out.println("Waiting for players...");
             return 0;
@@ -112,7 +107,6 @@ public final class LaunchServer {
      */
     private static void printConfig(ServerRuntimeConfig config, PrintStream out) {
         out.println("--- Mesos Server Configuration ---");
-        out.println("  DB enabled:          " + config.dbEnabled());
         out.println("  Game persistence:    " + config.gamePersistenceEnabled());
         out.println("  Checkpoint dir:      " + config.gamePersistenceDirectory());
         out.println("  Checkpoint dir abs:  " + java.nio.file.Path.of(config.gamePersistenceDirectory()).toAbsolutePath());
@@ -149,7 +143,6 @@ public final class LaunchServer {
                                          ServerSessionRegistry sessions) {
         RestoredMatchBootstrapper.restoreActiveMatches(
                 serverServices.matchPersistence(),
-                serverServices.rankingService(),
                 sessions
         );
     }

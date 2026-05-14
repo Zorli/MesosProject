@@ -7,7 +7,6 @@ import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
 import it.polimi.ingsoft.mesos.server.model.Listener;
 import it.polimi.ingsoft.mesos.server.model.ServerModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
@@ -23,7 +22,6 @@ public class ServerController implements Runnable {
     private final ServerSessionRegistry sessions;
     private final ServerModel serverModel;
     private final GameFactory gameFactory;
-    private final RankingService rankingService;
     private final MatchPersistence matchPersistence;
     private final ServerConnectionLifecycle connectionLifecycle;
     private final PingPongRoutine pingPongRoutine;
@@ -33,12 +31,10 @@ public class ServerController implements Runnable {
     private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
 
     public ServerController(GameFactory gameFactory,
-                           RankingService rankingService,
                            MatchPersistence matchPersistence,
                            ServerSessionRegistry sessions) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
-        this.rankingService = Objects.requireNonNull(rankingService, "rankingService cannot be null");
         this.matchPersistence = Objects.requireNonNull(matchPersistence, "matchPersistence cannot be null");
 
         this.serverModel = new ServerModel(this.sessions);
@@ -118,7 +114,6 @@ public class ServerController implements Runnable {
                     lobby,
                     this.sessions,
                     this.gameFactory,
-                    this.rankingService,
                     this.matchPersistence
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);

@@ -7,7 +7,6 @@ import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.ranking.RankingService;
 import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
 import it.polimi.ingsoft.mesos.server.persistence.game.restore.GameSnapshotRestoreFactory;
@@ -27,7 +26,6 @@ public final class RestoredMatchBootstrapper {
     private static final Logger log = Logger.getLogger(RestoredMatchBootstrapper.class.getName());
 
     private final MatchPersistence matchPersistence;
-    private final RankingService rankingService;
     private final ServerSessionRegistry sessions;
     private final GameSnapshotRestoreFactory restoreFactory;
 
@@ -35,17 +33,14 @@ public final class RestoredMatchBootstrapper {
      * Restores all matches currently persisted at startup.
      *
      * @param matchPersistence snapshot storage
-     * @param rankingService ranking facade used by restored orchestrators
      * @param sessions session registry used for routing and restore mapping
      */
     public static void restoreActiveMatches(
             MatchPersistence matchPersistence,
-            RankingService rankingService,
             ServerSessionRegistry sessions
     ) {
         new RestoredMatchBootstrapper(
                 Objects.requireNonNull(matchPersistence, "matchPersistence cannot be null"),
-                Objects.requireNonNull(rankingService, "rankingService cannot be null"),
                 Objects.requireNonNull(sessions, "sessions cannot be null"),
                 new GameSnapshotRestoreFactory()
         ).restore();
@@ -53,12 +48,10 @@ public final class RestoredMatchBootstrapper {
 
     public RestoredMatchBootstrapper(
             MatchPersistence matchPersistence,
-            RankingService rankingService,
             ServerSessionRegistry sessions,
             GameSnapshotRestoreFactory restoreFactory
     ) {
         this.matchPersistence = Objects.requireNonNull(matchPersistence, "matchPersistence cannot be null");
-        this.rankingService = Objects.requireNonNull(rankingService, "rankingService cannot be null");
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.restoreFactory = Objects.requireNonNull(restoreFactory, "restoreFactory cannot be null");
     }
@@ -107,7 +100,6 @@ public final class RestoredMatchBootstrapper {
             GameOrchestrator orchestrator = new GameOrchestrator(
                     restoredGame,
                     restoredMatch.hostNickname(),
-                    this.rankingService,
                     this.matchPersistence,
                     this.sessions
             );
@@ -121,7 +113,6 @@ public final class RestoredMatchBootstrapper {
             LobbyController lobbyController = new LobbyController(
                     restoredLobby,
                     this.sessions,
-                    this.rankingService,
                     this.matchPersistence,
                     orchestrator
             );

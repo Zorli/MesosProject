@@ -35,7 +35,6 @@ class RestoredMatchBootstrapperTest {
 
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService.INSTANCE,
                 sessions
         );
 
@@ -54,7 +53,6 @@ class RestoredMatchBootstrapperTest {
 
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService.INSTANCE,
                 sessions
         );
 
@@ -74,7 +72,6 @@ class RestoredMatchBootstrapperTest {
 
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService.INSTANCE,
                 sessions
         );
 
@@ -92,7 +89,6 @@ class RestoredMatchBootstrapperTest {
 
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService.INSTANCE,
                 sessions
         );
 
@@ -113,7 +109,6 @@ class RestoredMatchBootstrapperTest {
 
         RestoredMatchBootstrapper.restoreActiveMatches(
                 persistence,
-                it.polimi.ingsoft.mesos.server.model.ranking.NoOpRankingService.INSTANCE,
                 sessions
         );
 

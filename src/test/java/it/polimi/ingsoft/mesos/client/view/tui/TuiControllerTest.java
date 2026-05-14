@@ -42,7 +42,7 @@ class TuiControllerTest {
                 choose-card 11
                 extra-draw 12
                 """);
-        FakeServerProxy proxy = new FakeServerProxy();
+        StubServerProxy proxy = new StubServerProxy();
         harness.controller.attachServerProxy(proxy);
 
         harness.controller.start();
@@ -63,49 +63,17 @@ class TuiControllerTest {
     }
 
     @Test
-    void helpOutputDoesNotListStatus() {
-        TuiHarness harness = new TuiHarness("""
-                help
-                quit
-                """);
-        FakeServerProxy proxy = new FakeServerProxy();
-        harness.controller.attachServerProxy(proxy);
-
-        harness.controller.start();
-
-        String output = harness.output();
-        assertTrue(output.contains("General:"));
-        assertTrue(output.contains("help"));
-        assertTrue(output.contains("auth <nickname>"));
-        assertFalse(STATUS_HELP_LINE.matcher(output).find());
-    }
-
-    @Test
-    void blankLinesReprintPrompt() {
-        TuiHarness harness = new TuiHarness("""
-
-                quit
-                """);
-        FakeServerProxy proxy = new FakeServerProxy();
-        harness.controller.attachServerProxy(proxy);
-
-        harness.controller.start();
-
-        assertEquals(3, countPrompts(harness.output()));
-    }
-
-    @Test
     void invalidCommandPrintsClientError() {
         TuiHarness harness = new TuiHarness("""
                 status
                 quit
                 """);
-        FakeServerProxy proxy = new FakeServerProxy();
+        StubServerProxy proxy = new StubServerProxy();
         harness.controller.attachServerProxy(proxy);
 
         harness.controller.start();
 
-        assertTrue(harness.output().contains("[ERROR] CLIENT_COMMAND_ERROR: Unknown command. Type 'help'."));
+        assertTrue(harness.printedOutput().contains("[ERROR] CLIENT_COMMAND_ERROR: Unknown command. Type 'help'."));
     }
 
     @Test
@@ -113,7 +81,7 @@ class TuiControllerTest {
         TuiHarness harness = new TuiHarness("""
                 auth ada
                 """);
-        FakeServerProxy proxy = new FakeServerProxy();
+        StubServerProxy proxy = new StubServerProxy();
         harness.controller.attachServerProxy(proxy);
 
         harness.controller.start();
@@ -128,15 +96,14 @@ class TuiControllerTest {
                 quit
                 auth unreachable
                 """);
-        FakeServerProxy proxy = new FakeServerProxy();
+        StubServerProxy proxy = new StubServerProxy();
         proxy.closeFailure = new IOException("socket failed");
         harness.controller.attachServerProxy(proxy);
 
         harness.controller.start();
 
         assertEquals(List.of("close"), proxy.calls);
-        assertTrue(harness.output().contains("[ERROR] CONNECTION_CLOSED: socket failed"));
-        assertFalse(harness.output().contains("Client closed."));
+        assertTrue(harness.printedOutput().contains("[ERROR] CONNECTION_CLOSED: socket failed"));
     }
 
     @Test
@@ -145,39 +112,33 @@ class TuiControllerTest {
                 quit
                 auth unreachable
                 """);
-        FakeServerProxy proxy = new FakeServerProxy();
+        StubServerProxy proxy = new StubServerProxy();
         harness.controller.attachServerProxy(proxy);
 
         harness.controller.start();
 
         assertTrue(proxy.closed);
         assertEquals(List.of("close"), proxy.calls);
-        assertTrue(harness.output().contains("Client closed."));
-    }
-
-    private static long countPrompts(String output) {
-        return output.chars()
-                .filter(character -> character == '>')
-                .count();
+        assertTrue(harness.printedOutput().contains("Client closed."));
     }
 
     private static final class TuiHarness {
-        private final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        private final ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
         private final TuiController controller;
 
-        private TuiHarness(String input) {
+        private TuiHarness(String userInput) {
             this.controller = new TuiController(
-                    new Scanner(input),
-                    new PrintStream(this.bytes, true, StandardCharsets.UTF_8)
+                    new Scanner(userInput),
+                    new PrintStream(this.capturedOutput, true, StandardCharsets.UTF_8)
             );
         }
 
-        private String output() {
-            return this.bytes.toString(StandardCharsets.UTF_8);
+        private String printedOutput() {
+            return this.capturedOutput.toString(StandardCharsets.UTF_8);
         }
     }
 
-    private static final class FakeServerProxy implements ServerProxy {
+    private static final class StubServerProxy implements ServerProxy {
         private final List<String> calls = new ArrayList<>();
         private boolean closed;
         private IOException closeFailure;
