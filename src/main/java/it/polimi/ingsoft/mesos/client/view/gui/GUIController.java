@@ -80,6 +80,7 @@ public class GUIController implements ClientView {
     @FXML private HBox topBar;
     @FXML private StackPane loginPage;
     @FXML private VBox lobbyPage;
+    @FXML private VBox lobbyFormPage;
     @FXML private ScrollPane gamePage;
     @FXML private VBox endPage;
     @FXML private TextField nicknameField;
@@ -94,8 +95,11 @@ public class GUIController implements ClientView {
     @FXML private Label currentLobbyHostLabel;
     @FXML private Label currentLobbyPlayersLabel;
     @FXML private Label currentLobbyStateLabel;
+    @FXML private Label capacityLabel;
     @FXML private ComboBox<Integer> capacityComboBox;
     @FXML private VBox lobbyListContainer;
+    @FXML private Button openCreateTableButton;
+    @FXML private Button backToLobbyListButton;
     @FXML private Button createLobbyButton;
     @FXML private Button startLobbyButton;
     @FXML private Button exitLobbyButton;
@@ -163,6 +167,24 @@ public class GUIController implements ClientView {
     }
 
     @FXML
+    private void handleOpenCreateTable() {
+        this.renderNoCurrentLobby();
+        this.updateLobbyActions();
+        this.showPage(this.lobbyFormPage);
+    }
+
+    @FXML
+    private void handleBackToLobbyList() {
+        if (this.currentLobbyId != null) {
+            return;
+        }
+        this.renderNoCurrentLobby();
+        this.updateLobbyActions();
+        this.showPage(this.lobbyPage);
+        this.requestLobbyList();
+    }
+
+    @FXML
     private void handleCreateLobby() {
         int capacity = this.capacityComboBox.getValue() == null ? 4 : this.capacityComboBox.getValue();
         this.callServer(() -> this.serverProxy.createLobby(capacity));
@@ -227,6 +249,8 @@ public class GUIController implements ClientView {
             } else if (this.gamePage.isVisible()) {
                 this.rollbackPendingDraftChoice();
                 this.selectedCardLabel.setText(message);
+            } else if (this.lobbyFormPage.isVisible()) {
+                this.lobbyActionSubtitleLabel.setText(message);
             } else {
                 this.lobbyStatusLabel.setText(message);
             }
@@ -258,11 +282,11 @@ public class GUIController implements ClientView {
             if (payload.event == LobbyEventType.LOBBY_CREATED
                     || payload.event == LobbyEventType.LOBBY_JOINED
                     || payload.event == LobbyEventType.LOBBY_LEFT) {
-                this.showPage(this.lobbyPage);
                 if (this.currentLobbyId == null) {
+                    this.showPage(this.lobbyPage);
                     this.requestLobbyList();
                 } else {
-                    this.renderLobbyListUnavailable();
+                    this.showPage(this.lobbyFormPage);
                 }
             }
             if (payload.event == LobbyEventType.LOBBY_STARTED) {
@@ -319,7 +343,7 @@ public class GUIController implements ClientView {
 
             this.updateLobbyActions();
 
-            if (!this.gamePage.isVisible() && !this.endPage.isVisible()) {
+            if (!this.gamePage.isVisible() && !this.endPage.isVisible() && !this.lobbyFormPage.isVisible()) {
                 this.showPage(this.lobbyPage);
             }
         });
@@ -1143,10 +1167,18 @@ public class GUIController implements ClientView {
         this.lobbyActionSubtitleLabel.setText(inLobby
                 ? "You are already seated. Use the table actions below or exit from the lobby list."
                 : "Pick a table size from 2 to 5 players and become the host.");
+        this.capacityLabel.setVisible(!inLobby);
+        this.capacityLabel.setManaged(!inLobby);
+        this.capacityComboBox.setVisible(!inLobby);
+        this.capacityComboBox.setManaged(!inLobby);
+        this.createLobbyButton.setVisible(!inLobby);
+        this.createLobbyButton.setManaged(!inLobby);
         this.capacityComboBox.setDisable(inLobby);
         this.createLobbyButton.setDisable(inLobby);
         this.startLobbyButton.setDisable(!isHost || !isReady);
         this.exitLobbyButton.setDisable(!inLobby);
+        this.openCreateTableButton.setDisable(inLobby);
+        this.backToLobbyListButton.setDisable(inLobby);
     }
 
 
