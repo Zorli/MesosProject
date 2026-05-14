@@ -21,6 +21,7 @@ import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -40,10 +41,12 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -57,6 +60,8 @@ public class GUIController implements ClientView {
     private static final String FXML_RESOURCE = "gui.fxml";
     private static final String CSS_RESOURCE = "mesos-gui.css";
     private static final String CARD_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/cards/%d.jpg";
+    private static final String OFFER_PATH_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/offerPath/%s.png";
+    private static final String TOTEM_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/totems/%s.png";
     private static final AtomicBoolean JAVAFX_STARTED = new AtomicBoolean(false);
 
     private ServerProxy serverProxy;
@@ -461,15 +466,26 @@ public class GUIController implements ClientView {
     private void renderOfferPath(List<OfferSpacePayload> offers, List<StartingBlockPayload> starts) {
         this.offerPathContainer.getChildren().clear();
         List<StartingBlockPayload> startingBlocks = starts == null ? List.of() : starts;
-        for (StartingBlockPayload block : startingBlocks) {
-            VBox tile = this.tile("Start " + block.position, block.foodModifier + " food / " + block.prestigeModifier + " pp", block.occupiedByNickname);
-            tile.setDisable(true);
-            tile.getStyleClass().add("disabled-tile");
+        if (!startingBlocks.isEmpty()) {
+            StackPane tile = this.offerPathTile(
+                    "offer_" + startingBlocks.size(),
+                    "Starting tile",
+                    startingBlocks.size() + " players",
+                    null,
+                    startingBlocks
+            );
+            tile.setMouseTransparent(true);
             this.offerPathContainer.getChildren().add(tile);
         }
         List<OfferSpacePayload> offerSpaces = offers == null ? List.of() : offers;
         for (OfferSpacePayload offer : offerSpaces) {
-            VBox tile = this.tile(offer.code, offer.topRowCardsToTake + " upper / " + offer.bottomRowCardsToTake + " lower", offer.occupiedByNickname);
+            StackPane tile = this.offerPathTile(
+                    offer.code,
+                    offer.code,
+                    offer.topRowCardsToTake + " upper / " + offer.bottomRowCardsToTake + " lower",
+                    offer.occupiedByNickname,
+                    List.of()
+            );
             boolean tileEnabled = this.canMoveTotemTo(offer);
             tile.setDisable(!tileEnabled);
             if (!tileEnabled) {
@@ -478,6 +494,131 @@ public class GUIController implements ClientView {
             tile.setOnMouseClicked(event -> this.moveTotemFromBoard(offer.code));
             this.offerPathContainer.getChildren().add(tile);
         }
+    }
+
+    private StackPane offerPathTile(
+            String imageKey,
+            String fallbackTitle,
+            String fallbackDetail,
+            String occupant,
+            List<StartingBlockPayload> startingBlocks
+    ) {
+        StackPane tile = new StackPane();
+        tile.getStyleClass().add("offer-image-tile");
+
+        Image image = this.resourceImage(String.format(OFFER_PATH_RESOURCE_PATTERN, imageKey));
+        if (image == null) {
+            tile.getChildren().add(this.tile(fallbackTitle, fallbackDetail, occupant));
+        } else {
+            ImageView imageView = new ImageView(image);
+            imageView.getStyleClass().add("offer-path-image");
+            imageView.setFitWidth(148);
+            imageView.setFitHeight(214);
+            imageView.setPreserveRatio(true);
+            tile.getChildren().add(imageView);
+            if (!startingBlocks.isEmpty()) {
+                this.addStartingOrderTotems(tile, startingBlocks);
+            } else {
+                this.addTotemOverlay(tile, occupant);
+            }
+        }
+
+        return tile;
+    }
+
+    private Image resourceImage(String resource) {
+        InputStream stream = GUIController.class.getResourceAsStream(resource);
+        if (stream == null) {
+            return null;
+        }
+        return new Image(stream);
+    }
+
+    private void addTotemOverlay(StackPane tile, String occupant) {
+        if (occupant == null || occupant.isBlank()) {
+            return;
+        }
+
+        Image totemImage = this.totemImageForPlayer(occupant);
+        if (totemImage == null) {
+            Label label = new Label(occupant);
+            label.getStyleClass().add("offer-occupant-name");
+            StackPane.setAlignment(label, Pos.TOP_CENTER);
+            StackPane.setMargin(label, new Insets(14, 8, 0, 8));
+            tile.getChildren().add(label);
+            return;
+        }
+
+        ImageView totemView = new ImageView(totemImage);
+        totemView.getStyleClass().add("totem-on-offer");
+        totemView.setFitWidth(32);
+        totemView.setFitHeight(48);
+        totemView.setPreserveRatio(true);
+        StackPane.setAlignment(totemView, Pos.TOP_CENTER);
+        StackPane.setMargin(totemView, new Insets(14, 0, 0, 0));
+        tile.getChildren().add(totemView);
+    }
+
+    private void addStartingOrderTotems(StackPane tile, List<StartingBlockPayload> startingBlocks) {
+        List<StartingBlockPayload> orderedBlocks = startingBlocks.stream()
+                .sorted(Comparator.comparingInt(block -> block.position))
+                .toList();
+        double[] topOffsets = this.startingTotemTopOffsets(orderedBlocks.size());
+        int limit = Math.min(orderedBlocks.size(), topOffsets.length);
+        double totemWidth = orderedBlocks.size() == 5 ? 17 : 24;
+        double totemHeight = orderedBlocks.size() == 5 ? 24 : 34;
+        for (int index = 0; index < limit; index++) {
+            StartingBlockPayload block = orderedBlocks.get(index);
+            if (block.occupiedByNickname == null || block.occupiedByNickname.isBlank()) {
+                continue;
+            }
+
+            Image totemImage = this.totemImageForPlayer(block.occupiedByNickname);
+            if (totemImage == null) {
+                continue;
+            }
+
+            ImageView totemView = new ImageView(totemImage);
+            totemView.getStyleClass().add("starting-order-totem");
+            totemView.setFitWidth(totemWidth);
+            totemView.setFitHeight(totemHeight);
+            totemView.setPreserveRatio(true);
+            StackPane.setAlignment(totemView, Pos.TOP_CENTER);
+            StackPane.setMargin(totemView, new Insets(topOffsets[index], 0, 0, 0));
+            tile.getChildren().add(totemView);
+        }
+    }
+
+    private double[] startingTotemTopOffsets(int slots) {
+        return switch (slots) {
+            case 2 -> new double[]{48, 86};
+            case 3 -> new double[]{37, 75, 113};
+            case 4 -> new double[]{25, 63, 101, 139};
+            default -> new double[]{23, 58, 93, 128, 163};
+        };
+    }
+
+    private Image totemImageForPlayer(String nickname) {
+        String totem = this.totemForPlayer(nickname);
+        if (totem == null || totem.isBlank()) {
+            return null;
+        }
+        return this.resourceImage(String.format(
+                TOTEM_RESOURCE_PATTERN,
+                totem.toLowerCase(Locale.ROOT)
+        ));
+    }
+
+    private String totemForPlayer(String nickname) {
+        if (nickname == null || this.lastGamePayload == null || this.lastGamePayload.players == null) {
+            return null;
+        }
+        return this.lastGamePayload.players.stream()
+                .filter(player -> nickname.equals(player.nickname))
+                .map(player -> player.totem)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 
     private VBox tile(String title, String detail, String occupant) {

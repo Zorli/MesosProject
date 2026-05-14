@@ -491,7 +491,47 @@
     -fx-border-color: #e7b64f;
 }
 
+.offer-image-tile {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-min-width: 148;
+    -fx-pref-width: 148;
+    -fx-max-width: 148;
+    -fx-min-height: 214;
+    -fx-pref-height: 214;
+    -fx-max-height: 214;
+    -fx-cursor: hand;
+}
+
+.offer-image-tile:hover {
+    -fx-effect: dropshadow(gaussian, rgba(231, 182, 79, 0.48), 16, 0.35, 0, 0);
+}
+
+.offer-path-image {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 10, 0.25, 0, 3);
+}
+
+.totem-on-offer {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 7, 0.45, 0, 2);
+}
+
+.starting-order-totem {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.50), 5, 0.40, 0, 1);
+}
+
+.offer-occupant-name {
+    -fx-background-color: rgba(16, 23, 24, 0.78);
+    -fx-background-radius: 999;
+    -fx-border-color: rgba(255, 244, 207, 0.55);
+    -fx-border-radius: 999;
+    -fx-text-fill: #fff4cf;
+    -fx-font-size: 10;
+    -fx-font-weight: 900;
+    -fx-padding: 4 8;
+}
+
 .offer-tile:disabled,
+.offer-image-tile:disabled,
 .disabled-tile {
     -fx-opacity: 0.42;
     -fx-cursor: default;
