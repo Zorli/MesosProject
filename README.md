@@ -91,6 +91,20 @@ Un messaggio client -> server serializzato in JSON ha quindi questa forma:
   }
 }
 ```
+O più in generale direttamente dalla classe ServerMessage abbiamo:
+```java
+public class ServerMessage implements Serializable {
+    public final ServerMessageType type;
+    public final Object payload;
+
+    public ServerMessage(ServerMessageType type, Object payload) {
+        this.type = Objects.requireNonNull(type, "type cannot be null");
+        this.payload = payload;
+    }
+}
+```
+Quindi ci aspettiamo di poter inferire il payload in arrivo direttamente leggendo il campo type e chiedendo a GSON di 
+deserializzare quella data classe.
 
 La serializzazione avviene con:
 ```java
@@ -114,16 +128,8 @@ Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`Ser
 GSON può serializzarlo facilmente, ma quando deve deserializzarlo deve sapere quale classe concreta usare.
 Per questo il codice legge prima il `type` e poi associa quel tipo alla classe di payload corretta.
 
-Nei test sul TCP si usa lo stesso ragionamento: si legge la riga JSON scritta sulla socket,
-la si converte in `JsonObject` e si verificano i campi osservabili:
-```java
-JsonObject message = GSON.fromJson(line, JsonObject.class);
 
-assertEquals("AUTHENTICATE", message.get("type").getAsString());
 
-JsonObject payload = message.getAsJsonObject("payload");
-assertEquals("ada", payload.get("nickname").getAsString());
-```
 
 Per RMI invece la situazione è più semplice, poiche il remote method invocation si occupa di tutto il meccanismo di comunicazione, 
 è sufficiente implementare le interfacce e registrare gli stub, inoltre RMI gestisce in automatico la serializzazione degli oggetti, 
