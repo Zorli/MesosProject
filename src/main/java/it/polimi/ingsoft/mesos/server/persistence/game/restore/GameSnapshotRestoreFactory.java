@@ -17,12 +17,9 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
-import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
+import it.polimi.ingsoft.mesos.server.model.game.*;
 import it.polimi.ingsoft.mesos.server.model.enums.TurnPhase;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.model.player.Tribe;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedCardSnapshot;
@@ -100,9 +97,9 @@ public final class GameSnapshotRestoreFactory {
         List<Player> restoredPlayers = this.restorePlayers(snapshot.players(), validTribeCardIds, validBuildingCardIds);
         Map<String, Player> playersByNickname = this.indexPlayers(restoredPlayers);
         TurnOrderTrack restoredTurnOrder = this.restoreTurnOrder(snapshot.turnOrder(), playersByNickname);
-        TurnState restoredTurnState = this.restoreTurnState(snapshot.turnState(), playersByNickname);
+        PlayersTurnFSM restoredPlayersTurnFSM = this.restoreTurnState(snapshot.turnState(), playersByNickname);
 
-        Game restoredGame = this.restoreGame(snapshot, restoredPlayers, restoredTurnOrder, restoredTurnState, playerCount);
+        Game restoredGame = this.restoreGame(snapshot, restoredPlayers, restoredTurnOrder, restoredPlayersTurnFSM, playerCount);
 
         return new RestoredMatch(
                 restoredGame,
@@ -181,7 +178,7 @@ public final class GameSnapshotRestoreFactory {
             SavedMatchSnapshot snapshot,
             List<Player> restoredPlayers,
             TurnOrderTrack restoredTurnOrder,
-            TurnState restoredTurnState,
+            PlayersTurnFSM restoredPlayersTurnFSM,
             int playerCount
     ) {
         Board restoredBoard = this.restoreBoard(
@@ -193,7 +190,7 @@ public final class GameSnapshotRestoreFactory {
         return new Game(
                 snapshot.game().id(),
                 restoredPlayers,
-                restoredTurnState,
+                restoredPlayersTurnFSM,
                 restoredTurnOrder,
                 restoredBoard,
                 Era.valueOf(snapshot.game().currentEra()),
@@ -224,13 +221,13 @@ public final class GameSnapshotRestoreFactory {
         );
     }
 
-    private TurnState restoreTurnState(
+    private PlayersTurnFSM restoreTurnState(
             SavedMatchSnapshot.TurnStateSnapshot snapshot,
             Map<String, Player> playersByNickname
     ) {
         try {
             TurnPhase phase = TurnPhase.valueOf(snapshot.phase());
-            return new TurnState(
+            return new PlayersTurnFSM(
                     phase,
                     this.restoreChoiceMap(snapshot.remainingUpperChoicesByNickname(), playersByNickname),
                     this.restoreChoiceMap(snapshot.remainingLowerChoicesByNickname(), playersByNickname)

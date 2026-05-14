@@ -9,6 +9,7 @@ import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrat
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.model.Listener;
+import it.polimi.ingsoft.mesos.server.model.game.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.server.model.board.Board;
@@ -18,10 +19,6 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
-import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.persistence.game.FileMatchPersistence;
@@ -291,7 +288,7 @@ class MatchLifecyclePersistenceIntegrationTest {
         return new Game(
                 gameId,
                 players,
-                new TurnState(),
+                new PlayersTurnFSM(),
                 new TurnOrderTrack(players, 0, 1, RoundPhase.PLACING_TOTEMS),
                 createSimpleBoard(players),
                 Era.first,
@@ -309,7 +306,7 @@ class MatchLifecyclePersistenceIntegrationTest {
         return new Game(
                 gameId,
                 players,
-                new TurnState(),
+                new PlayersTurnFSM(),
                 new TurnOrderTrack(players, 0, 1, RoundPhase.PLACING_TOTEMS),
                 createSimpleBoard(players),
                 Era.first,
@@ -348,7 +345,7 @@ class MatchLifecyclePersistenceIntegrationTest {
             return new Game(
                     gameId,
                     players,
-                    new TurnState(),
+                    new PlayersTurnFSM(),
                     new TurnOrderTrack(),
                     new Board(
                             TribeDeck.fromOrderedCards(new ArrayList<>()),

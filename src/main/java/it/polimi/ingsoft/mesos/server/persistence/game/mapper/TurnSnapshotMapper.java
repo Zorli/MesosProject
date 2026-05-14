@@ -1,7 +1,5 @@
 package it.polimi.ingsoft.mesos.server.persistence.game.mapper;
 
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
 
@@ -29,18 +27,18 @@ public final class TurnSnapshotMapper {
         );
     }
 
-    public SavedMatchSnapshot.TurnStateSnapshot toSnapshot(TurnState turnState, List<Player> orderedPlayers) {
-        if (turnState == null) {
-            throw new IllegalArgumentException("turnState cannot be null");
+    public SavedMatchSnapshot.TurnStateSnapshot toSnapshot(PlayersTurnFSM playersTurnFSM, List<Player> orderedPlayers) {
+        if (playersTurnFSM == null) {
+            throw new IllegalArgumentException("playersTurnFSM cannot be null");
         }
         if (orderedPlayers == null) {
             throw new IllegalArgumentException("orderedPlayers cannot be null");
         }
 
         return new SavedMatchSnapshot.TurnStateSnapshot(
-                turnState.getPhase().name(),
-                mapChoicesByNickname(orderedPlayers, turnState.getRemainingUpperChoicesByPlayer()),
-                mapChoicesByNickname(orderedPlayers, turnState.getRemainingLowerChoicesByPlayer())
+                playersTurnFSM.getPhase().name(),
+                mapChoicesByNickname(orderedPlayers, playersTurnFSM.getRemainingUpperChoicesByPlayer()),
+                mapChoicesByNickname(orderedPlayers, playersTurnFSM.getRemainingLowerChoicesByPlayer())
         );
     }
 

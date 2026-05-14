@@ -14,10 +14,7 @@ import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
+import it.polimi.ingsoft.mesos.server.model.game.*;
 import it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
@@ -95,11 +92,11 @@ class GameSnapshotMapperTest {
                 boardOfferPath(players)
         );
         TurnOrderTrack turnOrderTrack = new TurnOrderTrack(players, 0, 3, RoundPhase.PLACING_TOTEMS);
-        TurnState turnState = new TurnState();
-        turnState.registerDrawableCards(alice, 0, 0);
-        turnState.startCardSelection(alice);
+        PlayersTurnFSM playersTurnFSM = new PlayersTurnFSM();
+        playersTurnFSM.registerDrawableCards(alice, 0, 0);
+        playersTurnFSM.startCardSelection(alice);
 
-        return new Game(42, players, turnState, turnOrderTrack, board, Era.first, GameStatus.IN_PROGRESS, 128L);
+        return new Game(42, players, playersTurnFSM, turnOrderTrack, board, Era.first, GameStatus.IN_PROGRESS, 128L);
     }
 
     private static OfferPath boardOfferPath(List<Player> players) {

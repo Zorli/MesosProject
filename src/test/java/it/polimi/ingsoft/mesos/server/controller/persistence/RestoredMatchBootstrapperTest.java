@@ -7,10 +7,7 @@ import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
+import it.polimi.ingsoft.mesos.server.model.game.*;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.persistence.game.MatchPersistence;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
@@ -149,7 +146,7 @@ class RestoredMatchBootstrapperTest {
         Game game = new Game(
                 gameId,
                 players,
-                new TurnState(),
+                new PlayersTurnFSM(),
                 new TurnOrderTrack(players, 0, 1, RoundPhase.PLACING_TOTEMS),
                 new Board(
                         TribeDeck.fromOrderedCards(new ArrayList<>()),

@@ -1,8 +1,6 @@
 package it.polimi.ingsoft.mesos.server.controller.Factory;
 
 import it.polimi.ingsoft.mesos.server.model.game.Game;
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
 import it.polimi.ingsoft.mesos.server.model.board.Board;
 import it.polimi.ingsoft.mesos.server.model.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.cards.TribeDeck;
@@ -45,12 +43,12 @@ public class DefaultGameFactory implements GameFactory {
         TribeDeck tribeDeck = deckTemplate.createTribeDeck(players.size());
         BuildingDeck buildingDeck = deckTemplate.createBuildingDeck();
         Board board = new Board(tribeDeck, buildingDeck, players);
-        TurnState turnState = new TurnState();
+        PlayersTurnFSM playersTurnFSM = new PlayersTurnFSM();
         TurnOrderTrack turnOrderTrack = new TurnOrderTrack();
         return new Game(
                 gameId,
                 players,
-                turnState,
+                playersTurnFSM,
                 turnOrderTrack,
                 board
         );

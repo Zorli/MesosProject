@@ -1,8 +1,5 @@
 package it.polimi.ingsoft.mesos.server.persistence.game.mapper;
 
-import it.polimi.ingsoft.mesos.server.model.game.TurnOrderTrack;
-import it.polimi.ingsoft.mesos.server.model.game.TurnState;
-import it.polimi.ingsoft.mesos.server.model.game.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.player.Player;
 import it.polimi.ingsoft.mesos.server.testing.MesosTestFixtures;
 import it.polimi.ingsoft.mesos.server.persistence.game.dto.SavedMatchSnapshot;
@@ -25,11 +22,11 @@ class TurnSnapshotMapperTest {
         Player bob = MesosTestFixtures.createPlayers("Bob").get(0);
 
         TurnOrderTrack orderTrack = new TurnOrderTrack(List.of(alice, bob), 1, 5, RoundPhase.PLACING_TOTEMS);
-        TurnState turnState = new TurnState();
-        turnState.registerDrawableCards(alice, 2, 1);
-        turnState.registerDrawableCards(bob, 0, 3);
+        PlayersTurnFSM playersTurnFSM = new PlayersTurnFSM();
+        playersTurnFSM.registerDrawableCards(alice, 2, 1);
+        playersTurnFSM.registerDrawableCards(bob, 0, 3);
 
-        SavedMatchSnapshot.TurnStateSnapshot snapshot = mapper.toSnapshot(turnState, orderTrack.getTurnOrder());
+        SavedMatchSnapshot.TurnStateSnapshot snapshot = mapper.toSnapshot(playersTurnFSM, orderTrack.getTurnOrder());
         SavedMatchSnapshot.TurnOrderSnapshot orderSnapshot = mapper.toSnapshot(orderTrack);
 
         assertEquals(List.of("Alice", "Bob"), orderSnapshot.nicknames());
@@ -50,12 +47,12 @@ class TurnSnapshotMapperTest {
         Player bob = MesosTestFixtures.createPlayers("Bob", "Charlie").get(0);
         Player unknown = MesosTestFixtures.createPlayers("Charlie").get(0);
 
-        TurnState turnState = new TurnState();
-        turnState.registerDrawableCards(alice, 1, 1);
-        turnState.registerDrawableCards(bob, 1, 1);
-        turnState.registerDrawableCards(unknown, 2, 2);
+        PlayersTurnFSM playersTurnFSM = new PlayersTurnFSM();
+        playersTurnFSM.registerDrawableCards(alice, 1, 1);
+        playersTurnFSM.registerDrawableCards(bob, 1, 1);
+        playersTurnFSM.registerDrawableCards(unknown, 2, 2);
 
-        SavedMatchSnapshot.TurnStateSnapshot snapshot = mapper.toSnapshot(turnState, List.of(alice));
+        SavedMatchSnapshot.TurnStateSnapshot snapshot = mapper.toSnapshot(playersTurnFSM, List.of(alice));
 
         assertEquals(Map.of("Alice", 1, "Bob", 1, "Charlie", 2), snapshot.remainingUpperChoicesByNickname());
         assertEquals(1, snapshot.remainingUpperChoicesByNickname().get("Alice"));
@@ -73,7 +70,7 @@ class TurnSnapshotMapperTest {
         );
         assertThrows(
                 IllegalArgumentException.class,
-                () -> mapper.toSnapshot(new TurnState(), null)
+                () -> mapper.toSnapshot(new PlayersTurnFSM(), null)
         );
     }
 }
