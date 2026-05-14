@@ -1,9 +1,9 @@
 package it.polimi.ingsoft.mesos.server.network;
 
-import it.polimi.ingsoft.mesos.server.controller.LobbyController;
-import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.controller.GameOrchestrator.GameOrchestrator;
+import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
@@ -45,7 +45,7 @@ public class MessageRouter {
                 }
             }
             case GAME -> {
-                GameOrchestrator gameOrchestrator = this.registry.getGameOrchestrator(snapshot.gameId());
+                GameController gameOrchestrator = this.registry.getGameOrchestrator(snapshot.gameId());
                 if (!(payload instanceof GameClientPayload)) {
                     this.serverController.reportRoutingError(sessionId, "Payload non valido per la fase game.");
                 } else if (gameOrchestrator != null) {

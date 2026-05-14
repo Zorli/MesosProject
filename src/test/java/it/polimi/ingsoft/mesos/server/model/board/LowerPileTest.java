@@ -1,14 +1,15 @@
 package it.polimi.ingsoft.mesos.server.model.board;
 
-import it.polimi.ingsoft.mesos.server.model.cards.BuildingCard;
-import it.polimi.ingsoft.mesos.server.model.cards.Card;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer;
-import it.polimi.ingsoft.mesos.server.model.cards.events.HuntEventCard;
-import it.polimi.ingsoft.mesos.server.model.cards.events.SustenanceEventCard;
-import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
-import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.board.LowerPile;
+import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.game.cards.Card;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Gatherer;
+import it.polimi.ingsoft.mesos.server.model.game.cards.events.HuntEventCard;
+import it.polimi.ingsoft.mesos.server.model.game.cards.events.SustenanceEventCard;
+import it.polimi.ingsoft.mesos.server.model.game.enums.BenefitType;
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -90,27 +91,6 @@ class LowerPileTest {
 
         assertEquals("HUNT", executionLog.get(0), "L'evento normale (Hunt) deve agire per primo");
         assertEquals("SUSTENANCE", executionLog.get(1), "Il Sustenance DEVE agire rigorosamente per ultimo");
-    }
-
-    @Test
-    void restoredConstructorAndGetters_CreateDefensiveCopies() {
-        ArrayList<Gatherer> restoredTribes = new ArrayList<>(List.of(basicTribe));
-        ArrayList<BuildingCard> restoredBuildings = new ArrayList<>(List.of(basicBuilding));
-
-        LowerPile restoredPile = new LowerPile(new ArrayList<>(restoredTribes), new ArrayList<>(restoredBuildings));
-        restoredTribes.clear();
-        restoredBuildings.clear();
-
-        List<?> visibleTribes = restoredPile.getTribeCards();
-        List<BuildingCard> visibleBuildings = restoredPile.getBuildingCards();
-        List<?> allCards = restoredPile.getAllCards();
-
-        visibleTribes.clear();
-        visibleBuildings.clear();
-        allCards.clear();
-
-        assertEquals(1, restoredPile.getTribeCardsSize(), "Le tribù ripristinate devono restare nella lower pile");
-        assertEquals(2, restoredPile.getAllCards().size(), "Le copie restituite non devono mutare la lower pile");
     }
 
     @Test

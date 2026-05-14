@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.server.network;
 
-import it.polimi.ingsoft.mesos.server.controller.ServerController;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.virtualview.VirtualViewTCP;
 
 import java.io.IOException;

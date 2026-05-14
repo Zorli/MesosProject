@@ -1,13 +1,13 @@
 package it.polimi.ingsoft.mesos.server.model.cards;
 
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Hunter;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Inventor;
-import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.enums.InventionType;
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Hunter;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Inventor;
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.game.enums.InventionType;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.player.Tribe;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

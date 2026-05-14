@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.user;
 
-import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.model.server.User;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import org.junit.jupiter.api.Test;
 
