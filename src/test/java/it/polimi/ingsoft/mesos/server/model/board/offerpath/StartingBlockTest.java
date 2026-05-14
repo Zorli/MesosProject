@@ -1,7 +1,8 @@
 package it.polimi.ingsoft.mesos.server.model.board.offerpath;
 
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.StartingBlock;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

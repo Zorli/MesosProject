@@ -1,12 +1,8 @@
 package it.polimi.ingsoft.mesos.server;
 
-import it.polimi.ingsoft.mesos.server.controller.Factory.DefaultGameFactory;
-import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.controller.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.controller.persistence.RestoredMatchBootstrapper;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerRuntimeConfig;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServices;
-import it.polimi.ingsoft.mesos.server.model.persistence.ServerServicesFactory;
+import it.polimi.ingsoft.mesos.server.factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
@@ -19,7 +15,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 
 // From this class we bootstrap the server for BOTH TCP and RMI.
@@ -48,10 +43,6 @@ public final class LaunchServer {
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
             Map<String, String> mergedEnv = mergeWithDotEnv(environment);
-            ServerRuntimeConfig config = ServerRuntimeConfig.fromEnvironment(mergedEnv);
-            printConfig(config, out);
-            ServerServices serverServices = ServerServicesFactory.create(config);
-            Objects.requireNonNull(serverServices, "serverServices cannot be null");
 
             // ==========================================
             // 1. CORE ARCHITECTURE SETUP (The "Big Bang")
@@ -63,10 +54,8 @@ public final class LaunchServer {
             // B. Core Controllers
             ServerController serverController = new ServerController(
                     DefaultGameFactory.getInstance(),
-                    serverServices.matchPersistence(),
                     sessions
             );
-            bootstrapRestores(serverServices, sessions);
 
             Thread serverWorker = new Thread(serverController, "ServerController-Worker");
             serverWorker.start();
@@ -105,14 +94,6 @@ public final class LaunchServer {
      * Lines starting with {@code #} are ignored. Existing env vars are NOT overwritten —
      * the shell always wins over the file.
      */
-    private static void printConfig(ServerRuntimeConfig config, PrintStream out) {
-        out.println("--- Mesos Server Configuration ---");
-        out.println("  Game persistence:    " + config.gamePersistenceEnabled());
-        out.println("  Checkpoint dir:      " + config.gamePersistenceDirectory());
-        out.println("  Checkpoint dir abs:  " + java.nio.file.Path.of(config.gamePersistenceDirectory()).toAbsolutePath());
-        out.println("----------------------------------");
-    }
-
     private static Map<String, String> mergeWithDotEnv(Map<String, String> base) {
         Path dotEnv = Path.of(".env");
         if (!Files.exists(dotEnv)) {
@@ -137,14 +118,6 @@ public final class LaunchServer {
             // .env read failure is non-fatal
         }
         return merged;
-    }
-
-    private static void bootstrapRestores(ServerServices serverServices,
-                                         ServerSessionRegistry sessions) {
-        RestoredMatchBootstrapper.restoreActiveMatches(
-                serverServices.matchPersistence(),
-                sessions
-        );
     }
 
     private static void startRmiServer(ServerController controller, MessageRouter router, int port, PrintStream out) throws Exception {

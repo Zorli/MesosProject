@@ -1,23 +1,23 @@
 package it.polimi.ingsoft.mesos.server.model.cards.buildings;
 
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Artist;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Builder;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.CharacterCard;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Gatherer;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Hunter;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Inventor;
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Shaman;
-import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
-import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.enums.InventionType;
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.game.cards.buildings.*;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Artist;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Builder;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.CharacterCard;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Gatherer;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Hunter;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Inventor;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Shaman;
+import it.polimi.ingsoft.mesos.server.model.game.enums.BenefitType;
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.game.enums.InventionType;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.player.Tribe;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,43 +46,18 @@ class BuildingEffectsTest {
 
         assertEquals(4, player.getFood());
         assertFalse(building.hasBonus());
-        assertEquals(1, building.exportRuntimeState().get("HUNTER"));
-        assertEquals(0, building.exportRuntimeState().get("BUILDER"));
-        assertEquals(0, building.exportRuntimeState().get("GATHERER"));
-        assertEquals(0, building.exportRuntimeState().get("ARTIST"));
-        assertEquals(0, building.exportRuntimeState().get("INVENTOR"));
-        assertEquals(0, building.exportRuntimeState().get("SHAMAN"));
-    }
 
-    @Test
-    void setForFoodRestoresPartialProgressAndCompletesTheMissingType() {
-        Player player = createPlayer(1, 0);
-        SetForFood building = new SetForFood(
-                2,
-                Era.first,
-                3,
-                1,
-                BenefitType.POST_DRAW_SET_FOR_FOOD,
-                5
-        );
-
-        building.restoreRuntimeState(Map.of(
-                "HUNTER", 1,
-                "BUILDER", 1,
-                "GATHERER", 1,
-                "ARTIST", 1,
-                "INVENTOR", 1,
-                "SHAMAN", 0
-        ));
-
+        building.addCharacterTypeAndApplyEffect(TribeCardType.BUILDER, player);
+        building.addCharacterTypeAndApplyEffect(TribeCardType.GATHERER, player);
+        building.addCharacterTypeAndApplyEffect(TribeCardType.ARTIST, player);
+        building.addCharacterTypeAndApplyEffect(TribeCardType.INVENTOR, player);
         building.addCharacterTypeAndApplyEffect(TribeCardType.SHAMAN, player);
 
-        assertEquals(6, player.getFood());
-        assertEquals(0, building.exportRuntimeState().values().stream().mapToInt(Integer::intValue).sum());
+        assertEquals(8, player.getFood());
     }
 
     @Test
-    void setForFoodDecrementDoesNotGoBelowZeroAndEmptyRestoreClearsExistingState() {
+    void setForFoodDecrementDoesNotGoBelowZero() {
         Player player = createPlayer(0, 0);
         SetForFood building = new SetForFood(
                 9,
@@ -97,13 +72,14 @@ class BuildingEffectsTest {
         building.decrementCharacterType(TribeCardType.HUNTER);
         building.decrementCharacterType(TribeCardType.HUNTER);
 
-        assertEquals(0, building.exportRuntimeState().get("HUNTER"));
-
+        building.addCharacterTypeAndApplyEffect(TribeCardType.HUNTER, player);
         building.addCharacterTypeAndApplyEffect(TribeCardType.BUILDER, player);
-        building.restoreRuntimeState(Map.of());
+        building.addCharacterTypeAndApplyEffect(TribeCardType.GATHERER, player);
+        building.addCharacterTypeAndApplyEffect(TribeCardType.ARTIST, player);
+        building.addCharacterTypeAndApplyEffect(TribeCardType.INVENTOR, player);
+        building.addCharacterTypeAndApplyEffect(TribeCardType.SHAMAN, player);
 
-        assertEquals(0, building.exportRuntimeState().get("BUILDER"));
-        assertEquals(0, building.exportRuntimeState().values().stream().mapToInt(Integer::intValue).sum());
+        assertEquals(4, player.getFood());
     }
 
     @Test
@@ -123,60 +99,11 @@ class BuildingEffectsTest {
         building.addInventionTypeAndApplyEffect(InventionType.BOW, player);
 
         assertEquals(3, player.getFood());
-        assertEquals(0, building.exportRuntimeState().get("BOW"));
-        assertEquals(1, building.exportRuntimeState().get("FIRE"));
-        assertEquals(3, building.getRewardFood());
-    }
 
-    @Test
-    void pairOfInventorRestoresPendingPairsBeforeCompletingOne() {
-        Player player = createPlayer(2, 0);
-        PairOfInventor building = new PairOfInventor(
-                4,
-                Era.first,
-                2,
-                1,
-                BenefitType.POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION,
-                4
-        );
-
-        building.restoreRuntimeState(Map.ofEntries(
-                Map.entry("BOW", 1),
-                Map.entry("FIRE", 0),
-                Map.entry("WHEEL", 0),
-                Map.entry("KNIFE", 0),
-                Map.entry("RAFT", 0),
-                Map.entry("BASKET", 0),
-                Map.entry("SPEAR", 0),
-                Map.entry("TENT", 0),
-                Map.entry("NECKLACE", 0),
-                Map.entry("PAINTING", 0)
-        ));
-
-        building.addInventionTypeAndApplyEffect(InventionType.BOW, player);
+        building.addInventionTypeAndApplyEffect(InventionType.FIRE, player);
 
         assertEquals(6, player.getFood());
-        assertEquals(0, building.exportRuntimeState().get("BOW"));
-    }
-
-    @Test
-    void pairOfInventorEmptyRestoreClearsExistingCounters() {
-        Player player = createPlayer(0, 0);
-        PairOfInventor building = new PairOfInventor(
-                14,
-                Era.first,
-                2,
-                1,
-                BenefitType.POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION,
-                4
-        );
-
-        building.addInventionTypeAndApplyEffect(InventionType.BOW, player);
-        building.addInventionTypeAndApplyEffect(InventionType.FIRE, player);
-        building.restoreRuntimeState(Map.of());
-
-        assertEquals(0, building.exportRuntimeState().get("BOW"));
-        assertEquals(0, building.exportRuntimeState().get("FIRE"));
+        assertEquals(3, building.getRewardFood());
     }
 
     @Test

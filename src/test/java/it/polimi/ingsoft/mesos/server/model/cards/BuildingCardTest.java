@@ -1,19 +1,16 @@
 package it.polimi.ingsoft.mesos.server.model.cards;
 
-import it.polimi.ingsoft.mesos.server.model.cards.characters.Builder;
-import it.polimi.ingsoft.mesos.server.model.enums.BenefitType;
-import it.polimi.ingsoft.mesos.server.model.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.enums.TotemColor;
-import it.polimi.ingsoft.mesos.server.model.enums.TribeCardType;
-import it.polimi.ingsoft.mesos.server.model.player.Player;
-import it.polimi.ingsoft.mesos.server.model.player.Tribe;
+import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Builder;
+import it.polimi.ingsoft.mesos.server.model.game.enums.BenefitType;
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TribeCardType;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.model.game.player.Tribe;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BuildingCardTest {
 
@@ -36,7 +33,7 @@ class BuildingCardTest {
         BuildingCard buildingCard = new BuildingCard(1, Era.first, 3, 1, BenefitType.END_ROUND_EXTRA_CARD);
 
         assertEquals(0, buildingCard.getEffectiveFoodCost(player));
-        assertTrue(buildingCard.isDrawable(player));
+        assertEquals(true, buildingCard.isDrawable(player));
     }
 
     @Test
@@ -68,13 +65,4 @@ class BuildingCardTest {
         assertEquals(5, player.getPrestigePoints());
     }
 
-    @Test
-    void defaultRuntimeStateExportIsEmptyAndRestoreRejectsUnsupportedState() {
-        BuildingCard buildingCard = new BuildingCard(4, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD);
-
-        assertTrue(buildingCard.exportRuntimeState().isEmpty());
-        buildingCard.restoreRuntimeState(null);
-        buildingCard.restoreRuntimeState(Map.of());
-        assertThrows(IllegalArgumentException.class, () -> buildingCard.restoreRuntimeState(Map.of("value", 1)));
-    }
 }

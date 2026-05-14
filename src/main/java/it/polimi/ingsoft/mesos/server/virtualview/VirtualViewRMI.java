@@ -1,7 +1,6 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
-import it.polimi.ingsoft.mesos.server.controller.ServerController;
-import it.polimi.ingsoft.mesos.server.model.Listener;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
@@ -11,10 +10,6 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.*;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.*;

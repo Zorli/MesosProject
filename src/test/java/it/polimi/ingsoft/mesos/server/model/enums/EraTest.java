@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.enums;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

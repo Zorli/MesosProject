@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.user;
 
+import it.polimi.ingsoft.mesos.server.model.server.User;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
