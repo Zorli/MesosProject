@@ -107,6 +107,7 @@ public class GameController implements Runnable  {
                                     MoveTotemPayload p = (MoveTotemPayload) clientCommand.payload();
                                     this.moveTotem(nickname, p.tile);
                                 }
+                                //TODO : connesso al systemlobbyDisconnectedCommand aggiustare il case per accetarlo
                             }
                         }
                         case SystemSetupMatchCommand ignored -> this.setupMatch();

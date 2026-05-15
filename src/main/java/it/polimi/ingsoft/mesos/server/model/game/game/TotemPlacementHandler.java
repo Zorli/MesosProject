@@ -184,22 +184,33 @@ public class TotemPlacementHandler {
 
     /**
      * Prepares the standard card-drafting phase after all totems are placed.
-     *
+     *<p>
+     *     when we are sure that all the active player are on the offer path, and
+     *     it's time to change phases, the player still on the starting tile are shifted
+     *     as described by the method on the board
+     *</p>
      * <p>Offer space A is special: it resolves immediately and the player on A
      * returns to the starting tile before card drafting begins. After resolving
-     * A, the board exposes the offer-path resolution order. Only players still
-     * connected at this exact moment are copied into the active order for
+     * A, the board exposes the offer-path resolution order. Only players after a
+     * connected ones are copied into the active order for
      * {@link RoundPhase#PLAYER_DRAWS}.
      *
      * <p>This is what allows a player who placed a totem, disconnected, and
      * reconnected before the draft starts to draw normally. A player who is
      * still disconnected when the draft order is created stays physically on
-     * the offer path, but does not receive a draft turn.
+     * the offer path, but does not receive a draft turn, it just gets moved.
      */
     private void startPlayerDrawPhase() {
+        this.board.shiftToLastStartingTile();
         this.board.resolveEventA();
-        List<Player> draftOrder = this.board.getResolutionOrder().stream()
-        .filter(player -> Boolean.TRUE.equals(this.game.getConnectedPlayers().get(player))).toList();
+        List<Player> draftOrder = this.board.getResolutionOrder();
+        int i = 0;
+        while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i))))
+        {
+            this.board.movePlayerToLastStartingTile(draftOrder.get(i));
+            draftOrder.remove(i);
+            i++;
+        }
         this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
     }

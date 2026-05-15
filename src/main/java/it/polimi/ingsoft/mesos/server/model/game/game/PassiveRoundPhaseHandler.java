@@ -131,8 +131,8 @@ public class PassiveRoundPhaseHandler {
      *
      * <p>Before reading the next totem-placement order, the board prepares the
      * starting tile for the new round. The active phase order is still filtered
-     * with the currently connected players, so disconnected players do not
-     * receive a totem-placement turn.
+     * until a connected player is founded, the not connected one are moved to the
+     * last free starting block.
      */
     private void resetBoardForNextRound() {
         boolean eraChanged = this.board.resetBoardAfterRound(this.game.getCurrentEra());
@@ -140,10 +140,14 @@ public class PassiveRoundPhaseHandler {
         if (eraChanged) {
             this.game.advanceEra();
         }
-        this.board.prepareStartingTileForNextRound(this.game.getConnectedPlayers());
-        List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder().stream()
-                .filter(player -> Boolean.TRUE.equals(this.game.getConnectedPlayers().get(player)))
-                .toList();
+        List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
+        int i = 0;
+        while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(nextRoundOrder.get(i))))
+        {
+            this.board.movePlayerToLastStartingTile(nextRoundOrder.get(i));
+            nextRoundOrder.remove(i);
+            i++;
+        }
         this.roundFlow.advanceRoundNumber();
         this.playerDraftState.resetForNewRound();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);

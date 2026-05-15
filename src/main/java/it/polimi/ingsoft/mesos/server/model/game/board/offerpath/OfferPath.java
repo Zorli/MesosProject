@@ -79,30 +79,13 @@ public class OfferPath {
         this.startingTile.placePlayerOnNextAvailableBlock(player);
     }
 
-
-    public void movePlayerToLastStartingTile(Player player) {
-
-    }
-
-
-    public void movePlayerToLastStartingTileAndShift(Player player) {
-
-    }
-
     /**
-     * Moves disconnected players still placed on offer spaces back to the starting tile.
-     *
-     * @param connectedPlayers current connection state of each player
+     * Moves the player from wherever it can be to the last free startingBlock
+     * @param player
      */
-    public void moveDisconnectedPlayersOnOfferPathToStartingTile(Map<Player, Boolean> connectedPlayers) {
-
+    public void movePlayerToLastStartingTile(Player player) {
+        this.startingTile.placePlayerOnLastAvailableBlock(player);
     }
-
-    public void prepareStartingTileForNextRound(Map<Player, Boolean> connectedPlayers) {
-        // Qua il board deve rimettere sullo starting tile chi è rimasto disconnesso sull'offer path
-        // e poi compattare lo starting tile mettendo prima i player connessi e dopo quelli disconnessi.
-    }
-
     /**
      * Determines the new turn order by extracting players from currently occupied spaces,
      * sorted from left to right (by the space's position index), it skips offer space A

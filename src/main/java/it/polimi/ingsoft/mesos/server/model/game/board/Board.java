@@ -147,33 +147,6 @@ public class Board {
     }
 
     /**
-     * Moves a player to the last starting tile block, shifting the other players forward.
-     *
-     * @param player player to move
-     */
-    public void movePlayerToLastStartingTileAndShift(Player player) {
-        this.offerPath.movePlayerToLastStartingTileAndShift(player);
-    }
-
-    /**
-     * Moves disconnected players still placed on offer spaces back to the starting tile.
-     *
-     * @param connectedPlayers current connection state of each player
-     */
-    public void moveDisconnectedPlayersOnOfferPathToStartingTile(Map<Player, Boolean> connectedPlayers) {
-
-    }
-
-    /**
-     * Prepares the starting tile before creating the next round turn order.
-     *
-     * @param connectedPlayers current connection state of each player
-     */
-    public void prepareStartingTileForNextRound(Map<Player, Boolean> connectedPlayers) {
-        this.offerPath.prepareStartingTileForNextRound(connectedPlayers);
-    }
-
-    /**
      * Resets the visible rows after the round has ended and returns whether the refill triggered an
      * era change.
      *
@@ -278,6 +251,18 @@ public class Board {
         return this.offerPath.getPlayersInOrder();
     }
 
+    /**
+     * shift the player still on the starting tile to the bottom, the last as first became the first as last
+     * and it goes on freeing the firsts starting blocks. When a player is moved to a specific starting blocks
+     * (only the last one as the games work) the malus take effect
+     */
+    public void shiftToLastStartingTile()
+    {
+        List <Player> PlayersToShift = this.offerPath.getStartingTile().getPlayersOrderedByStartingBlock();
+        for (Player player : PlayersToShift.reversed()) {
+            this.movePlayerToLastStartingTile(player);
+        }
+    }
     /**
      * Retrieves the exact turn order for the next round.
      * This is determined by the order in which players returned to the starting blocks.

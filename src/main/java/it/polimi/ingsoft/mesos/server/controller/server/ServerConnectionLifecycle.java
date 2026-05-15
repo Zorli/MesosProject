@@ -47,7 +47,13 @@ public class ServerConnectionLifecycle {
         if (snapshot.phase() == ServerSessionRegistry.Phase.GAME && snapshot.gameId() != null) {
             GameController orchestrator = this.sessions.getGameOrchestrator(snapshot.gameId());
             if (orchestrator != null) {
-                orchestrator.freezeForDisconnectedPlayer(snapshot.user().getNickname());
+                //TODO : gestione lato coda
+                Listener listener = snapshot.connection() instanceof Listener l ? l : null;
+                orchestrator.enqueueMessage(new EnqueuedMessage(
+                        sessionId,
+                        new SystemLobbyDisconnectCommand(snapshot.user().getNickname(), listener)
+                ));
+                return;
             }
         } else if (snapshot.phase() == ServerSessionRegistry.Phase.LOBBY && snapshot.lobbyId() != null) {
             LobbyController controller = this.sessions.getLobbyController(snapshot.lobbyId());
