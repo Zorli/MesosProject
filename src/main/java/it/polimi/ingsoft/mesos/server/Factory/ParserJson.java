@@ -1,4 +1,4 @@
-package it.polimi.ingsoft.mesos.server.factory;
+package it.polimi.ingsoft.mesos.server.Factory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
