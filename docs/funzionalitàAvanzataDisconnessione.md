@@ -184,12 +184,3 @@ Per preparare il prossimo `PLACING_TOTEMS`:
 2. tenere nella nuova phase order solo i player connessi;
 3. lasciare sulla `StartingTile` anche i player disconnessi, ma fuori dalla phase order.
 
-## Invariante Finale
-
-A inizio `PLACING_TOTEMS`:
-
-- tutti i player fisicamente si trovano sulla `StartingTile`;
-- la `currentPhaseOrder` contiene solo i player connessi;
-- i player disconnessi restano sulla board, ma non ricevono turno;
-- se rientrano durante il `PLACING_TOTEMS`, non vengono inseriti nella phase order già creata;
-- potranno rientrare nel flusso normale dal round successivo, salvo regole diverse esplicite
