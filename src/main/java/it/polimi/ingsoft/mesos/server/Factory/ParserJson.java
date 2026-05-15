@@ -1,7 +1,8 @@
-package it.polimi.ingsoft.mesos.server.Factory;
+package it.polimi.ingsoft.mesos.server.factory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.polimi.ingsoft.mesos.server.factory.DeckTemplate;
 import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.game.cards.TribeCard;

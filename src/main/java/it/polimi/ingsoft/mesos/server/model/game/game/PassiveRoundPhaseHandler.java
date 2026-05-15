@@ -6,6 +6,8 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
+import java.util.List;
+
 /**
  * Advances the automatic phases of a round.
  *
@@ -108,7 +110,6 @@ public class PassiveRoundPhaseHandler {
         this.board.resolveLowerEvents();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
         this.game.markStateChanged();
-        //Here I should insert the update to the list of the current playing players for real
 
     }
 
@@ -129,10 +130,13 @@ public class PassiveRoundPhaseHandler {
         if (eraChanged) {
             this.game.advanceEra();
         }
-
+        List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder().stream()
+                .filter(player -> Boolean.TRUE.equals(this.game.getConnectedPlayers().get(player)))
+                .toList();
         this.roundFlow.advanceRoundNumber();
         this.playerDraftState.resetForNewRound();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+        this.roundFlow.setCurrentPhaseOrder(nextRoundOrder);
         this.game.markStateChanged();
     }
 

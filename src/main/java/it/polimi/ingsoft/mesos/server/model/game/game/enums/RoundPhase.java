@@ -20,7 +20,7 @@ public enum RoundPhase {
     PLAYER_DRAWS,
 
     /**
-     * Players with an end-round extra-card effect draw one additional card.
+     * The player with the end-round extra-card effect draws one additional card.
      */
     EXTRA_DRAWS,
 

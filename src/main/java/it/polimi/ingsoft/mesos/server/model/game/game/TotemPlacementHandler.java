@@ -158,7 +158,20 @@ public class TotemPlacementHandler {
     private void advanceAfterTotemPlacement() {
         if (this.roundFlow.isLastPlayer()) {
             this.startPlayerDrawPhase();
-        } else {
+            return;
+        }
+
+        this.roundFlow.advanceToNextPlayer();
+
+        while (Boolean.FALSE.equals(this.game.getConnectedPlayers().get(this.roundFlow.getCurrentPlayer()))) {
+            //Devo mettere il suo totem nell'ultima posizione disponibile
+            //this.board.movePlayerToStartingTile(player);
+
+            if (this.roundFlow.isLastPlayer()) {
+                this.startPlayerDrawPhase();
+                return;
+            }
+
             this.roundFlow.advanceToNextPlayer();
         }
     }
@@ -195,4 +208,34 @@ public class TotemPlacementHandler {
             this.roundFlow.advanceToNextPlayer();
         }
     }
+
+
+
+    public void handlePlayerDisconnection(Player player) {
+        //Qui possiamo avere tre diversi scenari:
+        //1) Il player che si è disconnesso ha già fatto la sua mossa e ora è il turno di un altro player
+        //Allora in tal caso chiedo alla board di spostare quel totem sullo starting tile più in basso possibile
+        //e ritorno
+        if(this.roundFlow.getCurrentPlayerIndex() > this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
+            //TODO : Aggiungere metodo alla board
+            //this.board.movePlayerToStartingTile(player);
+            return;
+        }else if (this.roundFlow.getCurrentPlayerIndex() == this.roundFlow.getCurrentPhaseOrder().indexOf(player)) {
+            //2) Il player che si è disconnesso è proprio quello di cui è il turno
+            //Allora in tal caso chiedo alla board di spostare quel totem sullo starting tile più in basso possibile
+            //e poi avanzo al prossimo player
+            //TODO : Aggiungere metodo alla board
+            //this.board.movePlayerToStartingTile(player);
+            this.advanceAfterTotemPlacement();
+
+        }else {
+            //3) Il player che si è disconnesso deve ancora fare la sua mossa
+            //Allora in tal caso non devo fare nulla, tanto quando sarà il suo turno, se è ancora disconnesso, avanzerò al prossimo player
+            //TODO: Aggiungi che l'avanzamento automatico nel movetotem skippa in automatico i player disconnessi
+            //per i player disconnessi devo però mettere il loto totem sulla penultima posizione
+            //disponibile della starting tile
+
+        }
+    }
+
 }

@@ -8,10 +8,7 @@ import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGameStatusException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Facade and aggregate root of one Mesos match.
@@ -52,14 +49,17 @@ public class Game {
     private final PlayerDraftState playerDraftState;
     private final List<Listener> listeners;
 
+
+
     //This map is updated as soon as the ping pong discovers that a player is not longer connected
     //the modification to this map has still to pass through the controller queue
     private Map<Player,Boolean> connectedPlayers;
 
-    //In this map instead we have the player that are actively playing the next round
-    //It's needed because if a player shows up in the middle of a round we cannot insert it asap,
-    //but we need to wait untile another round starts
-    private Map<Player, Boolean> playingRoundPlayers;
+
+    private final GameActionExecutor actionExecutor;
+    private final TotemPlacementHandler totemPlacementHandler;
+    private final CardDraftHandler cardDraftHandler;
+    private final PassiveRoundPhaseHandler passiveRoundPhaseHandler;
 
     //The logic is that in the round flow class i have a list of the player currently plaing that round, if
     // a player disconnected but was subscribed to that round we have to check that is still online to complete it's turn othwerise we skip it
@@ -88,24 +88,34 @@ public class Game {
     viene riportato allo starting tile e vengon applicati i bonugs/malus
      */
 
+    public void disconnectedPlayer(Player player) {
+        this.actionExecutor.execute(() -> {
+            this.connectedPlayers.put(player, false);
 
+            if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
+                this.totemPlacementHandler.handlePlayerDisconnection(player);
+            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
+                this.cardDraftHandler.handlePlayerDisconnection(player);
+            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
+                this.cardDraftHandler.handleExtraDrawPlayerDisconnection(player);
+            }
 
-    private final GameActionExecutor actionExecutor;
-    private final TotemPlacementHandler totemPlacementHandler;
-    private final StandardCardDraftHandler standardCardDraftHandler;
-    private final ExtraCardDraftHandler extraCardDraftHandler;
-    private final PassiveRoundPhaseHandler passiveRoundPhaseHandler;
+            this.passiveRoundPhaseHandler.advancePassivePhases();
+            this.markStateChanged();
+        });
+    }
 
+    //TODO aggiornare payload per mostrare i giocatori che stanno davvero giocando al turno in questo momento
+    public void reconnectedPlayer(Player player) {
+        //Quello che deve succedere è che lo segno nuovamente online
 
-    public void updateActivePlayerMap(Player player, boolean isActive) {
-        //Potrebbe succedere in qualsiasi momento, il player potrebbe avere già fatto move totem
-        //Potrebbe essere sullo starting tile
-        //Potrebbe avere fatto move totme ma dover ancora fare pescaggio delle carte
-        //Cosa succede in questi casi?
-        this.playingRoundPlayers.put(player, isActive);
-        if(!isActive){
-            this.roundFlow.handleDisconnectedPlayer(player);
-        }
+        //Devo gestire poi i casi, se è tornato online devo capire se continuerà a giocare il turno o meno, potrebbe succedere
+        //Ovvero se rientra prima che sia il suo turno in movetotem può tornare a giocare
+        //Stessa cosa per movecard a patto che fosse connesso durante il movetotme
+        this.actionExecutor.execute(() -> {
+            connectedPlayers.put(player, true);
+            this.markStateChanged();
+        });
     }
 
     /**
@@ -134,9 +144,12 @@ public class Game {
 
         this.actionExecutor = new GameActionExecutor(this);
         this.totemPlacementHandler = new TotemPlacementHandler(this, this.board, this.roundFlow, this.playerDraftState);
-        this.standardCardDraftHandler = new StandardCardDraftHandler(this, this.board, this.roundFlow, this.playerDraftState);
-        this.extraCardDraftHandler = new ExtraCardDraftHandler(this, this.board, this.roundFlow);
+        this.cardDraftHandler = new CardDraftHandler(this, this.board, this.roundFlow, this.playerDraftState);
         this.passiveRoundPhaseHandler = new PassiveRoundPhaseHandler(this, this.board, this.roundFlow, this.playerDraftState);
+        this.connectedPlayers = new HashMap<>();
+        for (Player player : this.players) {
+            this.connectedPlayers.put(player, true);
+        }
     }
 
     /**
@@ -147,6 +160,11 @@ public class Game {
     public int getId() {
         return this.id;
     }
+
+    public Map<Player, Boolean> getConnectedPlayers() {
+        return connectedPlayers;
+    }
+
 
     /**
      * Returns the players that belong to this match.
@@ -301,7 +319,7 @@ public class Game {
      */
     public void chooseCard(Player player, int cardId) {
         this.actionExecutor.execute(() -> {
-            this.standardCardDraftHandler.chooseCard(player, cardId);
+            this.cardDraftHandler.chooseCard(player, cardId);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
     }
@@ -314,7 +332,7 @@ public class Game {
      */
     public void extraDrawn(Player player, int cardId) {
         this.actionExecutor.execute(() -> {
-            this.extraCardDraftHandler.extraDrawn(player, cardId);
+            this.cardDraftHandler.extraDrawn(player, cardId);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
     }

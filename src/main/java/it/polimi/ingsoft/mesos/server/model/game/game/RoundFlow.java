@@ -21,8 +21,8 @@ import java.util.List;
  *     tile order;</li>
  *     <li>during {@link RoundPhase#PLAYER_DRAWS}, players act in the offer-path
  *     resolution order;</li>
- *     <li>during {@link RoundPhase#EXTRA_DRAWS}, only players eligible for an
- *     extra draw act, usually following next-round order.</li>
+ *     <li>during {@link RoundPhase#EXTRA_DRAWS}, only the player eligible for
+ *     the extra draw acts.</li>
  * </ul>
  *
  * <p>It does not know the rules of totem placement, card drafting, extra draws,

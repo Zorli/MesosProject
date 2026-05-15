@@ -32,16 +32,6 @@ import java.util.List;
  * objects to network DTOs.
  */
 final class GamePayloadMapper {
-
-    /**
-     * Prevents instantiation of this utility class.
-     *
-     * <p>The mapper has no state. Every method receives the model object it must
-     * convert and returns a new payload object.
-     */
-    private GamePayloadMapper() {
-    }
-
     /**
      * Builds the payload representing the current game state.
      *
@@ -55,7 +45,7 @@ final class GamePayloadMapper {
                 game.getCurrentEra().ordinal(),
                 toTurnOrderPayload(game.getRoundFlow()),
                 new TurnStatePayload(game.getPlayerDraftState().getPhase().name()),
-                toPlayerPayloads(game.getPlayers()),
+                toPlayerPayloads(game.getPlayers(),game),
                 toBoardPayload(game.getBoard())
         );
     }
@@ -150,13 +140,14 @@ final class GamePayloadMapper {
      * Converts all game players into client payloads.
      *
      * @param players model players
+     * @param game
      * @return payload representation of every player
      */
-    private static List<PlayerPayload> toPlayerPayloads(List<Player> players) {
+    private static List<PlayerPayload> toPlayerPayloads(List<Player> players, Game game) {
         List<PlayerPayload> payloads = new ArrayList<>();
 
         for (Player player : players) {
-            payloads.add(toPlayerPayload(player));
+            payloads.add(toPlayerPayload(player,game));
         }
 
         return payloads;
@@ -169,9 +160,10 @@ final class GamePayloadMapper {
      * prestige points, totem color, and tribe cards.
      *
      * @param player player to convert
+     * @param game
      * @return payload representation of the player
      */
-    private static PlayerPayload toPlayerPayload(Player player) {
+    private static PlayerPayload toPlayerPayload(Player player, Game game) {
         TribePayload tribePayload = toTribePayload(player);
 
         return new PlayerPayload(
@@ -179,7 +171,8 @@ final class GamePayloadMapper {
                 player.getFood(),
                 player.getPrestigePoints(),
                 player.getTotem().name(),
-                tribePayload
+                tribePayload,
+                Boolean.TRUE.equals(game.getConnectedPlayers().get(player))
         );
     }
 

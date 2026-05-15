@@ -16,16 +16,15 @@ import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidTurnPhase
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.NotPlayersTurnException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Executes the standard card-drafting action of a round.
+ * Executes card-drafting actions of a round.
  *
- * <p>This handler owns the rules behind {@code chooseCard}. Standard drafting
- * is the phase that happens after all players have placed their totems. During
- * this phase each player may draw only the number of upper-row and lower-row
- * cards earned from the offer space selected during totem placement.
+ * <p>This handler owns the rules behind {@code chooseCard} and
+ * {@code extraDrawn}. Standard draws consume the upper-row and lower-row quotas
+ * earned from the offer space. The extra draw is a single end-of-round draw
+ * granted by one building effect and does not consume those quotas.
  *
  * <p>The handler validates four different concepts:
  * <ul>
@@ -47,26 +46,26 @@ import java.util.List;
  *
  * <p>This class does not resolve lower-row events, reset the board, or compute
  * final scoring. It only moves the round phase to the next high-level step when
- * standard card drafting is over.
+ * drafting is over.
  */
-public class StandardCardDraftHandler {
+public class CardDraftHandler {
     private final Game game;
     private final Board board;
     private final RoundFlow roundFlow;
     private final PlayerDraftState playerDraftState;
 
     /**
-     * Creates the handler used to execute standard card drafting.
+     * Creates the handler used to execute card drafting.
      *
      * @param game game aggregate that owns lifecycle status and state changes
      * @param board board that contains visible cards and offer-path positions
      * @param roundFlow object that knows the current phase and current player
      * @param playerDraftState object that stores remaining standard draw quotas
      */
-    public StandardCardDraftHandler(Game game,
-                                    Board board,
-                                    RoundFlow roundFlow,
-                                    PlayerDraftState playerDraftState) {
+    public CardDraftHandler(Game game,
+                            Board board,
+                            RoundFlow roundFlow,
+                            PlayerDraftState playerDraftState) {
         if (game == null) {
             throw new IllegalArgumentException("Game cannot be null");
         }
@@ -114,6 +113,23 @@ public class StandardCardDraftHandler {
     }
 
     /**
+     * Makes the current player draw the single end-of-round extra card.
+     *
+     * @param player player choosing the extra card
+     * @param cardId identifier of the selected card
+     */
+    public void extraDrawn(Player player, int cardId) {
+        Card card = this.board.findCardById(cardId);
+
+        this.validateExtraDrawRequest(player);
+        this.validateAndRemoveExtraDrawCard(player, card);
+        this.applyChosenCardToPlayer(player, card);
+        this.goToResolvingEffects();
+
+        this.game.markStateChanged();
+    }
+
+    /**
      * Checks the game-level preconditions for a standard card draw.
      *
      * <p>This method does not inspect the selected card yet. It only answers
@@ -135,6 +151,25 @@ public class StandardCardDraftHandler {
         Player currentPlayer = this.roundFlow.getCurrentPlayer();
         if (!currentPlayer.equals(player)) {
             throw new NotPlayersTurnException(currentPlayer, player);
+        }
+    }
+
+    private void validateExtraDrawRequest(Player player) {
+        if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
+            throw new InvalidGameStatusException("extraDrawn", this.game.getStatus());
+        }
+
+        if (this.roundFlow.getCurrentRoundPhase() != RoundPhase.EXTRA_DRAWS) {
+            throw new InvalidGamePhaseException("extraDrawn", this.roundFlow.getCurrentRoundPhase());
+        }
+
+        Player currentPlayer = this.roundFlow.getCurrentPlayer();
+        if (!currentPlayer.equals(player)) {
+            throw new NotPlayersTurnException(currentPlayer, player);
+        }
+
+        if (!player.getTribe().hasEndRoundExtraCardBuilding()) {
+            throw new IllegalStateException("Player " + player.getNickname() + " cannot perform an extra draw");
         }
     }
 
@@ -193,6 +228,24 @@ public class StandardCardDraftHandler {
         this.validateLowerRowChoice(player, cardRow);
         this.board.removeLowerCard(card);
         return cardRow;
+    }
+
+    private void validateAndRemoveExtraDrawCard(Player player, Card card) {
+        CardRow cardRow = this.board.getCardRow(card);
+
+        if (cardRow == CardRow.NOT_PRESENT) {
+            throw new CardNotPresentException(card);
+        }
+
+        if (!this.board.canPlayerDrawCard(player, card)) {
+            throw new CardNotDrawableException(player, card);
+        }
+
+        if (cardRow == CardRow.UPPER) {
+            this.board.removeUpperCard(card);
+        } else {
+            this.board.removeLowerCard(card);
+        }
     }
 
     /**
@@ -274,6 +327,7 @@ public class StandardCardDraftHandler {
      * <p>If no further player can draw, the method transitions out of the
      * standard card-drafting phase.
      */
+
     private void advanceToNextDrawablePlayerOrEndStandardDraft() {
         while (true) {
             if (this.roundFlow.isLastPlayer()) {
@@ -283,14 +337,31 @@ public class StandardCardDraftHandler {
 
             this.roundFlow.advanceToNextPlayer();
 
-            Player nextPlayer = this.roundFlow.getCurrentPlayer();
-            if (this.hasAnyAvailableDraw(nextPlayer)) {
-                return;
+            Player currentPlayer = this.roundFlow.getCurrentPlayer();
+
+            if (this.game.getConnectedPlayers().get(currentPlayer).equals(Boolean.FALSE)) {
+                this.skipDisconnectedPlayer(currentPlayer);
+                continue;
             }
 
-            this.board.returnPlayerToStartingTile(nextPlayer);
-            this.playerDraftState.resetForNextPlayer(nextPlayer);
+            if (!this.hasAnyAvailableDraw(currentPlayer)) {
+                this.skipPlayerWithoutUsefulDraw(currentPlayer);
+                continue;
+            }
+
+            return;
         }
+    }
+
+
+    private void skipPlayerWithoutUsefulDraw(Player player) {
+        this.board.returnPlayerToStartingTile(player);
+        this.playerDraftState.resetForNextPlayer(player);
+    }
+
+    private void skipDisconnectedPlayer(Player player) {
+        //TODO: QUando c'è chiamare metodo board per fare quel passaggio
+        this.playerDraftState.resetForNextPlayer(player);
     }
 
     /**
@@ -304,46 +375,45 @@ public class StandardCardDraftHandler {
      */
     private void transitionAfterStandardDraft() {
         List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
-        List<Player> extraDrawOrder = this.buildExtraDrawOrder(nextRoundOrder);
+        Player extraDrawPlayer = this.findExtraDrawPlayer(nextRoundOrder);
 
-        if (extraDrawOrder.isEmpty()) {
+        if (extraDrawPlayer == null) {
             this.roundFlow.setCurrentPhaseOrder(nextRoundOrder);
             this.roundFlow.setCurrentRoundPhase(RoundPhase.RESOLVING_EFFECTS);
             return;
         }
 
-        this.roundFlow.setCurrentPhaseOrder(extraDrawOrder);
+        this.roundFlow.setCurrentPhaseOrder(List.of(extraDrawPlayer));
         this.roundFlow.setCurrentRoundPhase(RoundPhase.EXTRA_DRAWS);
     }
 
     /**
-     * Builds the active order for the extra-draw phase.
+     * Finds the only player who can perform the end-of-round extra draw.
      *
      * <p>The input order is the next-round order already calculated from the
-     * starting tile. The method keeps only players who both own the extra-card
-     * building effect and have at least one drawable card available on the board.
+     * starting tile.
      *
      * @param nextRoundOrder player order taken from the starting tile
-     * @return players who should act during {@link RoundPhase#EXTRA_DRAWS}
+     * @return player who should act during {@link RoundPhase#EXTRA_DRAWS}, or
+     * {@code null} if nobody can do it
      */
-    private List<Player> buildExtraDrawOrder(List<Player> nextRoundOrder) {
-        List<Player> extraDrawOrder = new ArrayList<>();
-
+    private Player findExtraDrawPlayer(List<Player> nextRoundOrder) {
         for (Player player : nextRoundOrder) {
-            if (this.canPerformUsefulExtraDraw(player)) {
-                extraDrawOrder.add(player);
+            if (Boolean.TRUE.equals(this.game.getConnectedPlayers().get(player))
+                    && this.canPerformUsefulExtraDraw(player)) {
+                return player;
             }
         }
 
-        return extraDrawOrder;
+        return null;
     }
 
     /**
      * Returns whether an extra draw would be meaningful for the player.
      *
      * <p>The building grants the right to draw, but the board may contain no
-     * drawable card for that player. In that case the player is not inserted in
-     * the extra-draw order.
+     * drawable card for that player. In that case the extra-draw phase is not
+     * started for that player.
      *
      * @param player player to inspect
      * @return {@code true} if the player should receive an extra-draw turn
@@ -401,6 +471,44 @@ public class StandardCardDraftHandler {
     private boolean hasAnyDraftableCardOnBoard(Player player) {
         return !this.board.getDraftableUpperCards(player).isEmpty()
                 || !this.board.getDraftableLowerCards(player).isEmpty();
+    }
+
+    public void handlePlayerDisconnection(Player player) {
+        if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
+            if (player.equals(this.roundFlow.getCurrentPlayer())) {
+                this.goToResolvingEffects();
+            }
+            return;
+        }
+
+        //Come già detto, abbiamo tre casi
+        //Il primo caso è quello in cui il player ha già pescato , ora è il turno di una altra persona, quindi se ha già pescato
+        //' già sullo starting tile, devo quindi cheidere alla board di rimuovere il suo totem, tirare su tutti quelli
+        //sotto di lui e metterlo in ultima posizione
+        if(this.roundFlow.getCurrentPlayerIndex()> this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
+            //Chiedo alla board di fare operazione
+            //this.board.shiftandplaceplayer(player)
+        }else if (this.roundFlow.getCurrentPlayerIndex() == this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
+            //Se è il turno di questo player allora lo salto e lo metto in ultima posizione
+            //sulla board
+            //this.board.movePlayerToStartingTile(player);
+            this.advanceToNextDrawablePlayerOrEndStandardDraft();
+
+        }else{
+            //Deve ancora arrivare il suo turno, ma mi assicuro di skipparlo nello skip automatico
+        }
+
+    }
+    public void handleExtraDrawPlayerDisconnection (Player player){
+        //Se era proprio lui che doveva pescare posso andare avanti, in ogni caso lo metto come ultimo sullo starting tile
+        if(this.roundFlow.getCurrentPlayer().equals(player)){
+            this.goToResolvingEffects();
+        }
+        //this.board.scle and shift(player);
+    }
+    private void goToResolvingEffects() {
+        this.roundFlow.setCurrentPhaseOrder(this.board.getNextRoundTurnOrder());
+        this.roundFlow.setCurrentRoundPhase(RoundPhase.RESOLVING_EFFECTS);
     }
 
 }

@@ -99,8 +99,8 @@ class TuiPayloadRendererTest {
                 new TurnOrderPayload(3, "ACTION", "ada", List.of("ada", "bob")),
                 null,
                 List.of(
-                        new PlayerPayload("ada", 3, 5, "A1", new TribePayload(List.of(), List.of())),
-                        new PlayerPayload("bob", 2, 4, null, new TribePayload(List.of(), List.of()))
+                        new PlayerPayload("ada", 3, 5, "A1", new TribePayload(List.of(), List.of()),true),
+                        new PlayerPayload("bob", 2, 4, null, new TribePayload(List.of(), List.of()),true)
                 ),
                 new BoardPayload(
                         List.of(new CardPayload(10, "HUNTER", 0)),
