@@ -78,6 +78,17 @@ public class StartingTile {
         }
     }
 
+
+    public void placePlayerOnLastAvailableBlock(Player player) {
+
+    }
+
+
+    public void placePlayerOnLastAvailableBlockAndShift(Player player) {
+
+    }
+
+
     /**
      * Removes the player from their current starting block.
      * This is triggered when the player moves their totem to an offer space.

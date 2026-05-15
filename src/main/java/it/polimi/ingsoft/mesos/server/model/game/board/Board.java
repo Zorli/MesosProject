@@ -13,6 +13,7 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -134,6 +135,42 @@ public class Board {
      */
     public void returnPlayerToStartingTile(Player player) {
         this.offerPath.returnPlayerToStartingTile(player);
+    }
+
+    /**
+     * Moves a player to the last available starting tile block.
+     *
+     * @param player player to move
+     */
+    public void movePlayerToLastStartingTile(Player player) {
+        this.offerPath.movePlayerToLastStartingTile(player);
+    }
+
+    /**
+     * Moves a player to the last starting tile block, shifting the other players forward.
+     *
+     * @param player player to move
+     */
+    public void movePlayerToLastStartingTileAndShift(Player player) {
+        this.offerPath.movePlayerToLastStartingTileAndShift(player);
+    }
+
+    /**
+     * Moves disconnected players still placed on offer spaces back to the starting tile.
+     *
+     * @param connectedPlayers current connection state of each player
+     */
+    public void moveDisconnectedPlayersOnOfferPathToStartingTile(Map<Player, Boolean> connectedPlayers) {
+
+    }
+
+    /**
+     * Prepares the starting tile before creating the next round turn order.
+     *
+     * @param connectedPlayers current connection state of each player
+     */
+    public void prepareStartingTileForNextRound(Map<Player, Boolean> connectedPlayers) {
+        this.offerPath.prepareStartingTileForNextRound(connectedPlayers);
     }
 
     /**

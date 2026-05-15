@@ -9,6 +9,8 @@ import it.polimi.ingsoft.mesos.server.model.game.game.exception.NotPlayersTurnEx
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.TileNotAvailableException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
+import java.util.List;
+
 /**
  * Executes the totem-placement action of a round.
  *
@@ -28,6 +30,11 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
  * it resolves space A, asks the board for the offer-path resolution order, and
  * changes the round phase from {@link RoundPhase#PLACING_TOTEMS} to
  * {@link RoundPhase#PLAYER_DRAWS}.
+ *
+ * <p>Disconnected players are handled only at the turn-order level during this
+ * phase. A player who has already placed a totem remains on the chosen offer
+ * space. A player who has not placed a totem remains on the starting tile. The
+ * board is not used as a temporary parking area for disconnected players.
  *
  * <p>This class deliberately does not choose cards, resolve card effects,
  * manage extra draws, reset the board, or compute the final score. Those steps
@@ -151,9 +158,11 @@ public class TotemPlacementHandler {
      * Moves the round flow after one successful totem placement.
      *
      * <p>If there are still players waiting to place their totems, the method
-     * simply advances the current-player cursor. If the current player was the
-     * last one, all totems are already on the offer path and the game can start
-     * preparing the standard card-drafting phase.
+     * advances the current-player cursor. Disconnected players are skipped in
+     * the current phase order: if a skipped player had not placed a totem yet,
+     * their totem physically remains on the starting tile. If the cursor reaches
+     * the end of the order, the game starts preparing the standard card-drafting
+     * phase.
      */
     private void advanceAfterTotemPlacement() {
         if (this.roundFlow.isLastPlayer()) {
@@ -164,9 +173,6 @@ public class TotemPlacementHandler {
         this.roundFlow.advanceToNextPlayer();
 
         while (Boolean.FALSE.equals(this.game.getConnectedPlayers().get(this.roundFlow.getCurrentPlayer()))) {
-            //Devo mettere il suo totem nell'ultima posizione disponibile
-            //this.board.movePlayerToStartingTile(player);
-
             if (this.roundFlow.isLastPlayer()) {
                 this.startPlayerDrawPhase();
                 return;
@@ -181,59 +187,49 @@ public class TotemPlacementHandler {
      *
      * <p>Offer space A is special: it resolves immediately and the player on A
      * returns to the starting tile before card drafting begins. After resolving
-     * A, the board exposes the offer-path resolution order. That order becomes
-     * the active order for {@link RoundPhase#PLAYER_DRAWS}.
+     * A, the board exposes the offer-path resolution order. Only players still
+     * connected at this exact moment are copied into the active order for
+     * {@link RoundPhase#PLAYER_DRAWS}.
      *
-     * <p>Players with no standard draw quota are skipped, because they have no
-     * card choice to perform during this phase.
+     * <p>This is what allows a player who placed a totem, disconnected, and
+     * reconnected before the draft starts to draw normally. A player who is
+     * still disconnected when the draft order is created stays physically on
+     * the offer path, but does not receive a draft turn.
      */
     private void startPlayerDrawPhase() {
         this.board.resolveEventA();
-        this.roundFlow.setCurrentPhaseOrder(this.board.getResolutionOrder());
-        this.skipPlayersWithoutStandardDrawQuota();
+        List<Player> draftOrder = this.board.getResolutionOrder().stream()
+        .filter(player -> Boolean.TRUE.equals(this.game.getConnectedPlayers().get(player))).toList();
+        this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
     }
 
+
     /**
-     * Advances past players that cannot draw any standard card by quota.
+     * Handles a player disconnection during totem placement.
      *
-     * <p>This check uses only the quota earned from the offer space. It does not
-     * check whether the board currently contains drawable cards for that player;
-     * that later check belongs to the card-drafting handler, which has the full
-     * card-drawing context.
+     * <p>The board position is not changed here. The physical position already
+     * tells what happened:
+     * <ul>
+     *     <li>if the player already placed a totem, they stay on the offer
+     *     space;</li>
+     *     <li>if the player is current and has not placed a totem, they stay on
+     *     the starting tile and the turn advances;</li>
+     *     <li>if the player has not reached their turn yet, they stay on the
+     *     starting tile and will be skipped only if still disconnected when the
+     *     cursor reaches them.</li>
+     * </ul>
+     *
+     * @param player player who disconnected
      */
-    private void skipPlayersWithoutStandardDrawQuota() {
-        while (!this.playerDraftState.hasRemainingChoices(this.roundFlow.getCurrentPlayer())
-                && !this.roundFlow.isLastPlayer()) {
-            this.roundFlow.advanceToNextPlayer();
-        }
-    }
-
-
-
     public void handlePlayerDisconnection(Player player) {
-        //Qui possiamo avere tre diversi scenari:
-        //1) Il player che si è disconnesso ha già fatto la sua mossa e ora è il turno di un altro player
-        //Allora in tal caso chiedo alla board di spostare quel totem sullo starting tile più in basso possibile
-        //e ritorno
         if(this.roundFlow.getCurrentPlayerIndex() > this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
-            //TODO : Aggiungere metodo alla board
-            //this.board.movePlayerToStartingTile(player);
             return;
         }else if (this.roundFlow.getCurrentPlayerIndex() == this.roundFlow.getCurrentPhaseOrder().indexOf(player)) {
-            //2) Il player che si è disconnesso è proprio quello di cui è il turno
-            //Allora in tal caso chiedo alla board di spostare quel totem sullo starting tile più in basso possibile
-            //e poi avanzo al prossimo player
-            //TODO : Aggiungere metodo alla board
-            //this.board.movePlayerToStartingTile(player);
             this.advanceAfterTotemPlacement();
 
         }else {
-            //3) Il player che si è disconnesso deve ancora fare la sua mossa
-            //Allora in tal caso non devo fare nulla, tanto quando sarà il suo turno, se è ancora disconnesso, avanzerò al prossimo player
-            //TODO: Aggiungi che l'avanzamento automatico nel movetotem skippa in automatico i player disconnessi
-            //per i player disconnessi devo però mettere il loto totem sulla penultima posizione
-            //disponibile della starting tile
+            return;
 
         }
     }

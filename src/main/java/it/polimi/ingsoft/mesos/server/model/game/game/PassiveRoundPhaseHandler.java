@@ -75,6 +75,11 @@ public class PassiveRoundPhaseHandler {
      * player command. For example, after resetting the board, the game returns
      * to {@link RoundPhase#PLACING_TOTEMS}; at that point the next player must
      * actively choose a totem space, so this method stops.
+     *
+     * <p>This method is called after public game actions such as
+     * {@code chooseCard}, {@code extraDrawn}, and disconnection handling. Those
+     * actions only need to move the round into an automatic phase; this handler
+     * then performs the automatic chain until a player-driven phase is reached.
      */
     public void advancePassivePhases() {
         while (this.game.getStatus() == GameStatus.IN_PROGRESS) {
@@ -123,6 +128,11 @@ public class PassiveRoundPhaseHandler {
      *
      * <p>After the board reset, the round number increases, all standard draft
      * quotas are cleared, and the round returns to totem placement.
+     *
+     * <p>Before reading the next totem-placement order, the board prepares the
+     * starting tile for the new round. The active phase order is still filtered
+     * with the currently connected players, so disconnected players do not
+     * receive a totem-placement turn.
      */
     private void resetBoardForNextRound() {
         boolean eraChanged = this.board.resetBoardAfterRound(this.game.getCurrentEra());
@@ -130,6 +140,7 @@ public class PassiveRoundPhaseHandler {
         if (eraChanged) {
             this.game.advanceEra();
         }
+        this.board.prepareStartingTileForNextRound(this.game.getConnectedPlayers());
         List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder().stream()
                 .filter(player -> Boolean.TRUE.equals(this.game.getConnectedPlayers().get(player)))
                 .toList();

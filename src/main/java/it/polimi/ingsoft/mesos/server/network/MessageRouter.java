@@ -25,6 +25,8 @@ public class MessageRouter {
      */
     public void routeMessage(String sessionId, ClientPayload payload) {
         ServerSessionRegistry.SessionSnapshot snapshot = this.registry.snapshotOf(sessionId);
+        //TODO: Qua dobbiamo mettere il check per mandarlo subito in partita, appena si autentica lo rimettiamo subito dentro
+//        senza giri
 
         switch (snapshot.phase()) {
             case PRE_LOBBY -> {

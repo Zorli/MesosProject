@@ -26,7 +26,7 @@ import java.util.List;
  * earned from the offer space. The extra draw is a single end-of-round draw
  * granted by one building effect and does not consume those quotas.
  *
- * <p>The handler validates four different concepts:
+ * <p>For standard draws, the handler validates four different concepts:
  * <ul>
  *     <li>the game must be in progress;</li>
  *     <li>the round must be in {@link RoundPhase#PLAYER_DRAWS};</li>
@@ -43,6 +43,16 @@ import java.util.List;
  * <p>Character cards are added to the player's tribe with the overload that
  * receives the player, because some character and building effects react
  * immediately when a character is drawn.
+ *
+ * <p>When a standard draft turn ends, the player returns from the offer path to
+ * the starting tile. That placement contributes to the next round order. If a
+ * player disconnects before their draft turn is resolved, this handler closes
+ * that draft turn in the same way and returns the player to the starting tile.
+ *
+ * <p>The extra draw is different: the eligible player is already on the starting
+ * tile because the standard draft is over. Drawing the extra card, or
+ * disconnecting during the extra-draw turn, simply moves the round to
+ * {@link RoundPhase#RESOLVING_EFFECTS}.
  *
  * <p>This class does not resolve lower-row events, reset the board, or compute
  * final scoring. It only moves the round phase to the next high-level step when
@@ -115,6 +125,13 @@ public class CardDraftHandler {
     /**
      * Makes the current player draw the single end-of-round extra card.
      *
+     * <p>The extra draw is not a standard draft turn. It does not consume upper
+     * or lower draw quotas and it does not move the player on the board. After
+     * the card has been validated, removed, and applied, the round becomes
+     * automatic by switching to {@link RoundPhase#RESOLVING_EFFECTS}. The
+     * public {@link Game#extraDrawn(Player, int)} method then asks
+     * {@link PassiveRoundPhaseHandler} to continue the passive phases.
+     *
      * @param player player choosing the extra card
      * @param cardId identifier of the selected card
      */
@@ -125,7 +142,6 @@ public class CardDraftHandler {
         this.validateAndRemoveExtraDrawCard(player, card);
         this.applyChosenCardToPlayer(player, card);
         this.goToResolvingEffects();
-
         this.game.markStateChanged();
     }
 
@@ -154,6 +170,15 @@ public class CardDraftHandler {
         }
     }
 
+    /**
+     * Checks the game-level preconditions for an extra draw.
+     *
+     * <p>The extra draw can be performed only by the current player during
+     * {@link RoundPhase#EXTRA_DRAWS}. The player must also own the building
+     * effect that grants the end-of-round extra card.
+     *
+     * @param player player asking to perform the extra draw
+     */
     private void validateExtraDrawRequest(Player player) {
         if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
             throw new InvalidGameStatusException("extraDrawn", this.game.getStatus());
@@ -230,6 +255,17 @@ public class CardDraftHandler {
         return cardRow;
     }
 
+    /**
+     * Validates an extra-draw card and removes it from the board.
+     *
+     * <p>The checks are intentionally smaller than the standard draft checks:
+     * the card must be present and drawable for the player, but no upper-row or
+     * lower-row quota is consumed because the extra draw comes from a building
+     * effect.
+     *
+     * @param player player choosing the card
+     * @param card selected card object found by id
+     */
     private void validateAndRemoveExtraDrawCard(Player player, Card card) {
         CardRow cardRow = this.board.getCardRow(card);
 
@@ -324,6 +360,10 @@ public class CardDraftHandler {
      * return to the starting tile, because their active round participation is
      * over even if they could not choose a card.
      *
+     * <p>A disconnected player is handled with the same physical cleanup: their
+     * draft turn is considered closed, they return to the starting tile, and the
+     * cursor continues looking for the next connected drawable player.
+     *
      * <p>If no further player can draw, the method transitions out of the
      * standard card-drafting phase.
      */
@@ -359,8 +399,18 @@ public class CardDraftHandler {
         this.playerDraftState.resetForNextPlayer(player);
     }
 
+    /**
+     * Closes the draft turn of a disconnected player.
+     *
+     * <p>The player may still be physically on an offer space because they
+     * placed a totem earlier in the round but did not resolve their draft turn.
+     * Returning them to the starting tile keeps the board ready for the next
+     * round and removes their remaining standard draw quota.
+     *
+     * @param player disconnected player to skip
+     */
     private void skipDisconnectedPlayer(Player player) {
-        //TODO: QUando c'è chiamare metodo board per fare quel passaggio
+        this.board.returnPlayerToStartingTile(player);
         this.playerDraftState.resetForNextPlayer(player);
     }
 
@@ -378,8 +428,7 @@ public class CardDraftHandler {
         Player extraDrawPlayer = this.findExtraDrawPlayer(nextRoundOrder);
 
         if (extraDrawPlayer == null) {
-            this.roundFlow.setCurrentPhaseOrder(nextRoundOrder);
-            this.roundFlow.setCurrentRoundPhase(RoundPhase.RESOLVING_EFFECTS);
+            this.goToResolvingEffects();
             return;
         }
 
@@ -473,39 +522,51 @@ public class CardDraftHandler {
                 || !this.board.getDraftableLowerCards(player).isEmpty();
     }
 
+    /**
+     * Handles a disconnection during the standard draft phase.
+     *
+     * <p>If the disconnected player is the current player, their draft turn is
+     * closed immediately and the handler advances to the next connected player
+     * who can draw. If the disconnected player is not current, the board is not
+     * changed here: the automatic advancement will close their turn only if the
+     * cursor later reaches them while they are still disconnected.
+     *
+     * @param player player who disconnected
+     */
     public void handlePlayerDisconnection(Player player) {
-        if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
-            if (player.equals(this.roundFlow.getCurrentPlayer())) {
-                this.goToResolvingEffects();
+            if (this.roundFlow.getCurrentPlayer().equals(player)) {
+                this.skipDisconnectedPlayer(player);
+                this.advanceToNextDrawablePlayerOrEndStandardDraft();
             }
-            return;
-        }
-
-        //Come già detto, abbiamo tre casi
-        //Il primo caso è quello in cui il player ha già pescato , ora è il turno di una altra persona, quindi se ha già pescato
-        //' già sullo starting tile, devo quindi cheidere alla board di rimuovere il suo totem, tirare su tutti quelli
-        //sotto di lui e metterlo in ultima posizione
-        if(this.roundFlow.getCurrentPlayerIndex()> this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
-            //Chiedo alla board di fare operazione
-            //this.board.shiftandplaceplayer(player)
-        }else if (this.roundFlow.getCurrentPlayerIndex() == this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
-            //Se è il turno di questo player allora lo salto e lo metto in ultima posizione
-            //sulla board
-            //this.board.movePlayerToStartingTile(player);
-            this.advanceToNextDrawablePlayerOrEndStandardDraft();
-
-        }else{
-            //Deve ancora arrivare il suo turno, ma mi assicuro di skipparlo nello skip automatico
-        }
 
     }
-    public void handleExtraDrawPlayerDisconnection (Player player){
-        //Se era proprio lui che doveva pescare posso andare avanti, in ogni caso lo metto come ultimo sullo starting tile
-        if(this.roundFlow.getCurrentPlayer().equals(player)){
+
+    /**
+     * Handles a disconnection during the single-player extra-draw phase.
+     *
+     * <p>The extra-draw player is already on the starting tile, so there is no
+     * board cleanup to perform. If the disconnected player is the current extra
+     * draw player, the optional action is skipped and the round moves to the
+     * passive effect-resolution phase.
+     *
+     * @param player player who disconnected
+     */
+    public void handleExtraDrawPlayerDisconnection (Player player) {
+        if (this.roundFlow.getCurrentPlayer().equals(player)) {
             this.goToResolvingEffects();
         }
-        //this.board.scle and shift(player);
     }
+
+    /**
+     * Moves the round from drafting to passive effect resolution.
+     *
+     * <p>The current phase order is restored to the next-round order already
+     * present on the starting tile. This gives the passive phases and the reset
+     * phase a complete board-based order, while the phase itself becomes
+     * {@link RoundPhase#RESOLVING_EFFECTS}. After this method runs,
+     * {@link PassiveRoundPhaseHandler#advancePassivePhases()} can continue the
+     * automatic part of the round.
+     */
     private void goToResolvingEffects() {
         this.roundFlow.setCurrentPhaseOrder(this.board.getNextRoundTurnOrder());
         this.roundFlow.setCurrentRoundPhase(RoundPhase.RESOLVING_EFFECTS);

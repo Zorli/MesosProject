@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -76,6 +77,30 @@ public class OfferPath {
 
         // 2. Place the player on the first available block of the Starting Tile
         this.startingTile.placePlayerOnNextAvailableBlock(player);
+    }
+
+
+    public void movePlayerToLastStartingTile(Player player) {
+
+    }
+
+
+    public void movePlayerToLastStartingTileAndShift(Player player) {
+
+    }
+
+    /**
+     * Moves disconnected players still placed on offer spaces back to the starting tile.
+     *
+     * @param connectedPlayers current connection state of each player
+     */
+    public void moveDisconnectedPlayersOnOfferPathToStartingTile(Map<Player, Boolean> connectedPlayers) {
+
+    }
+
+    public void prepareStartingTileForNextRound(Map<Player, Boolean> connectedPlayers) {
+        // Qua il board deve rimettere sullo starting tile chi è rimasto disconnesso sull'offer path
+        // e poi compattare lo starting tile mettendo prima i player connessi e dopo quelli disconnessi.
     }
 
     /**

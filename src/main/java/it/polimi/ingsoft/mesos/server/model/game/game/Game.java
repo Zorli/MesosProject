@@ -51,8 +51,14 @@ public class Game {
 
 
 
-    //This map is updated as soon as the ping pong discovers that a player is not longer connected
-    //the modification to this map has still to pass through the controller queue
+    /**
+     * Tracks which players are currently connected to the match.
+     *
+     * <p>The network layer detects connection changes, but the actual update is
+     * still executed through {@link GameActionExecutor}. This keeps connection
+     * changes ordered with normal game actions and guarantees that payload
+     * notifications are produced by the same path.
+     */
     private Map<Player,Boolean> connectedPlayers;
 
 
@@ -61,62 +67,6 @@ public class Game {
     private final CardDraftHandler cardDraftHandler;
     private final PassiveRoundPhaseHandler passiveRoundPhaseHandler;
 
-    //The logic is that in the round flow class i have a list of the player currently plaing that round, if
-    // a player disconnected but was subscribed to that round we have to check that is still online to complete it's turn othwerise we skip it
-    // when a round has finished and we see that a player is now connected and ready to play we can
-    //update the current playing players
-
-    //Scenario 1: all the players are connected but during a round a players diconnects, so someone update our list of
-    //connected players and we now have false on that player as soon as possible we remove that player from the turnflow
-    //and we go on with the normal order, when we have finished the round and before resetting things we can check if
-    //all the players that are signed as active are in the list of playing players, if so we re insert that player in the list
-
-    //I receive the command to update the active players list, but now immagine that he was the last player of something
-    //we have to call advance passive phase to see for example if he was the last of draw and we can skip him.
-
-    //What happens to the totem of that player when it's not playing? We can assume that he has still to receive the malus
-    //So maybe in the next round for default it's in the last starting tile and still gaining malus
-
-
-    /*
-    Flow del gioco:
-    1) Uno alla volta in ordine piazzano i totem
-    2) Si sceglie l'ordine di risoluzione di pescaggio , inteso come l'ordine con il quale
-    i player pescheranno le carte(fornito dall board in ordine da sinistra a destra), nel caso particolare
-    di qualcuno sulla casella A viene risolto subito e riportato allo starting tile
-    3) Uno alla volta seguendo tale ordine si effettua il pescaggio con le quantità indicate e dopo aver pesacto
-    viene riportato allo starting tile e vengon applicati i bonugs/malus
-     */
-
-    public void disconnectedPlayer(Player player) {
-        this.actionExecutor.execute(() -> {
-            this.connectedPlayers.put(player, false);
-
-            if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
-                this.totemPlacementHandler.handlePlayerDisconnection(player);
-            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
-                this.cardDraftHandler.handlePlayerDisconnection(player);
-            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
-                this.cardDraftHandler.handleExtraDrawPlayerDisconnection(player);
-            }
-
-            this.passiveRoundPhaseHandler.advancePassivePhases();
-            this.markStateChanged();
-        });
-    }
-
-    //TODO aggiornare payload per mostrare i giocatori che stanno davvero giocando al turno in questo momento
-    public void reconnectedPlayer(Player player) {
-        //Quello che deve succedere è che lo segno nuovamente online
-
-        //Devo gestire poi i casi, se è tornato online devo capire se continuerà a giocare il turno o meno, potrebbe succedere
-        //Ovvero se rientra prima che sia il suo turno in movetotem può tornare a giocare
-        //Stessa cosa per movecard a patto che fosse connesso durante il movetotme
-        this.actionExecutor.execute(() -> {
-            connectedPlayers.put(player, true);
-            this.markStateChanged();
-        });
-    }
 
     /**
      * Creates a new match in setup status.
@@ -153,6 +103,64 @@ public class Game {
     }
 
     /**
+     * Marks a player as disconnected and lets the active phase react.
+     *
+     * <p>The method first updates {@link #connectedPlayers}. Then it delegates
+     * to the handler that owns the current phase:
+     * <ul>
+     *     <li>during totem placement, the player can be skipped in the current
+     *     totem order without moving their board position;</li>
+     *     <li>during standard card drafting, the current disconnected player is
+     *     returned to the starting tile and their remaining draft quota is
+     *     cleared;</li>
+     *     <li>during the extra draw, disconnecting the current extra-draw player
+     *     simply skips that optional action.</li>
+     * </ul>
+     *
+     * <p>After the phase-specific handling, passive phases may continue
+     * automatically. For example, skipping the extra draw moves the game to
+     * effect resolution.
+     *
+     * @param player player who disconnected
+     */
+    public void disconnectedPlayer(Player player) {
+        this.actionExecutor.execute(() -> {
+            this.connectedPlayers.put(player, false);
+
+            if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
+                this.totemPlacementHandler.handlePlayerDisconnection(player);
+            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
+                this.cardDraftHandler.handlePlayerDisconnection(player);
+            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
+                this.cardDraftHandler.handleExtraDrawPlayerDisconnection(player);
+            }
+
+            this.passiveRoundPhaseHandler.advancePassivePhases();
+            this.markStateChanged();
+        });
+    }
+
+
+    /**
+     * Marks a player as connected again.
+     *
+     * <p>No board position is changed here. Reconnection only changes the
+     * connection map. Whether the player can still act depends on the current
+     * phase order already stored in {@link RoundFlow}.
+     *
+     * @param player player who reconnected
+     */
+    public void reconnectedPlayer(Player player) {
+        this.actionExecutor.execute(() -> {
+            connectedPlayers.put(player, true);
+            this.markStateChanged();
+        });
+    }
+
+
+
+
+    /**
      * Returns the unique identifier of this match.
      *
      * @return game identifier
@@ -161,6 +169,14 @@ public class Game {
         return this.id;
     }
 
+    /**
+     * Returns the current connection state of every player.
+     *
+     * <p>The map is used by round handlers when they need to build a phase order
+     * or skip a disconnected current player.
+     *
+     * @return map from player to connection state
+     */
     public Map<Player, Boolean> getConnectedPlayers() {
         return connectedPlayers;
     }

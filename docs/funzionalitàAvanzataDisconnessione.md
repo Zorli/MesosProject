@@ -42,3 +42,154 @@ Per il fatto di controllare se c'è almeno un player possiamo mettere metodo che
 Puo campionare il tempo che passa prima che qualcuno si riconnetta, se arriviamo allo scadere del tempo dobbiamo forzare sul game
 calculate finalresult in qualche modo e mandare payload di chiusura a tutti e rimettere il rimasto in pre lobby.
 
+
+Cose da cambiare: Se qualcuno si disconette nel move totem e ha già mosso può rimanere li, se deve ancora venire come al solito.
+Durante il passaggio da move totem a drafting la coda di persone che vengono messe nel turnoder per poter pescare viene presa dai giocatori attualmente
+in partita. Ovvero mi faccio dare dalla board ordine di risoluzione, lo leggo in ordine, se trovo persona disconessa chiamo metodo della board che
+mi mette tale persona più in fondo possibile sullo starting tile, chiamato movePlayerInLastStartingTile() (horrible name), appena trovo una persona che è connessa
+la lista inizia da li(questo per permettere che una persona che ha fatto il move totem e si è disconessa ma è rientrata prima della fine del move totem
+possa comunque fare la pescata).
+In fase di pescata se qualcuno crasha e ha già pescato nessun problema resta dove è, se invece è il suo turno ed è crashato lo mettiamo
+in ultima posizione starting tile. Alla ripartenza durante il reset board per la ripartenza del turno, facciamo come fatto per il passaggio da move totme
+a draft, ovver recuperiamo possible lista, togliamo i non connessi che quindi non potranno partirecipare al move totem, li mettiamo per ultimi sullo starting tile
+e dovranno aspettare il round dopo per poter rientrare, l'importante è che se rientrino durante il movetotme poi non possano rientrare
+in draft card ma questo non succede perchè rimangono fermi sullo starting tile.
+
+
+
+
+
+Scenario siamo nel movetotem con rounlist già creta:
+Arriva disconnessione:
+1) Se player ha già mosso lo segno solo come disconnesso e basta
+2) Player è nel turno corrente, lo metto in ultima posizione sullo starting tile e shifto in su gli altri
+3) Player deve ancora venire, ci penserà lo skip automatico a saltarlo se arriveremo nel suo turno e lui non è prensente
+
+Durante la migrazione da movetotem a draft creiamo la nuova lista, per farlo facciamo cosi:
+La scorriamo in ordine e fintanto che vedo player non connessi in questa lista , quindi vuol dire che hanno fatto la mossa ma non si sono riconnessi intempo
+allora procedo a metterli in ultima posizione sullo starting tile e shiftare se ci sono altri già presenti.
+Appena scorrendo la lista trovo un player che è connesso allora mi occupo di di crearla da quel punto li, dando la possibilità a chi aveva fatto il move totem
+ma si è disconesso di fare il draw card se ritorna in tempo. In draw card ho avanzamento automatico fintanto che non trovo player attivo dopo il turno di un player attivo.
+
+Scencario nel draw card di disconnessione: 
+1)Già pescato, allora mettiamo per ultimo e shiftiamo i presenti nello starting tile
+2) sE' il suo turno, torna allo startring tile con shift
+3) Se deve ancora arrivare non è un problema
+
+Durante il passaggio della reset board diamo la possiblità di fare il movetotem ai giocatori effettivamente connessi secondo ordine originale della board, 
+per questo ora che ci penso viene rotto dal fatto che sullo starting tile stiamo rimettendo gente a caso, non va bene, dvo trovare un altra soluzione
+
+# Regola Generale
+
+Durante il round la posizione fisica dei player sulla board deve rappresentare quello che è davvero successo.
+
+Non usiamo la `StartingTile` come parcheggio temporaneo per i disconnessi.
+
+- Se un player ha mosso il totem, resta sull'`OfferSpace`.
+- Se un player non ha ancora mosso il totem, resta sulla `StartingTile`.
+- Se un player viene saltato durante il draft, allora viene chiuso il suo turno e torna sulla `StartingTile`.
+
+Le liste di fase (`currentPhaseOrder`) decidono chi deve giocare in quella fase.
+
+
+## MOVE_TOTEMS
+
+### 1. Player già mosso
+
+Se un player si disconnette dopo aver già mosso il totem:
+
+- viene segnato come disconnesso;
+- resta sull'`OfferSpace` scelto;
+- non viene spostato sulla `StartingTile`;
+- se rientra prima della creazione della draft order, può ancora partecipare al draft.
+
+### 2. Player corrente
+
+Se il player corrente si disconnette prima di muovere il totem:
+
+- viene segnato come disconnesso;
+- resta sulla `StartingTile`;
+- il turno passa al prossimo player connesso;
+- se rientra dopo essere stato saltato, non rientra nel `MOVE_TOTEMS` corrente.
+
+### 3. Player che deve ancora giocare
+
+Se un player che deve ancora muovere il totem si disconnette:
+
+- viene segnato come disconnesso;
+- resta sulla `StartingTile`;
+- quando arriva il suo turno:
+    - se è ancora disconnesso, viene saltato;
+    - se è rientrato, può muovere normalmente.
+
+## Passaggio MOVE_TOTEMS -> DRAFT
+
+La draft order viene costruita dagli `OfferSpace`, quindi contiene solo player che hanno davvero mosso il totem.
+
+Procedura:
+
+1. leggere la resolution order dalla board;
+2. scorrere i player in ordine;
+3. aggiungere alla draft order solo i player connessi in quel momento;
+4. lasciare fisicamente fermi gli altri player dove sono.
+
+Quindi:
+
+- chi ha mosso e poi è rientrato in tempo può pescare;
+- chi ha mosso ma risulta ancora disconnesso non entra nel draft;
+- chi non ha mosso non può entrare nel draft, perché è ancora sulla `StartingTile`.
+
+## DRAFT
+
+### 1. Player già pescato
+
+Se un player si disconnette dopo aver pescato:
+
+- viene segnato come disconnesso;
+- dovrebbe essere già tornato sulla `StartingTile` tramite la normale logica di fine pescata;
+- non serve fare altro.
+
+### 2. Player corrente
+
+Se il player corrente si disconnette prima di pescare:
+
+- viene segnato come disconnesso;
+- viene chiuso il suo turno di draft;
+- torna sulla `StartingTile`;
+- il turno passa al prossimo player connesso nella draft order.
+
+### 3. Player che deve ancora pescare
+
+Se un player che deve ancora pescare si disconnette:
+
+- viene segnato come disconnesso;
+- resta sull'`OfferSpace`;
+- quando arriva il suo turno:
+    - se è ancora disconnesso, viene chiuso il suo turno e torna sulla `StartingTile`;
+    - se è rientrato, può pescare normalmente.
+
+## Reset Board
+
+Il reset board non deve ricostruire artificialmente la posizione dei player.
+
+A fine draft:
+
+- i player che hanno pescato sono già tornati sulla `StartingTile`;
+- i player saltati perché disconnessi durante il draft sono già tornati sulla `StartingTile`;
+- gli `OfferSpace` dovrebbero essere stati svuotati dalla normale logica di chiusura turno.
+
+Per preparare il prossimo `PLACING_TOTEMS`:
+
+1. leggere l'ordine dalla `StartingTile`;
+2. tenere nella nuova phase order solo i player connessi;
+3. lasciare sulla `StartingTile` anche i player disconnessi, ma fuori dalla phase order.
+
+## Invariante Finale
+
+A inizio `PLACING_TOTEMS`:
+
+- tutti i player fisicamente si trovano sulla `StartingTile`;
+- la `currentPhaseOrder` contiene solo i player connessi;
+- i player disconnessi restano sulla board, ma non ricevono turno;
+- se rientrano durante il `PLACING_TOTEMS`, non vengono inseriti nella phase order già creata;
+- potranno rientrare nel flusso normale dal round successivo, salvo regole diverse esplicite
