@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.controller.server;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemLobbyDisconnectCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.server.ServerModel;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
@@ -51,7 +51,7 @@ public class ServerConnectionLifecycle {
                 Listener listener = snapshot.connection() instanceof Listener l ? l : null;
                 orchestrator.enqueueMessage(new EnqueuedMessage(
                         sessionId,
-                        new SystemLobbyDisconnectCommand(snapshot.user().getNickname(), listener)
+                        new SystemDisconnectCommand(snapshot.user().getNickname(), listener)
                 ));
                 return;
             }
@@ -61,7 +61,7 @@ public class ServerConnectionLifecycle {
                 Listener listener = snapshot.connection() instanceof Listener l ? l : null;
                 controller.enqueueMessage(new EnqueuedMessage(
                         sessionId,
-                        new SystemLobbyDisconnectCommand(snapshot.user().getNickname(), listener)
+                        new SystemDisconnectCommand(snapshot.user().getNickname(), listener)
                 ));
                 return;
             }

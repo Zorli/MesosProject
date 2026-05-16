@@ -4,11 +4,11 @@ import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 
 import java.util.Objects;
 
-public class SystemLobbyDisconnectCommand implements QueuedCommand {
+public class SystemDisconnectCommand implements QueuedCommand {
     public final String nickname;
     public final Listener leavingListener;
 
-    public SystemLobbyDisconnectCommand(String nickname, Listener leavingListener) {
+    public SystemDisconnectCommand(String nickname, Listener leavingListener) {
         this.nickname = nickname;
         this.leavingListener = leavingListener;
     }
@@ -18,7 +18,7 @@ public class SystemLobbyDisconnectCommand implements QueuedCommand {
         if (this == object) {
             return true;
         }
-        if (!(object instanceof SystemLobbyDisconnectCommand that)) {
+        if (!(object instanceof SystemDisconnectCommand that)) {
             return false;
         }
         return Objects.equals(this.nickname, that.nickname)

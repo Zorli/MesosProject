@@ -8,7 +8,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemLobbyDisconnectCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
@@ -61,7 +61,7 @@ public class LobbyController implements Runnable {
                             }
                         }
                         case SystemJoinCommand p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
-                        case SystemLobbyDisconnectCommand p -> {this.disconnectUser(sessionId, p.nickname, p.leavingListener);}
+                        case SystemDisconnectCommand p -> {this.disconnectUser(sessionId, p.nickname, p.leavingListener);}
                         default -> throw new IllegalStateException("Unexpected command: " + cmd.getCommand());
                     }
                 } catch (RuntimeException e) {
