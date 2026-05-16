@@ -173,6 +173,11 @@ public class Tribe {
     public boolean hasBuildingForShamanRitualProtection(){
         return this.hasBuildingWithBenefit(BenefitType.EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT);
     }
+
+    /**
+     * Checks whether the tribe owns a building that add one food on startingTile movement
+     * @return {@code true} when the building is present
+     */
     public boolean hasBuildingForEndOfTurnFood(){
         return this.hasBuildingWithBenefit(BenefitType.END_ROUND_TOTEM_POSITION);
     }
