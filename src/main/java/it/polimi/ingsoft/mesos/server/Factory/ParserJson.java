@@ -1,7 +1,9 @@
 package it.polimi.ingsoft.mesos.server.factory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.game.cards.TribeCard;
@@ -32,10 +34,10 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.TribeCardType;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * Loads the static deck description from {@code deckSetup.json} and exposes
@@ -48,7 +50,7 @@ import java.util.function.Consumer;
 public final class ParserJson {
     private static final String DECK_SETUP_RESOURCE_PATH =
             "/it/polimi/ingsoft/mesos/server/model/Factory/deckSetup.json";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Gson GSON = new Gson();
 
     private static final class DeckTemplateHolder {
         private static final DeckTemplate TEMPLATE = loadDeckTemplate();
@@ -109,13 +111,13 @@ public final class ParserJson {
      * @return the parsed deck template
      */
     private static DeckTemplate loadDeckTemplate() {
-        JsonNode cardsRoot = required(readDeckSetupRoot(), "cards");
+        JsonObject cardsRoot = requiredObject(readDeckSetupRoot(), "cards");
         ArrayList<DeckTemplate.TribeCardBlueprint> tribeCardBlueprints = new ArrayList<>();
         ArrayList<DeckTemplate.BuildingCardBlueprint> buildingCardBlueprints = new ArrayList<>();
 
-        appendCharacterBlueprints(tribeCardBlueprints, required(cardsRoot, "characters"));
-        appendEventBlueprints(tribeCardBlueprints, required(cardsRoot, "events"));
-        appendBuildingBlueprints(buildingCardBlueprints, required(cardsRoot, "buildings"));
+        appendCharacterBlueprints(tribeCardBlueprints, requiredObject(cardsRoot, "characters"));
+        appendEventBlueprints(tribeCardBlueprints, requiredObject(cardsRoot, "events"));
+        appendBuildingBlueprints(buildingCardBlueprints, requiredObject(cardsRoot, "buildings"));
 
         return new DeckTemplate(tribeCardBlueprints, buildingCardBlueprints);
     }
@@ -125,12 +127,14 @@ public final class ParserJson {
      *
      * @return the root JSON node read from the classpath resource
      */
-    private static JsonNode readDeckSetupRoot() {
+    private static JsonObject readDeckSetupRoot() {
         try (InputStream inputStream = ParserJson.class.getResourceAsStream(DECK_SETUP_RESOURCE_PATH)) {
             if (inputStream == null) {
                 throw new IllegalStateException("Missing deck setup resource: " + DECK_SETUP_RESOURCE_PATH);
             }
-            return OBJECT_MAPPER.readTree(inputStream);
+            try (InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
+                return GSON.fromJson(reader, JsonObject.class);
+            }
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to parse deck setup resource", exception);
         }
@@ -145,16 +149,18 @@ public final class ParserJson {
      */
     private static void appendCharacterBlueprints(
             ArrayList<DeckTemplate.TribeCardBlueprint> tribeCardBlueprints,
-            JsonNode characterGroups
+            JsonObject characterGroups
     ) {
-        appendGroupedRecords(characterGroups, "characters", entry -> {
+        for (Map.Entry<String, JsonElement> entry : characterGroups.entrySet()) {
             TribeCardType type = TribeCardType.valueOf(entry.getKey());
-            for (JsonNode characterNode : requiredArray(entry.getValue(), "cards.characters." + type.name())) {
-                JsonNode minPlayersNode = characterNode.get("minPlayers");
-                Integer minPlayers = (minPlayersNode == null || minPlayersNode.isNull()) ? null : minPlayersNode.asInt();
-                tribeCardBlueprints.add(DeckTemplate.tribeCard(minPlayers, buildCharacterFactory(type, characterNode)));
+            for (JsonElement characterElement : requiredArray(entry.getValue(), "cards.characters." + type.name())) {
+                JsonObject characterNode = requireObject(characterElement, "cards.characters." + type.name());
+                int id = requiredInt(characterNode, "id");
+                JsonElement minPlayersNode = characterNode.get("minPlayers");
+                Integer minPlayers = (minPlayersNode == null || minPlayersNode.isJsonNull()) ? null : minPlayersNode.getAsInt();
+                tribeCardBlueprints.add(DeckTemplate.tribeCard(id, minPlayers, buildCharacterFactory(type, characterNode)));
             }
-        });
+        }
     }
 
     /**
@@ -166,14 +172,16 @@ public final class ParserJson {
      */
     private static void appendEventBlueprints(
             ArrayList<DeckTemplate.TribeCardBlueprint> tribeCardBlueprints,
-            JsonNode eventGroups
+            JsonObject eventGroups
     ) {
-        appendGroupedRecords(eventGroups, "events", entry -> {
+        for (Map.Entry<String, JsonElement> entry : eventGroups.entrySet()) {
             String family = entry.getKey();
-            for (JsonNode eventNode : requiredArray(entry.getValue(), "cards.events." + family)) {
-                tribeCardBlueprints.add(DeckTemplate.tribeCard(null, buildEventFactory(family, eventNode)));
+            for (JsonElement eventElement : requiredArray(entry.getValue(), "cards.events." + family)) {
+                JsonObject eventNode = requireObject(eventElement, "cards.events." + family);
+                int id = requiredInt(eventNode, "id");
+                tribeCardBlueprints.add(DeckTemplate.tribeCard(id, null, buildEventFactory(family, eventNode)));
             }
-        });
+        }
     }
 
     /**
@@ -185,14 +193,16 @@ public final class ParserJson {
      */
     private static void appendBuildingBlueprints(
             ArrayList<DeckTemplate.BuildingCardBlueprint> buildingCardBlueprints,
-            JsonNode buildingGroups
+            JsonObject buildingGroups
     ) {
-        appendGroupedRecords(buildingGroups, "buildings", entry -> {
+        for (Map.Entry<String, JsonElement> entry : buildingGroups.entrySet()) {
             BenefitType benefitType = BenefitType.valueOf(entry.getKey());
-            for (JsonNode buildingNode : requiredArray(entry.getValue(), "cards.buildings." + benefitType.name())) {
-                buildingCardBlueprints.add(DeckTemplate.buildingCard(buildBuildingFactory(benefitType, buildingNode)));
+            for (JsonElement buildingElement : requiredArray(entry.getValue(), "cards.buildings." + benefitType.name())) {
+                JsonObject buildingNode = requireObject(buildingElement, "cards.buildings." + benefitType.name());
+                int id = requiredInt(buildingNode, "id");
+                buildingCardBlueprints.add(DeckTemplate.buildingCard(id, buildBuildingFactory(benefitType, buildingNode)));
             }
-        });
+        }
     }
 
     /**
@@ -204,33 +214,32 @@ public final class ParserJson {
      */
     private static java.util.function.Supplier<? extends TribeCard> buildCharacterFactory(
             TribeCardType type,
-            JsonNode cardNode
+            JsonObject cardNode
     ) {
         int id = requiredInt(cardNode, "id");
         Era era = Era.valueOf(requiredText(cardNode, "era"));
-        JsonNode modelNode = optionalObject(cardNode, "model");
 
         return switch (type) {
             case HUNTER -> {
-                boolean hasEffect = requiredBoolean(requireObject(modelNode, "model"), "hasEffect");
+                boolean hasEffect = requiredBoolean(requiredModel(cardNode), "hasEffect");
                 yield () -> new Hunter(id, era, hasEffect, type);
             }
             case BUILDER -> {
-                JsonNode requiredModel = requireObject(modelNode, "model");
-                int priceDiscount = requiredInt(requiredModel, "priceDiscount");
-                int prestigePoints = requiredInt(requiredModel, "prestigePoints");
+                JsonObject modelNode = requiredModel(cardNode);
+                int priceDiscount = requiredInt(modelNode, "priceDiscount");
+                int prestigePoints = requiredInt(modelNode, "prestigePoints");
                 yield () -> new Builder(id, era, type, priceDiscount, prestigePoints);
             }
             case GATHERER -> () -> new Gatherer(id, era, type);
             case ARTIST -> () -> new Artist(id, era, type);
             case INVENTOR -> {
                 InventionType inventionType = InventionType.valueOf(
-                        requiredText(requireObject(modelNode, "model"), "inventionType")
+                        requiredText(requiredModel(cardNode), "inventionType")
                 );
                 yield () -> new Inventor(id, era, type, inventionType);
             }
             case SHAMAN -> {
-                int stars = requiredInt(requireObject(modelNode, "model"), "stars");
+                int stars = requiredInt(requiredModel(cardNode), "stars");
                 yield () -> new Shaman(id, era, stars, type);
             }
             case EVENT -> throw new IllegalArgumentException("Character card " + id + " cannot have type EVENT");
@@ -244,10 +253,10 @@ public final class ParserJson {
      * @param eventNode JSON node containing the event definition
      * @return a supplier that creates the corresponding event card
      */
-    private static java.util.function.Supplier<? extends TribeCard> buildEventFactory(String family, JsonNode eventNode) {
+    private static java.util.function.Supplier<? extends TribeCard> buildEventFactory(String family, JsonObject eventNode) {
         int id = requiredInt(eventNode, "id");
         Era era = Era.valueOf(requiredText(eventNode, "era"));
-        JsonNode modelNode = required(eventNode, "model");
+        JsonObject modelNode = requiredObject(eventNode, "model");
 
         return switch (family) {
             case "HUNT" -> {
@@ -301,11 +310,11 @@ public final class ParserJson {
      */
     private static java.util.function.Supplier<? extends BuildingCard> buildBuildingFactory(
             BenefitType benefitType,
-            JsonNode buildingNode
+            JsonObject buildingNode
     ) {
         int id = requiredInt(buildingNode, "id");
         Era era = Era.valueOf(requiredText(buildingNode, "era"));
-        JsonNode modelNode = required(buildingNode, "model");
+        JsonObject modelNode = requiredObject(buildingNode, "model");
         int foodCost = requiredInt(modelNode, "foodCost");
         int prestigePoints = requiredInt(modelNode, "prestigePoints");
 
@@ -381,35 +390,19 @@ public final class ParserJson {
     }
 
     /**
-     * Iterates over a JSON object that groups records by key and passes every entry to the
-     * provided consumer.
-     *
-     * @param groupedRecordsNode parent node that contains the grouped object
-     * @param groupName logical name used only to build validation messages
-     * @param entryConsumer consumer invoked for each group entry
-     */
-    private static void appendGroupedRecords(
-            JsonNode groupedRecordsNode,
-            String groupName,
-            Consumer<Map.Entry<String, JsonNode>> entryConsumer
-    ) {
-        JsonNode groups = requireObject(groupedRecordsNode, "cards." + groupName);
-        Iterator<Map.Entry<String, JsonNode>> entries = groups.fields();
-        while (entries.hasNext()) {
-            entryConsumer.accept(entries.next());
-        }
-    }
-
-    /**
      * Returns a required child node and fails fast when the field is missing.
      *
      * @param node parent node
      * @param fieldName required child field name
      * @return the required child node
      */
-    private static JsonNode required(JsonNode node, String fieldName) {
-        JsonNode child = node.get(fieldName);
-        if (child == null || child.isNull()) {
+    private static JsonElement required(JsonObject node, String fieldName) {
+        if (node == null) {
+            throw new IllegalArgumentException("Missing required object containing field '" + fieldName + "'");
+        }
+
+        JsonElement child = node.get(fieldName);
+        if (child == null || child.isJsonNull()) {
             throw new IllegalArgumentException("Missing required field '" + fieldName + "'");
         }
         return child;
@@ -422,8 +415,8 @@ public final class ParserJson {
      * @param fieldName required integer field name
      * @return the integer value stored in the field
      */
-    private static int requiredInt(JsonNode node, String fieldName) {
-        return required(node, fieldName).asInt();
+    private static int requiredInt(JsonObject node, String fieldName) {
+        return required(node, fieldName).getAsInt();
     }
 
     /**
@@ -433,8 +426,8 @@ public final class ParserJson {
      * @param fieldName required boolean field name
      * @return the boolean value stored in the field
      */
-    private static boolean requiredBoolean(JsonNode node, String fieldName) {
-        return required(node, fieldName).asBoolean();
+    private static boolean requiredBoolean(JsonObject node, String fieldName) {
+        return required(node, fieldName).getAsBoolean();
     }
 
     /**
@@ -444,8 +437,8 @@ public final class ParserJson {
      * @param fieldName required text field name
      * @return the text value stored in the field
      */
-    private static String requiredText(JsonNode node, String fieldName) {
-        return required(node, fieldName).asText();
+    private static String requiredText(JsonObject node, String fieldName) {
+        return required(node, fieldName).getAsString();
     }
 
     /**
@@ -455,14 +448,35 @@ public final class ParserJson {
      * @param fieldName logical field name used in validation errors
      * @return the same node when it is a valid object
      */
-    private static JsonNode requireObject(JsonNode node, String fieldName) {
-        if (node == null || node.isNull()) {
+    private static JsonObject requiredObject(JsonObject node, String fieldName) {
+        return requireObject(required(node, fieldName), fieldName);
+    }
+
+    /**
+     * Ensures that the provided element exists and is a JSON object.
+     *
+     * @param element element to validate
+     * @param fieldName logical field name used in validation errors
+     * @return the same element as a valid object
+     */
+    private static JsonObject requireObject(JsonElement element, String fieldName) {
+        if (element == null || element.isJsonNull()) {
             throw new IllegalArgumentException("Missing required object '" + fieldName + "'");
         }
-        if (!node.isObject()) {
+        if (!element.isJsonObject()) {
             throw new IllegalArgumentException("Expected object for '" + fieldName + "'");
         }
-        return node;
+        return element.getAsJsonObject();
+    }
+
+    /**
+     * Reads the required card model object.
+     *
+     * @param cardNode card definition node
+     * @return the required model object
+     */
+    private static JsonObject requiredModel(JsonObject cardNode) {
+        return requiredObject(cardNode, "model");
     }
 
     /**
@@ -472,28 +486,14 @@ public final class ParserJson {
      * @param fieldName logical field name used in validation errors
      * @return the same node when it is a valid array
      */
-    private static JsonNode requiredArray(JsonNode node, String fieldName) {
-        if (!node.isArray()) {
+    private static JsonArray requiredArray(JsonElement element, String fieldName) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing required array '" + fieldName + "'");
+        }
+        if (!element.isJsonArray()) {
             throw new IllegalArgumentException("Expected array for '" + fieldName + "'");
         }
-        return node;
+        return element.getAsJsonArray();
     }
 
-    /**
-     * Reads an optional child object, returning {@code null} when the field is absent.
-     *
-     * @param node parent node
-     * @param fieldName optional object field name
-     * @return the child object or {@code null} when not present
-     */
-    private static JsonNode optionalObject(JsonNode node, String fieldName) {
-        JsonNode child = node.get(fieldName);
-        if (child == null || child.isNull()) {
-            return null;
-        }
-        if (!child.isObject()) {
-            throw new IllegalArgumentException("Expected object for '" + fieldName + "'");
-        }
-        return child;
-    }
 }

@@ -12,7 +12,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.1</junit.version>
-        <jackson.version>2.18.3</jackson.version>
         <jacoco.version>0.8.12</jacoco.version>
         <pitest.version>1.19.4</pitest.version>
         <pitest.junit5.plugin.version>1.2.2</pitest.junit5.plugin.version>
@@ -36,11 +35,6 @@
             <groupId>org.controlsfx</groupId>
             <artifactId>controlsfx</artifactId>
             <version>11.2.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>

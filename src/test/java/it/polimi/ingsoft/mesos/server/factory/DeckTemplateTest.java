@@ -36,9 +36,14 @@ class DeckTemplateTest {
         DeckTemplate template = ParserJson.getDeckTemplate();
 
         TribeDeck twoPlayerDeck = template.createTribeDeck(2);
+        TribeDeck threePlayerDeck = template.createTribeDeck(3);
+        TribeDeck fourPlayerDeck = template.createTribeDeck(4);
         TribeDeck fivePlayerDeck = template.createTribeDeck(5);
 
-        assertTrue(twoPlayerDeck.getCardsInOrder().size() < fivePlayerDeck.getCardsInOrder().size());
+        assertEquals(63, twoPlayerDeck.getCardsInOrder().size());
+        assertEquals(74, threePlayerDeck.getCardsInOrder().size());
+        assertEquals(85, fourPlayerDeck.getCardsInOrder().size());
+        assertEquals(96, fivePlayerDeck.getCardsInOrder().size());
         assertTrue(
                 fivePlayerDeck.getCardsInOrder().stream()
                         .map(TribeCard.class::cast)
@@ -71,18 +76,21 @@ class DeckTemplateTest {
 
         BuildingDeck buildingDeck = template.createBuildingDeck();
 
+        assertEquals(96, template.getTribeCardTemplateCount());
+        assertEquals(21, template.getBuildingCardTemplateCount());
         assertEquals(template.getBuildingCardTemplateCount(), buildingDeck.getCardsInOrder().size());
-        assertTrue(template.getTribeCardTemplateCount() > 0);
+        assertEquals(96, ParserJson.parseTribeDeck().getCardsInOrder().size());
+        assertEquals(21, ParserJson.parseBuildingDeck().getCardsInOrder().size());
     }
 
     @Test
     void constructorCopiesBlueprintListsAndCreateTribeDeckUsesAllEntries() {
         ArrayList<DeckTemplate.TribeCardBlueprint> tribeBlueprints = new ArrayList<>(List.of(
-                DeckTemplate.tribeCard(null, () -> new Gatherer(1, Era.first, TribeCardType.GATHERER)),
-                DeckTemplate.tribeCard(5, () -> new Gatherer(2, Era.first, TribeCardType.GATHERER))
+                DeckTemplate.tribeCard(1, null, () -> new Gatherer(1, Era.first, TribeCardType.GATHERER)),
+                DeckTemplate.tribeCard(2, 5, () -> new Gatherer(2, Era.first, TribeCardType.GATHERER))
         ));
         ArrayList<DeckTemplate.BuildingCardBlueprint> buildingBlueprints = new ArrayList<>(List.of(
-                DeckTemplate.buildingCard(() -> new BuildingCard(3, Era.first, 1, 1, BenefitType.END_ROUND_EXTRA_CARD))
+                DeckTemplate.buildingCard(3, () -> new BuildingCard(3, Era.first, 1, 1, BenefitType.END_ROUND_EXTRA_CARD))
         ));
 
         DeckTemplate template = new DeckTemplate(tribeBlueprints, buildingBlueprints);
@@ -99,8 +107,8 @@ class DeckTemplateTest {
     @Test
     void createCardByIdResolvesBuildingBlueprintsAfterTribeBlueprints() {
         DeckTemplate template = new DeckTemplate(
-                List.of(DeckTemplate.tribeCard(null, () -> new Gatherer(10, Era.first, TribeCardType.GATHERER))),
-                List.of(DeckTemplate.buildingCard(() -> new BuildingCard(20, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD)))
+                List.of(DeckTemplate.tribeCard(10, null, () -> new Gatherer(10, Era.first, TribeCardType.GATHERER))),
+                List.of(DeckTemplate.buildingCard(20, () -> new BuildingCard(20, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD)))
         );
 
         Card card = template.createCardById(20);
