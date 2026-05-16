@@ -389,18 +389,17 @@ public class StandardCardDraftHandler {
     }
 
     /**
-     * Returns whether the board has at least one drawable card for the player.
+     * Returns whether the upper row has at least one drawable card for the player.
      *
      * <p>This method ignores standard draw quotas. It is used for extra draws,
      * where the right to draw comes from a building effect instead of the
      * upper/lower quota stored in {@link PlayerDraftState}.
      *
      * @param player player to inspect
-     * @return {@code true} if any visible board card is drawable by the player
+     * @return {@code true} if any visible upper-row card is drawable by the player
      */
     private boolean hasAnyDraftableCardOnBoard(Player player) {
-        return !this.board.getDraftableUpperCards(player).isEmpty()
-                || !this.board.getDraftableLowerCards(player).isEmpty();
+        return !this.board.getDraftableUpperCards(player).isEmpty();
     }
 
 }

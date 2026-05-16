@@ -9,6 +9,7 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.CardNotDrawableException;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.CardNotPresentException;
+import it.polimi.ingsoft.mesos.server.model.game.game.exception.CardRowSelectionNotAllowedException;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGamePhaseException;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGameStatusException;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.NotPlayersTurnException;
@@ -116,8 +117,8 @@ public class ExtraCardDraftHandler {
      * Validates the selected extra card and removes it from the board.
      *
      * <p>Extra draws do not consume standard upper/lower quotas, so this method
-     * checks only board presence and card drawability. After validation, the card
-     * is removed from the row that currently contains it.
+     * checks only upper-row board presence and card drawability. After validation,
+     * the card is removed from the upper row.
      *
      * @param player player performing the extra draw
      * @param card selected card object found by id
@@ -129,15 +130,15 @@ public class ExtraCardDraftHandler {
             throw new CardNotPresentException(card);
         }
 
+        if (cardRow != CardRow.UPPER) {
+            throw new CardRowSelectionNotAllowedException(cardRow);
+        }
+
         if (!this.board.canPlayerDrawCard(player, card)) {
             throw new CardNotDrawableException(player, card);
         }
 
-        if (cardRow == CardRow.UPPER) {
-            this.board.removeUpperCard(card);
-        } else {
-            this.board.removeLowerCard(card);
-        }
+        this.board.removeUpperCard(card);
     }
 
     /**
