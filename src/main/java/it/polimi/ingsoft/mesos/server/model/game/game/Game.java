@@ -285,14 +285,14 @@ public class Game {
     }
 
     /**
-     * Sends a specific action error to one listener.
+     * Sends a phase error to one listener.
      *
      * <p>This method is kept for controller paths that need to reject a command
      * before executing a full game action.
      *
      * @param target listener that must receive the error
      */
-    public void notifyActionError(Listener target) {
+    public void reportPhaseError(Listener target) {
         if (target != null) {
             target.notifyUpdate(GamePayloadMapper.toErrorPayload(
                     "GAME_ACTION_ERROR",

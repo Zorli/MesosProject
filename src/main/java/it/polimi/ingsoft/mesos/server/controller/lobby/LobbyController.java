@@ -54,18 +54,20 @@ public class LobbyController implements Runnable {
                 QueuedCommand cmd = this.commandQueue.take();
                 //Controllo se è payload interno o esterno
                 String sessionId = cmd.getSessionId();
-                String nickname = this.sessions.nicknameOf(sessionId);
-                Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
                 if (cmd instanceof SystemJoinCommand ) {
-                    this.joinUser(sessionId,nickname,clientView);
+                    this.joinUser(sessionId);
                     continue;
                 }else if(cmd instanceof SystemDisconnectCommand){
-                    this.disconnectUser(sessionId, nickname, clientView);
+                    this.disconnectUser(sessionId);
                     continue;
                 }
 
-                //Da qua in poi sono sicuro che sono EnquedMessage
-                ClientPayload payload = cmd.getPayload();
+                if (!(cmd instanceof ClientPayloadCommand clientCommand)) {
+                    this.reportPhaseError(sessionId);
+                    continue;
+                }
+
+                ClientPayload payload = clientCommand.getPayload();
                 try {
                     switch (LobbyCommandType.fromPayload(payload)) {
                         case EXIT_LOBBY -> this.exitLobby(sessionId);
@@ -81,7 +83,10 @@ public class LobbyController implements Runnable {
             }
         }
     }
-    private void joinUser(String sessionId, String nickname, Listener clientView) {
+    private void joinUser(String sessionId) {
+        String nickname = this.sessions.nicknameOf(sessionId);
+        Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
+
         if (this.lobby.getStatus() == LobbyStatus.RESUMABLE && this.lobby.isExpectedResumePlayer(nickname)) {
             if (!this.lobby.rejoinResumablePlayer(nickname, clientView)) {
                 return;
@@ -120,7 +125,10 @@ public class LobbyController implements Runnable {
         }
     }
 
-    private void disconnectUser(String sessionId, String nickname, Listener leavingListener) {
+    private void disconnectUser(String sessionId) {
+        String nickname = this.sessions.nicknameOf(sessionId);
+        Listener leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }

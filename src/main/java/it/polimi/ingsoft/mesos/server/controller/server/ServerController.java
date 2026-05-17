@@ -1,11 +1,12 @@
 package it.polimi.ingsoft.mesos.server.controller.server;
 
+import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.QueuedCommand;
 import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.server.enums.PreLobbyCommandType;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
+import it.polimi.ingsoft.mesos.server.network.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.server.ServerModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -59,7 +60,12 @@ public class ServerController implements Runnable {
                 QueuedCommand cmd = this.commandQueue.take();
                 String sessionId = cmd.getSessionId();
 
-                ClientPayload payload = cmd.getPayload();
+                if (!(cmd instanceof ClientPayloadCommand clientCommand)) {
+                    this.serverModel.reportPhaseError(sessionId);
+                    continue;
+                }
+
+                ClientPayload payload = clientCommand.getPayload();
                 try {
                     switch (PreLobbyCommandType.fromPayload(payload)) {
                         case AUTHENTICATE -> {
@@ -126,7 +132,7 @@ public class ServerController implements Runnable {
             this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
             return;
         }
-        target.enqueueMessage(new SystemJoinCommand(sessionId, clientView));
+        target.enqueueMessage(new SystemJoinCommand(sessionId));
     }
 
 
@@ -142,5 +148,9 @@ public class ServerController implements Runnable {
 
     public void disconnectSession(String sessionId) {
         this.connectionLifecycle.disconnectSession(sessionId);
+    }
+
+    public void reportPhaseError(String sessionId) {
+        this.serverModel.reportPhaseError(sessionId);
     }
 }

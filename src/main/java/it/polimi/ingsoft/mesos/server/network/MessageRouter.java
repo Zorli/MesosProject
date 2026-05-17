@@ -1,14 +1,11 @@
 package it.polimi.ingsoft.mesos.server.network;
 
+import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.GameClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.LobbyClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.PreLobbyClientPayload;
 
 public class MessageRouter {
     private final ServerSessionRegistry registry;
@@ -21,21 +18,33 @@ public class MessageRouter {
 
     /**
      * Unico punto di ingresso per tutti i payload inviati dai client.
+     Unica roba ho rimesso il null check, non so se sia possibile che siano null, probabnilmente se non facciamo porcate nel
+     registry dovrebbe essere sicuro pero per ora lo teniamo, poi se siamo 100% sicuri che non può succedere che i controller siano null
+     leviamo check e report dell'errore
+
      */
     public void routeMessage(String sessionId, ClientPayload payload) {
         ServerSessionRegistry.SessionSnapshot snapshot = this.registry.snapshotOf(sessionId);
 
         switch (snapshot.phase()) {
             case PRE_LOBBY -> {
-                this.serverController.enqueueMessage(new EnqueuedMessage(sessionId, payload));
+                this.serverController.enqueueMessage(new ClientPayloadCommand(sessionId, payload));
             }
             case LOBBY -> {
                 LobbyController lobbyController = this.registry.getLobbyController(snapshot.lobbyId());
-                lobbyController.enqueueMessage(new EnqueuedMessage(sessionId, payload));
+                if (lobbyController == null) {
+                    this.serverController.reportPhaseError(sessionId);
+                    return;
+                }
+                lobbyController.enqueueMessage(new ClientPayloadCommand(sessionId, payload));
             }
             case GAME -> {
                 GameController gameOrchestrator = this.registry.getGameOrchestrator(snapshot.gameId());
-                gameOrchestrator.enqueueMessage(new EnqueuedMessage(sessionId,payload));
+                if (gameOrchestrator == null) {
+                    this.serverController.reportPhaseError(sessionId);
+                    return;
+                }
+                gameOrchestrator.enqueueMessage(new ClientPayloadCommand(sessionId,payload));
             }
         }
     }

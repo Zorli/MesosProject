@@ -1,26 +1,24 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
-import it.polimi.ingsoft.mesos.server.virtualview.Listener;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
-
-import java.util.Objects;
-
+/**
+ * Internal queue command used to move an authenticated session into a lobby or
+ * back into a resumable controller flow.
+ *
+ * <p>The command is produced by server-side routing logic after validation has
+ * selected the target controller. It carries only the {@code sessionId}. The
+ * receiving controller resolves listener and nickname from
+ * {@code ServerSessionRegistry}, so the queue does not carry duplicated runtime
+ * state.
+ */
 public class SystemJoinCommand implements QueuedCommand {
-    public final String sessionId;
-    public final Listener clientView;
+    private final String sessionId;
 
-
-    public SystemJoinCommand(String nickname, Listener clientView) {
-        this.sessionId = nickname;
-        this.clientView = clientView;
+    public SystemJoinCommand(String sessionId) {
+        this.sessionId = sessionId;
     }
 
-     @Override
-     public String getSessionId() {
-         return sessionId;
-    }
     @Override
-    public ClientPayload getPayload() {
-        return null;
+    public String getSessionId() {
+        return this.sessionId;
     }
 }

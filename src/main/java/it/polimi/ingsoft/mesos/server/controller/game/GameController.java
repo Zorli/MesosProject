@@ -88,31 +88,38 @@ public class GameController implements Runnable  {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 QueuedCommand cmd = this.commandQueue.take();
-                String sessionId = cmd.getSessionId();
-                //Caso in cui mmi arriva StartMatch e SystemDisconnected
                 if(cmd instanceof SystemSetupMatchCommand){
                     this.setupMatch();
                     continue;
-                }else if (cmd instanceof SystemDisconnectCommand){
+                }
+
+                String sessionId = cmd.getSessionId();
+                if (cmd instanceof SystemDisconnectCommand){
                     this.disconnectedPlayer(sessionId);
                     continue;
                 }else if(cmd instanceof SystemJoinCommand){
                     this.reConnectedPlayer(sessionId);
+                    continue;
                 }
 
-                //da qui in poi sono comandi di gioco
+                if (!(cmd instanceof ClientPayloadCommand clientCommand)) {
+                    this.reportPhaseError(sessionId);
+                    continue;
+                }
+
+                ClientPayload payload = clientCommand.getPayload();
                 try {
-                    switch (GameCommandType.fromPayload(cmd.getPayload())) {
+                    switch (GameCommandType.fromPayload(payload)) {
                         case CHOOSE_CARD -> {
-                            ChooseCardPayload p = (ChooseCardPayload) cmd.getPayload();
+                            ChooseCardPayload p = (ChooseCardPayload) payload;
                             this.chooseCard(sessionId, p.cardId);
                         }
                         case MOVE_TOTEM -> {
-                            MoveTotemPayload p = (MoveTotemPayload) cmd.getPayload();
+                            MoveTotemPayload p = (MoveTotemPayload) payload;
                             this.moveTotem(sessionId, p.tile);
                         }
                         case EXTRA_DRAW -> {
-                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.getPayload();
+                            ExtraDrawPayload p = (ExtraDrawPayload) payload;
                             this.extraDrawn(sessionId, p.cardId);
                         }
 
@@ -138,11 +145,11 @@ public class GameController implements Runnable  {
     /**
      * Places a player's totem.
      *
-     * @param nickname of the acting player
+     * @param sessionId of the acting player session
      * @param tile target offer-space code
      */
-    private void moveTotem(String nickname, String tile) {
-        Player player = this.resolvePlayer(nickname);
+    private void moveTotem(String sessionId, String tile) {
+        Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.moveTotem(player, tile)
         );
@@ -152,11 +159,11 @@ public class GameController implements Runnable  {
     /**
      * Delegates one standard card draw.
      *
-     * @param nickname of acting player
+     * @param sessionId of the acting player session
      * @param cardId of the chosen card
      */
-    private void chooseCard(String nickname, int cardId) {
-        Player player = this.resolvePlayer(nickname);
+    private void chooseCard(String sessionId, int cardId) {
+        Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.chooseCard(player, cardId)
         );
@@ -166,11 +173,11 @@ public class GameController implements Runnable  {
     /**
      * Delegates one extra draw.
      *
-     * @param nickname acting player
+     * @param sessionId of the acting player session
      * @param cardId chosen extra-draw card
      */
-    private void extraDrawn(String nickname, int cardId) {
-        Player player = this.resolvePlayer(nickname);
+    private void extraDrawn(String sessionId, int cardId) {
+        Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.extraDrawn(player, cardId)
         );
@@ -194,6 +201,27 @@ public class GameController implements Runnable  {
                 .filter(p -> p.getNickname().equals(nickname))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Player not in this match: " + nickname));
+    }
+
+    private Player resolvePlayerBySession(String sessionId) {
+        return this.resolvePlayer(this.sessions.nicknameOf(sessionId));
+    }
+
+    private void disconnectedPlayer(String sessionId) {
+        Player player = this.resolvePlayerBySession(sessionId);
+        this.executeStateChange(
+                () -> this.game.disconnectedPlayer(player)
+        );
+        this.checkGameEndAndCleanup();
+        this.sessions.unregister(sessionId);
+    }
+
+    private void reConnectedPlayer(String sessionId) {
+        Player player = this.resolvePlayerBySession(sessionId);
+        this.executeStateChange(
+                () -> this.game.reconnectedPlayer(player)
+        );
+        this.checkGameEndAndCleanup();
     }
 
     private void ensureMatchIsNotFrozen() {
@@ -250,7 +278,7 @@ public class GameController implements Runnable  {
 
     private void reportPhaseError(String sessionId) {
         try {
-            this.game.notifyActionError(this.sessions.getListenerOf(sessionId));
+            this.game.reportPhaseError(this.sessions.getListenerOf(sessionId));
         } catch (RuntimeException ignored) {
         }
     }
