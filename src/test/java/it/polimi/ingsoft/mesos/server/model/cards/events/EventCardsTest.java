@@ -66,10 +66,30 @@ class EventCardsTest {
         ShamanRitualEventCard eventCard = new ShamanRitualEventCard(97, Era.first, TribeCardType.EVENT, 3, 2);
         eventCard.applyEffect(new ArrayList<>(java.util.List.of(alice, bob, carol)));
 
-        assertEquals(4, alice.getPrestigePoints());
+        assertEquals(1, alice.getPrestigePoints());
         assertEquals(1, bob.getPrestigePoints());
         assertEquals(3, carol.getPrestigePoints());
         assertEquals(false, eventCard.isDrawable(alice));
+    }
+
+    @Test
+    void shamanRitualDoesNotApplyWinnerMultiplierWhenHighestPlayersAreTied() {
+        Player alice = player("Alice", TotemColor.RED);
+        Player bob = player("Bob", TotemColor.BLUE);
+        Player carol = player("Carol", TotemColor.WHITE);
+
+        alice.getTribe().addCharacter(new Shaman(17, Era.first, 2, TribeCardType.SHAMAN));
+        alice.getTribe().addBuilding(new BuildingCard(112, Era.second, 0, 0, BenefitType.EVENT_BONUS_SHAMAN_WIN_MULTIPLIER));
+
+        bob.getTribe().addCharacter(new Shaman(18, Era.first, 2, TribeCardType.SHAMAN));
+        carol.getTribe().addCharacter(new Shaman(19, Era.first, 1, TribeCardType.SHAMAN));
+
+        ShamanRitualEventCard eventCard = new ShamanRitualEventCard(99, Era.first, TribeCardType.EVENT, 3, 2);
+        eventCard.applyEffect(new ArrayList<>(java.util.List.of(alice, bob, carol)));
+
+        assertEquals(3, alice.getPrestigePoints());
+        assertEquals(3, bob.getPrestigePoints());
+        assertEquals(-2, carol.getPrestigePoints());
     }
 
     @Test
