@@ -142,6 +142,7 @@ public class PassiveRoundPhaseHandler {
         }
         List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
         int i = 0;
+        //Stesso invariante importante, almeno uno connesso per forza, altrimenti non si sarebbe arrivati a questa fase
         while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(nextRoundOrder.get(i))))
         {
             this.board.movePlayerToLastStartingTile(nextRoundOrder.get(i));

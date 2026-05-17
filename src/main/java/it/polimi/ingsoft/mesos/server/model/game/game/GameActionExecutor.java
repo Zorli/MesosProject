@@ -43,7 +43,11 @@ public class GameActionExecutor {
      */
     public void execute(Runnable action) {
         long previousVersion = this.game.getStateVersion();
-
+        //TODO: Qui dovremmo applicare forse meglio il command patter. Esempio:Oggetto che wrappa runnable e sappiamo
+        //che azione è, cosi quando arribviamo qua nel try con l'oggetto che ha il codice per run possiamo fare,
+        // controllo sul numero di giocatori attivi, c'è ne sono almeno 2? Allora accettiamo qualsiasi azione, se c'è ne 1 solo
+        // allora accettiamo solo comandi di connessione e disconnessione. Se in particolare arriva una disconnessione dall'unico
+        //rimasto attivo allora chiudo il gioco mandando eccezzione e riporto tutti in pre lobby.
         try {
             action.run();
             this.notifyPayloadIfStateChanged(previousVersion);

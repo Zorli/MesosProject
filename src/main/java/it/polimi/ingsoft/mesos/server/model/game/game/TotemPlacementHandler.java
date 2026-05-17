@@ -205,8 +205,9 @@ public class TotemPlacementHandler {
         this.board.resolveEventA();
         List<Player> draftOrder = this.board.getResolutionOrder();
         int i = 0;
-        while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i))))
-        {
+        //Qui stiamo assuemdno che valga l'invariante che almeno un player sia connesso quando arriviamo qua
+        //Altgrimenti è una out of bound
+        while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i)))) {
             this.board.movePlayerToLastStartingTile(draftOrder.get(i));
             draftOrder.remove(i);
             i++;
