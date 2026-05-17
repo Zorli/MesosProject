@@ -104,9 +104,9 @@ public class LaunchClient {
             return;
         }
 
-//        Un domani avremo:
-//        GUIController guiController = (GUIController) clientView;
-//        guiController.attachServerProxy(serverProxy);
-//        guiController.start();
+        if (clientView instanceof GUIController guiController) {
+            guiController.attachServerProxy(serverProxy);
+            guiController.start();
+        }
     }
 }

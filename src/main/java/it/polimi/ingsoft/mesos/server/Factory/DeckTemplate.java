@@ -39,8 +39,8 @@ public final class DeckTemplate {
      * @param factory supplier that creates a fresh tribe card instance
      * @return a tribe card blueprint
      */
-    static TribeCardBlueprint tribeCard(Integer minPlayers, Supplier<? extends TribeCard> factory) {
-        return new TribeCardBlueprint(minPlayers, factory);
+    static TribeCardBlueprint tribeCard(int cardId, Integer minPlayers, Supplier<? extends TribeCard> factory) {
+        return new TribeCardBlueprint(cardId, minPlayers, factory);
     }
 
     /**
@@ -49,8 +49,8 @@ public final class DeckTemplate {
      * @param factory supplier that creates a fresh building card instance
      * @return a building card blueprint
      */
-    static BuildingCardBlueprint buildingCard(Supplier<? extends BuildingCard> factory) {
-        return new BuildingCardBlueprint(factory);
+    static BuildingCardBlueprint buildingCard(int cardId, Supplier<? extends BuildingCard> factory) {
+        return new BuildingCardBlueprint(cardId, factory);
     }
 
     /**
@@ -106,16 +106,14 @@ public final class DeckTemplate {
      */
     public Card createCardById(int cardId) {
         for (TribeCardBlueprint blueprint : this.tribeCardBlueprints) {
-            TribeCard tribeCard = blueprint.instantiate();
-            if (tribeCard.getId() == cardId) {
-                return tribeCard;
+            if (blueprint.hasId(cardId)) {
+                return blueprint.instantiate();
             }
         }
 
         for (BuildingCardBlueprint blueprint : this.buildingCardBlueprints) {
-            BuildingCard buildingCard = blueprint.instantiate();
-            if (buildingCard.getId() == cardId) {
-                return buildingCard;
+            if (blueprint.hasId(cardId)) {
+                return blueprint.instantiate();
             }
         }
 
@@ -155,6 +153,7 @@ public final class DeckTemplate {
      * Stores the minimum player requirement and the supplier for a tribe card blueprint.
      */
     static final class TribeCardBlueprint {
+        private final int cardId;
         private final Integer minPlayers;
         private final Supplier<? extends TribeCard> factory;
 
@@ -164,9 +163,20 @@ public final class DeckTemplate {
          * @param minPlayers minimum supported player count, or {@code null} when always available
          * @param factory supplier that creates the concrete card instance
          */
-        private TribeCardBlueprint(Integer minPlayers, Supplier<? extends TribeCard> factory) {
+        private TribeCardBlueprint(int cardId, Integer minPlayers, Supplier<? extends TribeCard> factory) {
+            this.cardId = cardId;
             this.minPlayers = minPlayers;
             this.factory = factory;
+        }
+
+        /**
+         * Checks whether this blueprint represents the requested card identifier.
+         *
+         * @param cardId requested card identifier
+         * @return {@code true} when this blueprint can instantiate that card
+         */
+        private boolean hasId(int cardId) {
+            return this.cardId == cardId;
         }
 
         /**
@@ -193,6 +203,7 @@ public final class DeckTemplate {
      * Stores the supplier used to instantiate a building card on demand.
      */
     static final class BuildingCardBlueprint {
+        private final int cardId;
         private final Supplier<? extends BuildingCard> factory;
 
         /**
@@ -200,8 +211,19 @@ public final class DeckTemplate {
          *
          * @param factory supplier that creates the concrete card instance
          */
-        private BuildingCardBlueprint(Supplier<? extends BuildingCard> factory) {
+        private BuildingCardBlueprint(int cardId, Supplier<? extends BuildingCard> factory) {
+            this.cardId = cardId;
             this.factory = factory;
+        }
+
+        /**
+         * Checks whether this blueprint represents the requested card identifier.
+         *
+         * @param cardId requested card identifier
+         * @return {@code true} when this blueprint can instantiate that card
+         */
+        private boolean hasId(int cardId) {
+            return this.cardId == cardId;
         }
 
         /**
