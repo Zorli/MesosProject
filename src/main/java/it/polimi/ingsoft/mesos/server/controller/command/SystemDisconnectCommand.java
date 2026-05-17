@@ -1,32 +1,25 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 
 import java.util.Objects;
 
 public class SystemDisconnectCommand implements QueuedCommand {
-    public final String nickname;
     public final Listener leavingListener;
+    public final String sessionId;
 
-    public SystemDisconnectCommand(String nickname, Listener leavingListener) {
-        this.nickname = nickname;
+    public SystemDisconnectCommand(String sessionId , Listener leavingListener) {
+        this.sessionId = sessionId;
         this.leavingListener = leavingListener;
     }
 
     @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (!(object instanceof SystemDisconnectCommand that)) {
-            return false;
-        }
-        return Objects.equals(this.nickname, that.nickname)
-                && Objects.equals(this.leavingListener, that.leavingListener);
+    public String getSessionId() {
+        return sessionId;
     }
-
     @Override
-    public int hashCode() {
-        return Objects.hash(this.nickname, this.leavingListener);
+    public ClientPayload getPayload() {
+        return null;
     }
 }

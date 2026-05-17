@@ -49,10 +49,7 @@ public class ServerConnectionLifecycle {
             if (orchestrator != null) {
                 //TODO : gestione lato coda
                 Listener listener = snapshot.connection() instanceof Listener l ? l : null;
-                orchestrator.enqueueMessage(new EnqueuedMessage(
-                        sessionId,
-                        new SystemDisconnectCommand(snapshot.user().getNickname(), listener)
-                ));
+                orchestrator.enqueueMessage(new SystemDisconnectCommand(snapshot.sessionId(), listener));
                 return;
             }
         } else if (snapshot.phase() == ServerSessionRegistry.Phase.LOBBY && snapshot.lobbyId() != null) {

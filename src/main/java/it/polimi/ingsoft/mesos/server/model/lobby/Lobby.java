@@ -88,7 +88,7 @@ public class Lobby {
         }, requesterView);
     }
 
-    public void notifyActionError(Listener target) {
+    public void reportPhaseError(Listener target) {
         if (target != null) {
             target.notifyUpdate(new ErrorPayload("PHASE_ERROR", "Action non permitted in this phase."));
         }

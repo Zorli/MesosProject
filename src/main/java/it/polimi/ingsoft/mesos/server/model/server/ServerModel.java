@@ -9,10 +9,8 @@ import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyPayloadMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-// questo è lato model del pre_lobby, è singleton e fa unicast su tutti i listener (tiene tutti i listener e tutte le lobby grazie a lobbyRegistry)
+
 public class ServerModel {
-//    private final LobbyRegistry lobbyRegistry;
-    // Serve per leggere i nickname e controllare se un utente è già in una fase avanzata
     private final ServerSessionRegistry sessions;
     private final LobbyPayloadMapper payloadMapper;
 
@@ -48,9 +46,6 @@ public class ServerModel {
         this.sendUnicastError(sessionId, "JOIN_ERROR", message);
     }
 
-    public void reportRoutingError(String sessionId, String message) {
-        this.sendUnicastError(sessionId, "ROUTING_ERROR", message);
-    }
 
     // --- METODI DI BUSINESS (Fase PRE-LOBBY) ---
 

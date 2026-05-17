@@ -1,13 +1,14 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+
 public class SystemSetupMatchCommand implements QueuedCommand {
     @Override
-    public boolean equals(Object object) {
-        return object instanceof SystemSetupMatchCommand;
+    public String getSessionId() {
+        return "SYSTEM";
     }
-
     @Override
-    public int hashCode() {
-        return SystemSetupMatchCommand.class.hashCode();
+    public ClientPayload getPayload() {
+        return null;
     }
 }

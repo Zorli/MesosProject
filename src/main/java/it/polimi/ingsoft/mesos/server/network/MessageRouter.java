@@ -4,7 +4,6 @@ import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
-import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.GameClientPayload;
@@ -28,31 +27,15 @@ public class MessageRouter {
 
         switch (snapshot.phase()) {
             case PRE_LOBBY -> {
-                if (payload instanceof PreLobbyClientPayload) {
-                    this.serverController.enqueueMessage(new EnqueuedMessage(sessionId, new ClientQueuedCommand(payload)));
-                } else {
-                    this.serverController.reportRoutingError(sessionId, "Payload non valido per la fase pre-lobby.");
-                }
+                this.serverController.enqueueMessage(new EnqueuedMessage(sessionId, payload));
             }
             case LOBBY -> {
                 LobbyController lobbyController = this.registry.getLobbyController(snapshot.lobbyId());
-                if (!(payload instanceof LobbyClientPayload)) {
-                    this.serverController.reportRoutingError(sessionId, "Payload non valido per la fase lobby.");
-                } else if (lobbyController != null) {
-                    lobbyController.enqueueMessage(new EnqueuedMessage(sessionId, new ClientQueuedCommand(payload)));
-                } else {
-                    this.serverController.reportRoutingError(sessionId, "Lobby non trovata per instradamento: " + snapshot.lobbyId());
-                }
+                lobbyController.enqueueMessage(new EnqueuedMessage(sessionId, payload));
             }
             case GAME -> {
                 GameController gameOrchestrator = this.registry.getGameOrchestrator(snapshot.gameId());
-                if (!(payload instanceof GameClientPayload)) {
-                    this.serverController.reportRoutingError(sessionId, "Payload non valido per la fase game.");
-                } else if (gameOrchestrator != null) {
-                    gameOrchestrator.enqueueMessage(new EnqueuedMessage(sessionId, new ClientQueuedCommand(payload)));
-                } else {
-                    this.serverController.reportRoutingError(sessionId, "Partita non trovata per instradamento: " + snapshot.gameId());
-                }
+                gameOrchestrator.enqueueMessage(new EnqueuedMessage(sessionId,payload));
             }
         }
     }

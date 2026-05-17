@@ -1,43 +1,26 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+
 import java.util.Objects;
-
-public class EnqueuedMessage {
+//Solo e solamente messaggi dai client
+public class EnqueuedMessage implements QueuedCommand {
     private final String sessionId;
-    private final QueuedCommand command;
+    private final ClientPayload payload;
 
-    public EnqueuedMessage(String sessionId, QueuedCommand command) {
+    public EnqueuedMessage(String sessionId, ClientPayload payload) {
         this.sessionId = sessionId;
-        this.command = command;
+        this.payload = payload;
     }
 
+    @Override
     public String getSessionId() {
         return this.sessionId;
     }
 
-    public QueuedCommand getCommand() {
-        return this.command;
+    @Override
+    public ClientPayload getPayload() {
+        return this.payload;
     }
 
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (!(object instanceof EnqueuedMessage that)) {
-            return false;
-        }
-        return Objects.equals(this.sessionId, that.sessionId)
-                && Objects.equals(this.command, that.command);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(this.sessionId, this.command);
-    }
-
-    @Override
-    public String toString() {
-        return "EnqueuedMessage[sessionId=" + this.sessionId + ", command=" + this.command + "]";
-    }
 }

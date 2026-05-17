@@ -1,15 +1,14 @@
 package it.polimi.ingsoft.mesos.server.controller.game;
 
 
+import it.polimi.ingsoft.mesos.server.controller.command.*;
 import it.polimi.ingsoft.mesos.server.controller.game.enums.GameCommandType;
 import it.polimi.ingsoft.mesos.server.controller.game.exceptions.MatchFrozenException;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
 import java.util.List;
@@ -34,7 +33,7 @@ public class GameController implements Runnable  {
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
     private boolean frozen;
-    private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
 
     // Constructors
 
@@ -81,41 +80,47 @@ public class GameController implements Runnable  {
         return this.frozen;
     }
 
-    public void enqueueMessage(EnqueuedMessage command) {
+    public void enqueueMessage(QueuedCommand command) {
         this.commandQueue.add(command);
     }
     @Override
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                EnqueuedMessage cmd = this.commandQueue.take();
+                QueuedCommand cmd = this.commandQueue.take();
                 String sessionId = cmd.getSessionId();
-                try {
-                    switch (cmd.getCommand()) {
-                        case ClientQueuedCommand clientCommand -> {
-                            String nickname = sessions.nicknameOf(sessionId);
-                            switch (GameCommandType.fromPayload(clientCommand.payload())) {
-                                case CHOOSE_CARD -> {
-                                    ChooseCardPayload p = (ChooseCardPayload) clientCommand.payload();
-                                    this.chooseCard(nickname, p.cardId);
-                                }
-                                case EXTRA_DRAW -> {
-                                    ExtraDrawPayload p = (ExtraDrawPayload) clientCommand.payload();
-                                    this.extraDrawn(nickname, p.cardId);
-                                }
-                                case MOVE_TOTEM -> {
-                                    MoveTotemPayload p = (MoveTotemPayload) clientCommand.payload();
-                                    this.moveTotem(nickname, p.tile);
-                                }
-                                //TODO : connesso al systemlobbyDisconnectedCommand aggiustare il case per accetarlo
-                            }
-                        }
-                        case SystemSetupMatchCommand ignored -> this.setupMatch();
-                        default -> throw new IllegalStateException("Unexpected command: " + cmd.getCommand());
-                    }
-                } catch (RuntimeException e) {
-                    this.notifyPhaseError(sessionId);
+                //Caso in cui mmi arriva StartMatch e SystemDisconnected
+                if(cmd instanceof SystemSetupMatchCommand){
+                    this.setupMatch();
+                    continue;
+                }else if (cmd instanceof SystemDisconnectCommand){
+                    this.disconnectedPlayer(sessionId);
+                    continue;
+                }else if(cmd instanceof SystemJoinCommand){
+                    this.reConnectedPlayer(sessionId);
                 }
+
+                //da qui in poi sono comandi di gioco
+                try {
+                    switch (GameCommandType.fromPayload(cmd.getPayload())) {
+                        case CHOOSE_CARD -> {
+                            ChooseCardPayload p = (ChooseCardPayload) cmd.getPayload();
+                            this.chooseCard(sessionId, p.cardId);
+                        }
+                        case MOVE_TOTEM -> {
+                            MoveTotemPayload p = (MoveTotemPayload) cmd.getPayload();
+                            this.moveTotem(sessionId, p.tile);
+                        }
+                        case EXTRA_DRAW -> {
+                            ExtraDrawPayload p = (ExtraDrawPayload) cmd.getPayload();
+                            this.extraDrawn(sessionId, p.cardId);
+                        }
+
+                    }
+                }catch(IllegalArgumentException e){
+                    this.reportPhaseError(sessionId);
+                }
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -243,7 +248,7 @@ public class GameController implements Runnable  {
         return hostNickname;
     }
 
-    private void notifyPhaseError(String sessionId) {
+    private void reportPhaseError(String sessionId) {
         try {
             this.game.notifyActionError(this.sessions.getListenerOf(sessionId));
         } catch (RuntimeException ignored) {
