@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.controller.server;
 
 import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.QueuedCommand;
+import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.server.enums.PreLobbyCommandType;
@@ -97,7 +98,22 @@ public class ServerController implements Runnable {
 
     private void authenticate(String sessionId, String nickname) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
+        //lasciamo autenticazione standard con salvataggio etch
         this.serverModel.authenticate(sessionId, nickname, clientView);
+        // dopo aver registrato tutto correttamente ci preoccupiamo di controllare se va riconesso
+        if(this.sessions.isDisconnected(nickname))
+        {
+            //se era un disconnected one passo il messaggio internamente e modifico il suo stato
+            int gameId = this.sessions.DisconnectedFrom(nickname);
+            GameController gameController = this.sessions.getGameOrchestrator(gameId);
+            //aggiorno li stati interni nel sessionRegistry
+            this.sessions.RegisterReConnection(sessionId);
+            //lo sposto diretto nel game, suppongo che esista perchè altrimenti la mappa interna al session
+            // si sarebbe aggiornata levando i riferimenti a quel gameId e di conseguenza il nickname
+            Listener playerListener = this.sessions.getListenerOf(sessionId);
+            gameController.getGame().addListener(playerListener);
+            gameController.enqueueMessage(new SystemJoinCommand(sessionId));
+        }
     }
 
     private void listOpenLobbies(String sessionId) {

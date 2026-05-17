@@ -128,6 +128,7 @@ public class Game {
             this.connectedPlayers.put(player, false);
             //TODO: Ci sono alcuni while che presuppongono invariante di almeno un giocatore connesso,
             //Secondo me almeno un check e lanciare ccezzione senno scorriamo olktre i limiti della mappa
+            //qui un bel check se la persona disconessa era l'ultima -> State = FINISHED
             if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
                 this.totemPlacementHandler.handlePlayerDisconnection(player);
             } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {

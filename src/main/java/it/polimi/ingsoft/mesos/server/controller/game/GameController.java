@@ -8,6 +8,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
@@ -208,15 +209,25 @@ public class GameController implements Runnable  {
     }
 
     private void disconnectedPlayer(String sessionId) {
+        // TODO: Pulizia se ultimo giocatore, freeze altrimenti. per la pulizia metterei stato finished al game e ciaone
         Player player = this.resolvePlayerBySession(sessionId);
+        //suppongo che qui va levato dai Listener per non avere exception, in caso abbia ragione scommentare
+//        Listener playerListener = this.sessions.getListenerOf(sessionId);
+//        this.game.removeListener(playerListener);
         this.executeStateChange(
                 () -> this.game.disconnectedPlayer(player)
         );
         this.checkGameEndAndCleanup();
+        //non so se necessario ma lo metto nel dubbio
+        this.sessions.leaveGame(sessionId);
+
         this.sessions.unregister(sessionId);
+        // quando uno si riconnete ci pensa il servercontroller a pulire la mappa, quando uno si disconnette lo registra il gameController
+        this.sessions.RegisterDisconnection(sessionId,this.game.getId());
     }
 
     private void reConnectedPlayer(String sessionId) {
+        //qui arriverà tutto pulito, il giocatore sarà già dentro con la VirtualView attaccata come Listener
         Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.reconnectedPlayer(player)
@@ -258,6 +269,7 @@ public class GameController implements Runnable  {
     }
 
     private void teardownGame() {
+        // qui dovrebbe essere ok, cioè se uno si disconnette non viene "letto"
         List<ServerSessionRegistry.SessionSnapshot> playersInGame =
                 this.sessions.sessionsInGame(this.game.getId());
 
@@ -265,6 +277,9 @@ public class GameController implements Runnable  {
             this.sessions.leaveGame(snapshot.sessionId());
         }
         this.sessions.removeGameOrchestrator(this.game.getId());
+        //qui leviamo tutte le coppie nella mappe di disconnesioni con il gameId del gioco finito, d'ora in poi nessuno
+        // si può riconettere o connettere (dato che il GameOrchestrator non c'è più)
+        this.sessions.removeDisconnectedReference(this.game.getId());
     }
 
     // Helper methods
