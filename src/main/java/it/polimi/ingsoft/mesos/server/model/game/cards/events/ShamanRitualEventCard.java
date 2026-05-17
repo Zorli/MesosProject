@@ -47,22 +47,19 @@ public class ShamanRitualEventCard extends EventCard {
         int minStars = shamanStars.stream().mapToInt(Integer::intValue).min().orElse(0);
 
         boolean allEqual = maxStars == minStars;
+        boolean hasUniqueWinner = shamanStars.stream().filter(stars -> stars == maxStars).count() == 1;
 
         for (int i = 0; i < players.size(); i++) {
             int playerStars = shamanStars.get(i);
 
             if (allEqual) {
-                if (players.get(i).getTribe().hasWinMultiplier()) {
-                    players.get(i).gainPrestigePoints(this.prestigePointsForHigher * 2);
-                } else {
-                    players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
-                }
+                players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
                 if (!players.get(i).getTribe().hasBuildingForShamanRitualProtection()) {
                     players.get(i).payPrestigePoints(this.prestigePointsForLower);
                 }
             } else {
                 if (playerStars == maxStars) {
-                    if (players.get(i).getTribe().hasWinMultiplier()) {
+                    if (hasUniqueWinner && players.get(i).getTribe().hasWinMultiplier()) {
                         players.get(i).gainPrestigePoints(this.prestigePointsForHigher * 2);
                     } else {
                         players.get(i).gainPrestigePoints(this.prestigePointsForHigher);
