@@ -149,4 +149,24 @@ class TribeTest {
 
         assertEquals(6, tribe.getPrestigePointsForBuilderInFinalPhase());
     }
+
+    @Test
+    void getPrestigePointsForArtistsInFinalPhaseAwardsTenPointsEveryTwoArtists() {
+        Tribe tribe = new Tribe();
+        tribe.addCharacter(new Artist(1, Era.first, TribeCardType.ARTIST));
+        tribe.addCharacter(new Artist(2, Era.first, TribeCardType.ARTIST));
+        tribe.addCharacter(new Artist(3, Era.first, TribeCardType.ARTIST));
+
+        assertEquals(10, tribe.getPrestigePointsForArtistsInFinalPhase());
+    }
+
+    @Test
+    void getPrestigePointsForInventorsInFinalPhaseMultipliesInventorsByDifferentInventions() {
+        Tribe tribe = new Tribe();
+        tribe.addCharacter(new Inventor(1, Era.first, TribeCardType.INVENTOR, InventionType.FIRE));
+        tribe.addCharacter(new Inventor(2, Era.first, TribeCardType.INVENTOR, InventionType.FIRE));
+        tribe.addCharacter(new Inventor(3, Era.first, TribeCardType.INVENTOR, InventionType.BOW));
+
+        assertEquals(6, tribe.getPrestigePointsForInventorsInFinalPhase());
+    }
 }
