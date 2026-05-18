@@ -2856,7 +2856,7 @@
       "FINAL_PRESTIGE_POINTS_FOR_SET": [
         {
           "id": 109,
-          "era": "third",
+          "era": "second",
           "model": {
             "timing": "END_GAME",
             "requiredDistinctTypes": 6,
@@ -2878,7 +2878,7 @@
               ]
             },
             "back": {
-              "eraSymbol": "III"
+              "eraSymbol": "II"
             }
           }
         }
