@@ -13,6 +13,8 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
@@ -33,6 +35,9 @@ public class GameController implements Runnable  {
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
+    private final Timer lastPlayerTimer = new Timer("last-player-timer", true);
+    private TimerTask lastPlayerTimerTask;
+    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 20_000;
 
     //L'idea è di avere questo per evitare che magari mentre sta facendo la fase di teardown, il sesion registry continui
     //a permettere connessioni, inoltre prima di fare il teardown svuotiamo la coda dei messaggi che potrebbero essere arrivati
@@ -99,6 +104,12 @@ public class GameController implements Runnable  {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 QueuedCommand cmd = this.commandQueue.take();
+
+                if (cmd instanceof SystemCloseGameCommand) {
+                    this.closeGame();
+                    continue;
+                }
+
                 if(cmd instanceof SystemSetupMatchCommand){
                     this.setupMatch();
                     continue;
@@ -150,6 +161,10 @@ public class GameController implements Runnable  {
         this.checkGameEndAndCleanup();
     }
 
+    private void closeGame() {
+        this.executeStateChange(() -> this.game.closeGame());
+        this.checkGameEndAndCleanup();
+    }
     /**
      * Places a player's totem.
      *
@@ -176,6 +191,29 @@ public class GameController implements Runnable  {
                 () -> this.game.chooseCard(player, cardId)
         );
         this.checkGameEndAndCleanup();
+    }
+
+    private void startLastPlayerTimer() {
+        if (this.lastPlayerTimerTask != null) {
+            return;
+        }
+
+        this.lastPlayerTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                enqueueMessage(new SystemCloseGameCommand());
+            }
+        };
+
+        this.lastPlayerTimer.schedule(this.lastPlayerTimerTask, LAST_PLAYER_TIMEOUT_MILLIS);
+    }
+
+    private void cancelLastPlayerTimer() {
+        if (this.lastPlayerTimerTask != null) {
+            this.lastPlayerTimerTask.cancel();
+            this.lastPlayerTimerTask = null;
+            this.lastPlayerTimer.purge();
+        }
     }
 
     /**
@@ -207,8 +245,16 @@ public class GameController implements Runnable  {
     }
 
     private void disconnectedPlayer(String sessionId) {
-        Player player = this.resolvePlayerBySession(sessionId);
-        Listener playerListener = this.sessions.getListenerOf(sessionId);
+        Player player;
+        Listener playerListener;
+        try {
+            // A timeout can enqueue the same disconnect twice before the first one unregisters the session.
+            // If this command is stale, the session is already gone and there is nothing left to clean here.
+            player = this.resolvePlayerBySession(sessionId);
+            playerListener = this.sessions.getListenerOf(sessionId);
+        } catch (RuntimeException ignored) {
+            return;
+        }
         this.game.removeListener(playerListener);
         this.executeStateChange(
                 () -> this.game.disconnectedPlayer(player)
@@ -217,7 +263,14 @@ public class GameController implements Runnable  {
 
         this.checkGameEndAndCleanup();
         if (this.game.getStatus() == GameStatus.FINISHED) {
+            this.sessions.unregister(sessionId);
             return;
+        }
+
+        Boolean needToStartTimer = false;
+        needToStartTimer = this.game.getStartTimer();
+        if(needToStartTimer){
+            this.startLastPlayerTimer();
         }
 
         this.sessions.leaveGame(sessionId);
@@ -240,9 +293,14 @@ public class GameController implements Runnable  {
         Listener playerListener = this.sessions.getListenerOf(sessionId);
         this.game.addListener(playerListener);
         Player player = this.resolvePlayerBySession(sessionId);
+
         this.executeStateChange(
-                () -> this.game.reconnectedPlayer(player)
+                () -> {
+                    this.game.reconnectedPlayer(player);
+
+                }
         );
+        this.cancelLastPlayerTimer();
         this.checkGameEndAndCleanup();
     }
 
@@ -275,6 +333,8 @@ public class GameController implements Runnable  {
     }
 
     private void teardownGame() {
+        this.cancelLastPlayerTimer();
+        this.lastPlayerTimer.cancel();
         // qui dovrebbe essere ok, cioè se uno si disconnette non viene "letto"
         //Arrivato qui la coda non dovrebbe più poter essere accessibile dall'esterno,
         //dato che abbiamo messo il flag di closing, potrei comunque

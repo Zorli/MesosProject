@@ -206,9 +206,14 @@ public class TotemPlacementHandler {
         int i = 0;
         //Qui stiamo assuemdno che valga l'invariante che almeno un player sia connesso quando arriviamo qua
         //Altgrimenti è una out of bound
-        while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i)))) {
+        while(!draftOrder.isEmpty() && Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i)))) {
             this.board.movePlayerToLastStartingTile(draftOrder.get(i));
             draftOrder.remove(i);
+        }
+        if (draftOrder.isEmpty()) {
+            this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
+            this.game.markStateChanged();
+            return;
         }
         this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);

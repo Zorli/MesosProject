@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The absolute Source of Truth for every session detail, active controller mapping, and lobby models.
  */
 public class ServerSessionRegistry {
-    private static final long TIMEOUT_MILLIS = Duration.ofSeconds(25).toMillis();
+    private static final long TIMEOUT_MILLIS = Duration.ofSeconds(8).toMillis();
 
     public enum Phase {
         PRE_LOBBY,

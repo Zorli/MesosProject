@@ -89,7 +89,7 @@ public class OfferPath {
         {
             this.startingTile.removePlayer(player);
         }
-        else if(from == 2){
+        else if(from == 0){
             this.offerSpaces.stream().filter(space -> player.equals(space.getOccupiedBy())).findFirst().ifPresent(OfferSpace::clear);
         }
         this.startingTile.placePlayerOnLastAvailableBlock(player);

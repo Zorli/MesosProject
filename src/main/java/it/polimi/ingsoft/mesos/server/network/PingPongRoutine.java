@@ -9,7 +9,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class PingPongRoutine {
-    private static final long PING_INTERVAL_SECONDS = 10;
+    private static final long PING_INTERVAL_SECONDS = 5;
 
     private final ServerSessionRegistry sessions;
     private final ServerConnectionLifecycle connectionLifecycle;

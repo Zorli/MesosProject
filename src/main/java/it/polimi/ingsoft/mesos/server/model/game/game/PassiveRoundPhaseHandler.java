@@ -147,7 +147,7 @@ public class PassiveRoundPhaseHandler {
         {
             this.board.movePlayerToLastStartingTile(nextRoundOrder.get(i));
             nextRoundOrder.remove(i);
-            i++;
+            
         }
         this.roundFlow.advanceRoundNumber();
         this.playerDraftState.resetForNewRound();

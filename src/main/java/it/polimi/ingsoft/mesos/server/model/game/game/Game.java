@@ -54,6 +54,8 @@ public class Game {
 
 
 
+
+
     /**
      * Tracks which players are currently connected to the match.
      *
@@ -428,6 +430,13 @@ public class Game {
         this.status = GameStatus.FINISHED;
     }
 
+    public void closeGame() {
+        this.actionExecutor.execute(() -> {
+            this.finishGame();
+            this.markStateChanged();
+        });
+    }
+
     /**
      * Performs the real setup work inside the action-executor wrapper.
      *
@@ -477,6 +486,9 @@ public class Game {
         if(this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1){
             throw  new InvalidConnectionState("only one connected");
         }
+    }
+    public Boolean getStartTimer(){
+        return this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1;
     }
 
     /**

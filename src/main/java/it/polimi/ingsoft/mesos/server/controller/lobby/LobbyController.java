@@ -126,8 +126,16 @@ public class LobbyController implements Runnable {
     }
 
     private void disconnectUser(String sessionId) {
-        String nickname = this.sessions.nicknameOf(sessionId);
-        Listener leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+        String nickname;
+        Listener leavingListener;
+        try {
+            // A timeout can enqueue the same disconnect twice before the first one unregisters the session.
+            // If this command is stale, the session is already gone and there is nothing left to clean here.
+            nickname = this.sessions.nicknameOf(sessionId);
+            leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+        } catch (RuntimeException ignored) {
+            return;
+        }
 
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
