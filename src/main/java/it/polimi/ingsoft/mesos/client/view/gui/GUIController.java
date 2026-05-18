@@ -926,7 +926,10 @@ public class GUIController implements ClientView {
             return;
         }
         List<PlayerPayload> rankedPlayers = new ArrayList<>(players);
-        rankedPlayers.sort(Comparator.comparingInt((PlayerPayload player) -> player.prestigePoints).reversed());
+        rankedPlayers.sort(Comparator
+                .comparingInt((PlayerPayload player) -> player.prestigePoints)
+                .thenComparingInt(player -> player.food)
+                .reversed());
         for (int i = 0; i < rankedPlayers.size(); i++) {
             PlayerPayload player = rankedPlayers.get(i);
             HBox row = new HBox(16);
