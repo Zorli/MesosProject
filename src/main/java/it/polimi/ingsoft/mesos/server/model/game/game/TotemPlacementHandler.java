@@ -177,7 +177,6 @@ public class TotemPlacementHandler {
                 this.startPlayerDrawPhase();
                 return;
             }
-
             this.roundFlow.advanceToNextPlayer();
         }
     }
@@ -210,7 +209,6 @@ public class TotemPlacementHandler {
         while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i)))) {
             this.board.movePlayerToLastStartingTile(draftOrder.get(i));
             draftOrder.remove(i);
-            i++;
         }
         this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);

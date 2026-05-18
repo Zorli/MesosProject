@@ -143,7 +143,8 @@ public class Board {
      * @param player player to move
      */
     public void movePlayerToLastStartingTile(Player player) {
-        this.offerPath.movePlayerToLastStartingTile(player);
+        //qui da offerPath a startingTile -> 0
+        this.offerPath.movePlayerToLastStartingTile(player,0);
     }
 
     /**
@@ -258,9 +259,10 @@ public class Board {
      */
     public void shiftToLastStartingTile()
     {
+        //in questo caso sono da starting tile a starting tile  -> 1
         List <Player> PlayersToShift = this.offerPath.getStartingTile().getPlayersOrderedByStartingBlock();
         for (Player player : PlayersToShift.reversed()) {
-            this.movePlayerToLastStartingTile(player);
+            this.offerPath.movePlayerToLastStartingTile(player,1);
         }
     }
     /**

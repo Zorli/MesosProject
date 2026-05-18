@@ -410,7 +410,7 @@ public class CardDraftHandler {
      * @param player disconnected player to skip
      */
     private void skipDisconnectedPlayer(Player player) {
-        this.board.returnPlayerToStartingTile(player);
+        this.board.movePlayerToLastStartingTile(player);
         this.playerDraftState.resetForNextPlayer(player);
     }
 

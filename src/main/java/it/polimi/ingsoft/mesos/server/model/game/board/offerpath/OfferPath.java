@@ -83,7 +83,15 @@ public class OfferPath {
      * Moves the player from wherever it can be to the last free startingBlock
      * @param player
      */
-    public void movePlayerToLastStartingTile(Player player) {
+    public void movePlayerToLastStartingTile(Player player, int from) {
+        //puliamo l'offerspace o lo startingBlock dove si trovava, from = 0 da offerpath, from = 1 da startingTile
+        if(from == 1)
+        {
+            this.startingTile.removePlayer(player);
+        }
+        else if(from == 2){
+            this.offerSpaces.stream().filter(space -> player.equals(space.getOccupiedBy())).findFirst().ifPresent(OfferSpace::clear);
+        }
         this.startingTile.placePlayerOnLastAvailableBlock(player);
     }
     /**

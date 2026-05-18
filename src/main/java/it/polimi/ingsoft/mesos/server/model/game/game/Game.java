@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.game.game;
 
+import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidConnectionState;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
 import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
@@ -333,6 +334,7 @@ public class Game {
      */
     public void moveTotem(Player player, String tileCode) {
         this.actionExecutor.execute(() -> {
+            this.onlyOneConnected();
             this.totemPlacementHandler.moveTotem(player, tileCode);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
@@ -346,6 +348,7 @@ public class Game {
      */
     public void chooseCard(Player player, int cardId) {
         this.actionExecutor.execute(() -> {
+            this.onlyOneConnected();
             this.cardDraftHandler.chooseCard(player, cardId);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
@@ -359,6 +362,7 @@ public class Game {
      */
     public void extraDrawn(Player player, int cardId) {
         this.actionExecutor.execute(() -> {
+            this.onlyOneConnected();
             this.cardDraftHandler.extraDrawn(player, cardId);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
@@ -467,6 +471,11 @@ public class Game {
             Player player = this.players.get(playerIndex);
             int initialFood = this.calculateInitialFood(playerIndex);
             player.gainFood(initialFood);
+        }
+    }
+    private void onlyOneConnected(){
+        if(this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1){
+            throw  new InvalidConnectionState("only one connected");
         }
     }
 

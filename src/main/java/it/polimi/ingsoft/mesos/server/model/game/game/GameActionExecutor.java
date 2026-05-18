@@ -1,5 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.game.game;
 
+import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGameStatusException;
+
 /**
  * Executes public actions of {@link Game}.
  *
