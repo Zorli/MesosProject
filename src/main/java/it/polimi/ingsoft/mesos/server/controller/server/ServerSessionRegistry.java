@@ -137,17 +137,72 @@ public class ServerSessionRegistry {
         this.sessionsById.put(sessionId, state);
         return sessionId;
     }
-    //metodo semplicemente per aggiungere il bro disconesso alla mappa
+    /**
+     * Registers that the authenticated session left a running game.
+     *
+     * @param sessionId disconnected session
+     * @param gameId game that can accept a later reconnect
+     */
     public synchronized void RegisterDisconnection(String sessionId, int gameId) {
         String nickname = this.nicknameOf(sessionId);
+        this.registerDisconnection(nickname, gameId);
+    }
+
+    /**
+     * Registers a disconnected nickname for a running game.
+     *
+     * <p>This overload is used when the old session is already being removed but
+     * the server still knows which nickname disconnected.
+     *
+     * @param nickname disconnected player nickname
+     * @param gameId game that can accept a later reconnect
+     */
+    public synchronized void registerDisconnection(String nickname, int gameId) {
+        if (nickname == null || nickname.isBlank()) {
+            return;
+        }
         this.DisconnectedNicknameOnGame.put(nickname, gameId);
     }
-    //metodo per levare il bro riconesso dalla mappa e farlo rientrare nel gioco
+
+    /**
+     * Checks whether an old disconnect command has been superseded by a reconnect.
+     *
+     * <p>The replacement session does not need to be in {@link Phase#GAME} yet.
+     * During a fast reconnect, the new session can already be authenticated while
+     * its {@code SystemJoinCommand} is still waiting behind the old disconnect in
+     * the game queue. For resilience purposes that authenticated replacement is
+     * already enough to make the old disconnect stale.
+     *
+     * @param nickname player nickname carried by the old disconnect command
+     * @param gameId game that owns the queued disconnect
+     * @param oldSessionId session that produced the old disconnect
+     * @return {@code true} when a newer authenticated session owns the nickname
+     * and the nickname is still registered as disconnected from this game
+     */
+    public synchronized boolean isReconnectedInGame(String nickname, int gameId, String oldSessionId) {
+        String currentSessionId = this.sessionIdByNickname.get(nickname);
+        if (currentSessionId == null || currentSessionId.equals(oldSessionId)) {
+            return false;
+        }
+
+        SessionState currentSession = this.sessionsById.get(currentSessionId);
+        return currentSession != null
+                && currentSession.user != null
+                && Objects.equals(this.DisconnectedNicknameOnGame.get(nickname), gameId);
+    }
+
+    /**
+     * Moves an authenticated reconnecting session back into its previous game.
+     *
+     * @param sessionId new authenticated session
+     */
     public synchronized void RegisterReConnection(String sessionId){
         String nickname = this.nicknameOf(sessionId);
-        int gameId = this.DisconnectedNicknameOnGame.get(nickname);
+        Integer gameId = this.DisconnectedNicknameOnGame.get(nickname);
+        if (gameId == null) {
+            throw new IllegalStateException("No disconnected game for nickname: " + nickname);
+        }
         this.DisconnectedNicknameOnGame.remove(nickname);
-        // e qua rientra nel gioco formalmente
         this.enterGame(sessionId, gameId);
 
     }

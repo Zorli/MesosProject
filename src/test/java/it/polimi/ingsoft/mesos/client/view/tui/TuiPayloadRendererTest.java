@@ -91,6 +91,24 @@ class TuiPayloadRendererTest {
         assertTrue(rendered.contains("START  #1 food=+2 pp=+0 occ=- | #2 food=+0 pp=+1 occ=bob"));
     }
 
+    @Test
+    void finalResultRanksConnectedPlayerBeforeDisconnectedPlayers() {
+        String rendered = this.renderer.renderFinalGameResult(new GamePayload(
+                42,
+                "FINISHED",
+                1,
+                new TurnOrderPayload(3, "ACTION", "ada", List.of("ada", "bob")),
+                null,
+                List.of(
+                        new PlayerPayload("ada", 3, 5, "A1", new TribePayload(List.of(), List.of()), true),
+                        new PlayerPayload("bob", 2, 99, null, new TribePayload(List.of(), List.of()), false)
+                ),
+                null
+        ));
+
+        assertTrue(rendered.indexOf("1. ada") < rendered.indexOf("2. bob"));
+    }
+
     private static GamePayload gamePayload() {
         return new GamePayload(
                 42,

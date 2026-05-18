@@ -49,14 +49,16 @@ public class ServerModel {
 
     // --- METODI DI BUSINESS (Fase PRE-LOBBY) ---
 
-    public void authenticate(String sessionId, String nickname, Listener clientView) {
+    public boolean authenticate(String sessionId, String nickname, Listener clientView) {
         try {
             this.sessions.authenticate(sessionId, nickname);
 
             clientView.notifyUpdate(this.payloadMapper.authenticated(nickname));
+            return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             clientView.notifyUpdate(new ErrorPayload("AUTH_ERROR", e.getMessage()));
+            return false;
         }
     }
 

@@ -171,6 +171,9 @@ final class TuiPayloadRenderer {
         players.sort(new Comparator<PlayerPayload>() {
             @Override
             public int compare(PlayerPayload firstPlayer, PlayerPayload secondPlayer) {
+                if (firstPlayer.isConnected != secondPlayer.isConnected) {
+                    return Boolean.compare(secondPlayer.isConnected, firstPlayer.isConnected);
+                }
                 return Integer.compare(secondPlayer.prestigePoints, firstPlayer.prestigePoints);
             }
         });

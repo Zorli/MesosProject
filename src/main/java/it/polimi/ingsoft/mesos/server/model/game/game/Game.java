@@ -12,32 +12,41 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import java.util.*;
 
 /**
- * Facade and aggregate root of one Mesos match.
+ * Domain aggregate of one Mesos match.
  *
- * <p>This class is the main entry point of the server-side game model. The
- * controller and orchestrator call this class when a client asks to perform a
- * game action such as setup, totem placement, standard card drafting, or extra
- * card drafting.
+ * <p>{@code Game} is the server-side model of a single match. It contains the
+ * rules and the mutable domain state, but it does not decide which network
+ * session is allowed to act. Session lookup, command ordering, and reconnection
+ * routing are responsibilities of the game controller and of the server session
+ * registry.
  *
- * <p>The class owns the complete mutable state of the match:
+ * <p>This class owns the complete match state:
  * <ul>
- *     <li>the players;</li>
- *     <li>the current era;</li>
- *     <li>the lifecycle status;</li>
- *     <li>the board;</li>
- *     <li>the current round flow;</li>
- *     <li>the standard card-draft state;</li>
- *     <li>the listeners that must receive payload updates.</li>
+ *     <li>the players that belong to the match;</li>
+ *     <li>the current era and lifecycle status;</li>
+ *     <li>the board, offer path, card rows, and player positions;</li>
+ *     <li>the current round phase and the phase player order;</li>
+ *     <li>the standard draft state and remaining draw quotas;</li>
+ *     <li>the connection state of each player inside this match;</li>
+ *     <li>the listeners that receive game payload updates.</li>
  * </ul>
  *
- * <p>The detailed game rules are intentionally delegated to small handlers.
- * {@code Game} coordinates those handlers, while each handler owns one specific
- * part of the rules. This keeps the aggregate readable: the public methods show
- * the high-level flow, and the detailed rule code stays in focused classes.
+ * <p>The public methods are intentionally high-level commands. They validate
+ * the current state, delegate detailed rules to the proper handler, advance
+ * passive phases, and mark the aggregate as changed. For example, totem
+ * placement is delegated to {@link TotemPlacementHandler}, card drafting to
+ * {@link CardDraftHandler}, and automatic phase transitions to
+ * {@link PassiveRoundPhaseHandler}.
+ *
+ * <p>Connection resilience is modelled as part of the domain state through
+ * {@link #connectedPlayers}. A disconnection marks the player as not connected
+ * and lets the current phase skip or adapt the turn order. A reconnection only
+ * marks the same player as connected again; it does not undo skipped actions and
+ * does not move the player backwards in the round flow.
  *
  * <p>Payload notification is centralized through {@link GameActionExecutor}.
- * Public actions do not notify directly. They change the state; then the
- * executor sends exactly one payload if the state version changed.
+ * Public actions do not notify directly. They update the aggregate and the
+ * executor sends one payload only when the state version changed.
  */
 public class Game {
     private final int id;
@@ -57,12 +66,12 @@ public class Game {
 
 
     /**
-     * Tracks which players are currently connected to the match.
+     * Tracks the current connection state for every player in the match.
      *
-     * <p>The network layer detects connection changes, but the actual update is
-     * still executed through {@link GameActionExecutor}. This keeps connection
-     * changes ordered with normal game actions and guarantees that payload
-     * notifications are produced by the same path.
+     * <p>The network layer detects broken connections, but the model update is
+     * still executed as a normal game action. This keeps disconnections ordered
+     * with moves, draws, setup, and close commands, and makes notification use
+     * the same {@link GameActionExecutor} path as every other state change.
      */
     private Map<Player,Boolean> connectedPlayers;
 
@@ -108,23 +117,31 @@ public class Game {
     }
 
     /**
-     * Marks a player as disconnected and lets the active phase react.
+     * Applies a real player disconnection to the domain model.
      *
-     * <p>The method first updates {@link #connectedPlayers}. Then it delegates
-     * to the handler that owns the current phase:
+     * <p>The controller calls this method only after it has decided that the
+     * queued disconnect command is still valid and is not stale because of a
+     * newer reconnect. From this point on the disconnection is a game event, not
+     * a transport event.
+     *
+     * <p>The method first marks the player as disconnected in
+     * {@link #connectedPlayers}. If no player is connected anymore, the match is
+     * finished because there is no remaining participant able to continue it.
+     * During setup, the method only records the connection state: the initial
+     * phase order will later be built from the players that are still connected.
+     *
+     * <p>During an active round, the current phase decides how to absorb the
+     * disconnection:
      * <ul>
-     *     <li>during totem placement, the player can be skipped in the current
-     *     totem order without moving their board position;</li>
-     *     <li>during standard card drafting, the current disconnected player is
-     *     returned to the starting tile and their remaining draft quota is
-     *     cleared;</li>
-     *     <li>during the extra draw, disconnecting the current extra-draw player
-     *     simply skips that optional action.</li>
+     *     <li>totem placement can skip the disconnected player in the placement
+     *     order without changing the board position;</li>
+     *     <li>standard card drafting can return the current disconnected player
+     *     to the starting tile and clear their remaining draft quota;</li>
+     *     <li>extra draw can skip the optional extra action.</li>
      * </ul>
      *
-     * <p>After the phase-specific handling, passive phases may continue
-     * automatically. For example, skipping the extra draw moves the game to
-     * effect resolution.
+     * <p>After the phase-specific handling, passive phases are advanced so the
+     * game does not remain blocked on a player that is no longer connected.
      *
      * @param player player who disconnected
      */
@@ -141,6 +158,10 @@ public class Game {
                 return;
 
             }
+            if (this.status == GameStatus.SETUP) {
+                this.markStateChanged();
+                return;
+            }
             if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
                 this.totemPlacementHandler.handlePlayerDisconnection(player);
             } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
@@ -156,11 +177,13 @@ public class Game {
 
 
     /**
-     * Marks a player as connected again.
+     * Applies a player reconnection to the domain model.
      *
-     * <p>No board position is changed here. Reconnection only changes the
-     * connection map. Whether the player can still act depends on the current
-     * phase order already stored in {@link RoundFlow}.
+     * <p>Reconnection restores only the connection flag of the existing player.
+     * It does not create a new player, does not reset the board, and does not
+     * rebuild the current phase order. If the player was skipped while offline,
+     * that skipped action remains skipped. This keeps reconnection resilient
+     * without changing already processed game rules.
      *
      * @param player player who reconnected
      */
@@ -318,9 +341,9 @@ public class Game {
      * Performs the initial setup of the match.
      *
      * <p>Setup builds the offer path, fills the initial visible card rows,
-     * applies the initial food benefit, initializes the first round order, and
-     * moves the game from {@link GameStatus#SETUP} to
-     * {@link GameStatus#IN_PROGRESS}.
+     * applies the initial food benefit, initializes the first round order with
+     * the players that are connected at setup time, and moves the game from
+     * {@link GameStatus#SETUP} to {@link GameStatus#IN_PROGRESS}.
      */
     public void setup() {
         this.actionExecutor.execute(() -> {
@@ -430,6 +453,13 @@ public class Game {
         this.status = GameStatus.FINISHED;
     }
 
+    /**
+     * Closes the match from a server-side lifecycle decision.
+     *
+     * <p>This is used when the controller decides that the match must end even
+     * without a normal final-scoring transition, for example after the last
+     * connected player has stayed alone for the configured timeout.
+     */
     public void closeGame() {
         this.actionExecutor.execute(() -> {
             this.finishGame();
@@ -445,10 +475,10 @@ public class Game {
      * model changes. This private method contains only the game setup rules.
      *
      * <p>Setup creates the offer path, fills the visible card rows, gives the
-     * starting food bonus, initializes the first round order from the player
-     * list, starts round one in {@link RoundPhase#PLACING_TOTEMS}, clears any
-     * draft state, and finally changes the lifecycle status to
-     * {@link GameStatus#IN_PROGRESS}.
+     * starting food bonus, initializes the first round order from the players
+     * that are connected at that moment, starts round one in
+     * {@link RoundPhase#PLACING_TOTEMS}, clears any draft state, and finally
+     * changes the lifecycle status to {@link GameStatus#IN_PROGRESS}.
      */
     private void setupInternal() {
         if (this.status != GameStatus.SETUP) {
@@ -459,7 +489,7 @@ public class Game {
         this.board.setupInitialRows();
         this.applyInitialBenefit();
 
-        this.roundFlow.setCurrentPhaseOrder(this.players);
+        this.roundFlow.setCurrentPhaseOrder(this.connectedPlayersInOrder());
         this.roundFlow.advanceRoundNumber();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
         this.playerDraftState.resetForNewRound();
@@ -482,11 +512,42 @@ public class Game {
             player.gainFood(initialFood);
         }
     }
+    /**
+     * Returns the starting order filtered to players that are currently connected.
+     *
+     * <p>This is used during setup so a player who disconnects before the match
+     * leaves setup is not selected as the first active player.
+     *
+     * @return connected players in the original lobby order
+     */
+    private List<Player> connectedPlayersInOrder() {
+        List<Player> connectedPlayers = new ArrayList<>();
+        for (Player player : this.players) {
+            if (Boolean.TRUE.equals(this.connectedPlayers.get(player))) {
+                connectedPlayers.add(player);
+            }
+        }
+        return connectedPlayers;
+    }
+
+    /**
+     * Rejects normal player actions while only one player is connected.
+     *
+     * <p>With a single connected player, continuing normal actions would let one
+     * participant advance the match while nobody else can react. The controller
+     * starts a timeout in this state; if nobody reconnects before the timeout,
+     * the match is closed.
+     */
     private void onlyOneConnected(){
         if(this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1){
             throw  new InvalidConnectionState("only one connected");
         }
     }
+    /**
+     * Tells the controller whether the last-player timeout must be started.
+     *
+     * @return {@code true} when exactly one player is connected
+     */
     public Boolean getStartTimer(){
         return this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1;
     }
@@ -508,6 +569,14 @@ public class Game {
 
         return 4;
     }
+    /**
+     * Overrides the lifecycle status.
+     *
+     * <p>This setter is used by tests and controlled setup paths that need to put
+     * the aggregate in a specific lifecycle state.
+     *
+     * @param status new lifecycle status
+     */
     public void setStatus(GameStatus status) {
         this.status = status;
     }
