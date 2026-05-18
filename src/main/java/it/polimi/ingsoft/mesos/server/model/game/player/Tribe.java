@@ -127,6 +127,27 @@ public class Tribe {
                 .count();
     }
 
+    public int getPrestigePointsForArtistsInFinalPhase() {
+        return (this.countArtists() / 2) * 10;
+    }
+
+    public int getPrestigePointsForInventorsInFinalPhase() {
+        int inventorCount = 0;
+        int inventionTypeCount = (int) this.characters.stream()
+                .filter(c -> c instanceof Inventor)
+                .map(c -> ((Inventor) c).getInventionType())
+                .distinct()
+                .count();
+
+        for (CharacterCard card : this.characters) {
+            if (card.getType() == TribeCardType.INVENTOR) {
+                inventorCount++;
+            }
+        }
+
+        return inventorCount * inventionTypeCount;
+    }
+
     /**
      * Counts how many gatherer cards are present in the tribe.
      *

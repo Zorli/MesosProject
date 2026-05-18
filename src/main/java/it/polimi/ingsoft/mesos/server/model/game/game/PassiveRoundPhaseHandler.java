@@ -168,6 +168,8 @@ public class PassiveRoundPhaseHandler {
         for (Player player : this.game.getPlayers()) {
             this.applyFinalBuildingScore(player);
             this.applyFinalBuilderBonus(player);
+            this.applyFinalArtistBonus(player);
+            this.applyFinalInventorBonus(player);
         }
 
         this.game.finishGame();
@@ -198,5 +200,15 @@ public class PassiveRoundPhaseHandler {
     private void applyFinalBuilderBonus(Player player) {
         int builderPrestigePoints = player.getTribe().getPrestigePointsForBuilderInFinalPhase();
         player.gainPrestigePoints(builderPrestigePoints);
+    }
+
+    private void applyFinalArtistBonus(Player player) {
+        int artistPrestigePoints = player.getTribe().getPrestigePointsForArtistsInFinalPhase();
+        player.gainPrestigePoints(artistPrestigePoints);
+    }
+
+    private void applyFinalInventorBonus(Player player) {
+        int inventorPrestigePoints = player.getTribe().getPrestigePointsForInventorsInFinalPhase();
+        player.gainPrestigePoints(inventorPrestigePoints);
     }
 }

@@ -269,7 +269,7 @@ public class CardDraftHandler {
     private void validateAndRemoveExtraDrawCard(Player player, Card card) {
         CardRow cardRow = this.board.getCardRow(card);
 
-        if (cardRow == CardRow.NOT_PRESENT) {
+        if (cardRow != CardRow.UPPER) {
             throw new CardNotPresentException(card);
         }
 
@@ -277,11 +277,7 @@ public class CardDraftHandler {
             throw new CardNotDrawableException(player, card);
         }
 
-        if (cardRow == CardRow.UPPER) {
-            this.board.removeUpperCard(card);
-        } else {
-            this.board.removeLowerCard(card);
-        }
+        this.board.removeUpperCard(card);
     }
 
     /**
@@ -461,15 +457,15 @@ public class CardDraftHandler {
      * Returns whether an extra draw would be meaningful for the player.
      *
      * <p>The building grants the right to draw, but the board may contain no
-     * drawable card for that player. In that case the extra-draw phase is not
-     * started for that player.
+     * drawable upper-row card for that player. In that case the extra-draw
+     * phase is not started for that player.
      *
      * @param player player to inspect
      * @return {@code true} if the player should receive an extra-draw turn
      */
     private boolean canPerformUsefulExtraDraw(Player player) {
         return player.getTribe().hasEndRoundExtraCardBuilding()
-                && this.hasAnyDraftableCardOnBoard(player);
+                && this.hasAnyDraftableUpperCard(player);
     }
 
     /**
@@ -508,18 +504,17 @@ public class CardDraftHandler {
     }
 
     /**
-     * Returns whether the board has at least one drawable card for the player.
+     * Returns whether the upper row has at least one drawable card for the player.
      *
      * <p>This method ignores standard draw quotas. It is used for extra draws,
      * where the right to draw comes from a building effect instead of the
      * upper/lower quota stored in {@link PlayerDraftState}.
      *
      * @param player player to inspect
-     * @return {@code true} if any visible board card is drawable by the player
+     * @return {@code true} if any upper-row card is drawable by the player
      */
-    private boolean hasAnyDraftableCardOnBoard(Player player) {
-        return !this.board.getDraftableUpperCards(player).isEmpty()
-                || !this.board.getDraftableLowerCards(player).isEmpty();
+    private boolean hasAnyDraftableUpperCard(Player player) {
+        return !this.board.getDraftableUpperCards(player).isEmpty();
     }
 
     /**
