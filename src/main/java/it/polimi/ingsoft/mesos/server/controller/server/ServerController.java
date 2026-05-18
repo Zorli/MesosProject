@@ -106,12 +106,11 @@ public class ServerController implements Runnable {
             //se era un disconnected one passo il messaggio internamente e modifico il suo stato
             int gameId = this.sessions.DisconnectedFrom(nickname);
             GameController gameController = this.sessions.getGameOrchestrator(gameId);
-            //aggiorno li stati interni nel sessionRegistry
-            this.sessions.RegisterReConnection(sessionId);
-            //lo sposto diretto nel game, suppongo che esista perchè altrimenti la mappa interna al session
-            // si sarebbe aggiornata levando i riferimenti a quel gameId e di conseguenza il nickname
-            Listener playerListener = this.sessions.getListenerOf(sessionId);
-            gameController.getGame().addListener(playerListener);
+            //Se il controller è stato rimosso o sta per essere rimosso non voglio ricevere ulteriori connessioni
+            if(gameController == null || gameController.isClosing() ){
+                this.sessions.removeDisconnectedReference(nickname);
+                return;
+            }
             gameController.enqueueMessage(new SystemJoinCommand(sessionId));
         }
     }

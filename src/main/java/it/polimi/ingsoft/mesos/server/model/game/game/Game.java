@@ -42,6 +42,8 @@ public class Game {
     private final int id;
     private final List<Player> players;
     private Era currentEra;
+
+
     private GameStatus status;
     private long stateVersion;
     private final Board board;
@@ -129,6 +131,13 @@ public class Game {
             //TODO: Ci sono alcuni while che presuppongono invariante di almeno un giocatore connesso,
             //Secondo me almeno un check e lanciare ccezzione senno scorriamo olktre i limiti della mappa
             //qui un bel check se la persona disconessa era l'ultima -> State = FINISHED
+            if(!connectedPlayers.values().stream().anyMatch(Boolean::booleanValue)){
+                //Non c'è più nessuno connesso posso interrompere la partita
+                this.markStateChanged();
+                this.finishGame();
+                return;
+
+            }
             if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
                 this.totemPlacementHandler.handlePlayerDisconnection(player);
             } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
@@ -376,7 +385,7 @@ public class Game {
      *
      * @param payload payload to send
      */
-    void notifyListeners(Object payload) {
+    public void notifyListeners(Object payload) {
         List<Listener> currentListeners = new ArrayList<>(this.listeners);
 
         for (Listener listener : currentListeners) {
@@ -478,4 +487,8 @@ public class Game {
 
         return 4;
     }
+    public void setStatus(GameStatus status) {
+        this.status = status;
+    }
+
 }

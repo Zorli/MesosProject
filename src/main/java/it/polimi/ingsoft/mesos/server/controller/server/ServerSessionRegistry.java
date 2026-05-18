@@ -156,6 +156,10 @@ public class ServerSessionRegistry {
         this.DisconnectedNicknameOnGame.values().removeIf(id -> Integer.valueOf(gameId).equals(id));
     }
 
+    public synchronized void removeDisconnectedReference(String nickname) {
+        this.DisconnectedNicknameOnGame.remove(nickname);
+    }
+
     public synchronized User authenticate(String sessionId, String nickname) {
         SessionState state = this.requireSession(sessionId);
         if (state.user != null) {
