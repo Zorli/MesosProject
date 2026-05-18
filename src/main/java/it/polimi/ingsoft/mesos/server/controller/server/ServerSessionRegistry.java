@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The absolute Source of Truth for every session detail, active controller mapping, and lobby models.
  */
 public class ServerSessionRegistry {
-    private static final long TIMEOUT_MILLIS = Duration.ofSeconds(25).toMillis();
+    private static final long TIMEOUT_MILLIS = Duration.ofSeconds(8).toMillis();
 
     public enum Phase {
         PRE_LOBBY,
@@ -35,6 +35,8 @@ public class ServerSessionRegistry {
     // --- MAPPE DI SESSIONE ---
     private final Map<String, SessionState> sessionsById = new HashMap<>();
     private final Map<String, String> sessionIdByNickname = new HashMap<>();
+    //mappa che tiene conto dei nickname delle persone disconesse in game, e eventuale gameid
+    private final Map <String,Integer> DisconnectedNicknameOnGame = new HashMap<>();
 
     // --- LE "PAGINE GIALLE" DEI CONTROLLER ---
     private final Map<Integer, LobbyController> activeLobbyControllers = new ConcurrentHashMap<>();
@@ -135,6 +137,28 @@ public class ServerSessionRegistry {
         this.sessionsById.put(sessionId, state);
         return sessionId;
     }
+    //metodo semplicemente per aggiungere il bro disconesso alla mappa
+    public synchronized void RegisterDisconnection(String sessionId, int gameId) {
+        String nickname = this.nicknameOf(sessionId);
+        this.DisconnectedNicknameOnGame.put(nickname, gameId);
+    }
+    //metodo per levare il bro riconesso dalla mappa e farlo rientrare nel gioco
+    public synchronized void RegisterReConnection(String sessionId){
+        String nickname = this.nicknameOf(sessionId);
+        int gameId = this.DisconnectedNicknameOnGame.get(nickname);
+        this.DisconnectedNicknameOnGame.remove(nickname);
+        // e qua rientra nel gioco formalmente
+        this.enterGame(sessionId, gameId);
+
+    }
+    //metodo per levare tutte le coppie di key value nella mappa che hanno tale gameId
+    public synchronized void removeDisconnectedReference(int gameId) {
+        this.DisconnectedNicknameOnGame.values().removeIf(id -> Integer.valueOf(gameId).equals(id));
+    }
+
+    public synchronized void removeDisconnectedReference(String nickname) {
+        this.DisconnectedNicknameOnGame.remove(nickname);
+    }
 
     public synchronized User authenticate(String sessionId, String nickname) {
         SessionState state = this.requireSession(sessionId);
@@ -147,7 +171,6 @@ public class ServerSessionRegistry {
         if (this.sessionIdByNickname.containsKey(nickname)) {
             throw new IllegalArgumentException("Nickname already taken: " + nickname);
         }
-
         User user = new User(nickname);
         state.user = user;
         this.sessionIdByNickname.put(nickname, sessionId);
@@ -210,7 +233,13 @@ public class ServerSessionRegistry {
         SessionState state = this.sessionsById.get(sessionId);
         return state != null && state.user != null;
     }
-
+    public synchronized boolean isDisconnected(String nickname) {
+        return this.DisconnectedNicknameOnGame.containsKey(nickname);
+    }
+    public synchronized int DisconnectedFrom(String nickname)
+    {
+        return this.DisconnectedNicknameOnGame.get(nickname);
+    }
     public synchronized Phase getPhaseOf(String sessionId) {
         return this.requireSession(sessionId).phase;
     }

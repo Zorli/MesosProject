@@ -22,7 +22,7 @@ import java.io.PrintStream;
 /**
  * Dedicated RMI remote session for a single authenticated client.
  * <p>
- * Instances of this class are dynamically created by the {@link RmiSessionFactory}
+ * Instances of this class are dynamically created by the {@link RmiConnectionEntryPoint}
  * upon successful login. This class acts as a private proxy for the client on the server,
  * maintaining their session id and holding the remote reference to their personal
  * callback receiver ({@link RmiClientService}).

@@ -175,6 +175,13 @@ public class Tribe {
     }
 
     /**
+     * Checks whether the tribe owns a building that add one food on startingTile movement
+     * @return {@code true} when the building is present
+     */
+    public boolean hasBuildingForEndOfTurnFood(){
+        return this.hasBuildingWithBenefit(BenefitType.END_ROUND_TOTEM_POSITION);
+    }
+    /**
      * Returns the building cards currently owned by the tribe.
      *
      * @return read-only list of owned building cards

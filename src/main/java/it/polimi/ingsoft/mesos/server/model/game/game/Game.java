@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.game.game;
 
+import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidConnectionState;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
 import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
@@ -8,9 +9,7 @@ import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGameStatusException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Facade and aggregate root of one Mesos match.
@@ -44,6 +43,8 @@ public class Game {
     private final int id;
     private final List<Player> players;
     private Era currentEra;
+
+
     private GameStatus status;
     private long stateVersion;
     private final Board board;
@@ -51,11 +52,26 @@ public class Game {
     private final PlayerDraftState playerDraftState;
     private final List<Listener> listeners;
 
+
+
+
+
+    /**
+     * Tracks which players are currently connected to the match.
+     *
+     * <p>The network layer detects connection changes, but the actual update is
+     * still executed through {@link GameActionExecutor}. This keeps connection
+     * changes ordered with normal game actions and guarantees that payload
+     * notifications are produced by the same path.
+     */
+    private Map<Player,Boolean> connectedPlayers;
+
+
     private final GameActionExecutor actionExecutor;
     private final TotemPlacementHandler totemPlacementHandler;
-    private final StandardCardDraftHandler standardCardDraftHandler;
-    private final ExtraCardDraftHandler extraCardDraftHandler;
+    private final CardDraftHandler cardDraftHandler;
     private final PassiveRoundPhaseHandler passiveRoundPhaseHandler;
+
 
     /**
      * Creates a new match in setup status.
@@ -79,12 +95,84 @@ public class Game {
         this.stateVersion = 0L;
         this.listeners = new ArrayList<>();
 
+
+
         this.actionExecutor = new GameActionExecutor(this);
         this.totemPlacementHandler = new TotemPlacementHandler(this, this.board, this.roundFlow, this.playerDraftState);
-        this.standardCardDraftHandler = new StandardCardDraftHandler(this, this.board, this.roundFlow, this.playerDraftState);
-        this.extraCardDraftHandler = new ExtraCardDraftHandler(this, this.board, this.roundFlow);
+        this.cardDraftHandler = new CardDraftHandler(this, this.board, this.roundFlow, this.playerDraftState);
         this.passiveRoundPhaseHandler = new PassiveRoundPhaseHandler(this, this.board, this.roundFlow, this.playerDraftState);
+        this.connectedPlayers = new HashMap<>();
+        for (Player player : this.players) {
+            this.connectedPlayers.put(player, true);
+        }
     }
+
+    /**
+     * Marks a player as disconnected and lets the active phase react.
+     *
+     * <p>The method first updates {@link #connectedPlayers}. Then it delegates
+     * to the handler that owns the current phase:
+     * <ul>
+     *     <li>during totem placement, the player can be skipped in the current
+     *     totem order without moving their board position;</li>
+     *     <li>during standard card drafting, the current disconnected player is
+     *     returned to the starting tile and their remaining draft quota is
+     *     cleared;</li>
+     *     <li>during the extra draw, disconnecting the current extra-draw player
+     *     simply skips that optional action.</li>
+     * </ul>
+     *
+     * <p>After the phase-specific handling, passive phases may continue
+     * automatically. For example, skipping the extra draw moves the game to
+     * effect resolution.
+     *
+     * @param player player who disconnected
+     */
+    public void disconnectedPlayer(Player player) {
+        this.actionExecutor.execute(() -> {
+            this.connectedPlayers.put(player, false);
+            //TODO: Ci sono alcuni while che presuppongono invariante di almeno un giocatore connesso,
+            //Secondo me almeno un check e lanciare ccezzione senno scorriamo olktre i limiti della mappa
+            //qui un bel check se la persona disconessa era l'ultima -> State = FINISHED
+            if(!connectedPlayers.values().stream().anyMatch(Boolean::booleanValue)){
+                //Non c'è più nessuno connesso posso interrompere la partita
+                this.markStateChanged();
+                this.finishGame();
+                return;
+
+            }
+            if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLACING_TOTEMS) {
+                this.totemPlacementHandler.handlePlayerDisconnection(player);
+            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.PLAYER_DRAWS) {
+                this.cardDraftHandler.handlePlayerDisconnection(player);
+            } else if (this.roundFlow.getCurrentRoundPhase() == RoundPhase.EXTRA_DRAWS) {
+                this.cardDraftHandler.handleExtraDrawPlayerDisconnection(player);
+            }
+
+            this.passiveRoundPhaseHandler.advancePassivePhases();
+            this.markStateChanged();
+        });
+    }
+
+
+    /**
+     * Marks a player as connected again.
+     *
+     * <p>No board position is changed here. Reconnection only changes the
+     * connection map. Whether the player can still act depends on the current
+     * phase order already stored in {@link RoundFlow}.
+     *
+     * @param player player who reconnected
+     */
+    public void reconnectedPlayer(Player player) {
+        this.actionExecutor.execute(() -> {
+            connectedPlayers.put(player, true);
+            this.markStateChanged();
+        });
+    }
+
+
+
 
     /**
      * Returns the unique identifier of this match.
@@ -94,6 +182,19 @@ public class Game {
     public int getId() {
         return this.id;
     }
+
+    /**
+     * Returns the current connection state of every player.
+     *
+     * <p>The map is used by round handlers when they need to build a phase order
+     * or skip a disconnected current player.
+     *
+     * @return map from player to connection state
+     */
+    public Map<Player, Boolean> getConnectedPlayers() {
+        return connectedPlayers;
+    }
+
 
     /**
      * Returns the players that belong to this match.
@@ -197,14 +298,14 @@ public class Game {
     }
 
     /**
-     * Sends a specific action error to one listener.
+     * Sends a phase error to one listener.
      *
      * <p>This method is kept for controller paths that need to reject a command
      * before executing a full game action.
      *
      * @param target listener that must receive the error
      */
-    public void notifyActionError(Listener target) {
+    public void reportPhaseError(Listener target) {
         if (target != null) {
             target.notifyUpdate(GamePayloadMapper.toErrorPayload(
                     "GAME_ACTION_ERROR",
@@ -235,6 +336,7 @@ public class Game {
      */
     public void moveTotem(Player player, String tileCode) {
         this.actionExecutor.execute(() -> {
+            this.onlyOneConnected();
             this.totemPlacementHandler.moveTotem(player, tileCode);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
@@ -248,7 +350,8 @@ public class Game {
      */
     public void chooseCard(Player player, int cardId) {
         this.actionExecutor.execute(() -> {
-            this.standardCardDraftHandler.chooseCard(player, cardId);
+            this.onlyOneConnected();
+            this.cardDraftHandler.chooseCard(player, cardId);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
     }
@@ -261,7 +364,8 @@ public class Game {
      */
     public void extraDrawn(Player player, int cardId) {
         this.actionExecutor.execute(() -> {
-            this.extraCardDraftHandler.extraDrawn(player, cardId);
+            this.onlyOneConnected();
+            this.cardDraftHandler.extraDrawn(player, cardId);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
     }
@@ -287,7 +391,7 @@ public class Game {
      *
      * @param payload payload to send
      */
-    void notifyListeners(Object payload) {
+    public void notifyListeners(Object payload) {
         List<Listener> currentListeners = new ArrayList<>(this.listeners);
 
         for (Listener listener : currentListeners) {
@@ -324,6 +428,13 @@ public class Game {
      */
     void finishGame() {
         this.status = GameStatus.FINISHED;
+    }
+
+    public void closeGame() {
+        this.actionExecutor.execute(() -> {
+            this.finishGame();
+            this.markStateChanged();
+        });
     }
 
     /**
@@ -371,6 +482,14 @@ public class Game {
             player.gainFood(initialFood);
         }
     }
+    private void onlyOneConnected(){
+        if(this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1){
+            throw  new InvalidConnectionState("only one connected");
+        }
+    }
+    public Boolean getStartTimer(){
+        return this.connectedPlayers.values().stream().filter(Boolean.TRUE::equals).count() == 1;
+    }
 
     /**
      * Calculates the initial food bonus for one player index.
@@ -389,4 +508,8 @@ public class Game {
 
         return 4;
     }
+    public void setStatus(GameStatus status) {
+        this.status = status;
+    }
+
 }

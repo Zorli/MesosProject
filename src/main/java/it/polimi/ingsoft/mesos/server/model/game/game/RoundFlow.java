@@ -21,12 +21,14 @@ import java.util.List;
  *     tile order;</li>
  *     <li>during {@link RoundPhase#PLAYER_DRAWS}, players act in the offer-path
  *     resolution order;</li>
- *     <li>during {@link RoundPhase#EXTRA_DRAWS}, only players eligible for an
- *     extra draw act, usually following next-round order.</li>
+ *     <li>during {@link RoundPhase#EXTRA_DRAWS}, only the player eligible for
+ *     the extra draw acts.</li>
  * </ul>
  *
  * <p>It does not know the rules of totem placement, card drafting, extra draws,
- * effects, or scoring. Those rules belong to higher-level game flow classes.
+ * effects, disconnections, or scoring. Those rules belong to higher-level game
+ * flow classes. This class only stores the current phase, the current order,
+ * and the cursor inside that order.
  */
 public class RoundFlow {
     private List<Player> currentPhaseOrder;
@@ -104,6 +106,9 @@ public class RoundFlow {
      * <p>This method is intentionally used more than once during a round. For
      * example, after all totems have been placed, the game replaces the totem
      * placement order with the card draw order.
+     *
+     * <p>The order must contain at least one player because the rest of the
+     * round-flow API always assumes that a current player exists.
      *
      * @param newOrder new ordered list of players
      */
@@ -192,4 +197,5 @@ public class RoundFlow {
             throw new IllegalStateException("Current phase order has not been initialized");
         }
     }
+
 }

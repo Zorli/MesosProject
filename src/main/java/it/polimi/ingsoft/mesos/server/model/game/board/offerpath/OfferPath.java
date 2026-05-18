@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -78,6 +79,21 @@ public class OfferPath {
         this.startingTile.placePlayerOnNextAvailableBlock(player);
     }
 
+    /**
+     * Moves the player from wherever it can be to the last free startingBlock
+     * @param player
+     */
+    public void movePlayerToLastStartingTile(Player player, int from) {
+        //puliamo l'offerspace o lo startingBlock dove si trovava, from = 0 da offerpath, from = 1 da startingTile
+        if(from == 1)
+        {
+            this.startingTile.removePlayer(player);
+        }
+        else if(from == 0){
+            this.offerSpaces.stream().filter(space -> player.equals(space.getOccupiedBy())).findFirst().ifPresent(OfferSpace::clear);
+        }
+        this.startingTile.placePlayerOnLastAvailableBlock(player);
+    }
     /**
      * Determines the new turn order by extracting players from currently occupied spaces,
      * sorted from left to right (by the space's position index), it skips offer space A

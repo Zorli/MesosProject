@@ -9,21 +9,16 @@ import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 /**
- * RMI entry point and session factory for incoming client connections.
+ * RMI entry point for incoming client connections.
  * <p>
- * This singleton object is bound to the server's RMI Registry and acts as the public
- * "Gatekeeper". It exposes the initial authentication endpoint for all connecting clients.
- * <p>
- * When a client successfully authenticates via this facade, the factory instantiates
- * and exports a dedicated, stateful {@link VirtualViewRMI} session exclusively for that user.
- * This "Session Factory" pattern ensures that unauthenticated clients cannot access
- * core game logic and that each connected client maintains a strictly isolated connection context.
+ * This object is bound to the server's RMI Registry. Each client calls it once
+ * to receive a dedicated {@link VirtualViewRMI} session.
  */
-public class RmiSessionFactory extends UnicastRemoteObject implements RmiConnectionService {
+public class RmiConnectionEntryPoint extends UnicastRemoteObject implements RmiConnectionService {
     private final ServerController serverController;
     private final MessageRouter router;
 
-    public RmiSessionFactory(ServerController serverController, MessageRouter router) throws RemoteException {
+    public RmiConnectionEntryPoint(ServerController serverController, MessageRouter router) throws RemoteException {
         super();
         this.serverController = serverController;
         this.router = router;

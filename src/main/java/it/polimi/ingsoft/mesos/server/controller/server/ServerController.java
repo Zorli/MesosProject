@@ -1,11 +1,13 @@
 package it.polimi.ingsoft.mesos.server.controller.server;
 
+import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.QueuedCommand;
+import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.server.enums.PreLobbyCommandType;
-import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
+import it.polimi.ingsoft.mesos.server.network.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.server.ServerModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -28,7 +30,7 @@ public class ServerController implements Runnable {
 
 
     // --- CODA PRE-LOBBY ---
-    private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
 
     public ServerController(GameFactory gameFactory,
                             ServerSessionRegistry sessions) {
@@ -48,7 +50,7 @@ public class ServerController implements Runnable {
 
     // --- GESTIONE DELLA CODA PRE-LOBBY ---
 
-    public void enqueueMessage(EnqueuedMessage command) {
+    public void enqueueMessage(QueuedCommand command) {
         this.commandQueue.add(command);
     }
 
@@ -56,14 +58,16 @@ public class ServerController implements Runnable {
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                EnqueuedMessage cmd = this.commandQueue.take();
+                QueuedCommand cmd = this.commandQueue.take();
                 String sessionId = cmd.getSessionId();
+
+                if (!(cmd instanceof ClientPayloadCommand clientCommand)) {
+                    this.serverModel.reportPhaseError(sessionId);
+                    continue;
+                }
+
+                ClientPayload payload = clientCommand.getPayload();
                 try {
-                    if (!(cmd.getCommand() instanceof ClientQueuedCommand clientCommand)) {
-                        this.serverModel.reportPhaseError(sessionId);
-                        continue;
-                    }
-                    ClientPayload payload = clientCommand.payload();
                     switch (PreLobbyCommandType.fromPayload(payload)) {
                         case AUTHENTICATE -> {
                             AuthenticationPayload p = (AuthenticationPayload) payload;
@@ -79,7 +83,7 @@ public class ServerController implements Runnable {
                         }
                         case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
                     }
-                } catch (IllegalArgumentException e) {
+                } catch(IllegalArgumentException e){
                     this.serverModel.reportPhaseError(sessionId);
                 }
 
@@ -94,7 +98,21 @@ public class ServerController implements Runnable {
 
     private void authenticate(String sessionId, String nickname) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
+        //lasciamo autenticazione standard con salvataggio etch
         this.serverModel.authenticate(sessionId, nickname, clientView);
+        // dopo aver registrato tutto correttamente ci preoccupiamo di controllare se va riconesso
+        if(this.sessions.isDisconnected(nickname))
+        {
+            //se era un disconnected one passo il messaggio internamente e modifico il suo stato
+            int gameId = this.sessions.DisconnectedFrom(nickname);
+            GameController gameController = this.sessions.getGameOrchestrator(gameId);
+            //Se il controller è stato rimosso o sta per essere rimosso non voglio ricevere ulteriori connessioni
+            if(gameController == null || gameController.isClosing() ){
+                this.sessions.removeDisconnectedReference(nickname);
+                return;
+            }
+            gameController.enqueueMessage(new SystemJoinCommand(sessionId));
+        }
     }
 
     private void listOpenLobbies(String sessionId) {
@@ -121,7 +139,6 @@ public class ServerController implements Runnable {
 
     private void joinLobby(String sessionId, int lobbyId) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
-        String nickname = this.sessions.nicknameOf(sessionId);
         if (!this.serverModel.joinLobbyValidation(sessionId, clientView,lobbyId)) {
             return;
         }
@@ -130,14 +147,11 @@ public class ServerController implements Runnable {
             this.serverModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
             return;
         }
-        target.enqueueMessage(new EnqueuedMessage(sessionId, new SystemJoinCommand(nickname, clientView)));
+        target.enqueueMessage(new SystemJoinCommand(sessionId));
     }
 
-    public void reportRoutingError(String sessionId, String message) {
-        this.serverModel.reportRoutingError(sessionId, message);
-    }
 
-    // --- LIFECYCLE DELLA CONNESSIONE ---
+    // --- LIFECYCLE DELLA CONNESSIONE --- Non passano dalla coda perchè sono di controllo della connessione
 
     public String registerConnection(ClientConnection connection) {
         return this.connectionLifecycle.registerConnection(connection);
@@ -149,5 +163,9 @@ public class ServerController implements Runnable {
 
     public void disconnectSession(String sessionId) {
         this.connectionLifecycle.disconnectSession(sessionId);
+    }
+
+    public void reportPhaseError(String sessionId) {
+        this.serverModel.reportPhaseError(sessionId);
     }
 }

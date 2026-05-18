@@ -6,6 +6,8 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
+import java.util.List;
+
 /**
  * Advances the automatic phases of a round.
  *
@@ -73,6 +75,11 @@ public class PassiveRoundPhaseHandler {
      * player command. For example, after resetting the board, the game returns
      * to {@link RoundPhase#PLACING_TOTEMS}; at that point the next player must
      * actively choose a totem space, so this method stops.
+     *
+     * <p>This method is called after public game actions such as
+     * {@code chooseCard}, {@code extraDrawn}, and disconnection handling. Those
+     * actions only need to move the round into an automatic phase; this handler
+     * then performs the automatic chain until a player-driven phase is reached.
      */
     public void advancePassivePhases() {
         while (this.game.getStatus() == GameStatus.IN_PROGRESS) {
@@ -108,6 +115,7 @@ public class PassiveRoundPhaseHandler {
         this.board.resolveLowerEvents();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
         this.game.markStateChanged();
+
     }
 
     /**
@@ -120,6 +128,11 @@ public class PassiveRoundPhaseHandler {
      *
      * <p>After the board reset, the round number increases, all standard draft
      * quotas are cleared, and the round returns to totem placement.
+     *
+     * <p>Before reading the next totem-placement order, the board prepares the
+     * starting tile for the new round. The active phase order is still filtered
+     * until a connected player is founded, the not connected one are moved to the
+     * last free starting block.
      */
     private void resetBoardForNextRound() {
         boolean eraChanged = this.board.resetBoardAfterRound(this.game.getCurrentEra());
@@ -127,10 +140,19 @@ public class PassiveRoundPhaseHandler {
         if (eraChanged) {
             this.game.advanceEra();
         }
-
+        List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
+        int i = 0;
+        //Stesso invariante importante, almeno uno connesso per forza, altrimenti non si sarebbe arrivati a questa fase
+        while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(nextRoundOrder.get(i))))
+        {
+            this.board.movePlayerToLastStartingTile(nextRoundOrder.get(i));
+            nextRoundOrder.remove(i);
+            
+        }
         this.roundFlow.advanceRoundNumber();
         this.playerDraftState.resetForNewRound();
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLACING_TOTEMS);
+        this.roundFlow.setCurrentPhaseOrder(nextRoundOrder);
         this.game.markStateChanged();
     }
 

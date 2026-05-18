@@ -1,12 +1,11 @@
-package it.polimi.ingsoft.mesos.server.controller.server;
+package it.polimi.ingsoft.mesos.server.network;
 
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemLobbyDisconnectCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
+import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.server.ServerModel;
-import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 
 import java.util.Objects;
 //This class has now the duty to handle the lifecycle of the connection of the client to the server
@@ -47,16 +46,13 @@ public class ServerConnectionLifecycle {
         if (snapshot.phase() == ServerSessionRegistry.Phase.GAME && snapshot.gameId() != null) {
             GameController orchestrator = this.sessions.getGameOrchestrator(snapshot.gameId());
             if (orchestrator != null) {
-                orchestrator.freezeForDisconnectedPlayer(snapshot.user().getNickname());
+                orchestrator.enqueueMessage(new SystemDisconnectCommand(snapshot.sessionId()));
+                return;
             }
         } else if (snapshot.phase() == ServerSessionRegistry.Phase.LOBBY && snapshot.lobbyId() != null) {
             LobbyController controller = this.sessions.getLobbyController(snapshot.lobbyId());
             if (controller != null) {
-                Listener listener = snapshot.connection() instanceof Listener l ? l : null;
-                controller.enqueueMessage(new EnqueuedMessage(
-                        sessionId,
-                        new SystemLobbyDisconnectCommand(snapshot.user().getNickname(), listener)
-                ));
+                controller.enqueueMessage(new SystemDisconnectCommand(snapshot.sessionId()));
                 return;
             }
         }

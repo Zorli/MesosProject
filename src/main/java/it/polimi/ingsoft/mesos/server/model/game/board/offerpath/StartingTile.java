@@ -78,6 +78,17 @@ public class StartingTile {
         }
     }
 
+
+    public void placePlayerOnLastAvailableBlock(Player player) {
+
+        for (StartingBlock block : this.startingBlocks.reversed()) {
+            if (block.getOccupiedBy() == null) {
+                block.occupy(player);
+                block.resolveEffect();
+                return;
+            }
+            }
+    }
     /**
      * Removes the player from their current starting block.
      * This is triggered when the player moves their totem to an offer space.
@@ -111,5 +122,13 @@ public class StartingTile {
      */
     public List<StartingBlock> getStartingBlocks() {
         return new ArrayList<>(this.startingBlocks);
+    }
+
+    /**
+     * just wrapper to not change name
+     * @return list of player occupying the startingBlock
+     */
+    public List<Player> getPlayersOrderedByStartingBlock() {
+        return this.getNextRoundOrder();
     }
 }

@@ -207,7 +207,9 @@ final class TuiPayloadRenderer {
                     .append(" prestige=")
                     .append(player.prestigePoints)
                     .append(" totem=")
-                    .append(valueOrDash(player.totem));
+                    .append(valueOrDash(player.totem))
+                    .append(" connected=")
+                    .append(player.isConnected);
         }
     }
 

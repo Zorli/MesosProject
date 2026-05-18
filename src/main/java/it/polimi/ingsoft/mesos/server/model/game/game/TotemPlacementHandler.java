@@ -9,6 +9,8 @@ import it.polimi.ingsoft.mesos.server.model.game.game.exception.NotPlayersTurnEx
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.TileNotAvailableException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
+import java.util.List;
+
 /**
  * Executes the totem-placement action of a round.
  *
@@ -28,6 +30,11 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
  * it resolves space A, asks the board for the offer-path resolution order, and
  * changes the round phase from {@link RoundPhase#PLACING_TOTEMS} to
  * {@link RoundPhase#PLAYER_DRAWS}.
+ *
+ * <p>Disconnected players are handled only at the turn-order level during this
+ * phase. A player who has already placed a totem remains on the chosen offer
+ * space. A player who has not placed a totem remains on the starting tile. The
+ * board is not used as a temporary parking area for disconnected players.
  *
  * <p>This class deliberately does not choose cards, resolve card effects,
  * manage extra draws, reset the board, or compute the final score. Those steps
@@ -151,48 +158,95 @@ public class TotemPlacementHandler {
      * Moves the round flow after one successful totem placement.
      *
      * <p>If there are still players waiting to place their totems, the method
-     * simply advances the current-player cursor. If the current player was the
-     * last one, all totems are already on the offer path and the game can start
-     * preparing the standard card-drafting phase.
+     * advances the current-player cursor. Disconnected players are skipped in
+     * the current phase order: if a skipped player had not placed a totem yet,
+     * their totem physically remains on the starting tile. If the cursor reaches
+     * the end of the order, the game starts preparing the standard card-drafting
+     * phase.
      */
     private void advanceAfterTotemPlacement() {
         if (this.roundFlow.isLastPlayer()) {
             this.startPlayerDrawPhase();
-        } else {
+            return;
+        }
+
+        this.roundFlow.advanceToNextPlayer();
+
+        while (Boolean.FALSE.equals(this.game.getConnectedPlayers().get(this.roundFlow.getCurrentPlayer()))) {
+            if (this.roundFlow.isLastPlayer()) {
+                this.startPlayerDrawPhase();
+                return;
+            }
             this.roundFlow.advanceToNextPlayer();
         }
     }
 
     /**
      * Prepares the standard card-drafting phase after all totems are placed.
-     *
+     *<p>
+     *     when we are sure that all the active player are on the offer path, and
+     *     it's time to change phases, the player still on the starting tile are shifted
+     *     as described by the method on the board
+     *</p>
      * <p>Offer space A is special: it resolves immediately and the player on A
      * returns to the starting tile before card drafting begins. After resolving
-     * A, the board exposes the offer-path resolution order. That order becomes
-     * the active order for {@link RoundPhase#PLAYER_DRAWS}.
+     * A, the board exposes the offer-path resolution order. Only players after a
+     * connected ones are copied into the active order for
+     * {@link RoundPhase#PLAYER_DRAWS}.
      *
-     * <p>Players with no standard draw quota are skipped, because they have no
-     * card choice to perform during this phase.
+     * <p>This is what allows a player who placed a totem, disconnected, and
+     * reconnected before the draft starts to draw normally. A player who is
+     * still disconnected when the draft order is created stays physically on
+     * the offer path, but does not receive a draft turn, it just gets moved.
      */
     private void startPlayerDrawPhase() {
+        this.board.shiftToLastStartingTile();
         this.board.resolveEventA();
-        this.roundFlow.setCurrentPhaseOrder(this.board.getResolutionOrder());
-        this.skipPlayersWithoutStandardDrawQuota();
+        List<Player> draftOrder = this.board.getResolutionOrder();
+        int i = 0;
+        //Qui stiamo assuemdno che valga l'invariante che almeno un player sia connesso quando arriviamo qua
+        //Altgrimenti è una out of bound
+        while(!draftOrder.isEmpty() && Boolean.FALSE.equals(this.game.getConnectedPlayers().get(draftOrder.get(i)))) {
+            this.board.movePlayerToLastStartingTile(draftOrder.get(i));
+            draftOrder.remove(i);
+        }
+        if (draftOrder.isEmpty()) {
+            this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
+            this.game.markStateChanged();
+            return;
+        }
+        this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
     }
 
+
     /**
-     * Advances past players that cannot draw any standard card by quota.
+     * Handles a player disconnection during totem placement.
      *
-     * <p>This check uses only the quota earned from the offer space. It does not
-     * check whether the board currently contains drawable cards for that player;
-     * that later check belongs to the card-drafting handler, which has the full
-     * card-drawing context.
+     * <p>The board position is not changed here. The physical position already
+     * tells what happened:
+     * <ul>
+     *     <li>if the player already placed a totem, they stay on the offer
+     *     space;</li>
+     *     <li>if the player is current and has not placed a totem, they stay on
+     *     the starting tile and the turn advances;</li>
+     *     <li>if the player has not reached their turn yet, they stay on the
+     *     starting tile and will be skipped only if still disconnected when the
+     *     cursor reaches them.</li>
+     * </ul>
+     *
+     * @param player player who disconnected
      */
-    private void skipPlayersWithoutStandardDrawQuota() {
-        while (!this.playerDraftState.hasRemainingChoices(this.roundFlow.getCurrentPlayer())
-                && !this.roundFlow.isLastPlayer()) {
-            this.roundFlow.advanceToNextPlayer();
+    public void handlePlayerDisconnection(Player player) {
+        if(this.roundFlow.getCurrentPlayerIndex() > this.roundFlow.getCurrentPhaseOrder().indexOf(player)){
+            return;
+        }else if (this.roundFlow.getCurrentPlayerIndex() == this.roundFlow.getCurrentPhaseOrder().indexOf(player)) {
+            this.advanceAfterTotemPlacement();
+
+        }else {
+            return;
+
         }
     }
+
 }

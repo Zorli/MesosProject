@@ -5,15 +5,12 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
-import it.polimi.ingsoft.mesos.server.virtualview.RmiSessionFactory;
+import it.polimi.ingsoft.mesos.server.virtualview.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.HashMap;
 import java.util.Map;
 
 
@@ -42,7 +39,6 @@ public final class LaunchServer {
     */
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
-            Map<String, String> mergedEnv = mergeWithDotEnv(environment);
 
             // ==========================================
             // 1. CORE ARCHITECTURE SETUP (The "Big Bang")
@@ -89,43 +85,12 @@ public final class LaunchServer {
         }
     }
 
-    /**
-     * Merges system environment with entries from a {@code .env} file in the working directory.
-     * Lines starting with {@code #} are ignored. Existing env vars are NOT overwritten —
-     * the shell always wins over the file.
-     */
-    private static Map<String, String> mergeWithDotEnv(Map<String, String> base) {
-        Path dotEnv = Path.of(".env");
-        if (!Files.exists(dotEnv)) {
-            return base;
-        }
-        Map<String, String> merged = new HashMap<>(base);
-        try {
-            for (String line : Files.readAllLines(dotEnv)) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                    continue;
-                }
-                int eq = trimmed.indexOf('=');
-                if (eq <= 0) {
-                    continue;
-                }
-                String key = trimmed.substring(0, eq).trim();
-                String value = trimmed.substring(eq + 1).trim();
-                merged.putIfAbsent(key, value);
-            }
-        } catch (Exception ignored) {
-            // .env read failure is non-fatal
-        }
-        return merged;
-    }
-
     private static void startRmiServer(ServerController controller, MessageRouter router, int port, PrintStream out) throws Exception {
-        // Pass dependencies down to the RMI Factory
-        RmiConnectionService rmiFactory = new RmiSessionFactory(controller, router);
+        // Pass dependencies down to the RMI entry point
+        RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router);
         LocateRegistry.createRegistry(port);
         Registry registry = LocateRegistry.getRegistry(port);
-        registry.rebind("MesosServer", rmiFactory);
+        registry.rebind("MesosServer", rmiEntryPoint);
 
         out.println("RMI listener active on port " + port);
     }

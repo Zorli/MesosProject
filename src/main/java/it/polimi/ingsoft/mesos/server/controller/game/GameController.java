@@ -1,19 +1,20 @@
 package it.polimi.ingsoft.mesos.server.controller.game;
 
 
+import it.polimi.ingsoft.mesos.server.controller.command.*;
 import it.polimi.ingsoft.mesos.server.controller.game.enums.GameCommandType;
-import it.polimi.ingsoft.mesos.server.controller.game.exceptions.MatchFrozenException;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
@@ -33,8 +34,16 @@ public class GameController implements Runnable  {
     private final List<Player> players;
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
-    private boolean frozen;
-    private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
+    private final Timer lastPlayerTimer = new Timer("last-player-timer", true);
+    private TimerTask lastPlayerTimerTask;
+    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 20_000;
+
+    //L'idea è di avere questo per evitare che magari mentre sta facendo la fase di teardown, il sesion registry continui
+    //a permettere connessioni, inoltre prima di fare il teardown svuotiamo la coda dei messaggi che potrebbero essere arrivati
+    //notificando che il game sta chiudendo e non risponderà più.
+    private final Object closingLock = new Object();
+    private boolean closing;
 
     // Constructors
 
@@ -50,6 +59,7 @@ public class GameController implements Runnable  {
         this.players = List.copyOf(game.getPlayers());
         this.hostNickname = requireHostNickname(hostNickname);
         this.sessions = sessions != null ? sessions : new ServerSessionRegistry();
+        this.closing = false;
     }
 
     // Getters
@@ -72,49 +82,71 @@ public class GameController implements Runnable  {
         return this.players;
     }
 
-    /**
-     * Returns whether the match has been frozen.
-     *
-     * @return {@code true} when gameplay commands are no longer accepted
-     */
-    public boolean isFrozen() {
-        return this.frozen;
+    private void setClosing(boolean closing) {
+        synchronized (this.closingLock) {
+            this.closing = closing;
+        }
     }
 
-    public void enqueueMessage(EnqueuedMessage command) {
+    public boolean isClosing() {
+        synchronized (this.closingLock) {
+            return this.closing;
+        }
+    }
+
+
+    public void enqueueMessage(QueuedCommand command) {
         this.commandQueue.add(command);
     }
+
     @Override
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                EnqueuedMessage cmd = this.commandQueue.take();
-                String sessionId = cmd.getSessionId();
-                try {
-                    switch (cmd.getCommand()) {
-                        case ClientQueuedCommand clientCommand -> {
-                            String nickname = sessions.nicknameOf(sessionId);
-                            switch (GameCommandType.fromPayload(clientCommand.payload())) {
-                                case CHOOSE_CARD -> {
-                                    ChooseCardPayload p = (ChooseCardPayload) clientCommand.payload();
-                                    this.chooseCard(nickname, p.cardId);
-                                }
-                                case EXTRA_DRAW -> {
-                                    ExtraDrawPayload p = (ExtraDrawPayload) clientCommand.payload();
-                                    this.extraDrawn(nickname, p.cardId);
-                                }
-                                case MOVE_TOTEM -> {
-                                    MoveTotemPayload p = (MoveTotemPayload) clientCommand.payload();
-                                    this.moveTotem(nickname, p.tile);
-                                }
-                            }
-                        }
-                        case SystemSetupMatchCommand ignored -> this.setupMatch();
-                        default -> throw new IllegalStateException("Unexpected command: " + cmd.getCommand());
-                    }
-                } catch (RuntimeException e) {
-                    this.notifyPhaseError(sessionId);
+                QueuedCommand cmd = this.commandQueue.take();
+
+                if (cmd instanceof SystemCloseGameCommand) {
+                    this.closeGame();
+                    continue;
                 }
+
+                if(cmd instanceof SystemSetupMatchCommand){
+                    this.setupMatch();
+                    continue;
+                }
+
+                String sessionId = cmd.getSessionId();
+                if (cmd instanceof SystemDisconnectCommand){
+                    this.disconnectedPlayer(sessionId);
+                    continue;
+                }else if(cmd instanceof SystemJoinCommand){
+                    this.reConnectedPlayer(sessionId);
+                    continue;
+                }
+
+                //Tutto quello che arriva qua è un client payload(spero:)
+                ClientPayloadCommand clientCommand = (ClientPayloadCommand) cmd ;
+                ClientPayload payload = clientCommand.getPayload();
+                try {
+                    switch (GameCommandType.fromPayload(payload)) {
+                        case CHOOSE_CARD -> {
+                            ChooseCardPayload p = (ChooseCardPayload) payload;
+                            this.chooseCard(sessionId, p.cardId);
+                        }
+                        case MOVE_TOTEM -> {
+                            MoveTotemPayload p = (MoveTotemPayload) payload;
+                            this.moveTotem(sessionId, p.tile);
+                        }
+                        case EXTRA_DRAW -> {
+                            ExtraDrawPayload p = (ExtraDrawPayload) payload;
+                            this.extraDrawn(sessionId, p.cardId);
+                        }
+
+                    }
+                }catch(IllegalArgumentException e){
+                    this.reportPhaseError(sessionId);
+                }
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -129,14 +161,18 @@ public class GameController implements Runnable  {
         this.checkGameEndAndCleanup();
     }
 
+    private void closeGame() {
+        this.executeStateChange(() -> this.game.closeGame());
+        this.checkGameEndAndCleanup();
+    }
     /**
      * Places a player's totem.
      *
-     * @param nickname of the acting player
+     * @param sessionId of the acting player session
      * @param tile target offer-space code
      */
-    private void moveTotem(String nickname, String tile) {
-        Player player = this.resolvePlayer(nickname);
+    private void moveTotem(String sessionId, String tile) {
+        Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.moveTotem(player, tile)
         );
@@ -146,40 +182,54 @@ public class GameController implements Runnable  {
     /**
      * Delegates one standard card draw.
      *
-     * @param nickname of acting player
+     * @param sessionId of the acting player session
      * @param cardId of the chosen card
      */
-    private void chooseCard(String nickname, int cardId) {
-        Player player = this.resolvePlayer(nickname);
+    private void chooseCard(String sessionId, int cardId) {
+        Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.chooseCard(player, cardId)
         );
         this.checkGameEndAndCleanup();
     }
 
+    private void startLastPlayerTimer() {
+        if (this.lastPlayerTimerTask != null) {
+            return;
+        }
+
+        this.lastPlayerTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                enqueueMessage(new SystemCloseGameCommand());
+            }
+        };
+
+        this.lastPlayerTimer.schedule(this.lastPlayerTimerTask, LAST_PLAYER_TIMEOUT_MILLIS);
+    }
+
+    private void cancelLastPlayerTimer() {
+        if (this.lastPlayerTimerTask != null) {
+            this.lastPlayerTimerTask.cancel();
+            this.lastPlayerTimerTask = null;
+            this.lastPlayerTimer.purge();
+        }
+    }
+
     /**
      * Delegates one extra draw.
      *
-     * @param nickname acting player
+     * @param sessionId of the acting player session
      * @param cardId chosen extra-draw card
      */
-    private void extraDrawn(String nickname, int cardId) {
-        Player player = this.resolvePlayer(nickname);
+    private void extraDrawn(String sessionId, int cardId) {
+        Player player = this.resolvePlayerBySession(sessionId);
         this.executeStateChange(
                 () -> this.game.extraDrawn(player, cardId)
         );
         this.checkGameEndAndCleanup();
     }
 
-    /**
-     * Freezes match flow due to disconnected player, preventing further state transitions.
-     *
-     * @param nickname disconnected player nickname
-     */
-    public void freezeForDisconnectedPlayer(String nickname) {
-        this.frozen = true;
-        this.game.notifyError("PLAYER_DISCONNECTED", "Player disconnected: " + nickname);
-    }
 
     // Private methods
 
@@ -190,11 +240,71 @@ public class GameController implements Runnable  {
                 .orElseThrow(() -> new IllegalArgumentException("Player not in this match: " + nickname));
     }
 
-    private void ensureMatchIsNotFrozen() {
-        if (this.frozen) {
-            throw new MatchFrozenException();
-        }
+    private Player resolvePlayerBySession(String sessionId) {
+        return this.resolvePlayer(this.sessions.nicknameOf(sessionId));
     }
+
+    private void disconnectedPlayer(String sessionId) {
+        Player player;
+        Listener playerListener;
+        try {
+            // A timeout can enqueue the same disconnect twice before the first one unregisters the session.
+            // If this command is stale, the session is already gone and there is nothing left to clean here.
+            player = this.resolvePlayerBySession(sessionId);
+            playerListener = this.sessions.getListenerOf(sessionId);
+        } catch (RuntimeException ignored) {
+            return;
+        }
+        this.game.removeListener(playerListener);
+        this.executeStateChange(
+                () -> this.game.disconnectedPlayer(player)
+        );
+
+
+        this.checkGameEndAndCleanup();
+        if (this.game.getStatus() == GameStatus.FINISHED) {
+            this.sessions.unregister(sessionId);
+            return;
+        }
+
+        Boolean needToStartTimer = false;
+        needToStartTimer = this.game.getStartTimer();
+        if(needToStartTimer){
+            this.startLastPlayerTimer();
+        }
+
+        this.sessions.leaveGame(sessionId);
+
+        // quando uno si riconnete ci pensa il servercontroller a pulire la mappa, quando uno si disconnette lo registra il gameController
+        this.sessions.RegisterDisconnection(sessionId,this.game.getId());
+        this.sessions.unregister(sessionId);
+    }
+
+    private void reConnectedPlayer(String sessionId) {
+        //qui arriverà tutto pulito, il giocatore sarà già dentro con la VirtualView attaccata come Listener
+        //Le operazioni di gestione del registry in fase di riconnessione le facciamo qua invece che nel server cotnroler cosi evitiamo
+        //problemi del tipo:
+        //Nella coda del game sto per processare che il gioco muore
+        //nel frattempo il server controller mi recupera un altro player che sta rientrnado
+        //killo il game
+        //nullpointeexception del player in entrata
+        //se invece faccio tutto da qua, al massimo il secondo messaggio di reconnect viene perso perchè muore nella coda
+        this.sessions.RegisterReConnection(sessionId);
+        Listener playerListener = this.sessions.getListenerOf(sessionId);
+        this.game.addListener(playerListener);
+        Player player = this.resolvePlayerBySession(sessionId);
+
+        this.executeStateChange(
+                () -> {
+                    this.game.reconnectedPlayer(player);
+
+                }
+        );
+        this.cancelLastPlayerTimer();
+        this.checkGameEndAndCleanup();
+    }
+
+
 
     /**
      * Applies a state-changing command only if the match has not been frozen.
@@ -202,7 +312,6 @@ public class GameController implements Runnable  {
      * @param action command to execute
      */
     private void executeStateChange(Runnable action) {
-        this.ensureMatchIsNotFrozen();
         action.run();
     }
 
@@ -210,13 +319,13 @@ public class GameController implements Runnable  {
      * Finalizes completed matches by tearing down session routing.
      */
     private void checkGameEndAndCleanup() {
-        if (this.frozen) {
-            return;
-        }
 
         if (this.game.getStatus() != GameStatus.FINISHED) {
             return;
         }
+        //Metto che il game sta chiudendo cosi il registry prima di fare dispatch dei game può
+        //verificare che stia chiudendo in tal caso non considerà piu dispatchabile quel game
+        this.setClosing(true);
 
         log.info("Game " + this.game.getId() + " finished.");
         this.teardownGame();
@@ -224,6 +333,15 @@ public class GameController implements Runnable  {
     }
 
     private void teardownGame() {
+        this.cancelLastPlayerTimer();
+        this.lastPlayerTimer.cancel();
+        // qui dovrebbe essere ok, cioè se uno si disconnette non viene "letto"
+        //Arrivato qui la coda non dovrebbe più poter essere accessibile dall'esterno,
+        //dato che abbiamo messo il flag di closing, potrei comunque
+        //avere dei messaggi ancora pending, svuoto la coda notificando che sono in fase di chiusura
+        //Oppure semplicemnte notifico che sta chiudendo
+//        this.game.notifyListeners();
+
         List<ServerSessionRegistry.SessionSnapshot> playersInGame =
                 this.sessions.sessionsInGame(this.game.getId());
 
@@ -231,6 +349,9 @@ public class GameController implements Runnable  {
             this.sessions.leaveGame(snapshot.sessionId());
         }
         this.sessions.removeGameOrchestrator(this.game.getId());
+        //qui leviamo tutte le coppie nella mappe di disconnesioni con il gameId del gioco finito, d'ora in poi nessuno
+        // si può riconettere o connettere (dato che il GameOrchestrator non c'è più)
+        this.sessions.removeDisconnectedReference(this.game.getId());
     }
 
     // Helper methods
@@ -242,9 +363,9 @@ public class GameController implements Runnable  {
         return hostNickname;
     }
 
-    private void notifyPhaseError(String sessionId) {
+    private void reportPhaseError(String sessionId) {
         try {
-            this.game.notifyActionError(this.sessions.getListenerOf(sessionId));
+            this.game.reportPhaseError(this.sessions.getListenerOf(sessionId));
         } catch (RuntimeException ignored) {
         }
     }

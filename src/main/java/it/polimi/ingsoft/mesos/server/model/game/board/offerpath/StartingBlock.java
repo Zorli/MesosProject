@@ -91,7 +91,9 @@ public class StartingBlock {
     public void resolveEffect() {
         if (this.occupiedBy != null) {
             if (this.foodModifier > 0) {
-                this.occupiedBy.gainFood(this.foodModifier);
+                if(this.occupiedBy.getTribe().hasBuildingForEndOfTurnFood()){
+                this.occupiedBy.gainFood(this.foodModifier +1);}
+                else { this.occupiedBy.gainFood(this.foodModifier);}
             } else if (this.foodModifier < 0) {
                 int foodCost = Math.abs(this.foodModifier);
 

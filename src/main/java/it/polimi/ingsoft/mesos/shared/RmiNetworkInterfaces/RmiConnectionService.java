@@ -10,7 +10,7 @@ import java.rmi.RemoteException;
  * implementation of this service from the registry, passes its own {@link RmiClientService} callback, and
  * receives a dedicated {@link RmiServerService} session in return.
  * <p>
- * The concrete server-side implementation is {@code RmiSessionFactory}. It creates one {@code VirtualViewRMI}
+ * The concrete server-side implementation is {@code RmiConnectionEntryPoint}. It creates one {@code VirtualViewRMI}
  * per connected client. This keeps the registry object stateless and gives each client its own remote session,
  * session id, and callback reference.
  * <p>

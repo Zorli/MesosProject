@@ -1,21 +1,22 @@
 package it.polimi.ingsoft.mesos.server.controller.lobby;
 
+import it.polimi.ingsoft.mesos.server.controller.command.*;
+import it.polimi.ingsoft.mesos.server.controller.server.enums.PreLobbyCommandType;
 import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.enums.LobbyCommandType;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.controller.command.ClientQueuedCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.EnqueuedMessage;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemLobbyDisconnectCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.CreateLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.JoinLobbyPayload;
 
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -29,7 +30,7 @@ public class LobbyController implements Runnable {
     private final GameFactory gameFactory;
     private final LobbyPlayerFactory lobbyPlayerFactory;
 
-    private final BlockingQueue<EnqueuedMessage> commandQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
 
     public LobbyController(
             Lobby lobby,
@@ -42,7 +43,7 @@ public class LobbyController implements Runnable {
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
     }
 
-    public void enqueueMessage(EnqueuedMessage command) {
+    public void enqueueMessage(QueuedCommand command) {
         this.commandQueue.add(command);
     }
 
@@ -50,22 +51,31 @@ public class LobbyController implements Runnable {
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                EnqueuedMessage cmd = this.commandQueue.take();
+                QueuedCommand cmd = this.commandQueue.take();
+                //Controllo se è payload interno o esterno
                 String sessionId = cmd.getSessionId();
+                if (cmd instanceof SystemJoinCommand ) {
+                    this.joinUser(sessionId);
+                    continue;
+                }else if(cmd instanceof SystemDisconnectCommand){
+                    this.disconnectUser(sessionId);
+                    continue;
+                }
+
+                if (!(cmd instanceof ClientPayloadCommand clientCommand)) {
+                    this.reportPhaseError(sessionId);
+                    continue;
+                }
+
+                ClientPayload payload = clientCommand.getPayload();
                 try {
-                    switch(cmd.getCommand()){
-                        case ClientQueuedCommand clientCommand -> {
-                            switch(LobbyCommandType.fromPayload(clientCommand.payload())){
-                                case START_LOBBY -> {this.startLobby(sessionId);}
-                                case EXIT_LOBBY -> {this.exitLobby(sessionId);}
-                            }
-                        }
-                        case SystemJoinCommand p -> {this.joinUser(sessionId,p.nickname,p.clientView);}
-                        case SystemLobbyDisconnectCommand p -> {this.disconnectUser(sessionId, p.nickname, p.leavingListener);}
-                        default -> throw new IllegalStateException("Unexpected command: " + cmd.getCommand());
+                    switch (LobbyCommandType.fromPayload(payload)) {
+                        case EXIT_LOBBY -> this.exitLobby(sessionId);
+                        case START_LOBBY -> this.startLobby(sessionId);
+                        default -> throw new IllegalArgumentException("Unknown command type: " + payload.getClass());
                     }
-                } catch (RuntimeException e) {
-                    this.notifyPhaseError(sessionId);
+                } catch(IllegalArgumentException e){
+                    this.reportPhaseError(sessionId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -73,7 +83,10 @@ public class LobbyController implements Runnable {
             }
         }
     }
-    private void joinUser(String sessionId, String nickname, Listener clientView) {
+    private void joinUser(String sessionId) {
+        String nickname = this.sessions.nicknameOf(sessionId);
+        Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
+
         if (this.lobby.getStatus() == LobbyStatus.RESUMABLE && this.lobby.isExpectedResumePlayer(nickname)) {
             if (!this.lobby.rejoinResumablePlayer(nickname, clientView)) {
                 return;
@@ -112,7 +125,18 @@ public class LobbyController implements Runnable {
         }
     }
 
-    private void disconnectUser(String sessionId, String nickname, Listener leavingListener) {
+    private void disconnectUser(String sessionId) {
+        String nickname;
+        Listener leavingListener;
+        try {
+            // A timeout can enqueue the same disconnect twice before the first one unregisters the session.
+            // If this command is stale, the session is already gone and there is nothing left to clean here.
+            nickname = this.sessions.nicknameOf(sessionId);
+            leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+        } catch (RuntimeException ignored) {
+            return;
+        }
+
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
@@ -191,7 +215,7 @@ public class LobbyController implements Runnable {
 
                 // Poi avvia il setup se la partita è ancora in stato SETUP
                 if (orchestrator.getGame().getStatus() == GameStatus.SETUP) {
-                    orchestrator.enqueueMessage(new EnqueuedMessage(null, new SystemSetupMatchCommand()));
+                    orchestrator.enqueueMessage(new SystemSetupMatchCommand());
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -199,10 +223,10 @@ public class LobbyController implements Runnable {
         }, "match-countdown-" + this.lobby.getId()).start();
     }
 
-    private void notifyPhaseError(String sessionId) {
+    private void reportPhaseError(String sessionId) {
         try {
             Listener listener = this.sessions.getListenerOf(sessionId);
-            this.lobby.notifyActionError(listener);
+            this.lobby.reportPhaseError(listener);
         } catch (RuntimeException ignored) {
         }
     }
