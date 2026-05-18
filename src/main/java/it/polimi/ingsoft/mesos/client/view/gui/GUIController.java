@@ -247,6 +247,12 @@ public class GUIController implements ClientView {
     public void showError(ErrorPayload payload) {
         this.runOnFx(() -> {
             String message = payload == null ? "Errore sconosciuto." : payload.message;
+            if (this.isConnectionClosed(payload)) {
+                this.cancelAuthenticatedRedirect();
+                if (this.lobbyRefreshTimer != null) {
+                    this.lobbyRefreshTimer.stop();
+                }
+            }
             if (this.loginPage.isVisible()) {
                 this.loginStatusLabel.setText(message);
                 this.nicknameField.setDisable(false);
@@ -296,6 +302,7 @@ public class GUIController implements ClientView {
             }
             if (payload.event == LobbyEventType.LOBBY_STARTED) {
                 this.returnedToLobbyAfterMatch = false;
+                this.cancelAuthenticatedRedirect();
                 this.showPage(this.gamePage);
             }
         });
@@ -357,6 +364,7 @@ public class GUIController implements ClientView {
     @Override
     public void showGameUpdate(GamePayload payload) {
         this.runOnFx(() -> {
+            this.cancelAuthenticatedRedirect();
             if (this.returnedToLobbyAfterMatch && this.isFinalScoring(payload)) {
                 return;
             }
@@ -918,7 +926,10 @@ public class GUIController implements ClientView {
             return;
         }
         List<PlayerPayload> rankedPlayers = new ArrayList<>(players);
-        rankedPlayers.sort(Comparator.comparingInt((PlayerPayload player) -> player.prestigePoints).reversed());
+        rankedPlayers.sort(Comparator
+                .comparingInt((PlayerPayload player) -> player.prestigePoints)
+                .thenComparingInt(player -> player.food)
+                .reversed());
         for (int i = 0; i < rankedPlayers.size(); i++) {
             PlayerPayload player = rankedPlayers.get(i);
             HBox row = new HBox(16);
@@ -1149,10 +1160,29 @@ public class GUIController implements ClientView {
         }
         this.authRedirectDelay = new PauseTransition(Duration.seconds(3));
         this.authRedirectDelay.setOnFinished(event -> {
+            this.authRedirectDelay = null;
+            if (!this.shouldOpenLobbyAfterAuthentication()) {
+                return;
+            }
             this.showPage(this.lobbyPage);
             this.requestLobbyList();
         });
         this.authRedirectDelay.play();
+    }
+
+    private void cancelAuthenticatedRedirect() {
+        if (this.authRedirectDelay == null) {
+            return;
+        }
+        this.authRedirectDelay.stop();
+        this.authRedirectDelay = null;
+    }
+
+    private boolean shouldOpenLobbyAfterAuthentication() {
+        return this.loginPage.isVisible()
+                && !this.gamePage.isVisible()
+                && !this.endPage.isVisible()
+                && this.currentLobbyId == null;
     }
 
     private void configureLobbyAutoRefresh() {
@@ -1172,6 +1202,10 @@ public class GUIController implements ClientView {
                 && this.currentLobbyId == null
                 && this.serverProxy != null
                 && this.serverProxy.isConnected();
+    }
+
+    private boolean isConnectionClosed(ErrorPayload payload) {
+        return payload != null && "CONNECTION_CLOSED".equals(payload.code);
     }
 
     private void requestLobbyList() {
