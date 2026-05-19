@@ -61,6 +61,10 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void sendMessage(ClientPayload payload) throws RemoteException {
         try {
             this.out.println("[RMI] Received " + this.describePayload(payload) + " from " + this.describeSession());
+            if (payload == null) {
+                this.sendError(new IllegalArgumentException("Malformed payload"));
+                return;
+            }
             this.router.routeMessage(this.sessionId, payload);
         } catch (RuntimeException exception) {
             this.sendError(exception);
