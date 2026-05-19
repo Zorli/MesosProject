@@ -99,7 +99,9 @@ public class ServerController implements Runnable {
     private void authenticate(String sessionId, String nickname) {
         Listener clientView = this.sessions.getListenerOf(sessionId);
         //lasciamo autenticazione standard con salvataggio etch
-        this.serverModel.authenticate(sessionId, nickname, clientView);
+        if (!this.serverModel.authenticate(sessionId, nickname, clientView)) {
+            return;
+        }
         // dopo aver registrato tutto correttamente ci preoccupiamo di controllare se va riconesso
         if(this.sessions.isDisconnected(nickname))
         {
