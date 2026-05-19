@@ -850,11 +850,16 @@ public class GUIController implements ClientView {
                     && player.nickname.equals(this.lastGamePayload.turnOrder.currentPlayerNickname)) {
                 row.getStyleClass().add("active-player-row");
             }
+            if (!player.isConnected) {
+                row.getStyleClass().add("disconnected-player-row");
+            }
             Label name = new Label(player.nickname);
             name.getStyleClass().add("player-name");
             Label stats = new Label(player.food + " food  |  " + player.prestigePoints + " pp  |  totem " + player.totem);
             stats.getStyleClass().add("muted");
-            row.getChildren().addAll(name, stats);
+            Label connectionState = new Label(player.isConnected ? "connected" : "disconnected");
+            connectionState.getStyleClass().add(player.isConnected ? "connected-pill" : "disconnected-pill");
+            row.getChildren().addAll(name, stats, connectionState);
             if (player.nickname.equals(this.currentTurnPlayerName())) {
                 Label turn = new Label("turn");
                 turn.getStyleClass().add("micro-pill");

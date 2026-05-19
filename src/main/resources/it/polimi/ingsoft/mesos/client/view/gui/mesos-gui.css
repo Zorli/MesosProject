@@ -363,6 +363,11 @@
     -fx-border-color: #e7b64f;
 }
 
+.disconnected-player-row {
+    -fx-opacity: 0.72;
+    -fx-border-color: #6d3d45;
+}
+
 .current-lobby-card {
     -fx-background-color:
             linear-gradient(to right, rgba(231, 182, 79, 0.12), rgba(15, 111, 134, 0.08)),
@@ -381,7 +386,9 @@
 .action-hint-pill,
 .score-pill,
 .free-pill,
-.occupied-pill {
+.occupied-pill,
+.connected-pill,
+.disconnected-pill {
     -fx-background-radius: 999;
     -fx-padding: 6 11;
     -fx-font-weight: 900;
@@ -414,6 +421,16 @@
 }
 
 .occupied-pill {
+    -fx-background-color: #563039;
+    -fx-text-fill: #ffd3cf;
+}
+
+.connected-pill {
+    -fx-background-color: #1e4a3f;
+    -fx-text-fill: #bff2d5;
+}
+
+.disconnected-pill {
     -fx-background-color: #563039;
     -fx-text-fill: #ffd3cf;
 }
