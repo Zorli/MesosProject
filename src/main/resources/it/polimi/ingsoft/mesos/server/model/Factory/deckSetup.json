@@ -842,7 +842,7 @@
         {
           "id": 13,
           "era": "first",
-          "minPlayers": 3,
+          "minPlayers": 5,
           "presentation": {
             "front": {
               "topRight": [
@@ -865,7 +865,6 @@
         {
           "id": 40,
           "era": "second",
-          "minPlayers": 5,
           "presentation": {
             "front": {
               "topRight": [
