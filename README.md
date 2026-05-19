@@ -5,8 +5,6 @@ giocare con altri player, ognuno dal proprio device, collegandosi a un server.
 È possibile giocare sia da interfaccia testuale che grafica. La versione qui implementata ha inoltre le seguenti
 feature aggiuntive:
 - supporto per multi-partita in parallelo sullo stesso server
-- persistenza in caso di crash del server, ovvero i client che erano in partita possono riprendere
-dall'ultimo stato del gioco prima del crash
 - Resilienza alle disconnessioni da parte dei client
 
 ## Architettura del progetto

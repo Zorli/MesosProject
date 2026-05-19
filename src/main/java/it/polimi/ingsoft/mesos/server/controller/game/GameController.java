@@ -216,7 +216,7 @@ public class GameController implements Runnable  {
      * then checks whether the match immediately reached a terminal state.
      */
     public void setupMatch() {
-        this.executeStateChange(this.game::setup);
+        this.game.setup();
         this.checkGameEndAndCleanup();
     }
 
@@ -226,8 +226,8 @@ public class GameController implements Runnable  {
      * <p>This is used for forced closure, not for a normal player command.
      */
     private void closeGame() {
-        this.executeStateChange(() -> this.game.closeGame());
-        this.checkGameEndAndCleanup();
+       this.game.closeGame();
+       this.checkGameEndAndCleanup();
     }
     /**
      * Places a player's totem.
@@ -236,10 +236,13 @@ public class GameController implements Runnable  {
      * @param tile target offer-space code
      */
     private void moveTotem(String sessionId, String tile) {
-        Player player = this.resolvePlayerBySession(sessionId);
-        this.executeStateChange(
-                () -> this.game.moveTotem(player, tile)
-        );
+        Player player = this.resolvePlayerBySessionOrNull(sessionId);
+        if (player == null) {
+            return;
+        }
+
+        this.game.moveTotem(player, tile);
+
         this.checkGameEndAndCleanup();
     }
 
@@ -250,10 +253,13 @@ public class GameController implements Runnable  {
      * @param cardId of the chosen card
      */
     private void chooseCard(String sessionId, int cardId) {
-        Player player = this.resolvePlayerBySession(sessionId);
-        this.executeStateChange(
-                () -> this.game.chooseCard(player, cardId)
-        );
+        Player player = this.resolvePlayerBySessionOrNull(sessionId);
+        if (player == null) {
+            return;
+        }
+
+        this.game.chooseCard(player, cardId);
+
         this.checkGameEndAndCleanup();
     }
 
@@ -297,10 +303,13 @@ public class GameController implements Runnable  {
      * @param cardId chosen extra-draw card
      */
     private void extraDrawn(String sessionId, int cardId) {
-        Player player = this.resolvePlayerBySession(sessionId);
-        this.executeStateChange(
-                () -> this.game.extraDrawn(player, cardId)
-        );
+        Player player = this.resolvePlayerBySessionOrNull(sessionId);
+        if (player == null) {
+            return;
+        }
+
+        this.game.extraDrawn(player, cardId);
+
         this.checkGameEndAndCleanup();
     }
 
@@ -333,15 +342,29 @@ public class GameController implements Runnable  {
         return this.resolvePlayer(this.sessions.nicknameOf(sessionId));
     }
 
+    private Player resolvePlayerBySessionOrNull(String sessionId) {
+        try {
+            return this.resolvePlayerBySession(sessionId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
     /**
-     * Applies a queued disconnect command if it still belongs to the active session.
+     * Applies a queued game disconnect command.
      *
-     * <p>Disconnects can be produced by timeout/lifecycle code while reconnects
-     * are produced by a new client connection. Because these events are generated
-     * by different threads, an old disconnect can be processed after the same
-     * nickname has already authenticated again. When the command carries the old
-     * nickname and the registry already contains a newer authenticated session
-     * for that nickname/game, the command is stale and is ignored.
+     * <p>A game disconnect is different from a normal client payload. It is
+     * produced by server lifecycle code while the old network session is being
+     * removed, so this method treats the {@link SystemDisconnectCommand} as the
+     * snapshot of the old connection: old session id, old nickname, and old
+     * listener, when available, come from the command itself. The registry is not used to
+     * recover those old values because the old session may already have been
+     * unregistered before this command reaches the game queue.
+     *
+     * <p>The registry is still used for current state only. If the same nickname
+     * already has a newer authenticated session for this game, the disconnect is
+     * stale: the old listener is detached, but the domain player is not marked as
+     * disconnected.
      *
      * <p>If the command is valid, this method removes the old listener, delegates
      * the domain change to {@link Game#disconnectedPlayer(Player)}, updates the
@@ -352,28 +375,32 @@ public class GameController implements Runnable  {
      */
     private void disconnectedPlayer(SystemDisconnectCommand command) {
         String sessionId = command.getSessionId();
-        Player player;
+        String nickname = command.getNickname();
         Listener playerListener = command.getListener();
+
+        if (nickname == null) {
+            return;
+        }
+        //Copre il caso in cui uno faccia disconnesione e poi rientri e viene processato prima
+        //il rientro della disconnessione
+        if (this.sessions.isReconnectedInGame(nickname, this.game.getId(), sessionId)) {
+            if (playerListener != null) {
+                this.game.removeListener(playerListener);
+            }
+            return;
+        }
+
+        Player player;
         try {
-            String nickname = command.getNickname();
-            if (nickname == null) {
-                nickname = this.sessions.nicknameOf(sessionId);
-            }
-            if (command.getNickname() != null
-                    && this.sessions.isReconnectedInGame(nickname, this.game.getId(), sessionId)) {
-                return;
-            }
             player = this.resolvePlayer(nickname);
-            if (playerListener == null) {
-                playerListener = this.sessions.getListenerOf(sessionId);
-            }
         } catch (RuntimeException ignored) {
             return;
         }
-        this.game.removeListener(playerListener);
-        this.executeStateChange(
-                () -> this.game.disconnectedPlayer(player)
-        );
+        if (playerListener != null) {
+            this.game.removeListener(playerListener);
+        }
+
+        this.game.disconnectedPlayer(player);
 
 
         this.checkGameEndAndCleanup();
@@ -385,7 +412,7 @@ public class GameController implements Runnable  {
             return;
         }
 
-        Boolean needToStartTimer = false;
+        Boolean needToStartTimer;
         needToStartTimer = this.game.getStartTimer();
         if(needToStartTimer){
             this.startLastPlayerTimer();
@@ -417,26 +444,18 @@ public class GameController implements Runnable  {
         this.game.addListener(playerListener);
         Player player = this.resolvePlayerBySession(sessionId);
 
-        this.executeStateChange(
-                () -> {
-                    this.game.reconnectedPlayer(player);
 
-                }
-        );
-        this.cancelLastPlayerTimer();
+        this.game.reconnectedPlayer(player);
+
+
+        if (this.game.getStartTimer()) {
+            this.startLastPlayerTimer();
+        } else {
+            this.cancelLastPlayerTimer();
+        }
         this.checkGameEndAndCleanup();
     }
 
-
-
-    /**
-     * Applies a state-changing command only if the match has not been frozen.
-     *
-     * @param action command to execute
-     */
-    private void executeStateChange(Runnable action) {
-        action.run();
-    }
 
     /**
      * Finalizes completed matches by tearing down session routing.

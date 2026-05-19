@@ -177,7 +177,7 @@ public class ServerSessionRegistry {
      * @param gameId game that owns the queued disconnect
      * @param oldSessionId session that produced the old disconnect
      * @return {@code true} when a newer authenticated session owns the nickname
-     * and the nickname is still registered as disconnected from this game
+     * and is either waiting to rejoin this game or has already rejoined it
      */
     public synchronized boolean isReconnectedInGame(String nickname, int gameId, String oldSessionId) {
         String currentSessionId = this.sessionIdByNickname.get(nickname);
@@ -186,9 +186,14 @@ public class ServerSessionRegistry {
         }
 
         SessionState currentSession = this.sessionsById.get(currentSessionId);
-        return currentSession != null
-                && currentSession.user != null
-                && Objects.equals(this.DisconnectedNicknameOnGame.get(nickname), gameId);
+        if (currentSession == null || currentSession.user == null) {
+            return false;
+        }
+
+        boolean pendingReconnect = Objects.equals(this.DisconnectedNicknameOnGame.get(nickname), gameId);
+        boolean completedReconnect = currentSession.phase == Phase.GAME
+                && Objects.equals(currentSession.gameId, gameId);
+        return pendingReconnect || completedReconnect;
     }
 
     /**
