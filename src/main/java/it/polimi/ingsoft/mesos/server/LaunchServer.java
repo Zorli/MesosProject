@@ -8,22 +8,35 @@ import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.virtualview.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.HashMap;
 import java.util.Map;
 
 
-// From this class we bootstrap the server for BOTH TCP and RMI.
-// The Singleton MessageRouter and SessionRegistry are shared between both network layers,
-// ensuring all players play in the same lobbies regardless of their protocol.
+/**
+ * Entry point of the Mesos server.
+ *
+ * <p>The server starts both supported network protocols: TCP and RMI.
+ * Both protocols share the same {@link MessageRouter} and the same {@link ServerSessionRegistry},
+ * so players using different protocols still enter the same lobby and game system.</p>
+ *
+ * <p>Network configuration is read only from {@code server.env}. This keeps one
+ * explicit source of truth for the ports and RMI address used by the server.</p>
+ */
 public final class LaunchServer {
-    private static final int DEFAULT_TCP_PORT = 12_345;
+    private static final String SERVER_ENV_FILE = "server.env";
+    private static final int DEFAULT_TCP_PORT = 12345;
     private static final int DEFAULT_RMI_PORT = 1099;
 
     public static void main(String[] args) {
-        // IL MAIN ORA È ATTIVO!
-        int exitCode = run(System.getenv(), System.out, System.err);
+        Map<String, String> environment = loadEnvironmentFile(SERVER_ENV_FILE);
+
+        int exitCode = run(environment, System.out, System.err);
         if (exitCode != 0) {
             System.exit(exitCode);
         }
@@ -65,15 +78,17 @@ public final class LaunchServer {
 
             // Start RMI (Passing the shared router and registry)
             int rmiPort = resolveRmiPort(environment);
-            startRmiServer(serverController, router, rmiPort, out);
+            String serverRmiHost = resolveServerRmiHost(environment);
+            startRmiServer(serverController, router, rmiPort, serverRmiHost, out);
 
             // Start TCP (Passing the shared router and registry)
             int tcpPort = resolveTcpPort(environment);
             ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
+            acceptor.start();
             Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
             acceptorThread.start();
 
-            out.println("TCP listener active on port " + tcpPort);
+            out.println("TCP listener active on port " + acceptor.getPort());
             out.println("Mesos Server started successfully.");
             out.println("Waiting for players...");
             return 0;
@@ -85,7 +100,11 @@ public final class LaunchServer {
         }
     }
 
-    private static void startRmiServer(ServerController controller, MessageRouter router, int port, PrintStream out) throws Exception {
+    private static void startRmiServer(ServerController controller, MessageRouter router, int port, String serverRmiHost, PrintStream out) throws Exception {
+        if (serverRmiHost != null && !serverRmiHost.isBlank()) {
+            System.setProperty("java.rmi.server.hostname", serverRmiHost);
+        }
+
         // Pass dependencies down to the RMI entry point
         RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router);
         LocateRegistry.createRegistry(port);
@@ -124,4 +143,44 @@ public final class LaunchServer {
             throw new IllegalArgumentException("MESOS_RMI_PORT must be an integer", exception);
         }
     }
+
+    private static String resolveServerRmiHost(Map<String, String> environment) {
+        if (environment == null) {
+            return null;
+        }
+        String rawHost = environment.get("MESOS_SERVER_RMI_HOST");
+        if (rawHost == null || rawHost.isBlank()) {
+            return null;
+        }
+        return rawHost.trim();
+    }
+
+    /**
+     * Loads a simple {@code KEY=value} environment file.
+     *
+     * <p>The file is optional. If it is missing, the server keeps its default values.
+     * Empty lines, comment lines starting with {@code #}, and malformed lines are ignored.</p>
+     */
+    private static Map<String, String> loadEnvironmentFile(String environmentFile) {
+        Map<String, String> environment = new HashMap<>();
+        try {
+            for (String line : Files.readAllLines(Path.of(environmentFile))) {
+                line = line.trim();
+                if (line.isBlank() || line.startsWith("#")) {
+                    continue;
+                }
+
+                String[] parts = line.split("=", 2);
+                if (parts.length != 2) {
+                    continue;
+                }
+                environment.put(parts[0].trim(), parts[1].trim());
+            }
+        } catch (IOException ignored) {
+            System.err.println("Unable to load environment file: " + environmentFile);
+        }
+
+        return environment;
+    }
+
 }

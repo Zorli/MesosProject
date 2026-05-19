@@ -29,9 +29,6 @@ dist/
 Thumbs.db
 myversion.puml
 
-# Local environment config — copia da .env.server.example
-# Il file .env non va in git; i file *.example sì.
-.env
 
 # Game checkpoint files (runtime persistence, not for version control)
 data/
