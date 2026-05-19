@@ -50,15 +50,15 @@ public class ServerProxyTCP implements ServerProxy {
     /**
      * Opens a TCP connection to the server and starts the receiver thread for incoming server messages.
      *
-     * @param host       server host name or IP address
+     * @param serverHost server host name or IP address
      * @param port       server TCP port
      * @param clientView view contract used to show server updates and local connection errors
      * @throws IOException if the socket cannot be opened
      */
-    public ServerProxyTCP(String host, int port, ClientView clientView) throws IOException {
-        Objects.requireNonNull(host, "host cannot be null");
+    public ServerProxyTCP(String serverHost, int port, ClientView clientView) throws IOException {
+        Objects.requireNonNull(serverHost, "serverHost cannot be null");
         this.clientView = Objects.requireNonNull(clientView, "clientView cannot be null");
-        this.socket = new Socket(host, port);
+        this.socket = new Socket(serverHost, port);
         this.writer = new PrintWriter(this.socket.getOutputStream(), true);
         this.virtualServer = new VirtualServerTCP(this.socket, clientView, this);
         this.virtualServerThread = new Thread(this.virtualServer, "mesos-client-server-message-receiver");

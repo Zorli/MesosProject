@@ -7,6 +7,52 @@ feature aggiuntive:
 - supporto per multi-partita in parallelo sullo stesso server
 - Resilienza alle disconnessioni da parte dei client
 
+## Usage
+
+### Configurazione server
+
+`LaunchServer` legge la configurazione dal file locale `server.env`.
+Il file usa il formato `KEY=value`:
+
+```env
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_SERVER_RMI_HOST=localhost
+```
+
+`MESOS_TCP_PORT` è la porta usata dal server TCP.
+`MESOS_RMI_PORT` è la porta del registry RMI.
+`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce negli stub esportati dal server.
+Se server e client sono sulla stessa macchina può essere `localhost`.
+Se il server deve essere raggiunto da un altro dispositivo nella stessa rete o hotspot, deve essere l'IP del server in quella rete.
+
+Esempio su hotspot:
+
+```env
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_SERVER_RMI_HOST=172.20.10.2
+```
+
+`server.env` è l'unica fonte di verità per la configurazione di rete del server.
+Le variabili d'ambiente del processo non sovrascrivono questi valori.
+
+### Configurazione client
+
+`LaunchClient` legge la configurazione dal file locale `client.env`:
+
+```env
+MESOS_SERVER_HOST=172.20.10.2
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_CLIENT_RMI_HOST=172.20.10.3
+```
+
+`MESOS_SERVER_HOST` è l'IP della macchina su cui gira il server.
+`MESOS_TCP_PORT` è la porta TCP del server.
+`MESOS_RMI_PORT` è la porta del registry RMI del server.
+`MESOS_CLIENT_RMI_HOST` è l'IP del client, usato solo quando si sceglie RMI perché il server deve richiamare il client tramite callback.
+
 ## Architettura del progetto
 In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
 sottosezioni verranno spiegati in dettaglio i particolari implementativi e i pattern applicati.

@@ -8,14 +8,20 @@ import it.polimi.ingsoft.mesos.client.view.gui.GUIController;
 import it.polimi.ingsoft.mesos.client.view.tui.TuiController;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.rmi.Naming;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
  * Entry point that lets the user choose UI mode and network technology before launching the client.
  */
 public class LaunchClient {
-    private static final String DEFAULT_HOST = "localhost";
+    private static final String CLIENT_ENV_FILE = "client.env";
+    private static final String DEFAULT_SERVER_HOST = "localhost";
     private static final int DEFAULT_TCP_PORT = 12_345;
     private static final int DEFAULT_RMI_PORT = 1099;
 
@@ -48,10 +54,11 @@ public class LaunchClient {
     // server -> VirtualServer -> MessageRouter -> ClientView
 
     public static void main(String[] args) {
+        Map<String, String> environment = loadEnvironmentFile(CLIENT_ENV_FILE);
         Scanner scanner = new Scanner(System.in);
 
         ClientView clientView = chooseClientView(scanner);
-        ServerProxy serverProxy = chooseServerProxy(scanner, clientView);
+        ServerProxy serverProxy = chooseServerProxy(scanner, clientView, environment);
 
         startClient(clientView, serverProxy);
     }
@@ -74,7 +81,12 @@ public class LaunchClient {
         }
     }
 
-    private static ServerProxy chooseServerProxy(Scanner scanner, ClientView clientView) {
+    private static ServerProxy chooseServerProxy(Scanner scanner, ClientView clientView, Map<String, String> environment) {
+        String serverHost = resolveServerHost(environment);
+        int tcpPort = resolveTcpPort(environment);
+        int rmiPort = resolveRmiPort(environment);
+        String clientRmiHost = resolveClientRmiHost(environment);
+
         while (true) {
             System.out.println("Select network technology:");
             System.out.println("1) TCP");
@@ -83,10 +95,13 @@ public class LaunchClient {
             String choice = scanner.nextLine().trim();
             try {
                 if ("1".equals(choice)) {
-                    return new ServerProxyTCP(DEFAULT_HOST, DEFAULT_TCP_PORT, clientView);
+                    return new ServerProxyTCP(serverHost, tcpPort, clientView);
                 }
                 if ("2".equals(choice)) {
-                    String registryUrl = "rmi://" + DEFAULT_HOST + ":" + DEFAULT_RMI_PORT + "/MesosServer";
+                    if (clientRmiHost != null) {
+                        System.setProperty("java.rmi.server.hostname", clientRmiHost);
+                    }
+                    String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
                     RmiConnectionService connectionService = (RmiConnectionService) Naming.lookup(registryUrl);
                     return new ServerProxyRMI(connectionService, clientView);
                 }
@@ -95,6 +110,58 @@ public class LaunchClient {
                 System.out.println("Failed to connect to the server: " + exception.getMessage());
             }
         }
+    }
+
+    private static String resolveServerHost(Map<String, String> environment) {
+        if (environment == null) {
+            return DEFAULT_SERVER_HOST;
+        }
+        String rawHost = environment.get("MESOS_SERVER_HOST");
+        if (rawHost == null || rawHost.isBlank()) {
+            return DEFAULT_SERVER_HOST;
+        }
+        return rawHost.trim();
+    }
+
+    private static int resolveTcpPort(Map<String, String> environment) {
+        if (environment == null) {
+            return DEFAULT_TCP_PORT;
+        }
+        String rawPort = environment.get("MESOS_TCP_PORT");
+        if (rawPort == null || rawPort.isBlank()) {
+            return DEFAULT_TCP_PORT;
+        }
+        try {
+            return Integer.parseInt(rawPort);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("MESOS_TCP_PORT must be an integer", exception);
+        }
+    }
+
+    private static int resolveRmiPort(Map<String, String> environment) {
+        if (environment == null) {
+            return DEFAULT_RMI_PORT;
+        }
+        String rawPort = environment.get("MESOS_RMI_PORT");
+        if (rawPort == null || rawPort.isBlank()) {
+            return DEFAULT_RMI_PORT;
+        }
+        try {
+            return Integer.parseInt(rawPort);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("MESOS_RMI_PORT must be an integer", exception);
+        }
+    }
+
+    private static String resolveClientRmiHost(Map<String, String> environment) {
+        if (environment == null) {
+            return null;
+        }
+        String rawHost = environment.get("MESOS_CLIENT_RMI_HOST");
+        if (rawHost == null || rawHost.isBlank()) {
+            return null;
+        }
+        return rawHost.trim();
     }
 
     private static void startClient(ClientView clientView, ServerProxy serverProxy) {
@@ -108,5 +175,26 @@ public class LaunchClient {
             guiController.attachServerProxy(serverProxy);
             guiController.start();
         }
+    }
+    private static Map<String, String> loadEnvironmentFile(String environmentFile) {
+        Map<String, String> environment = new HashMap<>();
+        try {
+            for (String line : Files.readAllLines(Path.of(environmentFile))) {
+                line = line.trim();
+                if (line.isBlank() || line.startsWith("#")) {
+                    continue;
+                }
+
+                String[] parts = line.split("=", 2);
+                if (parts.length != 2) {
+                    continue;
+                }
+                environment.put(parts[0].trim(), parts[1].trim());
+            }
+        } catch (IOException ignored) {
+            System.err.println("Failed to load environment file: " + environmentFile);
+        }
+
+        return environment;
     }
 }

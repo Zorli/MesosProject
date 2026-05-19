@@ -24,34 +24,34 @@ public class ConnectionAcceptor implements Runnable{
         this.router = Objects.requireNonNull(router, "router cannot be null");
     }
 
+    public synchronized void start() throws IOException {
+        if (this.running) {
+            throw new IllegalStateException("ConnectionAcceptor is already running");
+        }
+        this.serverSocket = new ServerSocket(this.port);
+        this.running = true;
+    }
+
     @Override
     public void run() {
-        try {
-            synchronized (this) {
-                if (this.running) {
-                    throw new IllegalStateException("ConnectionAcceptor is already running");
-                }
-                this.serverSocket = new ServerSocket(this.port);
-                this.running = true;
-            }
+        if (!this.running || this.serverSocket == null) {
+            throw new IllegalStateException("ConnectionAcceptor has not been started");
+        }
 
-            while (this.running) {
-                try {
-                    Socket clientSocket = this.serverSocket.accept();
-                    VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router );
-                    Thread virtualViewThread = new Thread(
-                            virtualView,
-                            "mesos-virtual-view-" + clientSocket.getPort()
-                    );
-                    virtualViewThread.start();
-                } catch (IOException exception) {
-                    if (this.running) {
-                        throw new IllegalStateException("TCP accept loop failed", exception);
-                    }
+        while (this.running) {
+            try {
+                Socket clientSocket = this.serverSocket.accept();
+                VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router );
+                Thread virtualViewThread = new Thread(
+                        virtualView,
+                        "mesos-virtual-view-" + clientSocket.getPort()
+                );
+                virtualViewThread.start();
+            } catch (IOException exception) {
+                if (this.running) {
+                    throw new IllegalStateException("TCP accept loop failed", exception);
                 }
             }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to open TCP listener on port " + this.port, exception);
         }
     }
 
