@@ -2,8 +2,6 @@ package it.polimi.ingsoft.mesos.server.model.game.player;
 
 import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 
-// TODO: the method takeCard(Card card)
-
 /**
  * Represents one participant in a match together with the mutable resources they own.
  *

@@ -35,8 +35,6 @@ public class Hunter extends CharacterCard {
         return this.hasEffect;
     }
 
-    // TODO: We first have to add the card to the player and then call apply the effect !
-
     /**
      * Applies the hunter immediate effect, rewarding food points based on the current
      * number of hunters in the player's tribe.

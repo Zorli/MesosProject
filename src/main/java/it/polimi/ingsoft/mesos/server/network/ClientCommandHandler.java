@@ -26,9 +26,13 @@ public class ClientCommandHandler {
         this.virtualView = Objects.requireNonNull(virtualView, "virtualView cannot be null");
     }
 
-    //TODO : Migliorare eccezioni lanciate qua per essere più informative
     public void handle(String rawMessage) {
-        JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
+        JsonObject root;
+        try {
+            root = GSON.fromJson(rawMessage, JsonObject.class);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Malformed client message JSON", exception);
+        }
         if (root == null) {
             throw new IllegalArgumentException("Malformed client message");
         }
@@ -42,10 +46,13 @@ public class ClientCommandHandler {
         try {
             type = ClientMessageType.valueOf(typeElement.getAsString());
         } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Unknown client message type", exception);
+            throw new IllegalArgumentException("Unknown client message type: " + typeElement.getAsString(), exception);
         }
 
         JsonElement payloadElement = root.get("payload");
+        if (payloadElement == null || payloadElement.isJsonNull()) {
+            throw new IllegalArgumentException("Missing payload for type " + type);
+        }
         this.out.println("[TCP] Received " + type + " from " + this.virtualView.describeSession());
 
         // =========================================================

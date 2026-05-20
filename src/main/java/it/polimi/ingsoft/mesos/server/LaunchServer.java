@@ -48,7 +48,6 @@ public final class LaunchServer {
       internamente se ne occupa il relativo router
     - Harness vari protocol dependent delle virtualview : connection acceptor, commandhandler, etc
     - Command Router: Dato un payload recuper lo snapshot della sessione del player e lo instrada correttamente
-    //TODO : Finire lo spiegone architetturale
     */
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {

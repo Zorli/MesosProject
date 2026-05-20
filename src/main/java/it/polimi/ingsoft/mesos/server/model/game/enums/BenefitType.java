@@ -12,9 +12,9 @@ public enum BenefitType {
     /** Rewards food when the tribe owns a matching pair of inventors. */
     POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION,     // <-- done
     /** Grants an extra draw opportunity during the end-of-round sequence. */
-    END_ROUND_EXTRA_CARD,                               // <-- TODO but we use it in the end round phase
+    END_ROUND_EXTRA_CARD,
     /** Modifies the totem position reached after returning to the starting tile. */
-    END_ROUND_TOTEM_POSITION,                           // <-- TODO but we use it in the end round phase
+    END_ROUND_TOTEM_POSITION,
 
     // We just have to call the applyEffect on the event cards and give them the player list.
     /** Reduces the sustenance penalty for a specific tribe-card type. */
