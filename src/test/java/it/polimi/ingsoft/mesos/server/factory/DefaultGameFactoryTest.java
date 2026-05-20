@@ -23,7 +23,7 @@ class DefaultGameFactoryTest {
         Game game = gameFactory.createGame(123, players);
 
         assertEquals(123, game.getId());
-        assertEquals(63, game.getBoard().getRemainingTribeDeckCards().size());
+        assertEquals(64, game.getBoard().getRemainingTribeDeckCards().size());
         assertEquals(21, game.getBoard().getRemainingBuildingDeckCards().size());
         assertNotNull(players.get(0).getTribe());
         assertNotNull(players.get(1).getTribe());
