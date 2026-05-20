@@ -1145,7 +1145,7 @@ public class GUIController implements ClientView {
     }
 
     private int displayEra(int currentEra) {
-        return currentEra + 1;
+        return currentEra;
     }
 
     private String describeLobbyEvent(LobbyEventType event) {

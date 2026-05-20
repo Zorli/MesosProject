@@ -30,6 +30,11 @@ public class ShamanRitualEventCard extends EventCard {
         this.prestigePointsForLower = prestigePointsForLower;
     }
 
+    @Override
+    public String getCompleteName() {
+        return "Shaman Ritual";
+    }
+
     /**
      * Applies the event to all players in the match.
      *

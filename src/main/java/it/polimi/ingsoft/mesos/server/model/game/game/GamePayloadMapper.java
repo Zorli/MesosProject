@@ -9,6 +9,7 @@ import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Builder;
 import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Hunter;
 import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Inventor;
 import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Shaman;
+import it.polimi.ingsoft.mesos.server.model.game.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
@@ -47,7 +48,7 @@ final class GamePayloadMapper {
         return new GamePayload(
                 game.getId(),
                 game.getStatus().name(),
-                game.getCurrentEra().ordinal(),
+                game.getCurrentEra().getIntegerEra(),
                 toTurnOrderPayload(game.getRoundFlow()),
                 new TurnStatePayload(game.getPlayerDraftState().getPhase().name()),
                 toPlayerPayloads(game.getPlayers(),game),
@@ -237,7 +238,7 @@ final class GamePayloadMapper {
      */
     private static CardPayload toCardPayload(Card card) {
         int id = card.getId();
-        int era = card.getIntegerEra();
+        int era = card.getEra().getIntegerEra();
         String type = card.getCardType();
 
         if (card instanceof Shaman shaman) {
@@ -254,6 +255,9 @@ final class GamePayloadMapper {
         }
         if (card instanceof BuildingCard buildingCard) {
             return CardPayload.building(id, type, era, buildingCard.getFoodCost());
+        }
+        if(card instanceof EventCard eventCard){
+            return CardPayload.event(id, type, era, eventCard.getCompleteName());
         }
 
         return CardPayload.base(id, type, era);

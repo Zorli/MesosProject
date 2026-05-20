@@ -23,4 +23,8 @@ public enum Era {
             case third -> third;
         };
     }
+
+    public int getIntegerEra(){
+        return this.ordinal()+1;
+    }
 }

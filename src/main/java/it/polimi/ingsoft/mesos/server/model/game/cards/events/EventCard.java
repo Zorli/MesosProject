@@ -31,4 +31,6 @@ public abstract class EventCard extends TribeCard implements EventAction {
     public boolean isDrawable(Player player) {
         return false;
     }
+
+    public abstract String getCompleteName();
 }

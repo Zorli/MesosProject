@@ -35,6 +35,11 @@ public class CavePaintingEventCard extends EventCard {
         this.prestigePointsForNegative = prestigePointsForNegative;
     }
 
+    @Override
+    public String getCompleteName() {
+        return "Cave Painting";
+    }
+
     /**
      * Applies the event to all players in the match.
      *
