@@ -32,5 +32,10 @@ public abstract class EventCard extends TribeCard implements EventAction {
         return false;
     }
 
+    /**
+     * Returns the display name of the concrete event card.
+     *
+     * @return complete event-card name
+     */
     public abstract String getCompleteName();
 }

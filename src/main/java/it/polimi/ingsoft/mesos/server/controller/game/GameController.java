@@ -126,6 +126,11 @@ public class GameController implements Runnable  {
         }
     }
 
+    /**
+     * Returns whether this controller is tearing down its match.
+     *
+     * @return {@code true} when the game is closing and should no longer receive commands
+     */
     public boolean isClosing() {
         synchronized (this.closingLock) {
             return this.closing;
@@ -342,6 +347,13 @@ public class GameController implements Runnable  {
         return this.resolvePlayer(this.sessions.nicknameOf(sessionId));
     }
 
+    /**
+     * Resolves a session id to a player, returning {@code null} when the session
+     * is no longer valid for this match.
+     *
+     * @param sessionId session that should identify a game player
+     * @return resolved player, or {@code null} if the session cannot be resolved
+     */
     private Player resolvePlayerBySessionOrNull(String sessionId) {
         try {
             return this.resolvePlayerBySession(sessionId);
@@ -502,6 +514,12 @@ public class GameController implements Runnable  {
 
     // Helper methods
 
+    /**
+     * Validates the nickname of the match host.
+     *
+     * @param hostNickname nickname supplied when the game controller is created
+     * @return validated host nickname
+     */
     private static String requireHostNickname(String hostNickname) {
         if (hostNickname == null || hostNickname.isBlank()) {
             throw new IllegalArgumentException("Match host nickname cannot be null or blank");
@@ -509,6 +527,12 @@ public class GameController implements Runnable  {
         return hostNickname;
     }
 
+    /**
+     * Notifies the acting session that the received command is not valid for the
+     * current game phase.
+     *
+     * @param sessionId session that sent the invalid command
+     */
     private void reportPhaseError(String sessionId) {
         try {
             this.game.reportPhaseError(this.sessions.getListenerOf(sessionId));

@@ -12,7 +12,14 @@ import java.util.ArrayList;
  * configured reward or penalty, taking into account building modifiers.
  */
 public class ShamanRitualEventCard extends EventCard {
+    /**
+     * Prestige points awarded to players with the highest shaman-star total.
+     */
     private final int prestigePointsForHigher;
+
+    /**
+     * Prestige points lost by players with the lowest shaman-star total.
+     */
     private final int prestigePointsForLower;
 
     /**
@@ -30,6 +37,11 @@ public class ShamanRitualEventCard extends EventCard {
         this.prestigePointsForLower = prestigePointsForLower;
     }
 
+    /**
+     * Returns the complete event-card name.
+     *
+     * @return event-card name
+     */
     @Override
     public String getCompleteName() {
         return "Shaman Ritual";

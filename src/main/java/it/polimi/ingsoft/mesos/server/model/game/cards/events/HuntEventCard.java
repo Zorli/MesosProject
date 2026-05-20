@@ -14,7 +14,14 @@ import java.util.ArrayList;
  * their tribe and then applies any matching hunter-building bonus.
  */
 public class HuntEventCard extends EventCard {
+    /**
+     * Food granted for each hunter in the player's tribe.
+     */
     private final int foodReward;
+
+    /**
+     * Prestige points granted for each hunter in the player's tribe.
+     */
     private final int prestigePointsReward;
 
     /**
@@ -32,6 +39,11 @@ public class HuntEventCard extends EventCard {
         this.prestigePointsReward = prestigePointsReward;
     }
 
+    /**
+     * Returns the complete event-card name.
+     *
+     * @return event-card name
+     */
     @Override
     public String getCompleteName() {
         return "Hunt";

@@ -14,6 +14,9 @@ import java.util.ArrayList;
  * remaining shortage into prestige point loss.
  */
 public class SustenanceEventCard extends EventCard {
+    /**
+     * Prestige point penalty applied for each sustenance unit the player cannot pay with food.
+     */
     public final int prestigePointsToRemovePerCharacter;
 
     /**
@@ -29,6 +32,11 @@ public class SustenanceEventCard extends EventCard {
         this.prestigePointsToRemovePerCharacter = prestigePointsToRemovePerCharacter;
     }
 
+    /**
+     * Returns the complete event-card name.
+     *
+     * @return event-card name
+     */
     @Override
     public String getCompleteName() {
         return "Sustenance";
