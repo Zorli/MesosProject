@@ -42,6 +42,14 @@ public abstract class Card implements CardAction {
         return this.era;
     }
 
+    public int getIntegerEra(){
+        return this.era.ordinal();
+    }
+
+    public String getCardType() {
+        return this.getClass().getSimpleName();
+    }
+
     /**
      * Updates the era associated with the card.
      *

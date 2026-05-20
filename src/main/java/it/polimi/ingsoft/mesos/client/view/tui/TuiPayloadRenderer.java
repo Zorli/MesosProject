@@ -270,6 +270,14 @@ final class TuiPayloadRenderer {
      * <p>Each card is rendered as {@code [id type era]}. The era printed to the
      * user is one-based, so internal era {@code 0} is shown as {@code e1}.
      */
+//    HUNTER
+//    SHAMAN
+//    ARTIST
+//    BUILDER
+//    INVENTOR
+//    GATHERER
+//    EVENT
+//    BUILDING
     private static String formatCards(List<CardPayload> cards) {
         if (cards == null || cards.isEmpty()) {
             return "-";
@@ -277,8 +285,28 @@ final class TuiPayloadRenderer {
 
         List<String> renderedCards = new ArrayList<>();
         for (CardPayload card : cards) {
-            renderedCards.add("[" + card.id + " " + card.type + " e" + (card.era + 1) + "]");
+            String type = card.type == null ? "" : card.type;
+            String base = "[" + card.id + " " + type + " era" + (card.era + 1);
+
+            switch (type) {
+                case "HUNTER" ->
+                        renderedCards.add(base + " has effect: " + card.hunterHasEffect + "]");
+                case "SHAMAN" ->
+                        renderedCards.add(base + " stars: " + card.sciamanStars + "]");
+                case "BUILDER" ->
+                        renderedCards.add(base + " discount: " + card.discount + " finalPP: " + card.finalPrestigePoints +
+                                "]");
+                case "INVENTOR" ->
+                        renderedCards.add(base + " inventor type: " + card.inventorPerk + "]");
+                case "BUILDING" ->
+                        renderedCards.add(base + " cost: " + card.buildingCost + "]");
+                case "ARTIST", "GATHERER", "EVENT" ->
+                        renderedCards.add(base + "]");
+                default ->
+                        renderedCards.add(base + "]");
+            }
         }
+
         return String.join(" ", renderedCards);
     }
 
@@ -290,9 +318,9 @@ final class TuiPayloadRenderer {
         for (OfferSpacePayload offerSpace : offerSpaces) {
             renderedOfferSpaces.add(
                     offerSpace.code
-                            + " top=" + offerSpace.topRowCardsToTake
-                            + " bot=" + offerSpace.bottomRowCardsToTake
-                            + " occ=" + valueOrDash(offerSpace.occupiedByNickname)
+                            + " topDraw=" + offerSpace.topRowCardsToTake
+                            + " bottomDraw=" + offerSpace.bottomRowCardsToTake
+                            + " occupiedBy=" + valueOrDash(offerSpace.occupiedByNickname)
             );
         }
         return String.join(" | ", renderedOfferSpaces);
@@ -308,7 +336,7 @@ final class TuiPayloadRenderer {
                     "#" + startingBlock.position
                             + " food=" + formatModifier(startingBlock.foodModifier)
                             + " pp=" + formatModifier(startingBlock.prestigeModifier)
-                            + " occ=" + valueOrDash(startingBlock.occupiedByNickname)
+                            + " occupiedBy=" + valueOrDash(startingBlock.occupiedByNickname)
             );
         }
         return String.join(" | ", renderedStartingBlocks);

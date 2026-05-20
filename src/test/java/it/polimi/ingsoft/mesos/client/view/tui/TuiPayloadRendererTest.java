@@ -121,7 +121,7 @@ class TuiPayloadRendererTest {
                         new PlayerPayload("bob", 2, 4, null, new TribePayload(List.of(), List.of()),true)
                 ),
                 new BoardPayload(
-                        List.of(new CardPayload(10, "HUNTER", 0)),
+                        List.of(new CardPayload.hunter(10, "HUNTER", 0)),
                         List.of(new CardPayload(20, "HUT", 1)),
                         List.of(
                                 new OfferSpacePayload("A1", 1, 0, "ada"),
