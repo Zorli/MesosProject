@@ -13,6 +13,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPaylo
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnStatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import javafx.animation.KeyFrame;
@@ -49,19 +50,45 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
- * JavaFX implementation of the client view contract.
+ * JavaFX implementation of the {@link ClientView} contract.
  *
- * <p>GUI actions go through {@link ServerProxy}, while server updates arrive through the
- * {@link ClientView} methods.
+ * <p>This class is the controller behind {@code gui.fxml}. The FXML file describes the
+ * static structure of the window: the top bar, the login page, the lobby list page, the
+ * lobby command page, the game page, and the final-result page. Fields annotated with
+ * {@link FXML} are injected by {@link FXMLLoader} by matching their names with the
+ * {@code fx:id} attributes in the FXML file. Methods annotated with {@link FXML} are
+ * event handlers referenced from the FXML file through attributes such as
+ * {@code onAction="#handleLogin"}.</p>
+ *
+ * <p>{@code GUIController} contains the behavior behind that structure. User actions
+ * call the attached {@link ServerProxy}, while server messages arrive through the
+ * {@link ClientView} methods implemented by this class. In other words, outgoing
+ * commands follow {@code GUI -> ServerProxy -> server}; incoming updates follow
+ * {@code server -> client networking layer -> ClientView -> GUIController}.</p>
+ *
+ * <p>All JavaFX nodes must be read or modified on the JavaFX Application Thread.
+ * Button handlers are already executed on that thread, but server updates can arrive
+ * from TCP or RMI networking threads. For this reason every public {@link ClientView}
+ * update method delegates UI work through {@link #runOnFx(Runnable)}, which executes
+ * immediately when already on the JavaFX thread and otherwise schedules the work with
+ * {@link Platform#runLater(Runnable)}.</p>
+ *
+ * <p>The root FXML page container is a {@link StackPane}: only one logical page is made
+ * visible at a time by {@link #showPage(javafx.scene.Node)}. Dynamic game data is not
+ * hard-coded in FXML; it is rendered into placeholder containers such as
+ * {@code lobbyListContainer}, {@code upperRowContainer}, {@code lowerRowContainer},
+ * {@code offerPathContainer}, {@code playerListContainer}, {@code tribeCardsContainer},
+ * and {@code finalRankingContainer}.</p>
  */
 public class GUIController implements ClientView {
     private static final String FXML_RESOURCE = "gui.fxml";
     private static final String CSS_RESOURCE = "mesos-gui.css";
-    private static final String CARD_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/cards/%d.jpg";
-    private static final String OFFER_PATH_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/offerPath/%s.png";
-    private static final String TOTEM_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/client/assets/totems/%s.png";
+    private static final String CARD_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/assets/cards/%d.jpg";
+    private static final String OFFER_PATH_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/assets/offerPath/%s.png";
+    private static final String TOTEM_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/assets/totems/%s.png";
     private static final AtomicBoolean JAVAFX_STARTED = new AtomicBoolean(false);
 
     private ServerProxy serverProxy;
@@ -100,6 +127,7 @@ public class GUIController implements ClientView {
     @FXML private Label currentLobbyHostLabel;
     @FXML private Label currentLobbyPlayersLabel;
     @FXML private Label currentLobbyStateLabel;
+    @FXML private Label playersInLobby;
     @FXML private Label capacityLabel;
     @FXML private ComboBox<Integer> capacityComboBox;
     @FXML private VBox lobbyListContainer;
@@ -269,6 +297,22 @@ public class GUIController implements ClientView {
     }
 
     @Override
+    public void showAuthenticationResult(AuthenticationResultPayload payload) {
+        this.runOnFx(() -> {
+            if (payload == null) {
+                return;
+            }
+            if (payload.nickname != null && !payload.nickname.isBlank()) {
+                this.nickname = payload.nickname;
+                this.sessionNicknameLabel.setText(this.nickname);
+            }
+            String message = payload.message == null ? "Login successful." : payload.message;
+            this.loginStatusLabel.setText(message + "\nLoading lobby...");
+            this.scheduleAuthenticatedRedirect();
+        });
+    }
+
+    @Override
     public void showLobbyUpdate(LobbyUpdatePayload payload) {
         this.runOnFx(() -> {
             this.lastLobbyUpdatePayload = payload;
@@ -276,15 +320,6 @@ public class GUIController implements ClientView {
                 return;
             }
             String message = payload.message == null ? this.describeLobbyEvent(payload.event) : payload.message;
-            if (payload.event == LobbyEventType.AUTHENTICATED) {
-                if (payload.nickname != null && !payload.nickname.isBlank()) {
-                    this.nickname = payload.nickname;
-                    this.sessionNicknameLabel.setText(this.nickname);
-                }
-                this.loginStatusLabel.setText(message + "\nLoading lobby...");
-                this.scheduleAuthenticatedRedirect();
-                return;
-            }
             if (payload.event != LobbyEventType.LOBBY_LEFT || this.isCurrentUser(payload.nickname)) {
                 this.lobbyStatusLabel.setText(message);
             }
@@ -1118,7 +1153,6 @@ public class GUIController implements ClientView {
             return "Aggiornamento lobby ricevuto.";
         }
         return switch (event) {
-            case AUTHENTICATED -> "Login successful.";
             case LOBBY_CREATED -> "Lobby creata.";
             case LOBBY_JOINED -> "Lobby raggiunta.";
             case LOBBY_LEFT -> "Sei uscito dalla lobby.";
@@ -1280,12 +1314,25 @@ public class GUIController implements ClientView {
             this.currentLobbyPlayersLabel.setText("Players: " + currentPlayers + "/" + maxPlayers);
         if (this.currentLobbyStateLabel != null)
             this.currentLobbyStateLabel.setText(this.displayLobbyStatus(this.currentLobbyStatus));
+        if (this.playersInLobby != null) {
+
+            List<String> lobbyPlayers = payload.players == null ? List.of() : payload.players;
+
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = 0; i < lobbyPlayers.size(); i++) {
+                builder.append(lobbyPlayers.get(i));
+                builder.append("\n");
+            }
+            this.playersInLobby.setText("Players in lobby:\n" + builder);
+        }
     }
 
     private void renderNoCurrentLobby() {
         if (this.currentLobbyTitleLabel != null) this.currentLobbyTitleLabel.setText("No lobby selected");
         if (this.currentLobbyHostLabel != null) this.currentLobbyHostLabel.setText("Host: -");
         if (this.currentLobbyPlayersLabel != null) this.currentLobbyPlayersLabel.setText("Players: -");
+        if (this.playersInLobby != null) this.playersInLobby.setText("Players: -");
         if (this.currentLobbyStateLabel != null) this.currentLobbyStateLabel.setText("Waiting");
     }
 

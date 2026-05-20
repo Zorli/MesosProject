@@ -98,6 +98,7 @@
                         </HBox>
                         <Label fx:id="currentLobbyHostLabel" text="Host: -" styleClass="muted"/>
                         <Label fx:id="currentLobbyPlayersLabel" text="Players: -" styleClass="muted"/>
+                        <Label fx:id="playersInLobby" text="Players: -" styleClass="muted"/>
                     </VBox>
                     <Label fx:id="capacityLabel" text="Players" styleClass="field-label"/>
                     <ComboBox fx:id="capacityComboBox" maxWidth="Infinity"/>

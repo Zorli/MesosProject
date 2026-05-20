@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.controller.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
@@ -10,16 +11,8 @@ import java.util.List;
 
 public final class LobbyPayloadMapper {
 
-    public LobbyUpdatePayload authenticated(String nickname) {
-        return new LobbyUpdatePayload(
-                LobbyEventType.AUTHENTICATED,
-                nickname,
-                "Authentication completed successfully",
-                null,
-                null,
-                null,
-                null
-        );
+    public AuthenticationResultPayload authenticated(String nickname) {
+        return new AuthenticationResultPayload(nickname, "Authentication completed successfully");
     }
 
     public LobbyUpdatePayload lobbyCreated(String nickname, Lobby lobby) {

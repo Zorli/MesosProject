@@ -8,6 +8,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayl
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 
@@ -53,6 +54,21 @@ final class TuiPayloadRenderer {
                     .append(this.renderGame(lastGamePayload, localNickname));
         }
 
+        return builder.toString();
+    }
+
+    /**
+     * Formats a successful authentication result.
+     *
+     * @param payload authentication result received from the server
+     * @return text to print in the TUI
+     */
+    String renderAuthenticationResult(AuthenticationResultPayload payload) {
+        StringBuilder builder = new StringBuilder("[SERVER][AUTH] ");
+        builder.append(payload.nickname);
+        if (payload.message != null && !payload.message.isBlank()) {
+            builder.append(" | ").append(payload.message);
+        }
         return builder.toString();
     }
 
