@@ -23,15 +23,52 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Objects;
 
+/**
+ * Controller responsible for managing a single active {@link Lobby} instance and processing
+ * all network/system commands relating to it.
+ *
+ * <p><strong>Threading & Design:</strong>
+ * <ul>
+ *   <li>Implements {@link Runnable} and executes inside its own dedicated worker thread (named {@code Lobby-ID-Worker}).</li>
+ *   <li>Uses a threat-safe command queue ({@link BlockingQueue}) to receive commands asynchronously.</li>
+ *   <li>The run loop processes enqueued commands sequentially (FIFO), preventing concurrency conflicts
+ *       and race conditions on the underlying {@link Lobby} model without lock overhead.</li>
+ * </ul>
+ *
+ * <p><strong>Lobby to Game Transition Flow:</strong>
+ * When the host triggers the match start:
+ * <ol>
+ *   <li>Validates state via {@link Lobby#startMatch(String)}.</li>
+ *   <li>Builds player instances using {@link LobbyPlayerFactory} (assigning totem colors and shuffling order).</li>
+ *   <li>Instantiates a {@link Game} and a corresponding {@link GameController}.</li>
+ *   <li>Moves connected sessions in {@link ServerSessionRegistry} from Lobby phase to Game phase.</li>
+ *   <li>Migrates listeners from the Lobby observer list to the Game observer list.</li>
+ *   <li>Unregisters itself from the registry and terminates its own run loop.</li>
+ *   <li>Spins up a new {@code Game-ID-Worker} thread for the game.</li>
+ *   <li>Spins up a temporary countdown thread to trigger match setup.</li>
+ * </ol>
+ */
 public class LobbyController implements Runnable {
 
+    /** The domain model representing the lobby state. */
     private final Lobby lobby;
+    /** The global server registry storing session states and controller routes. */
     private final ServerSessionRegistry sessions;
+    /** The factory used to instantiate new {@link Game} matches. */
     private final GameFactory gameFactory;
+    /** The factory used to map lobby users to game players. */
     private final LobbyPlayerFactory lobbyPlayerFactory;
 
+    /** Command queue for receiving incoming user or system actions asynchronously. */
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
 
+    /**
+     * Constructs a LobbyController for a specific lobby.
+     *
+     * @param lobby the {@link Lobby} model to manage
+     * @param sessions the central {@link ServerSessionRegistry}
+     * @param gameFactory the {@link GameFactory} used to boot the match
+     */
     public LobbyController(
             Lobby lobby,
             ServerSessionRegistry sessions,
@@ -43,25 +80,37 @@ public class LobbyController implements Runnable {
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
     }
 
+    /**
+     * Enqueues a command (e.g. user action, connection event, disconnection event) to be processed
+     * sequentially by this controller's worker thread.
+     *
+     * @param command the command wrapper containing the payload and sender session details
+     */
     public void enqueueMessage(QueuedCommand command) {
         this.commandQueue.add(command);
     }
 
+    /**
+     * Main run loop executing in a dedicated thread. Continuously takes commands from
+     * the queue and dispatches them to appropriate handlers.
+     */
     @Override
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 QueuedCommand cmd = this.commandQueue.take();
-                //Controllo se è payload interno o esterno
                 String sessionId = cmd.getSessionId();
-                if (cmd instanceof SystemJoinCommand ) {
+
+                // Dispatch system command notifications first
+                if (cmd instanceof SystemJoinCommand) {
                     this.joinUser(sessionId);
                     continue;
-                }else if(cmd instanceof SystemDisconnectCommand){
+                } else if (cmd instanceof SystemDisconnectCommand) {
                     this.disconnectUser(sessionId);
                     continue;
                 }
 
+                // Check that user command matches expected types
                 if (!(cmd instanceof ClientPayloadCommand clientCommand)) {
                     this.reportPhaseError(sessionId);
                     continue;
@@ -74,7 +123,7 @@ public class LobbyController implements Runnable {
                         case START_LOBBY -> this.startLobby(sessionId);
                         default -> throw new IllegalArgumentException("Unknown command type: " + payload.getClass());
                     }
-                } catch(IllegalArgumentException e){
+                } catch (IllegalArgumentException e) {
                     this.reportPhaseError(sessionId);
                 }
             } catch (InterruptedException e) {
@@ -83,10 +132,18 @@ public class LobbyController implements Runnable {
             }
         }
     }
+
+    /**
+     * Handles adding an authenticated user connection to the lobby state.
+     * Supports both regular joins and rejoining a resumable lobby.
+     *
+     * @param sessionId the session identifier of the client joining
+     */
     private void joinUser(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
         Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
 
+        // Resume flow for suspended lobby matches
         if (this.lobby.getStatus() == LobbyStatus.RESUMABLE && this.lobby.isExpectedResumePlayer(nickname)) {
             if (!this.lobby.rejoinResumablePlayer(nickname, clientView)) {
                 return;
@@ -96,41 +153,48 @@ public class LobbyController implements Runnable {
             return;
         }
 
-        // 1. Deleghiamo al Model (che ora gestisce tutto: logica, Unicast di errore e Broadcast)
+        // Delegate validation and model modifications to Lobby model
         boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView);
 
-        // 2. Il Controller agisce sulla rete/macchina a stati GLOBALE
-        // SOLO se il Model ha dato semaforo verde!
+        // Update central registry and notify all clients if join succeeded
         if (joinedSuccessfully) {
             this.sessions.enterLobby(sessionId, this.lobby.getId());
             this.lobby.notifyPlayerJoined(nickname);
         }
-
-        // Se joinedSuccessfully è false, il Controller NON FA NULLA.
-        // Il Model si è già occupato di inviare l'ErrorPayload (Unicast) al clientView.
     }
+
+    /**
+     * Handles a user request to exit the lobby. Removes player from model, updates session state
+     * back to PRE_LOBBY, and disposes of the lobby if it becomes empty.
+     *
+     * @param sessionId the session identifier of the client leaving
+     */
     private void exitLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
-
-        // Il Model fa controlli, aggiorna i suoi dati e spara il Broadcast.
-        // Se tutto va a buon fine (ritorna true), il Controller sposta l'utente nel Registry.
         Listener leavingListener = (Listener) this.sessions.connectionOf(sessionId);
+
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.sessions.leaveLobby(sessionId);
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
+
+        // Dispose empty lobbies that cannot be resumed
         if (this.shouldDisposeEmptyLobby()) {
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
         }
     }
 
+    /**
+     * Handles connection timeouts or connection failures. Removes the disconnected user from
+     * the lobby model, disposes empty lobbies, and unregisters the session.
+     *
+     * @param sessionId the session identifier of the disconnected client
+     */
     private void disconnectUser(String sessionId) {
         String nickname;
         Listener leavingListener;
         try {
-            // A timeout can enqueue the same disconnect twice before the first one unregisters the session.
-            // If this command is stale, the session is already gone and there is nothing left to clean here.
             nickname = this.sessions.nicknameOf(sessionId);
             leavingListener = (Listener) this.sessions.connectionOf(sessionId);
         } catch (RuntimeException ignored) {
@@ -140,6 +204,7 @@ public class LobbyController implements Runnable {
         if (this.lobby.removePlayer(nickname, leavingListener)) {
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
+
         if (this.shouldDisposeEmptyLobby()) {
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
@@ -147,20 +212,32 @@ public class LobbyController implements Runnable {
         this.sessions.unregister(sessionId);
     }
 
+    /**
+     * Helper to verify if an empty lobby should be deleted.
+     */
     private boolean shouldDisposeEmptyLobby() {
         return this.lobby.isEmpty() && this.lobby.getStatus() != LobbyStatus.RESUMABLE;
     }
 
+    /**
+     * Handles the request to start the game match. If the model validates and successfully
+     * starts, transitions the lobby into a game and shuts down this controller thread.
+     *
+     * @param sessionId the session identifier of the host initiating start
+     */
     private void startLobby(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
 
         if (this.lobby.startMatch(nickname)) {
             GameController orchestrator = this.startNewMatch();
             this.startMatchCountdown(orchestrator);
-            Thread.currentThread().interrupt();
+            Thread.currentThread().interrupt(); // Stop LobbyController loop
         }
     }
 
+    /**
+     * Coordinates the creation of a new {@link Game} and a corresponding {@link GameController}.
+     */
     private GameController startNewMatch() {
         Objects.requireNonNull(this.gameFactory, "gameFactory is null — cannot start a new match");
         List<Player> players = this.lobbyPlayerFactory.createPlayers(this.lobby.getPlayers());
@@ -180,11 +257,18 @@ public class LobbyController implements Runnable {
         return orchestrator;
     }
 
+    /**
+     * Spins up the worker thread for the newly instantiated game match.
+     */
     private void startGameWorker(GameController orchestrator) {
         Thread gameWorker = new Thread(orchestrator, "Game-" + orchestrator.getGame().getId() + "-Worker");
         gameWorker.start();
     }
 
+    /**
+     * Re-allocates active lobby client sessions into the game phase and moves
+     * virtual view listeners to the Game model listener list.
+     */
     private void attachLobbySessionsToGame(GameController orchestrator) {
         int gameId = orchestrator.getGame().getId();
         List<ServerSessionRegistry.SessionSnapshot> lobbySessions = this.sessions.sessionsInLobby(this.lobby.getId());
@@ -200,6 +284,9 @@ public class LobbyController implements Runnable {
         }
     }
 
+    /**
+     * Clears lobby references and registers the new GameController orchestrator.
+     */
     private void completeLobbyTransition(GameController orchestrator) {
         this.lobby.clearListeners();
         this.sessions.registerGameOrchestrator(orchestrator.getGame().getId(), orchestrator);
@@ -207,13 +294,16 @@ public class LobbyController implements Runnable {
         this.sessions.removeLobbyModel(this.lobby.getId());
     }
 
+    /**
+     * Starts a short countdown timer to enqueue the initial setup phase message to the GameController.
+     */
     private void startMatchCountdown(GameController orchestrator) {
         new Thread(() -> {
             try {
-                // Aspetta 5 secondi (5000 millisecondi)
+                // Wait for 2 seconds to allow client interfaces to transition
                 Thread.sleep(2000);
 
-                // Poi avvia il setup se la partita è ancora in stato SETUP
+                // Initialize game setup if the match is still in SETUP state
                 if (orchestrator.getGame().getStatus() == GameStatus.SETUP) {
                     orchestrator.enqueueMessage(new SystemSetupMatchCommand());
                 }
@@ -223,6 +313,9 @@ public class LobbyController implements Runnable {
         }, "match-countdown-" + this.lobby.getId()).start();
     }
 
+    /**
+     * Helper to report an out-of-phase request directly to a client connection.
+     */
     private void reportPhaseError(String sessionId) {
         try {
             Listener listener = this.sessions.getListenerOf(sessionId);
