@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +48,18 @@ class MessageRouterTest {
 
         assertEquals("showLobbyUpdate", view.lastCall);
         assertSame(payload, view.lobbyUpdatePayload);
+    }
+
+    @Test
+    void routesAuthenticationResultPayloadToClientView() {
+        RecordingClientView view = new RecordingClientView();
+        MessageRouter router = new MessageRouter(view);
+        AuthenticationResultPayload payload = new AuthenticationResultPayload("ada", "ok");
+
+        router.routeMessage(new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, payload));
+
+        assertEquals("showAuthenticationResult", view.lastCall);
+        assertSame(payload, view.authenticationResultPayload);
     }
 
     @Test
@@ -128,6 +141,7 @@ class MessageRouterTest {
     private static final class RecordingClientView implements ClientView {
         private String lastCall;
         private ErrorPayload errorPayload;
+        private AuthenticationResultPayload authenticationResultPayload;
         private LobbyUpdatePayload lobbyUpdatePayload;
         private LobbyListPayload lobbyListPayload;
         private GamePayload gamePayload;
@@ -137,6 +151,12 @@ class MessageRouterTest {
         public void showError(ErrorPayload payload) {
             this.lastCall = "showError";
             this.errorPayload = payload;
+        }
+
+        @Override
+        public void showAuthenticationResult(AuthenticationResultPayload payload) {
+            this.lastCall = "showAuthenticationResult";
+            this.authenticationResultPayload = payload;
         }
 
         @Override

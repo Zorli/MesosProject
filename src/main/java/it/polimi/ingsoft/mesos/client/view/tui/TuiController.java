@@ -4,8 +4,8 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.io.IOException;
@@ -198,19 +198,23 @@ public class TuiController implements ClientView {
     }
 
     /**
-     * Prints a lobby update received from the server.
+     * Prints a successful authentication result received from the server.
      *
-     * <p>When authentication succeeds, this method stores the local nickname.
-     * Later game rendering uses that nickname to show which player is using this
-     * client.
+     * @param payload authenticated nickname and status message
+     */
+    @Override
+    public synchronized void showAuthenticationResult(AuthenticationResultPayload payload) {
+        this.localNickname = payload.nickname;
+        this.render(this.payloadRenderer.renderAuthenticationResult(payload));
+    }
+
+    /**
+     * Prints a lobby update received from the server.
      *
      * @param payload lobby update to show
      */
     @Override
     public synchronized void showLobbyUpdate(LobbyUpdatePayload payload) {
-        if (payload.event == LobbyEventType.AUTHENTICATED) {
-            this.localNickname = payload.nickname;
-        }
         this.render(this.payloadRenderer.renderLobbyUpdate(payload));
     }
 

@@ -13,8 +13,8 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.io.BufferedReader;
@@ -137,13 +137,15 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
             this.sendServerMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
             return;
         }
+        if (payload instanceof AuthenticationResultPayload authenticationResultPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, authenticationResultPayload));
+            return;
+        }
         if (payload instanceof LobbyListPayload lobbyListPayload) {
             this.sendServerMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
             return;
         }
         if (payload instanceof LobbyUpdatePayload lobbyUpdatePayload) {
-            if (lobbyUpdatePayload.event == LobbyEventType.LOBBY_STARTED){
-            }
             this.sendServerMessage(new ServerMessage(ServerMessageType.LOBBY_UPDATE, lobbyUpdatePayload));
         }
     }

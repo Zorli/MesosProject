@@ -12,6 +12,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.io.BufferedReader;
@@ -181,6 +182,9 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
             case ERROR:
                 ErrorPayload errorPayload = GSON.fromJson(payload, ErrorPayload.class);
                 return new ServerMessage(type, errorPayload);
+            case AUTHENTICATION_RESULT:
+                AuthenticationResultPayload authenticationResultPayload = GSON.fromJson(payload, AuthenticationResultPayload.class);
+                return new ServerMessage(type, authenticationResultPayload);
             case LOBBY_UPDATE:
                 LobbyUpdatePayload lobbyUpdatePayload = GSON.fromJson(payload, LobbyUpdatePayload.class);
                 return new ServerMessage(type, lobbyUpdatePayload);

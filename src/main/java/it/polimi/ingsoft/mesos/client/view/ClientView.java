@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServer;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 
 /**
@@ -27,6 +28,13 @@ public interface ClientView {
      * @param payload error code and human-readable error message
      */
     void showError(ErrorPayload payload);
+
+    /**
+     * Shows a successful authentication result before the client joins a lobby.
+     *
+     * @param payload authenticated nickname and status message
+     */
+    void showAuthenticationResult(AuthenticationResultPayload payload);
 
     /**
      * Shows the current state of the lobby joined by the client.
