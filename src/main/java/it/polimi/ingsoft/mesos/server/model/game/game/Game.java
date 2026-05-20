@@ -148,9 +148,6 @@ public class Game {
     public void disconnectedPlayer(Player player) {
         this.actionExecutor.execute(() -> {
             this.connectedPlayers.put(player, false);
-            //TODO: Ci sono alcuni while che presuppongono invariante di almeno un giocatore connesso,
-            //Secondo me almeno un check e lanciare ccezzione senno scorriamo olktre i limiti della mappa
-            //qui un bel check se la persona disconessa era l'ultima -> State = FINISHED
             if(!connectedPlayers.values().stream().anyMatch(Boolean::booleanValue)){
                 //Non c'è più nessuno connesso posso interrompere la partita
                 this.markStateChanged();
