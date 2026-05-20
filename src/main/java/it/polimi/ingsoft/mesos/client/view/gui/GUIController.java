@@ -446,10 +446,24 @@ public class GUIController implements ClientView {
             targetStage.setMinHeight(680);
             targetStage.setScene(scene);
             targetStage.setMaximized(true);
+            targetStage.setOnCloseRequest(event -> this.shutdownClient());
             targetStage.show();
             this.stage = targetStage;
         } catch (IOException exception) {
             throw new UncheckedIOException("Cannot start Mesos GUI", exception);
+        }
+    }
+
+    private void shutdownClient() {
+        try {
+            if (this.serverProxy != null) {
+                this.serverProxy.close();
+            }
+        } catch (IOException ignored) {
+            // The client is already shutting down.
+        } finally {
+            Platform.exit();
+            System.exit(0);
         }
     }
 
