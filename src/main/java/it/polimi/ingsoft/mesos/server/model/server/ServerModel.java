@@ -4,7 +4,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
-import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyPayloadMapper;
+import it.polimi.ingsoft.mesos.server.model.lobby.LobbyPayloadMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -12,14 +12,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ServerModel {
     private final ServerSessionRegistry sessions;
-    private final LobbyPayloadMapper payloadMapper;
+    private final PreLobbyPayloadMapper payloadMapper;
 
     // Mappa globale dei Listener (Livello 1 - Tutte le VirtualView connesse)
     private final Map<String, Listener> globalListeners = new ConcurrentHashMap<>();
 
     public ServerModel(ServerSessionRegistry sessions) {
         this.sessions = sessions;
-        this.payloadMapper = new LobbyPayloadMapper();
+        this.payloadMapper = new PreLobbyPayloadMapper();
     }
 
 

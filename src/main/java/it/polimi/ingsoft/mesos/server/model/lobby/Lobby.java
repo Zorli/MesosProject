@@ -1,6 +1,5 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyPayloadMapper;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;

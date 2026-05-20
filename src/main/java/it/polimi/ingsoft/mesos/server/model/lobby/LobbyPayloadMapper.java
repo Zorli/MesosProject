@@ -1,7 +1,5 @@
-package it.polimi.ingsoft.mesos.server.controller.lobby;
+package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
@@ -11,13 +9,6 @@ import java.util.List;
 
 public final class LobbyPayloadMapper {
 
-    public AuthenticationResultPayload authenticated(String nickname) {
-        return new AuthenticationResultPayload(nickname, "Authentication completed successfully");
-    }
-
-    public LobbyUpdatePayload lobbyCreated(String nickname, Lobby lobby) {
-        return this.fromLobby(LobbyEventType.LOBBY_CREATED, nickname, "Lobby created successfully", lobby);
-    }
 
     public LobbyUpdatePayload lobbyJoined(String nickname, Lobby lobby) {
         return this.fromLobby(LobbyEventType.LOBBY_JOINED, nickname, "Lobby joined successfully", lobby);
@@ -43,21 +34,6 @@ public final class LobbyPayloadMapper {
         return this.fromLobby(LobbyEventType.LOBBY_STARTED, nickname, "Match has started", lobby);
     }
 
-    public LobbyListPayload lobbyList(List<Lobby> lobbies) {
-        return new LobbyListPayload(lobbies.stream()
-                .map(this::summary)
-                .toList());
-    }
-
-    public LobbySummaryPayload summary(Lobby lobby) {
-        return new LobbySummaryPayload(
-                lobby.getId(),
-                lobby.getHostNickname(),
-                lobby.getPlayers().size(),
-                lobby.getChosenCapacity(),
-                lobby.getStatus().name()
-        );
-    }
 
     private LobbyUpdatePayload fromLobby(
             LobbyEventType event,
