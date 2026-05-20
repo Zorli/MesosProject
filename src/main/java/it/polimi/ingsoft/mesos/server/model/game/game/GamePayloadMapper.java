@@ -3,7 +3,13 @@ package it.polimi.ingsoft.mesos.server.model.game.game;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
 import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.StartingBlock;
+import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.game.cards.Card;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Builder;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Hunter;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Inventor;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Shaman;
+import it.polimi.ingsoft.mesos.server.model.game.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
@@ -42,7 +48,7 @@ final class GamePayloadMapper {
         return new GamePayload(
                 game.getId(),
                 game.getStatus().name(),
-                game.getCurrentEra().ordinal(),
+                game.getCurrentEra().getIntegerEra(),
                 toTurnOrderPayload(game.getRoundFlow()),
                 new TurnStatePayload(game.getPlayerDraftState().getPhase().name()),
                 toPlayerPayloads(game.getPlayers(),game),
@@ -231,11 +237,30 @@ final class GamePayloadMapper {
      * @return payload containing id, runtime card type, and era ordinal
      */
     private static CardPayload toCardPayload(Card card) {
-        return new CardPayload(
-                card.getId(),
-                card.getClass().getSimpleName(),
-                card.getEra().ordinal()
-        );
+        int id = card.getId();
+        int era = card.getEra().getIntegerEra();
+        String type = card.getCardType();
+
+        if (card instanceof Shaman shaman) {
+            return CardPayload.shaman(id, type, era, shaman.getStars());
+        }
+        if (card instanceof Hunter hunter) {
+            return CardPayload.hunter(id, type, era, hunter.getHasEffect());
+        }
+        if (card instanceof Inventor inventor) {
+            return CardPayload.inventor(id, type, era, inventor.getInventionType().name());
+        }
+        if (card instanceof Builder builder) {
+            return CardPayload.builder(id, type, era, builder.getPriceDiscount(), builder.getPrestigePoints());
+        }
+        if (card instanceof BuildingCard buildingCard) {
+            return CardPayload.building(id, type, era, buildingCard.getFoodCost());
+        }
+        if(card instanceof EventCard eventCard){
+            return CardPayload.event(id, type, era, eventCard.getCompleteName());
+        }
+
+        return CardPayload.base(id, type, era);
     }
 
     /**

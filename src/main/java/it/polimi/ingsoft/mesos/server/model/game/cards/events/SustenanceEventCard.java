@@ -29,6 +29,11 @@ public class SustenanceEventCard extends EventCard {
         this.prestigePointsToRemovePerCharacter = prestigePointsToRemovePerCharacter;
     }
 
+    @Override
+    public String getCompleteName() {
+        return "Sustenance";
+    }
+
     /**
      * Applies the event to all players in the match.
      *

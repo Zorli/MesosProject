@@ -60,6 +60,11 @@ public class BuildingCard extends Card {
         return this.foodCost;
     }
 
+    @Override
+    public String getCardType() {
+        return "BUILDING";
+    }
+
     /**
      * Returns the actual food cost the provided player has to pay after applying builder discounts.
      *

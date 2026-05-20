@@ -1,19 +1,16 @@
 package it.polimi.ingsoft.mesos.server.controller.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
+import it.polimi.ingsoft.mesos.server.model.lobby.LobbyPayloadMapper;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests verifying all mapping operations of the {@link LobbyPayloadMapper} class.
+ * Unit tests verifying remaining mapping operations of the {@link LobbyPayloadMapper} class.
  *
  * <p>Every test method is documented explaining the exact behavior under verification, the assertions,
  * and how the test verifies the outcome.
@@ -31,34 +28,6 @@ class LobbyPayloadMapperTest {
             @Override
             public void notifyUpdate(Object payload) {}
         });
-    }
-
-    /**
-     * Test name: testAuthenticatedPayload
-     * 1. This test verifies that the authenticated payload is mapped correctly.
-     * 2. It asserts that the returned payload contains the AUTHENTICATED event type and the correct nickname.
-     */
-    @Test
-    void testAuthenticatedPayload() {
-        LobbyUpdatePayload payload = mapper.authenticated("Alice");
-        assertNotNull(payload);
-        assertEquals(LobbyEventType.AUTHENTICATED, payload.event);
-        assertEquals("Alice", payload.nickname);
-    }
-
-    /**
-     * Test name: testLobbyCreatedPayload
-     * 1. This test verifies that mapping a created lobby wraps the state into a LOBBY_CREATED event payload.
-     * 2. It asserts that the host nickname, lobby ID, and player list match the lobby configuration.
-     */
-    @Test
-    void testLobbyCreatedPayload() {
-        LobbyUpdatePayload payload = mapper.lobbyCreated("Alice", lobby);
-        assertNotNull(payload);
-        assertEquals(LobbyEventType.LOBBY_CREATED, payload.event);
-        assertEquals("Alice", payload.nickname);
-        assertEquals(1, payload.lobbyId);
-        assertEquals(2, payload.players.size());
     }
 
     /**
@@ -115,22 +84,5 @@ class LobbyPayloadMapperTest {
         assertNotNull(payload);
         assertEquals(LobbyEventType.LOBBY_STARTED, payload.event);
         assertEquals("Alice", payload.nickname);
-    }
-
-    /**
-     * Test name: testLobbyListPayload
-     * 1. This test verifies that mapping a list of open lobbies formats summaries of all lobbies correctly.
-     * 2. It asserts that the resulting LobbyListPayload contains summaries reflecting the input list size and properties.
-     */
-    @Test
-    void testLobbyListPayload() {
-        LobbyListPayload payload = mapper.lobbyList(List.of(lobby));
-        assertNotNull(payload);
-        assertEquals(1, payload.lobbies.size());
-        LobbySummaryPayload summary = payload.lobbies.get(0);
-        assertEquals(1, summary.lobbyId);
-        assertEquals("Alice", summary.hostNickname);
-        assertEquals(2, summary.currentPlayers);
-        assertEquals(3, summary.maxPlayers);
     }
 }

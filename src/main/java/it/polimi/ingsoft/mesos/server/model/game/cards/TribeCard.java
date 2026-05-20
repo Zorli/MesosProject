@@ -32,4 +32,9 @@ public abstract class TribeCard extends Card {
     public TribeCardType getType(){
         return this.type;
     }
+
+    @Override
+    public String getCardType() {
+        return this.type.name();
+    }
 }

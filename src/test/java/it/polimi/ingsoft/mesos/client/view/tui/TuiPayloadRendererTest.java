@@ -35,7 +35,7 @@ class TuiPayloadRendererTest {
         String rendered = this.renderer.renderError(new ErrorPayload("MOVE_DENIED", "Tile occupied"), gamePayload(), "ada");
 
         assertTrue(rendered.contains("[ERROR] MOVE_DENIED: Tile occupied"));
-        assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=2"));
+        assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=1"));
         assertTrue(rendered.contains("- ada food=3 prestige=5 totem=A1"));
     }
 
@@ -80,15 +80,15 @@ class TuiPayloadRendererTest {
     void rendersGameBasics() {
         String rendered = this.renderer.renderGame(gamePayload(), "ada");
 
-        assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=2"));
+        assertTrue(rendered.contains("[SERVER][GAME] #42 status=RUNNING era=1"));
         assertTrue(rendered.contains("Your nickname: ada"));
         assertTrue(rendered.contains("Round 3 | phase=ACTION | current=ada"));
         assertTrue(rendered.contains("- ada food=3 prestige=5 totem=A1"));
         assertTrue(rendered.contains("- bob food=2 prestige=4 totem=-"));
-        assertTrue(rendered.contains("UPPER  [10 HUNTER e1]"));
-        assertTrue(rendered.contains("LOWER  [20 HUT e2]"));
-        assertTrue(rendered.contains("OFFERS A1 top=1 bot=0 occ=ada | B2 top=0 bot=1 occ=-"));
-        assertTrue(rendered.contains("START  #1 food=+2 pp=+0 occ=- | #2 food=+0 pp=+1 occ=bob"));
+        assertTrue(rendered.contains("UPPER  [10 HUNTER era2 has effect: true]"));
+        assertTrue(rendered.contains("LOWER  [10 HUNTER era2 has effect: false]"));
+        assertTrue(rendered.contains("OFFERS A1 topDraw=1 bottomDraw=0 occupiedBy=ada | B2 topDraw=0 bottomDraw=1 occupiedBy=-"));
+        assertTrue(rendered.contains("START  #1 food=+2 pp=+0 occupiedBy=- | #2 food=+0 pp=+1 occupiedBy=bob"));
     }
 
     @Test
@@ -121,8 +121,8 @@ class TuiPayloadRendererTest {
                         new PlayerPayload("bob", 2, 4, null, new TribePayload(List.of(), List.of()),true)
                 ),
                 new BoardPayload(
-                        List.of(new CardPayload(10, "HUNTER", 0)),
-                        List.of(new CardPayload(20, "HUT", 1)),
+                        List.of(CardPayload.hunter(10,"HUNTER",2,Boolean.TRUE)),
+                        List.of(CardPayload.hunter(10,"HUNTER",2,Boolean.FALSE)),
                         List.of(
                                 new OfferSpacePayload("A1", 1, 0, "ada"),
                                 new OfferSpacePayload("B2", 0, 1, null)

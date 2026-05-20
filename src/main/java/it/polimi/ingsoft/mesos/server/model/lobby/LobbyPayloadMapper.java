@@ -1,8 +1,5 @@
-package it.polimi.ingsoft.mesos.server.controller.lobby;
+package it.polimi.ingsoft.mesos.server.model.lobby;
 
-import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
@@ -16,35 +13,6 @@ import java.util.List;
  * the core domain models.
  */
 public final class LobbyPayloadMapper {
-
-    /**
-     * Creates an update payload signifying a successful authentication of a client nickname.
-     *
-     * @param nickname the nickname of the authenticated player
-     * @return the payload containing the authentication confirmation
-     */
-    public LobbyUpdatePayload authenticated(String nickname) {
-        return new LobbyUpdatePayload(
-                LobbyEventType.AUTHENTICATED,
-                nickname,
-                "Authentication completed successfully",
-                null,
-                null,
-                null,
-                null
-        );
-    }
-
-    /**
-     * Creates an update payload signifying that a lobby has been successfully created.
-     *
-     * @param nickname the host player nickname who created the lobby
-     * @param lobby the created {@link Lobby} instance
-     * @return the lobby creation update payload
-     */
-    public LobbyUpdatePayload lobbyCreated(String nickname, Lobby lobby) {
-        return this.fromLobby(LobbyEventType.LOBBY_CREATED, nickname, "Lobby created successfully", lobby);
-    }
 
     /**
      * Creates an update payload notifying that a player has successfully joined the lobby.
@@ -90,35 +58,6 @@ public final class LobbyPayloadMapper {
      */
     public LobbyUpdatePayload lobbyStarted(String nickname, Lobby lobby) {
         return this.fromLobby(LobbyEventType.LOBBY_STARTED, nickname, "Match has started", lobby);
-    }
-
-    /**
-     * Formats a list of active {@link Lobby} instances into a {@link LobbyListPayload} to send
-     * to clients looking for available lobbies to join.
-     *
-     * @param lobbies the list of active lobbies
-     * @return the formatted lobby list payload containing summaries of all lobbies
-     */
-    public LobbyListPayload lobbyList(List<Lobby> lobbies) {
-        return new LobbyListPayload(lobbies.stream()
-                .map(this::summary)
-                .toList());
-    }
-
-    /**
-     * Formats a single {@link Lobby} instance into a lightweight, serializable {@link LobbySummaryPayload}.
-     *
-     * @param lobby the lobby model to summarize
-     * @return the serializable lobby summary
-     */
-    public LobbySummaryPayload summary(Lobby lobby) {
-        return new LobbySummaryPayload(
-                lobby.getId(),
-                lobby.getHostNickname(),
-                lobby.getPlayers().size(),
-                lobby.getChosenCapacity(),
-                lobby.getStatus().name()
-        );
     }
 
     /**

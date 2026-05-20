@@ -32,6 +32,11 @@ public class HuntEventCard extends EventCard {
         this.prestigePointsReward = prestigePointsReward;
     }
 
+    @Override
+    public String getCompleteName() {
+        return "Hunt";
+    }
+
     /**
      * Applies the event to all players in the match.
      *

@@ -15,6 +15,7 @@
 <BorderPane styleClass="app-shell"
             xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1">
+    <!-- Top bar: application title and current session nickname. -->
     <top>
         <HBox fx:id="topBar" alignment="CENTER_LEFT" spacing="18" styleClass="top-bar">
             <padding>
@@ -31,7 +32,9 @@
     </top>
 
     <center>
+        <!-- Page stack: only one direct child is visible at a time. -->
         <StackPane fx:id="pages" styleClass="page-stack">
+            <!-- Login page: first screen used to authenticate the nickname. -->
             <StackPane fx:id="loginPage" styleClass="login-page">
                 <HBox alignment="CENTER" spacing="34" styleClass="login-overlay">
                     <VBox alignment="CENTER" spacing="16" minWidth="410" maxWidth="450" minHeight="0" maxHeight="310" styleClass="login-panel">
@@ -51,6 +54,7 @@
                 </HBox>
             </StackPane>
 
+            <!-- Lobby list page: shows available tables and opens the creation/join flow. -->
             <VBox fx:id="lobbyPage" spacing="18" styleClass="page lobby-page">
                 <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
                     <VBox spacing="2">
@@ -76,6 +80,7 @@
                 </VBox>
             </VBox>
 
+            <!-- Lobby command page: creates a new lobby or controls the current one. -->
             <VBox fx:id="lobbyFormPage" alignment="TOP_CENTER" spacing="18" styleClass="page lobby-page">
                 <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
                     <VBox spacing="2">
@@ -98,6 +103,7 @@
                         </HBox>
                         <Label fx:id="currentLobbyHostLabel" text="Host: -" styleClass="muted"/>
                         <Label fx:id="currentLobbyPlayersLabel" text="Players: -" styleClass="muted"/>
+                        <Label fx:id="playersInLobby" text="Players: -" styleClass="muted"/>
                     </VBox>
                     <Label fx:id="capacityLabel" text="Players" styleClass="field-label"/>
                     <ComboBox fx:id="capacityComboBox" maxWidth="Infinity"/>
@@ -117,6 +123,7 @@
                 </VBox>
             </VBox>
 
+            <!-- Game page: match header, market rows, offer path, players, and tribes. -->
             <ScrollPane fx:id="gamePage" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="game-scroll">
                 <VBox spacing="14" styleClass="page game-page game-content">
                     <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
@@ -134,6 +141,7 @@
                         <Region HBox.hgrow="ALWAYS"/>
                     </HBox>
 
+                    <!-- Board area: upper market, offer path, and lower market. -->
                     <VBox spacing="14" styleClass="board-panel" VBox.vgrow="ALWAYS">
                         <VBox spacing="8" styleClass="market-band">
                             <HBox alignment="CENTER_LEFT">
@@ -157,6 +165,7 @@
                         </VBox>
                     </VBox>
 
+                    <!-- Player summary area: dynamically filled by GUIController. -->
                     <VBox spacing="10" styleClass="surface-panel players-band">
                         <HBox alignment="CENTER_LEFT">
                             <Label text="Players info" styleClass="panel-title"/>
@@ -164,6 +173,7 @@
                         <VBox fx:id="playerListContainer" spacing="8"/>
                     </VBox>
 
+                    <!-- Tribe area: personal cards grouped by player. -->
                     <VBox spacing="10" styleClass="surface-panel tribe-panel">
                         <HBox alignment="CENTER_LEFT">
                             <Label text="Tribes" styleClass="panel-title"/>
@@ -175,6 +185,7 @@
                 </VBox>
             </ScrollPane>
 
+            <!-- End page: final ranking and navigation back to the lobby list. -->
             <VBox fx:id="endPage" alignment="CENTER" spacing="22" styleClass="page end-page">
                 <VBox alignment="CENTER" spacing="4">
                     <Label text="Match complete" styleClass="hero-title"/>

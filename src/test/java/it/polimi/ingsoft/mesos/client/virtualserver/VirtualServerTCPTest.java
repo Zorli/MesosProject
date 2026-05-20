@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import org.junit.jupiter.api.Test;
 
@@ -239,6 +240,10 @@ class VirtualServerTCPTest {
         @Override
         public void showError(ErrorPayload payload) {
             this.lastError = payload;
+        }
+
+        @Override
+        public void showAuthenticationResult(AuthenticationResultPayload payload) {
         }
 
         @Override
