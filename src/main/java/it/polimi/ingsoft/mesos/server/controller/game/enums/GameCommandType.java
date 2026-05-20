@@ -5,11 +5,31 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
 
+/**
+ * Supported player commands that can be dispatched to a running game.
+ */
 public enum GameCommandType {
+    /**
+     * Command for choosing a tribe card from the board.
+     */
     CHOOSE_CARD,
+
+    /**
+     * Command for resolving an extra draw effect.
+     */
     EXTRA_DRAW,
+
+    /**
+     * Command for placing or moving a player's totem.
+     */
     MOVE_TOTEM;
 
+    /**
+     * Maps an incoming game payload to the command handled by the game controller.
+     *
+     * @param payload payload received from the client
+     * @return command type represented by the payload
+     */
     public static GameCommandType fromPayload(ClientPayload payload) {
         if (payload == null) {
             throw new IllegalArgumentException("Payload cannot be null");

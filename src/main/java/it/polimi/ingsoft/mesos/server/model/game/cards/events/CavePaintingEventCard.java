@@ -14,8 +14,19 @@ import java.util.ArrayList;
  * artists in their tribe and then applies any matching building bonuses.
  */
 public class CavePaintingEventCard extends EventCard {
+    /**
+     * Minimum number of artists required to gain prestige instead of losing it.
+     */
     private final int limitForPositive;
+
+    /**
+     * Prestige points granted for each artist when the threshold is met.
+     */
     private final int prestigePointsForPositive;
+
+    /**
+     * Prestige points lost when the artist threshold is not met.
+     */
     private final int prestigePointsForNegative;
 
     /**
@@ -35,6 +46,11 @@ public class CavePaintingEventCard extends EventCard {
         this.prestigePointsForNegative = prestigePointsForNegative;
     }
 
+    /**
+     * Returns the complete event-card name.
+     *
+     * @return event-card name
+     */
     @Override
     public String getCompleteName() {
         return "Cave Painting";
