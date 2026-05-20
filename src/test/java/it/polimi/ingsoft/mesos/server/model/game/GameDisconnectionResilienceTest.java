@@ -11,8 +11,17 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+/**
+ * Regression tests for game setup when players disconnect before the match
+ * starts. They verify the public turn order and connection map, not the
+ * internal recovery algorithm.
+ */
 class GameDisconnectionResilienceTest {
 
+    /**
+     * A player disconnected before setup is excluded from the first active
+     * phase order, so the game starts from the first connected player.
+     */
     @Test
     void playerDisconnectedBeforeSetupIsNotCurrentPlayerAfterSetup() {
         Player alice = new Player("Alice", 0, 0, TotemColor.RED);
@@ -28,6 +37,9 @@ class GameDisconnectionResilienceTest {
         assertEquals(List.of(bob, carol), game.getRoundFlow().getCurrentPhaseOrder());
     }
 
+    /**
+     * If the player reconnects before setup, the original setup order is kept.
+     */
     @Test
     void playerReconnectedBeforeSetupKeepsNormalInitialOrder() {
         Player alice = new Player("Alice", 0, 0, TotemColor.RED);

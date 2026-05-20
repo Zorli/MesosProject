@@ -13,6 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests the starting tile as the public next-round queue. The suite verifies
+ * setup for supported player counts, insertion order, removal, full-tile
+ * behavior, and the visible effects applied when players return.
+ */
 class StartingTileTest {
 
     private StartingTile startingTile;
@@ -31,6 +36,10 @@ class StartingTileTest {
         startingTile.setup(List.of(player1, player2, player3));
     }
 
+    /**
+     * Returning players are placed in the first free blocks, preserving the
+     * order in which they come back to the starting tile.
+     */
     @Test
     void placePlayerOnNextAvailableBlock_FillsBlocksInOrder() {
         startingTile.removePlayer(player1);
@@ -47,15 +56,19 @@ class StartingTileTest {
         assertEquals(player2, order.get(1), "Bob dovrebbe essere sul secondo blocco");
     }
 
+    /**
+     * The next-round order is the order of occupied starting blocks, not the
+     * original player list order.
+     */
     @Test
     void getNextRoundOrder_ReturnsPlayersCorrectlySorted() {
         startingTile.removePlayer(player1);
         startingTile.removePlayer(player2);
         startingTile.removePlayer(player3);
 
-        startingTile.placePlayerOnNextAvailableBlock(player3); // Charlie va sul blocco 1
-        startingTile.placePlayerOnNextAvailableBlock(player1); // Alice va sul blocco 2
-        startingTile.placePlayerOnNextAvailableBlock(player2); // Bob va sul blocco 3
+        startingTile.placePlayerOnNextAvailableBlock(player3);
+        startingTile.placePlayerOnNextAvailableBlock(player1);
+        startingTile.placePlayerOnNextAvailableBlock(player2);
 
         List<Player> nextRoundOrder = startingTile.getNextRoundOrder();
 
@@ -64,6 +77,11 @@ class StartingTileTest {
         assertEquals(player1, nextRoundOrder.get(1), "Alice è tornata per seconda");
         assertEquals(player2, nextRoundOrder.get(2), "Bob è tornato per ultimo");
     }
+
+    /**
+     * Removing a player frees their block and removes them from the next-round
+     * order exposed by the tile.
+     */
     @Test
     void removePlayer_ClearsTheBlockAndRemovesFromOrder() {
         startingTile.removePlayer(player1);
@@ -74,6 +92,10 @@ class StartingTileTest {
         assertFalse(order.contains(player1), "Alice non dovrebbe più essere sulla Starting Tile");
     }
 
+    /**
+     * Placing a player on a full starting tile is ignored, so the current
+     * next-round order remains unchanged.
+     */
     @Test
     void placePlayerOnNextAvailableBlock_DoesNothingIfTileIsFull() {
 
@@ -86,6 +108,10 @@ class StartingTileTest {
         assertFalse(order.contains(hackerPlayer), "L'intruso non deve aver trovato posto");
     }
 
+    /**
+     * The two-player setup uses the rule-table modifiers and keeps each player
+     * in the matching starting block.
+     */
     @Test
     void setupForTwoPlayers_UsesExpectedModifiersAndPositions() {
         StartingTile twoPlayerTile = new StartingTile();
@@ -107,6 +133,11 @@ class StartingTileTest {
         assertEquals(beta, blocks.get(1).getOccupiedBy());
     }
 
+    /**
+     * Four- and five-player games use different starting tile modifiers. This
+     * test checks those public rule tables without relying on implementation
+     * details of how the blocks are created.
+     */
     @Test
     void setupForFourAndFivePlayers_UsesCorrectRuleTables() {
         StartingTile fourPlayerTile = new StartingTile();
@@ -137,6 +168,9 @@ class StartingTileTest {
         assertEquals(List.of(0, 0, 0, 0, -2), fivePlayerBlocks.stream().map(StartingBlock::getPrestigeModifier).toList());
     }
 
+    /**
+     * Unsupported player counts do not create a partial starting tile.
+     */
     @Test
     void setupWithUnsupportedPlayerCount_LeavesTileEmpty() {
         StartingTile unsupportedTile = new StartingTile();
@@ -145,6 +179,10 @@ class StartingTileTest {
         assertTrue(unsupportedTile.getStartingBlocks().isEmpty(), "Con un numero non supportato di giocatori non vanno creati blocchi");
     }
 
+    /**
+     * Returning to a block immediately applies that block's food or prestige
+     * effect to the player.
+     */
     @Test
     void placePlayerOnNextAvailableBlock_AppliesBlockEffectWhenReturning() {
         StartingTile twoPlayerTile = new StartingTile();
@@ -161,5 +199,26 @@ class StartingTileTest {
         assertEquals(2, first.getFood(), "Il primo blocco deve assegnare il bonus cibo previsto");
         assertEquals(0, second.getFood(), "Il secondo blocco non deve pagare cibo che il giocatore non possiede");
         assertEquals(3, second.getPrestigePoints(), "Se il giocatore non paga il malus cibo deve perdere prestigio");
+    }
+
+    /**
+     * Placing on the last available block is used for players skipped by
+     * disconnection. The player must occupy the last free slot and receive that
+     * slot's immediate effect.
+     */
+    @Test
+    void placePlayerOnLastAvailableBlockUsesTheLastFreeSlot() {
+        StartingTile twoPlayerTile = new StartingTile();
+        Player first = new Player("First", 2, 0, TotemColor.RED, null);
+        Player second = new Player("Second", 2, 4, TotemColor.BLUE, null);
+        twoPlayerTile.setup(List.of(first, second));
+        twoPlayerTile.removePlayer(first);
+        twoPlayerTile.removePlayer(second);
+
+        twoPlayerTile.placePlayerOnLastAvailableBlock(second);
+
+        assertEquals(List.of(second), twoPlayerTile.getPlayersOrderedByStartingBlock());
+        assertEquals(1, second.getFood());
+        assertEquals(4, second.getPrestigePoints());
     }
 }

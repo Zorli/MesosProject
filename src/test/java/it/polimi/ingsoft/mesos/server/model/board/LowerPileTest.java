@@ -18,6 +18,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the lower pile as the visible container for cards that moved down from
+ * the board. The suite checks observable card storage, discard behavior, and
+ * event resolution order.
+ */
 class LowerPileTest {
 
     private LowerPile lowerPile;
@@ -31,6 +36,10 @@ class LowerPileTest {
         basicBuilding = new BuildingCard(2, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD);
     }
 
+    /**
+     * End-of-round discard removes lower-row tribe cards while keeping lower
+     * buildings until the building discard step runs.
+     */
     @Test
     void discardLowerRow_And_discardBuildings_AreIndependent() {
         lowerPile.addCard(basicTribe);
@@ -46,6 +55,10 @@ class LowerPileTest {
         assertEquals(0, lowerPile.getAllCards().size(), "La pila ora deve essere completamente vuota");
     }
 
+    /**
+     * Bulk add operations append tribe and building cards to the lower pile
+     * without losing either card type.
+     */
     @Test
     void addTribeCards_And_addBuildingCards_BulkAddWorks() {
         List<Gatherer> tribes = List.of(basicTribe, new Gatherer(3, Era.first, TribeCardType.GATHERER));
@@ -58,9 +71,12 @@ class LowerPileTest {
         assertEquals(3, lowerPile.getAllCards().size(), "Tutte le carte devono essere presenti");
     }
 
+    /**
+     * Lower-row events resolve regular events before sustenance events, even
+     * when the sustenance card was inserted first.
+     */
     @Test
     void resolveLowerRowEvents_ExecutesSustenanceLast_RegardlessOfInsertionOrder() {
-
         List<String> executionLog = new ArrayList<>();
         ArrayList<Player> dummyPlayers = new ArrayList<>();
 
@@ -93,6 +109,9 @@ class LowerPileTest {
         assertEquals("SUSTENANCE", executionLog.get(1), "Il Sustenance DEVE agire rigorosamente per ultimo");
     }
 
+    /**
+     * Removing a building from the lower pile must not affect tribe cards.
+     */
     @Test
     void removeCard_RemovesBuildingWithoutAffectingTribes() {
         lowerPile.addCard(basicTribe);
@@ -105,6 +124,10 @@ class LowerPileTest {
         assertTrue(lowerPile.getBuildingCards().isEmpty(), "L'edificio rimosso non deve più essere presente");
     }
 
+    /**
+     * Unknown card subtypes are ignored by the lower pile and are not exposed
+     * as visible cards.
+     */
     @Test
     void addAndRemoveIgnoreUnknownCardSubtype() {
         Card unknownCard = new UnknownCard(99, Era.first);
@@ -115,6 +138,10 @@ class LowerPileTest {
         assertTrue(lowerPile.getAllCards().isEmpty());
     }
 
+    /**
+     * If no sustenance card is present, resolving lower-row events only applies
+     * the regular event cards that are visible.
+     */
     @Test
     void resolveLowerRowEvents_WithoutSustenance_ResolvesOnlyRegularEvents() {
         List<String> executionLog = new ArrayList<>();
@@ -134,6 +161,9 @@ class LowerPileTest {
 
         assertEquals(List.of("HUNT"), executionLog, "Senza Sustenance va risolto solo l'evento presente");
     }
+    /**
+     * Multiple sustenance events resolve by era order.
+     */
     @Test
     void resolveLowerRowEvents_TwoSustenanceEvents_ResolvesInEraOrder() {
         List<String> executionLog = new ArrayList<>();
@@ -159,6 +189,9 @@ class LowerPileTest {
         assertEquals("SUST_ERA3", executionLog.get(1), "Il Sustenance della terza Era deve agire per secondo");
     }
 
+    /**
+     * Multiple regular events of the same type resolve by era order.
+     */
     @Test
     void resolveLowerRowEvents_TwoRegularEventsOfSameType_ResolvesInEraOrder() {
         List<String> executionLog = new ArrayList<>();
@@ -184,6 +217,10 @@ class LowerPileTest {
         assertEquals("HUNT_ERA2", executionLog.get(1), "L'evento Hunt della seconda Era deve agire per secondo");
     }
 
+    /**
+     * Mixed regular and sustenance events first resolve regular events by era,
+     * then sustenance events by era.
+     */
     @Test
     void resolveLowerRowEvents_MixedEventsAndEras_ResolvesEverythingInCorrectOrder() {
         List<String> executionLog = new ArrayList<>();
@@ -221,6 +258,7 @@ class LowerPileTest {
         assertEquals("SUST_ERA1", executionLog.get(2));
         assertEquals("SUST_ERA3", executionLog.get(3));
     }
+
     private static final class UnknownCard extends Card {
         private UnknownCard(int id, Era era) {
             super(id, era);
