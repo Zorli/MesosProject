@@ -15,6 +15,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the upper pile as the visible container for upper-row cards. The suite
+ * checks observable routing between tribe and building cards, safe removal,
+ * extraction, and copy-based getters.
+ */
 class UpperPileTest {
 
     private UpperPile upperPile;
@@ -31,6 +36,11 @@ class UpperPileTest {
         buildingCard1 = new BuildingCard(3, Era.first, 2, 1, BenefitType.END_ROUND_EXTRA_CARD);
     }
 
+    /**
+     * Adding mixed card types must route tribe cards and building cards to the
+     * correct visible collections, and removing one card must leave the other
+     * card type untouched.
+     */
     @Test
     void addCard_And_removeCard_RouteToCorrectLists() {
         upperPile.addCard(tribeCard1);
@@ -46,6 +56,10 @@ class UpperPileTest {
         assertTrue(remainingTribes.isEmpty(), "La tribù dovrebbe essere stata rimossa correttamente");
     }
 
+    /**
+     * Removing a card that is not present is a safe no-op and must not alter
+     * the cards already visible in the pile.
+     */
     @Test
     void removeCard_EdgeCase_CardNotInPile_DoesNothing() {
         upperPile.addCard(tribeCard1);
@@ -55,6 +69,9 @@ class UpperPileTest {
         assertEquals(1, upperPile.removeAndReturnAllTribeCards().size(), "La carta presente non deve essere stata alterata");
     }
 
+    /**
+     * Unknown card subtypes are not exposed as draftable upper-pile cards.
+     */
     @Test
     void addAndRemoveIgnoreUnknownCardSubtype() {
         Card unknownCard = new UnknownCard(99, Era.first);
@@ -65,6 +82,10 @@ class UpperPileTest {
         assertTrue(upperPile.getAllCards().isEmpty());
     }
 
+    /**
+     * Extracting all cards consumes the pile. Calling the same extraction again
+     * returns empty lists instead of null.
+     */
     @Test
     void removeAndReturnAllCards_EmptiesThePile_AndHandlesEmptyCase() {
         upperPile.addCard(tribeCard1);
@@ -77,7 +98,6 @@ class UpperPileTest {
         assertEquals(2, returnedTribes.size(), "Dovrebbe restituire le 2 tribù");
         assertEquals(1, returnedBuildings.size(), "Dovrebbe restituire l'edificio");
 
-        // 2. EDGE CASE: Chiamiamo i metodi su una pila ora VUOTA
         List<?> emptyTribes = upperPile.removeAndReturnAllTribeCards();
         List<BuildingCard> emptyBuildings = upperPile.removeAndReturnAllBuildingCards();
 
@@ -86,6 +106,26 @@ class UpperPileTest {
 
         assertNotNull(emptyBuildings, "Non deve mai restituire null, ma una lista vuota");
         assertTrue(emptyBuildings.isEmpty(), "La lista degli edifici deve essere vuota");
+    }
+
+    /**
+     * The visible-card getters expose copies of the upper-row cards without
+     * consuming them. They are used by board payload mapping and draft checks.
+     */
+    @Test
+    void visibleCardGettersReturnCopiesWithoutRemovingCards() {
+        upperPile.addCard(tribeCard1);
+        upperPile.addCard(buildingCard1);
+
+        var tribeCards = upperPile.getTribeCards();
+        List<BuildingCard> buildingCards = upperPile.getBuildingCards();
+
+        assertEquals(List.of(tribeCard1), tribeCards);
+        assertEquals(List.of(buildingCard1), buildingCards);
+        tribeCards.clear();
+        buildingCards.clear();
+
+        assertEquals(2, upperPile.getAllCards().size());
     }
 
     private static final class UnknownCard extends Card {
