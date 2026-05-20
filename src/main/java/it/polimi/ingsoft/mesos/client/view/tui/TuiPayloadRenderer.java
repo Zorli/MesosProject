@@ -141,7 +141,7 @@ final class TuiPayloadRenderer {
                 .append(" status=")
                 .append(payload.status)
                 .append(" era=")
-                .append(payload.currentEra + 1);
+                .append(payload.currentEra);
 
         builder.append(System.lineSeparator())
                 .append("Your nickname: ")
@@ -286,7 +286,7 @@ final class TuiPayloadRenderer {
         List<String> renderedCards = new ArrayList<>();
         for (CardPayload card : cards) {
             String type = card.type == null ? "" : card.type;
-            String base = "[" + card.id + " " + type + " era" + (card.era + 1);
+            String base = "[" + card.id + " " + type + " era" + card.era;
 
             switch (type) {
                 case "HUNTER" ->
@@ -300,7 +300,9 @@ final class TuiPayloadRenderer {
                         renderedCards.add(base + " inventor type: " + card.inventorPerk + "]");
                 case "BUILDING" ->
                         renderedCards.add(base + " cost: " + card.buildingCost + "]");
-                case "ARTIST", "GATHERER", "EVENT" ->
+                case "EVENT" ->
+                        renderedCards.add(base + " " + card.eventCompleteName + "]");
+                case "ARTIST", "GATHERER"->
                         renderedCards.add(base + "]");
                 default ->
                         renderedCards.add(base + "]");

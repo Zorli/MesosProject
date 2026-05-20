@@ -40,7 +40,7 @@ class DeckTemplateTest {
         TribeDeck fourPlayerDeck = template.createTribeDeck(4);
         TribeDeck fivePlayerDeck = template.createTribeDeck(5);
 
-        assertEquals(63, twoPlayerDeck.getCardsInOrder().size());
+        assertEquals(64, twoPlayerDeck.getCardsInOrder().size());
         assertEquals(74, threePlayerDeck.getCardsInOrder().size());
         assertEquals(85, fourPlayerDeck.getCardsInOrder().size());
         assertEquals(96, fivePlayerDeck.getCardsInOrder().size());
