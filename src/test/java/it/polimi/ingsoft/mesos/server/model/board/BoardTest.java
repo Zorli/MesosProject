@@ -458,7 +458,7 @@ class BoardTest {
         BuildingCard newBuildingOne = new BuildingCard(21, Era.second, 0, 1, BenefitType.FINAL_BONUS_BIG_PP_REWARD);
         BuildingCard newBuildingTwo = new BuildingCard(22, Era.second, 0, 1, BenefitType.FINAL_BONUS_BIG_PP_REWARD);
         Board board = new Board(
-                new TribeDeck(new ArrayList<>(List.of(
+                TribeDeck.fromOrderedCards(new ArrayList<>(List.of(
                         lowerOne,
                         lowerTwo,
                         lowerThree,
@@ -470,7 +470,7 @@ class BoardTest {
                         upperSix,
                         eraTwoCard
                 ))),
-                new BuildingDeck(new ArrayList<>(List.of(oldBuilding, newBuildingOne, newBuildingTwo))),
+                BuildingDeck.fromOrderedCards(new ArrayList<>(List.of(oldBuilding, newBuildingOne, newBuildingTwo))),
                 players("Alice", "Bob")
         );
         board.setupInitialRows();
@@ -506,7 +506,7 @@ class BoardTest {
         BuildingCard newBuildingTwo = new BuildingCard(32, Era.third, 0, 1, BenefitType.FINAL_BONUS_BIG_PP_REWARD);
         BuildingCard newBuildingThree = new BuildingCard(33, Era.third, 0, 1, BenefitType.FINAL_BONUS_BIG_PP_REWARD);
         Board board = new Board(
-                new TribeDeck(new ArrayList<>(List.of(
+                TribeDeck.fromOrderedCards(new ArrayList<>(List.of(
                         lowerOne,
                         lowerTwo,
                         lowerThree,
@@ -518,7 +518,7 @@ class BoardTest {
                         upperSix,
                         firstThirdEraCard
                 ))),
-                new BuildingDeck(new ArrayList<>(List.of(oldBuilding, newBuildingOne, newBuildingTwo, newBuildingThree))),
+                BuildingDeck.fromOrderedCards(new ArrayList<>(List.of(oldBuilding, newBuildingOne, newBuildingTwo, newBuildingThree))),
                 players("Alice", "Bob")
         );
         board.setupInitialRows();
