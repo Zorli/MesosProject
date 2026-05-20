@@ -172,6 +172,34 @@
                     <mainClass>it.polimi.ingsoft.mesos.client.LaunchClient</mainClass>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <outputDirectory>${project.basedir}/docs/api</outputDirectory>
+                    <show>public</show>
+                    <nohelp>true</nohelp>
+                    <author>true</author>
+                    <version>true</version>
+                    <links>
+                        <link>https://docs.oracle.com/en/java/javase/21/docs/api/</link>
+                    </links>
+                    <javadocDirectory>${project.basedir}/src/main/resources</javadocDirectory>
+                    <doclint>none</doclint>
+                    <addStylesheets>
+                        <addStylesheet>javadoc-style.css</addStylesheet>
+                    </addStylesheets>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
