@@ -103,7 +103,7 @@ per poter richiedere lo stub.
 
 #### Differenze tra TCP e RMI
 Il protocollo TCP è un protocollo di comunicazione a basso livello, in cui i messaggi vengono scambiati come stringhe 
-tramite json, è quindi è necessario avere delle classi helper per serializzare e deserializzare i messaggi, inoltre è necessario
+tramite json, è quindi necessario avere delle classi helper per serializzare e deserializzare i messaggi, inoltre è necessario
 conoscere a priori il payload che si sta gestendo, nella sezione successiva verranno infatti spiegati i payload che rappresentano
 il contratto del contenuto informativo condiviso fra i due protocolli scambiato via rete.
 
