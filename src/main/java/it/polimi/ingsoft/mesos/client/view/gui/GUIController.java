@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 /**
  * JavaFX implementation of the {@link ClientView} contract.
@@ -84,15 +83,30 @@ import java.util.stream.Collectors;
  * and {@code finalRankingContainer}.</p>
  */
 public class GUIController implements ClientView {
+    /*
+     * Resource paths used to build the JavaFX scene and to load the bitmap
+     * assets rendered dynamically at runtime.
+     */
     private static final String FXML_RESOURCE = "gui.fxml";
     private static final String CSS_RESOURCE = "mesos-gui.css";
     private static final String CARD_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/assets/cards/%d.jpg";
     private static final String OFFER_PATH_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/assets/offerPath/%s.png";
     private static final String TOTEM_RESOURCE_PATTERN = "/it/polimi/ingsoft/mesos/assets/totems/%s.png";
+
+    /*
+     * JavaFX can be started only once in the JVM. This flag lets the client
+     * support both first startup and later GUI openings without calling
+     * Platform.startup twice.
+     */
     private static final AtomicBoolean JAVAFX_STARTED = new AtomicBoolean(false);
 
+    /*
+     * Runtime state owned by the controller.
+     *
+     * The payload snapshots are kept so the GUI can re-render parts of the
+     * screen after local interactions, delayed redirects, or server errors.
+     */
     private ServerProxy serverProxy;
-    private Stage stage;
     private String nickname = "Guest";
     private GamePayload lastGamePayload;
     private LobbyListPayload lastLobbyListPayload;
@@ -108,6 +122,12 @@ public class GUIController implements ClientView {
     private String pendingDraftRow;
     private boolean returnedToLobbyAfterMatch;
 
+    /*
+     * Nodes injected from gui.fxml.
+     *
+     * The static layout lives in FXML; these fields are the dynamic slots the
+     * controller updates when server payloads arrive.
+     */
     @FXML private StackPane pages;
     @FXML private HBox topBar;
     @FXML private StackPane loginPage;
@@ -148,10 +168,30 @@ public class GUIController implements ClientView {
     @FXML private VBox finalRankingContainer;
     @FXML private ScrollPane lobbyScrollPane;
 
+    // ---------------------------------------------------------------------
+    // JavaFX lifecycle and window management
+    // ---------------------------------------------------------------------
+    /*
+     * This section owns application startup and shutdown. It is intentionally
+     * separate from the game/lobby code because it deals with JavaFX runtime
+     * rules and process lifecycle, not with Mesos domain state.
+     */
+
+    /**
+     * Attaches the network proxy used by the GUI to send commands to the server.
+     *
+     * @param serverProxy proxy connected through TCP or RMI
+     */
     public void attachServerProxy(ServerProxy serverProxy) {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
+    /**
+     * Starts the JavaFX user interface on a new primary stage.
+     *
+     * <p>If the JavaFX runtime has not been started yet, this method starts it.
+     * Otherwise it schedules the window creation on the JavaFX Application Thread.
+     */
     public void start() {
         if (Platform.isFxApplicationThread()) {
             this.openStage(new Stage());
@@ -165,6 +205,11 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Starts the JavaFX user interface on an existing stage.
+     *
+     * @param stage stage provided by an external JavaFX launcher
+     */
     public void start(Stage stage) {
         if (!Platform.isFxApplicationThread()) {
             Platform.runLater(() -> this.openStage(stage));
@@ -173,6 +218,9 @@ public class GUIController implements ClientView {
         this.openStage(stage);
     }
 
+    /**
+     * Initializes injected FXML nodes after the FXML file has been loaded.
+     */
     @FXML
     private void initialize() {
         this.capacityComboBox.getItems().setAll(2, 3, 4, 5);
@@ -185,6 +233,81 @@ public class GUIController implements ClientView {
         this.configureLobbyAutoRefresh();
     }
 
+    /**
+     * Loads the FXML file, applies the stylesheet, and shows the main window.
+     *
+     * <p>The close handler also closes the network proxy and exits the JVM,
+     * because networking threads can otherwise keep the terminal process alive
+     * after the JavaFX window has disappeared.
+     *
+     * @param targetStage stage that will host the GUI
+     */
+    private void openStage(Stage targetStage) {
+        try {
+            FXMLLoader loader = new FXMLLoader(GUIController.class.getResource(FXML_RESOURCE));
+            loader.setController(this);
+            Parent root = loader.load();
+            Scene scene = new Scene(root, 1180, 760);
+            String stylesheet = GUIController.class.getResource(CSS_RESOURCE).toExternalForm();
+            scene.getStylesheets().add(stylesheet);
+            targetStage.setTitle("Mesos");
+            targetStage.setMinWidth(980);
+            targetStage.setMinHeight(680);
+            targetStage.setScene(scene);
+            targetStage.setMaximized(true);
+            targetStage.setOnCloseRequest(event -> this.shutdownClient());
+            targetStage.show();
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Cannot start Mesos GUI", exception);
+        }
+    }
+
+    /**
+     * Closes client-side network resources and terminates the process.
+     */
+    private void shutdownClient() {
+        try {
+            if (this.serverProxy != null) {
+                this.serverProxy.close();
+            }
+        } catch (IOException ignored) {
+            // The client is already shutting down.
+        } finally {
+            Platform.exit();
+            System.exit(0);
+        }
+    }
+
+    /**
+     * Runs a UI update on the JavaFX Application Thread.
+     *
+     * <p>Server updates can arrive from networking threads, while JavaFX nodes
+     * must be touched only by the JavaFX Application Thread.
+     *
+     * @param runnable UI work to run safely
+     */
+    private void runOnFx(Runnable runnable) {
+        if (Platform.isFxApplicationThread()) {
+            runnable.run();
+        } else {
+            Platform.runLater(runnable);
+        }
+    }
+
+
+    // ---------------------------------------------------------------------
+    // FXML event handlers
+    // ---------------------------------------------------------------------
+    /*
+     * Methods in this section are referenced directly by gui.fxml through
+     * onAction="#...". They should stay thin: read user input, update immediate
+     * local feedback when needed, then delegate to the ServerProxy or to the
+     * rendering/navigation helpers below.
+     */
+
+    /**
+     * Reads the nickname field and sends the authentication command.
+     */
     @FXML
     private void handleLogin() {
         String typedNickname = this.nicknameField.getText() == null ? "" : this.nicknameField.getText().trim();
@@ -199,6 +322,9 @@ public class GUIController implements ClientView {
         this.callServer(() -> this.serverProxy.authenticate(typedNickname));
     }
 
+    /**
+     * Opens the page used to create a lobby or manage the current one.
+     */
     @FXML
     private void handleOpenCreateTable() {
         this.renderNoCurrentLobby();
@@ -206,6 +332,9 @@ public class GUIController implements ClientView {
         this.showPage(this.lobbyFormPage);
     }
 
+    /**
+     * Returns from the lobby command page to the lobby list when the user is not seated.
+     */
     @FXML
     private void handleBackToLobbyList() {
         if (this.currentLobbyId != null) {
@@ -217,52 +346,34 @@ public class GUIController implements ClientView {
         this.requestLobbyList();
     }
 
+    /**
+     * Sends the create-lobby command using the selected capacity.
+     */
     @FXML
     private void handleCreateLobby() {
         int capacity = this.capacityComboBox.getValue() == null ? 4 : this.capacityComboBox.getValue();
         this.callServer(() -> this.serverProxy.createLobby(capacity));
     }
 
+    /**
+     * Sends the command that starts the current lobby.
+     */
     @FXML
     private void handleStartLobby() {
         this.callServer(() -> this.serverProxy.startLobby());
     }
 
+    /**
+     * Sends the command that leaves the current lobby.
+     */
     @FXML
     private void handleExitLobby() {
         this.callServer(() -> this.serverProxy.exitLobby());
     }
 
-    @FXML
-    private void handleRanking() {
-        this.lobbyStatusLabel.setText("Ranking in arrivo: pulsante presente, dati mock nella schermata finale.");
-    }
-
-    @FXML
-    private void handleMoveTotemA() {
-        this.moveTotemFromBoard("A");
-    }
-
-    @FXML
-    private void handleMoveTotemB() {
-        this.moveTotemFromBoard("B");
-    }
-
-    @FXML
-    private void handleMoveTotemC() {
-        this.moveTotemFromBoard("C");
-    }
-
-    @FXML
-    private void handleChooseCard() {
-        this.updateActionHint();
-    }
-
-    @FXML
-    private void handleExtraDraw() {
-        this.updateActionHint();
-    }
-
+    /**
+     * Resets the match state and returns to the lobby list after the final ranking.
+     */
     @FXML
     private void handleBackToLobby() {
         this.resetAfterMatch();
@@ -271,6 +382,21 @@ public class GUIController implements ClientView {
         this.requestLobbyList();
     }
 
+
+    // ---------------------------------------------------------------------
+    // ClientView callbacks
+    // ---------------------------------------------------------------------
+    /*
+     * These methods are the incoming side of the client. TCP/RMI networking
+     * code calls this ClientView contract when a server payload arrives; every
+     * method immediately switches to the JavaFX Application Thread with runOnFx.
+     */
+
+    /**
+     * Shows an error received from the server or produced locally by the client.
+     *
+     * @param payload error code and human-readable error message
+     */
     @Override
     public void showError(ErrorPayload payload) {
         this.runOnFx(() -> {
@@ -296,6 +422,11 @@ public class GUIController implements ClientView {
         });
     }
 
+    /**
+     * Shows a successful authentication result and schedules the lobby page load.
+     *
+     * @param payload authenticated nickname and status message
+     */
     @Override
     public void showAuthenticationResult(AuthenticationResultPayload payload) {
         this.runOnFx(() -> {
@@ -312,6 +443,11 @@ public class GUIController implements ClientView {
         });
     }
 
+    /**
+     * Shows the current state of the lobby joined by the client.
+     *
+     * @param payload lobby identifier, lobby players, capacity, and lobby state
+     */
     @Override
     public void showLobbyUpdate(LobbyUpdatePayload payload) {
         this.runOnFx(() -> {
@@ -343,6 +479,11 @@ public class GUIController implements ClientView {
         });
     }
 
+    /**
+     * Shows the list of lobbies currently available before joining a match.
+     *
+     * @param payload available lobby summaries
+     */
     @Override
     public void showLobbyList(LobbyListPayload payload) {
         this.runOnFx(() -> {
@@ -396,6 +537,11 @@ public class GUIController implements ClientView {
         });
     }
 
+    /**
+     * Shows a normal in-game update.
+     *
+     * @param payload complete game state visible to the client
+     */
     @Override
     public void showGameUpdate(GamePayload payload) {
         this.runOnFx(() -> {
@@ -433,26 +579,354 @@ public class GUIController implements ClientView {
         });
     }
 
-    private void openStage(Stage targetStage) {
-        try {
-            FXMLLoader loader = new FXMLLoader(GUIController.class.getResource(FXML_RESOURCE));
-            loader.setController(this);
-            Parent root = loader.load();
-            Scene scene = new Scene(root, 1180, 760);
-            String stylesheet = GUIController.class.getResource(CSS_RESOURCE).toExternalForm();
-            scene.getStylesheets().add(stylesheet);
-            targetStage.setTitle("Mesos");
-            targetStage.setMinWidth(980);
-            targetStage.setMinHeight(680);
-            targetStage.setScene(scene);
-            targetStage.setMaximized(true);
-            targetStage.show();
-            this.stage = targetStage;
-        } catch (IOException exception) {
-            throw new UncheckedIOException("Cannot start Mesos GUI", exception);
+
+    // ---------------------------------------------------------------------
+    // Authentication and lobby navigation flow
+    // ---------------------------------------------------------------------
+    /*
+     * Authentication has a small delayed transition: after a successful login
+     * the GUI briefly shows the server message, then opens the lobby list.
+     * Lobby list refresh is also owned here because it is page-navigation
+     * behavior rather than lobby rendering itself.
+     */
+
+    /**
+     * Starts the short post-login delay before showing the lobby list.
+     */
+    private void scheduleAuthenticatedRedirect() {
+        if (this.authRedirectDelay != null) {
+            this.authRedirectDelay.stop();
+        }
+        this.authRedirectDelay = new PauseTransition(Duration.seconds(3));
+        this.authRedirectDelay.setOnFinished(event -> {
+            this.authRedirectDelay = null;
+            if (!this.shouldOpenLobbyAfterAuthentication()) {
+                return;
+            }
+            this.showPage(this.lobbyPage);
+            this.requestLobbyList();
+        });
+        this.authRedirectDelay.play();
+    }
+
+    /**
+     * Cancels the pending post-login transition, usually because the server
+     * sent an error or the user has moved to another page.
+     */
+    private void cancelAuthenticatedRedirect() {
+        if (this.authRedirectDelay == null) {
+            return;
+        }
+        this.authRedirectDelay.stop();
+        this.authRedirectDelay = null;
+    }
+
+    /**
+     * Returns whether the delayed authentication redirect is still valid.
+     */
+    private boolean shouldOpenLobbyAfterAuthentication() {
+        return this.loginPage.isVisible()
+                && !this.gamePage.isVisible()
+                && !this.endPage.isVisible()
+                && this.currentLobbyId == null;
+    }
+
+    /**
+     * Creates the timer that refreshes the lobby list while the list page is open.
+     */
+    private void configureLobbyAutoRefresh() {
+        this.lobbyRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(3), event -> {
+            if (!this.canAutoRefreshLobby()) {
+                return;
+            }
+            this.requestLobbyList();
+        }));
+        this.lobbyRefreshTimer.setCycleCount(Timeline.INDEFINITE);
+    }
+
+    /**
+     * Returns whether the lobby list can be refreshed without disrupting the user.
+     */
+    private boolean canAutoRefreshLobby() {
+        return this.lobbyPage.isVisible()
+                && !this.gamePage.isVisible()
+                && !this.endPage.isVisible()
+                && this.currentLobbyId == null
+                && this.serverProxy != null
+                && this.serverProxy.isConnected();
+    }
+
+    /**
+     * Requests the lobby list unless the user is already seated in a lobby.
+     */
+    private void requestLobbyList() {
+        if (this.currentLobbyId != null) {
+            this.renderLobbyListUnavailable();
+            return;
+        }
+        this.callServer(() -> this.serverProxy.listLobbies());
+    }
+
+
+    // ---------------------------------------------------------------------
+    // Lobby rendering and state helpers
+    // ---------------------------------------------------------------------
+    /*
+     * This section translates pre-game payloads into the lobby screens. It also
+     * keeps the local "current lobby" snapshot used to enable/disable buttons
+     * such as Start match, Exit lobby, and Create table.
+     */
+
+    /**
+     * Shows an empty lobby-list state while the user is already inside a lobby.
+     */
+    private void renderLobbyListUnavailable() {
+        this.lobbyCountLabel.setText("In lobby");
+        this.lobbyListContainer.getChildren().clear();
+        this.lobbyListContainer.getChildren().add(
+                this.emptyState("Table list unavailable", "Exit your lobby to browse available tables."));
+    }
+
+    /**
+     * Shows placeholder rows while waiting for the lobby list payload.
+     */
+    private void renderLobbyLoading() {
+        this.lobbyCountLabel.setText("Loading");
+        this.lobbyListContainer.getChildren().clear();
+        for (int index = 0; index < 3; index++) {
+            HBox row = new HBox(16);
+            row.getStyleClass().addAll("lobby-card", "skeleton-row");
+            row.getChildren().addAll(this.skeletonLine(170), this.skeletonLine(120), this.skeletonLine(74));
+            this.lobbyListContainer.getChildren().add(row);
         }
     }
 
+    /**
+     * Applies a lobby update to the local lobby snapshot and visible lobby panel.
+     *
+     * @param payload event received from the server for the current lobby
+     */
+    private void renderCurrentLobby(LobbyUpdatePayload payload) {
+        if (payload == null) {
+            return;
+        }
+        if (payload.event == LobbyEventType.LOBBY_LEFT) {
+            if (this.isCurrentUser(payload.nickname)) {
+                this.currentLobbyId = null;
+                this.currentLobbyHostNickname = null;
+                this.currentLobbyStatus = "WAITING";
+                this.renderNoCurrentLobby();
+            } else {
+                this.renderCurrentLobbySnapshot(payload);
+                this.updateLobbyActions();
+            }
+            return;
+        }
+        if (payload.event != LobbyEventType.LOBBY_CREATED
+                && payload.event != LobbyEventType.LOBBY_JOINED
+                && payload.event != LobbyEventType.LOBBY_STARTED) {
+            return;
+        }
+
+        this.renderCurrentLobbySnapshot(payload);
+    }
+
+    /**
+     * Copies the latest lobby payload into the labels that describe the current table.
+     *
+     * @param payload lobby state received from the server
+     */
+    private void renderCurrentLobbySnapshot(LobbyUpdatePayload payload) {
+        this.currentLobbyId = payload.lobbyId;
+        this.currentLobbyHostNickname = payload.hostNickname;
+        this.currentLobbyStatus = this.statusFromLobbyUpdate(payload);
+        if (this.currentLobbyTitleLabel != null)
+            this.currentLobbyTitleLabel.setText(
+                    payload.lobbyId == null ? "Current lobby" : "Lobby #" + payload.lobbyId);
+        if (this.currentLobbyHostLabel != null)
+            this.currentLobbyHostLabel.setText(
+                    payload.hostNickname == null ? "Host: -" : "Host: " + payload.hostNickname);
+        int currentPlayers = payload.players == null ? 0 : payload.players.size();
+        String maxPlayers = payload.maxPlayers == null ? "-" : String.valueOf(payload.maxPlayers);
+        if (this.currentLobbyPlayersLabel != null)
+            this.currentLobbyPlayersLabel.setText("Players: " + currentPlayers + "/" + maxPlayers);
+        if (this.currentLobbyStateLabel != null)
+            this.currentLobbyStateLabel.setText(this.displayLobbyStatus(this.currentLobbyStatus));
+        if (this.playersInLobby != null) {
+
+            List<String> lobbyPlayers = payload.players == null ? List.of() : payload.players;
+
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = 0; i < lobbyPlayers.size(); i++) {
+                builder.append(lobbyPlayers.get(i));
+                builder.append("\n");
+            }
+            this.playersInLobby.setText("Players in lobby:\n" + builder);
+        }
+    }
+
+    /**
+     * Resets the current-lobby labels to their neutral state.
+     */
+    private void renderNoCurrentLobby() {
+        if (this.currentLobbyTitleLabel != null) this.currentLobbyTitleLabel.setText("No lobby selected");
+        if (this.currentLobbyHostLabel != null) this.currentLobbyHostLabel.setText("Host: -");
+        if (this.currentLobbyPlayersLabel != null) this.currentLobbyPlayersLabel.setText("Players: -");
+        if (this.playersInLobby != null) this.playersInLobby.setText("Players: -");
+        if (this.currentLobbyStateLabel != null) this.currentLobbyStateLabel.setText("Waiting");
+    }
+
+    /**
+     * Builds one lobby row for the lobby list.
+     *
+     * @param lobby summary payload for a single lobby
+     * @return row node ready to be inserted in the lobby list container
+     */
+    private HBox lobbyCard(LobbySummaryPayload lobby) {
+        HBox card = new HBox(18);
+        card.getStyleClass().add("lobby-card");
+        if (this.isCurrentLobby(lobby.lobbyId)) {
+            card.getStyleClass().add("current-lobby-card");
+        }
+
+        VBox details = new VBox(4);
+        Label title = new Label("Lobby #" + lobby.lobbyId);
+        title.getStyleClass().add("lobby-title");
+        Label subtitle = new Label("Host " + lobby.hostNickname
+                + "  |  " + lobby.currentPlayers + "/" + lobby.maxPlayers + " players");
+        subtitle.getStyleClass().add("muted");
+        HBox seats = this.seatTrack(lobby.currentPlayers, lobby.maxPlayers);
+        details.getChildren().addAll(title, subtitle, seats);
+
+        Label status = new Label(lobby.status);
+        status.getStyleClass().add("status-pill");
+
+        if (this.isCurrentLobby(lobby.lobbyId)) {
+            Label seatedLabel = new Label("Your table");
+            seatedLabel.getStyleClass().add("status-pill");
+            card.getChildren().addAll(details, status, seatedLabel);
+        } else {
+            Button joinButton = new Button("Join");
+            joinButton.getStyleClass().add("secondary-button");
+            joinButton.setDisable(this.currentLobbyId != null || this.isReadyLobby(lobby));
+            joinButton.setOnAction(event ->
+                    this.callServer(() -> this.serverProxy.joinLobby(lobby.lobbyId))
+            );
+            card.getChildren().addAll(details, status, joinButton);
+        }
+        HBox.setHgrow(details, javafx.scene.layout.Priority.ALWAYS);
+        return card;
+    }
+
+    /**
+     * Returns whether a lobby is full enough to be considered ready.
+     */
+    private boolean isReadyLobby(LobbySummaryPayload lobby) {
+        return lobby.status != null && "READY".equalsIgnoreCase(lobby.status);
+    }
+
+    /**
+     * Builds the small filled/empty seat indicator shown inside a lobby card.
+     */
+    private HBox seatTrack(int currentPlayers, int maxPlayers) {
+        HBox seats = new HBox(5);
+        seats.getStyleClass().add("seat-track");
+        for (int index = 0; index < maxPlayers; index++) {
+            Circle dot = new Circle(4);
+            dot.getStyleClass().add(index < currentPlayers ? "seat-filled" : "seat-empty");
+            seats.getChildren().add(dot);
+        }
+        return seats;
+    }
+
+    /**
+     * Derives the local lobby status label from the latest lobby update.
+     */
+    private String statusFromLobbyUpdate(LobbyUpdatePayload payload) {
+        if (payload.event == LobbyEventType.LOBBY_STARTED) {
+            return "STARTING";
+        }
+        int currentPlayers = payload.players == null ? 0 : payload.players.size();
+        return payload.maxPlayers != null && currentPlayers >= payload.maxPlayers ? "READY" : "WAITING";
+    }
+
+    /**
+     * Converts internal lobby status values into user-facing labels.
+     */
+    private String displayLobbyStatus(String status) {
+        if ("WAITING".equalsIgnoreCase(status)) {
+            return "Waiting";
+        }
+        if ("STARTING".equalsIgnoreCase(status)) {
+            return "Starting";
+        }
+        return status == null ? "Waiting" : status;
+    }
+
+    /**
+     * Returns whether the given lobby id matches the lobby currently joined by this client.
+     */
+    private boolean isCurrentLobby(int lobbyId) {
+        return this.currentLobbyId != null && this.currentLobbyId == lobbyId;
+    }
+
+    /**
+     * Returns whether the given nickname belongs to this client.
+     */
+    private boolean isCurrentUser(String nickname) {
+        return nickname != null && nickname.equals(this.nickname);
+    }
+
+    /**
+     * Returns whether this client is the host of the current lobby.
+     */
+    private boolean isCurrentUserHost() {
+        return this.currentLobbyId != null
+                && this.currentLobbyHostNickname != null
+                && this.currentLobbyHostNickname.equals(this.nickname);
+    }
+
+    /**
+     * Enables, disables, shows, and hides lobby buttons according to the current lobby state.
+     */
+    private void updateLobbyActions() {
+        boolean inLobby = this.currentLobbyId != null;
+        boolean isHost = this.isCurrentUserHost();
+        boolean isReady = "READY".equalsIgnoreCase(this.currentLobbyStatus);
+        this.lobbyActionTitleLabel.setText(inLobby ? "Your table" : "Create table");
+        this.lobbyActionSubtitleLabel.setText(inLobby
+                ? "You are already seated. Use the table actions below or exit from the lobby list."
+                : "Pick a table size from 2 to 5 players and become the host.");
+        this.capacityLabel.setVisible(!inLobby);
+        this.capacityLabel.setManaged(!inLobby);
+        this.capacityComboBox.setVisible(!inLobby);
+        this.capacityComboBox.setManaged(!inLobby);
+        this.createLobbyButton.setVisible(!inLobby);
+        this.createLobbyButton.setManaged(!inLobby);
+        this.capacityComboBox.setDisable(inLobby);
+        this.createLobbyButton.setDisable(inLobby);
+        this.startLobbyButton.setDisable(!isHost || !isReady);
+        this.exitLobbyButton.setDisable(!inLobby);
+        this.openCreateTableButton.setDisable(inLobby);
+        this.backToLobbyListButton.setDisable(inLobby);
+    }
+
+
+    // ---------------------------------------------------------------------
+    // Game board rendering
+    // ---------------------------------------------------------------------
+    /*
+     * The board is not hard-coded in FXML because it changes with every game
+     * update. The controller receives payload DTOs and rebuilds card rows,
+     * offer-path tiles, occupants, and totem overlays from those payloads.
+     */
+
+    /**
+     * Renders the complete board area from the latest board payload.
+     *
+     * @param board card rows, offer path, and starting blocks received from the server
+     */
     private void renderBoard(BoardPayload board) {
         if (board == null) {
             this.renderBoardSkeleton();
@@ -464,6 +938,14 @@ public class GUIController implements ClientView {
         this.renderOfferPath(boardPayload.offerSpaces, boardPayload.startingBlocks);
     }
 
+    /**
+     * Renders one market row and enables only cards that are legal for the current phase.
+     *
+     * @param container target row container
+     * @param cards cards to display
+     * @param styleClass CSS class that distinguishes upper and lower row cards
+     * @param row logical row name used by turn-rule checks
+     */
     private void renderCardRow(HBox container, List<CardPayload> cards, String styleClass, String row) {
         container.getChildren().clear();
         List<CardPayload> cardPayloads = cards == null ? List.of() : cards;
@@ -484,6 +966,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Creates the visual node for one card in the market or a tribe.
+     */
     private StackPane cardNode(CardPayload card, String styleClass) {
         StackPane wrapper = new StackPane();
         wrapper.getStyleClass().addAll("card-frame", styleClass);
@@ -498,6 +983,9 @@ public class GUIController implements ClientView {
         return wrapper;
     }
 
+    /**
+     * Loads a card image, falling back to card 1 if the requested resource is missing.
+     */
     private Image cardImage(int cardId) {
         String resource = String.format(CARD_RESOURCE_PATTERN, cardId);
         return new Image(Objects.requireNonNullElse(
@@ -506,6 +994,9 @@ public class GUIController implements ClientView {
         ));
     }
 
+    /**
+     * Renders the offer path and wires each available offer space to the totem move action.
+     */
     private void renderOfferPath(List<OfferSpacePayload> offers, List<StartingBlockPayload> starts) {
         this.offerPathContainer.getChildren().clear();
         List<StartingBlockPayload> startingBlocks = starts == null ? List.of() : starts;
@@ -539,6 +1030,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Builds one offer-path tile, using the image asset when available and a text fallback otherwise.
+     */
     private StackPane offerPathTile(
             String imageKey,
             String fallbackTitle,
@@ -569,6 +1063,9 @@ public class GUIController implements ClientView {
         return tile;
     }
 
+    /**
+     * Loads an image resource from the classpath.
+     */
     private Image resourceImage(String resource) {
         InputStream stream = GUIController.class.getResourceAsStream(resource);
         if (stream == null) {
@@ -577,6 +1074,9 @@ public class GUIController implements ClientView {
         return new Image(stream);
     }
 
+    /**
+     * Adds the occupant totem or a textual fallback over an offer-path tile.
+     */
     private void addTotemOverlay(StackPane tile, String occupant) {
         if (occupant == null || occupant.isBlank()) {
             return;
@@ -602,6 +1102,9 @@ public class GUIController implements ClientView {
         tile.getChildren().add(totemView);
     }
 
+    /**
+     * Adds starting-order totems over the starting tile according to player position.
+     */
     private void addStartingOrderTotems(StackPane tile, List<StartingBlockPayload> startingBlocks) {
         List<StartingBlockPayload> orderedBlocks = startingBlocks.stream()
                 .sorted(Comparator.comparingInt(block -> block.position))
@@ -632,6 +1135,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Returns vertical offsets used to align starting totems on the starting tile image.
+     */
     private double[] startingTotemTopOffsets(int slots) {
         return switch (slots) {
             case 2 -> new double[]{48, 86};
@@ -641,6 +1147,9 @@ public class GUIController implements ClientView {
         };
     }
 
+    /**
+     * Resolves and loads the totem image assigned to a player.
+     */
     private Image totemImageForPlayer(String nickname) {
         String totem = this.totemForPlayer(nickname);
         if (totem == null || totem.isBlank()) {
@@ -652,6 +1161,9 @@ public class GUIController implements ClientView {
         ));
     }
 
+    /**
+     * Looks up the totem name for a player in the latest game payload.
+     */
     private String totemForPlayer(String nickname) {
         if (nickname == null || this.lastGamePayload == null || this.lastGamePayload.players == null) {
             return null;
@@ -664,6 +1176,9 @@ public class GUIController implements ClientView {
                 .orElse(null);
     }
 
+    /**
+     * Builds a text fallback tile when an offer-path image cannot be loaded.
+     */
     private VBox tile(String title, String detail, String occupant) {
         VBox tile = new VBox(4);
         tile.getStyleClass().add("offer-tile");
@@ -677,196 +1192,19 @@ public class GUIController implements ClientView {
         return tile;
     }
 
-    private void chooseCardFromBoard(int cardId, String row) {
-        if (!this.isCurrentUsersTurn()) {
-            this.selectedCardLabel.setText("Wait for your turn: " + this.currentTurnPlayerName() + " is playing.");
-            return;
-        }
-        if (this.isRoundPhase("EXTRA_DRAWS")) {
-            this.selectedCardLabel.setText("Extra draw requested for card " + cardId + ".");
-            this.callServer(() -> this.serverProxy.extraDraw(cardId));
-            return;
-        }
-        if (this.isRoundPhase("PLAYER_DRAWS")) {
-            this.registerLocalCardChoice(row);
-            this.pendingDraftRow = row;
-            this.selectedCardLabel.setText("Card " + cardId + " selected.");
-            if (this.lastGamePayload != null) {
-                this.renderBoard(this.lastGamePayload.board);
-                this.updateActionHint();
-            }
-            this.callServer(() -> this.serverProxy.chooseCard(cardId));
-            return;
-        }
-        this.updateActionHint();
-    }
 
-    private boolean isEventCard(CardPayload card) {
-        return card != null
-                && card.type != null
-                && card.type.toUpperCase().contains("EVENT");
-    }
+    // ---------------------------------------------------------------------
+    // Player, tribe, and final ranking rendering
+    // ---------------------------------------------------------------------
+    /*
+     * These renderers fill the dynamic side panels below the board. They do not
+     * send commands to the server; they only turn PlayerPayload data into rows,
+     * card strips, and the final ranking.
+     */
 
-    private boolean isFinalScoring(GamePayload payload) {
-        return payload != null
-                && payload.turnOrder != null
-                && "FINAL_SCORING".equals(payload.turnOrder.currentRoundPhase);
-    }
-
-    private void moveTotemFromBoard(String tile) {
-        if (!this.isCurrentUsersTurn()) {
-            this.selectedCardLabel.setText("Wait for your turn: " + this.currentTurnPlayerName() + " is playing.");
-            return;
-        }
-        if (!this.isRoundPhase("PLACING_TOTEMS")) {
-            this.updateActionHint();
-            return;
-        }
-        this.selectedCardLabel.setText("Totem sent to " + tile + ".");
-        this.callServer(() -> this.serverProxy.moveTotem(tile));
-    }
-
-    private boolean canMoveTotemTo(OfferSpacePayload offer) {
-        return offer != null
-                && offer.occupiedByNickname == null
-                && this.isCurrentUsersTurn()
-                && this.isRoundPhase("PLACING_TOTEMS");
-    }
-
-    private boolean canChooseFromRow(String row) {
-        if (!this.isCurrentUsersTurn()) {
-            return false;
-        }
-        if (this.isRoundPhase("EXTRA_DRAWS")) {
-            return true;
-        }
-        if (!this.isRoundPhase("PLAYER_DRAWS")) {
-            return false;
-        }
-        OfferSpacePayload currentOffer = this.currentPlayersOfferSpace();
-        if (currentOffer == null) {
-            return true;
-        }
-        if ("UPPER".equals(row)) {
-            return currentOffer.topRowCardsToTake - this.localUpperChoicesUsed > 0;
-        }
-        if ("LOWER".equals(row)) {
-            return currentOffer.bottomRowCardsToTake - this.localLowerChoicesUsed > 0;
-        }
-        return false;
-    }
-
-    private void updateLocalDraftTurn(GamePayload payload) {
-        String newKey = this.draftTurnKey(payload);
-        if (!Objects.equals(this.localDraftTurnKey, newKey)) {
-            this.localDraftTurnKey = newKey;
-            this.localUpperChoicesUsed = 0;
-            this.localLowerChoicesUsed = 0;
-        }
-    }
-
-    private String draftTurnKey(GamePayload payload) {
-        if (payload == null || payload.turnOrder == null) {
-            return null;
-        }
-        return payload.id + "|"
-                + payload.turnOrder.roundNumber + "|"
-                + payload.turnOrder.currentRoundPhase + "|"
-                + payload.turnOrder.currentPlayerNickname;
-    }
-
-    private void registerLocalCardChoice(String row) {
-        if ("UPPER".equals(row)) {
-            this.localUpperChoicesUsed++;
-        } else if ("LOWER".equals(row)) {
-            this.localLowerChoicesUsed++;
-        }
-    }
-
-    private void rollbackPendingDraftChoice() {
-        if (this.pendingDraftRow == null) {
-            return;
-        }
-        if ("UPPER".equals(this.pendingDraftRow) && this.localUpperChoicesUsed > 0) {
-            this.localUpperChoicesUsed--;
-        } else if ("LOWER".equals(this.pendingDraftRow) && this.localLowerChoicesUsed > 0) {
-            this.localLowerChoicesUsed--;
-        }
-        this.pendingDraftRow = null;
-        if (this.lastGamePayload != null) {
-            this.renderBoard(this.lastGamePayload.board);
-        }
-    }
-
-    private OfferSpacePayload currentPlayersOfferSpace() {
-        if (this.lastGamePayload == null
-                || this.lastGamePayload.board == null
-                || this.lastGamePayload.board.offerSpaces == null
-                || this.lastGamePayload.turnOrder == null) {
-            return null;
-        }
-        String currentPlayer = this.lastGamePayload.turnOrder.currentPlayerNickname;
-        if (currentPlayer == null) {
-            return null;
-        }
-        return this.lastGamePayload.board.offerSpaces.stream()
-                .filter(offer -> currentPlayer.equals(offer.occupiedByNickname))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private boolean isCurrentUsersTurn() {
-        return this.lastGamePayload != null
-                && this.lastGamePayload.turnOrder != null
-                && this.nickname.equals(this.lastGamePayload.turnOrder.currentPlayerNickname);
-    }
-
-    private boolean isRoundPhase(String phase) {
-        return this.lastGamePayload != null
-                && this.lastGamePayload.turnOrder != null
-                && phase.equals(this.lastGamePayload.turnOrder.currentRoundPhase);
-    }
-
-    private String currentTurnPlayerName() {
-        if (this.lastGamePayload == null
-                || this.lastGamePayload.turnOrder == null
-                || this.lastGamePayload.turnOrder.currentPlayerNickname == null) {
-            return "another player";
-        }
-        return this.lastGamePayload.turnOrder.currentPlayerNickname;
-    }
-
-    private void updateActionHint() {
-        if (this.selectedCardLabel == null) {
-            return;
-        }
-        if (this.lastGamePayload == null || this.lastGamePayload.turnOrder == null) {
-            this.selectedCardLabel.setText("Waiting for match data.");
-            return;
-        }
-        if (!this.isCurrentUsersTurn()) {
-            this.selectedCardLabel.setText(this.currentTurnPlayerName() + "'s turn: your actions are paused.");
-            return;
-        }
-        if (this.isRoundPhase("PLACING_TOTEMS")) {
-            this.selectedCardLabel.setText("Your turn: click a free offer-path space.");
-            return;
-        }
-        if (this.isRoundPhase("PLAYER_DRAWS")) {
-            OfferSpacePayload currentOffer = this.currentPlayersOfferSpace();
-            int upper = currentOffer == null ? 0 : Math.max(0, currentOffer.topRowCardsToTake - this.localUpperChoicesUsed);
-            int lower = currentOffer == null ? 0 : Math.max(0, currentOffer.bottomRowCardsToTake - this.localLowerChoicesUsed);
-            this.selectedCardLabel.setText("Your turn: choose cards from the market. Upper: "
-                    + upper + " | lower: " + lower + ".");
-            return;
-        }
-        if (this.isRoundPhase("EXTRA_DRAWS")) {
-            this.selectedCardLabel.setText("Extra draw: click an available card.");
-            return;
-        }
-        this.selectedCardLabel.setText("Phase " + this.lastGamePayload.turnOrder.currentRoundPhase + " in progress.");
-    }
-
+    /**
+     * Renders the compact player status list.
+     */
     private void renderPlayers(List<PlayerPayload> players) {
         this.playerListContainer.getChildren().clear();
         if (players == null || players.isEmpty()) {
@@ -904,6 +1242,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Renders each player's personal tribe cards.
+     */
     private void renderTribe(List<PlayerPayload> players) {
         this.tribeCardsContainer.getChildren().clear();
         if (players == null || players.isEmpty()) {
@@ -916,6 +1257,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Builds the card strip for one player's tribe section.
+     */
     private VBox playerTribeSection(PlayerPayload player) {
         VBox section = new VBox(8);
         section.getStyleClass().add("player-tribe-section");
@@ -958,6 +1302,9 @@ public class GUIController implements ClientView {
         return section;
     }
 
+    /**
+     * Renders final ranking ordered by prestige points and then food.
+     */
     private void renderFinalRanking(List<PlayerPayload> players) {
         this.finalRankingContainer.getChildren().clear();
         if (players == null || players.isEmpty()) {
@@ -985,68 +1332,18 @@ public class GUIController implements ClientView {
         }
     }
 
-    private HBox lobbyCard(LobbySummaryPayload lobby) {
-        HBox card = new HBox(18);
-        card.getStyleClass().add("lobby-card");
-        if (this.isCurrentLobby(lobby.lobbyId)) {
-            card.getStyleClass().add("current-lobby-card");
-        }
 
-        VBox details = new VBox(4);
-        Label title = new Label("Lobby #" + lobby.lobbyId);
-        title.getStyleClass().add("lobby-title");
-        Label subtitle = new Label("Host " + lobby.hostNickname
-                + "  |  " + lobby.currentPlayers + "/" + lobby.maxPlayers + " players");
-        subtitle.getStyleClass().add("muted");
-        HBox seats = this.seatTrack(lobby.currentPlayers, lobby.maxPlayers);
-        details.getChildren().addAll(title, subtitle, seats);
+    // ---------------------------------------------------------------------
+    // Loading placeholders
+    // ---------------------------------------------------------------------
+    /*
+     * Skeleton nodes keep the GUI stable while waiting for the first payload or
+     * while returning from a match to the lobby list.
+     */
 
-        Label status = new Label(lobby.status);
-        status.getStyleClass().add("status-pill");
-
-        if (this.isCurrentLobby(lobby.lobbyId)) {
-            Label seatedLabel = new Label("Your table");
-            seatedLabel.getStyleClass().add("status-pill");
-            card.getChildren().addAll(details, status, seatedLabel);
-        } else {
-            Button joinButton = new Button("Join");
-            joinButton.getStyleClass().add("secondary-button");
-            joinButton.setDisable(this.currentLobbyId != null || this.isReadyLobby(lobby));
-            joinButton.setOnAction(event ->
-                    this.callServer(() -> this.serverProxy.joinLobby(lobby.lobbyId))
-            );
-            card.getChildren().addAll(details, status, joinButton);
-        }
-        HBox.setHgrow(details, javafx.scene.layout.Priority.ALWAYS);
-        return card;
-    }
-
-    private boolean isReadyLobby(LobbySummaryPayload lobby) {
-        return lobby.status != null && "READY".equalsIgnoreCase(lobby.status);
-    }
-
-    private HBox seatTrack(int currentPlayers, int maxPlayers) {
-        HBox seats = new HBox(5);
-        seats.getStyleClass().add("seat-track");
-        for (int index = 0; index < maxPlayers; index++) {
-            Circle dot = new Circle(4);
-            dot.getStyleClass().add(index < currentPlayers ? "seat-filled" : "seat-empty");
-            seats.getChildren().add(dot);
-        }
-        return seats;
-    }
-
-    private VBox emptyState(String title, String detail) {
-        VBox empty = new VBox(4);
-        empty.getStyleClass().add("empty-state");
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("empty-title");
-        Label detailLabel = new Label(detail);
-        detailLabel.getStyleClass().add("muted");
-        empty.getChildren().addAll(titleLabel, detailLabel);
-        return empty;
-    }
-
+    /**
+     * Resets every game area to its loading state.
+     */
     private void renderGameSkeleton() {
         this.matchTitleLabel.setText("Match");
         this.matchMetaLabel.setText("Syncing");
@@ -1058,6 +1355,9 @@ public class GUIController implements ClientView {
         this.renderFinalRankingSkeleton();
     }
 
+    /**
+     * Fills the board area with placeholder cards and offer tiles.
+     */
     private void renderBoardSkeleton() {
         this.upperRowContainer.getChildren().clear();
         this.lowerRowContainer.getChildren().clear();
@@ -1071,6 +1371,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Fills the player list with placeholder rows.
+     */
     private void renderPlayersSkeleton() {
         this.playerListContainer.getChildren().clear();
         for (int index = 0; index < 4; index++) {
@@ -1081,6 +1384,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Fills the tribe section with placeholder card rows.
+     */
     private void renderTribeSkeleton() {
         this.tribeCardsContainer.getChildren().clear();
         for (int sectionIndex = 0; sectionIndex < 2; sectionIndex++) {
@@ -1098,6 +1404,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Fills the final ranking container with placeholder rows.
+     */
     private void renderFinalRankingSkeleton() {
         this.finalRankingContainer.getChildren().clear();
         for (int index = 0; index < 4; index++) {
@@ -1108,6 +1417,9 @@ public class GUIController implements ClientView {
         }
     }
 
+    /**
+     * Builds one disabled placeholder card.
+     */
     private StackPane skeletonCard() {
         StackPane card = new StackPane();
         card.getStyleClass().addAll("card-frame", "skeleton-card");
@@ -1115,6 +1427,9 @@ public class GUIController implements ClientView {
         return card;
     }
 
+    /**
+     * Builds one disabled placeholder offer tile.
+     */
     private VBox skeletonTile() {
         VBox tile = new VBox(8);
         tile.getStyleClass().addAll("offer-tile", "skeleton-tile");
@@ -1123,6 +1438,9 @@ public class GUIController implements ClientView {
         return tile;
     }
 
+    /**
+     * Builds one fixed-width placeholder line.
+     */
     private Region skeletonLine(double width) {
         Region line = new Region();
         line.getStyleClass().add("skeleton-line");
@@ -1135,207 +1453,269 @@ public class GUIController implements ClientView {
         return line;
     }
 
-    private String renderTurn(TurnOrderPayload order, TurnStatePayload state) {
-        String phase = state == null ? "setup" : state.phase;
-        if (order == null) {
-            return "Phase " + phase + " | waiting for turn";
-        }
-        return "Round " + order.roundNumber + " | " + order.currentRoundPhase
-                + " | " + order.currentPlayerNickname + "'s turn";
+    /**
+     * Builds a reusable empty-state block with a title and detail text.
+     */
+    private VBox emptyState(String title, String detail) {
+        VBox empty = new VBox(4);
+        empty.getStyleClass().add("empty-state");
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("empty-title");
+        Label detailLabel = new Label(detail);
+        detailLabel.getStyleClass().add("muted");
+        empty.getChildren().addAll(titleLabel, detailLabel);
+        return empty;
     }
 
-    private int displayEra(int currentEra) {
-        return currentEra;
-    }
 
-    private String describeLobbyEvent(LobbyEventType event) {
-        if (event == null) {
-            return "Aggiornamento lobby ricevuto.";
-        }
-        return switch (event) {
-            case LOBBY_CREATED -> "Lobby creata.";
-            case LOBBY_JOINED -> "Lobby raggiunta.";
-            case LOBBY_LEFT -> "Sei uscito dalla lobby.";
-            case LOBBY_STARTED -> "Match started.";
-        };
-    }
+    // ---------------------------------------------------------------------
+    // Game interaction rules and local turn state
+    // ---------------------------------------------------------------------
+    /*
+     * The server is authoritative, but the GUI keeps a small local turn state
+     * to avoid letting the same player click too many cards before the next
+     * server update arrives. If a server error rejects the action, the local
+     * counters are rolled back.
+     */
 
-    private void showPage(javafx.scene.Node page) {
-        for (javafx.scene.Node node : this.pages.getChildren()) {
-            node.setVisible(node == page);
-            node.setManaged(node == page);
+    /**
+     * Handles a card click from either market row and sends the correct command for the phase.
+     */
+    private void chooseCardFromBoard(int cardId, String row) {
+        if (!this.isCurrentUsersTurn()) {
+            this.selectedCardLabel.setText("Wait for your turn: " + this.currentTurnPlayerName() + " is playing.");
+            return;
         }
-        boolean loginVisible = page == this.loginPage;
-        this.topBar.setVisible(!loginVisible);
-        this.topBar.setManaged(!loginVisible);
-        if (page == this.lobbyPage) {
-            if (this.lobbyRefreshTimer != null) {
-                this.lobbyRefreshTimer.play();
+        if (this.isRoundPhase("EXTRA_DRAWS")) {
+            this.selectedCardLabel.setText("Extra draw requested for card " + cardId + ".");
+            this.callServer(() -> this.serverProxy.extraDraw(cardId));
+            return;
+        }
+        if (this.isRoundPhase("PLAYER_DRAWS")) {
+            this.registerLocalCardChoice(row);
+            this.pendingDraftRow = row;
+            this.selectedCardLabel.setText("Card " + cardId + " selected.");
+            if (this.lastGamePayload != null) {
+                this.renderBoard(this.lastGamePayload.board);
+                this.updateActionHint();
             }
-        } else if (this.lobbyRefreshTimer != null) {
-            this.lobbyRefreshTimer.stop();
-        }
-    }
-
-    private void callServer(ServerCall call) {
-        if (this.serverProxy == null) {
-            this.showError(new ErrorPayload("CLIENT_GUI_ERROR", "ServerProxy non collegato."));
+            this.callServer(() -> this.serverProxy.chooseCard(cardId));
             return;
         }
-        try {
-            call.run();
-        } catch (RuntimeException exception) {
-            this.showError(new ErrorPayload("CLIENT_GUI_ERROR", exception.getMessage()));
-        }
+        this.updateActionHint();
     }
 
-    private void showTransientStatus(Label label, String message) {
-        label.setText(message);
+    /**
+     * Returns whether a card payload represents an event card.
+     */
+    private boolean isEventCard(CardPayload card) {
+        return card != null
+                && card.type != null
+                && card.type.toUpperCase().contains("EVENT");
     }
 
-    private void scheduleAuthenticatedRedirect() {
-        if (this.authRedirectDelay != null) {
-            this.authRedirectDelay.stop();
-        }
-        this.authRedirectDelay = new PauseTransition(Duration.seconds(3));
-        this.authRedirectDelay.setOnFinished(event -> {
-            this.authRedirectDelay = null;
-            if (!this.shouldOpenLobbyAfterAuthentication()) {
-                return;
-            }
-            this.showPage(this.lobbyPage);
-            this.requestLobbyList();
-        });
-        this.authRedirectDelay.play();
+    /**
+     * Returns whether a game payload represents the final-scoring phase.
+     */
+    private boolean isFinalScoring(GamePayload payload) {
+        return payload != null
+                && payload.turnOrder != null
+                && "FINAL_SCORING".equals(payload.turnOrder.currentRoundPhase);
     }
 
-    private void cancelAuthenticatedRedirect() {
-        if (this.authRedirectDelay == null) {
+    /**
+     * Sends a totem move when the clicked offer-path tile is legal for the current phase.
+     */
+    private void moveTotemFromBoard(String tile) {
+        if (!this.isCurrentUsersTurn()) {
+            this.selectedCardLabel.setText("Wait for your turn: " + this.currentTurnPlayerName() + " is playing.");
             return;
         }
-        this.authRedirectDelay.stop();
-        this.authRedirectDelay = null;
-    }
-
-    private boolean shouldOpenLobbyAfterAuthentication() {
-        return this.loginPage.isVisible()
-                && !this.gamePage.isVisible()
-                && !this.endPage.isVisible()
-                && this.currentLobbyId == null;
-    }
-
-    private void configureLobbyAutoRefresh() {
-        this.lobbyRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(3), event -> {
-            if (!this.canAutoRefreshLobby()) {
-                return;
-            }
-            this.requestLobbyList();
-        }));
-        this.lobbyRefreshTimer.setCycleCount(Timeline.INDEFINITE);
-    }
-
-    private boolean canAutoRefreshLobby() {
-        return this.lobbyPage.isVisible()
-                && !this.gamePage.isVisible()
-                && !this.endPage.isVisible()
-                && this.currentLobbyId == null
-                && this.serverProxy != null
-                && this.serverProxy.isConnected();
-    }
-
-    private boolean isConnectionClosed(ErrorPayload payload) {
-        return payload != null && "CONNECTION_CLOSED".equals(payload.code);
-    }
-
-    private void requestLobbyList() {
-        if (this.currentLobbyId != null) {
-            this.renderLobbyListUnavailable();
+        if (!this.isRoundPhase("PLACING_TOTEMS")) {
+            this.updateActionHint();
             return;
         }
-        this.callServer(() -> this.serverProxy.listLobbies());
+        this.selectedCardLabel.setText("Totem sent to " + tile + ".");
+        this.callServer(() -> this.serverProxy.moveTotem(tile));
     }
 
-    private void renderLobbyListUnavailable() {
-        this.lobbyCountLabel.setText("In lobby");
-        this.lobbyListContainer.getChildren().clear();
-        this.lobbyListContainer.getChildren().add(
-                this.emptyState("Table list unavailable", "Exit your lobby to browse available tables."));
+    /**
+     * Returns whether a specific offer space can receive the current player's totem.
+     */
+    private boolean canMoveTotemTo(OfferSpacePayload offer) {
+        return offer != null
+                && offer.occupiedByNickname == null
+                && this.isCurrentUsersTurn()
+                && this.isRoundPhase("PLACING_TOTEMS");
     }
 
-    private void renderLobbyLoading() {
-        this.lobbyCountLabel.setText("Loading");
-        this.lobbyListContainer.getChildren().clear();
-        for (int index = 0; index < 3; index++) {
-            HBox row = new HBox(16);
-            row.getStyleClass().addAll("lobby-card", "skeleton-row");
-            row.getChildren().addAll(this.skeletonLine(170), this.skeletonLine(120), this.skeletonLine(74));
-            this.lobbyListContainer.getChildren().add(row);
+    /**
+     * Returns whether the current player can select another card from the given row.
+     */
+    private boolean canChooseFromRow(String row) {
+        if (!this.isCurrentUsersTurn()) {
+            return false;
+        }
+        if (this.isRoundPhase("EXTRA_DRAWS")) {
+            return true;
+        }
+        if (!this.isRoundPhase("PLAYER_DRAWS")) {
+            return false;
+        }
+        OfferSpacePayload currentOffer = this.currentPlayersOfferSpace();
+        if (currentOffer == null) {
+            return true;
+        }
+        if ("UPPER".equals(row)) {
+            return currentOffer.topRowCardsToTake - this.localUpperChoicesUsed > 0;
+        }
+        if ("LOWER".equals(row)) {
+            return currentOffer.bottomRowCardsToTake - this.localLowerChoicesUsed > 0;
+        }
+        return false;
+    }
+
+    /**
+     * Resets local card-pick counters when the server advances to a new draft turn.
+     */
+    private void updateLocalDraftTurn(GamePayload payload) {
+        String newKey = this.draftTurnKey(payload);
+        if (!Objects.equals(this.localDraftTurnKey, newKey)) {
+            this.localDraftTurnKey = newKey;
+            this.localUpperChoicesUsed = 0;
+            this.localLowerChoicesUsed = 0;
         }
     }
 
-    private void renderCurrentLobby(LobbyUpdatePayload payload) {
-        if (payload == null) {
+    /**
+     * Builds a stable key that identifies the current draft turn.
+     */
+    private String draftTurnKey(GamePayload payload) {
+        if (payload == null || payload.turnOrder == null) {
+            return null;
+        }
+        return payload.id + "|"
+                + payload.turnOrder.roundNumber + "|"
+                + payload.turnOrder.currentRoundPhase + "|"
+                + payload.turnOrder.currentPlayerNickname;
+    }
+
+    /**
+     * Records a local card choice before the server confirmation arrives.
+     */
+    private void registerLocalCardChoice(String row) {
+        if ("UPPER".equals(row)) {
+            this.localUpperChoicesUsed++;
+        } else if ("LOWER".equals(row)) {
+            this.localLowerChoicesUsed++;
+        }
+    }
+
+    /**
+     * Undoes the last optimistic card-choice counter after a server error.
+     */
+    private void rollbackPendingDraftChoice() {
+        if (this.pendingDraftRow == null) {
             return;
         }
-        if (payload.event == LobbyEventType.LOBBY_LEFT) {
-            if (this.isCurrentUser(payload.nickname)) {
-                this.currentLobbyId = null;
-                this.currentLobbyHostNickname = null;
-                this.currentLobbyStatus = "WAITING";
-                this.renderNoCurrentLobby();
-            } else {
-                this.renderCurrentLobbySnapshot(payload);
-                this.updateLobbyActions();
-            }
+        if ("UPPER".equals(this.pendingDraftRow) && this.localUpperChoicesUsed > 0) {
+            this.localUpperChoicesUsed--;
+        } else if ("LOWER".equals(this.pendingDraftRow) && this.localLowerChoicesUsed > 0) {
+            this.localLowerChoicesUsed--;
+        }
+        this.pendingDraftRow = null;
+        if (this.lastGamePayload != null) {
+            this.renderBoard(this.lastGamePayload.board);
+        }
+    }
+
+    /**
+     * Finds the offer space currently occupied by the active player.
+     */
+    private OfferSpacePayload currentPlayersOfferSpace() {
+        if (this.lastGamePayload == null
+                || this.lastGamePayload.board == null
+                || this.lastGamePayload.board.offerSpaces == null
+                || this.lastGamePayload.turnOrder == null) {
+            return null;
+        }
+        String currentPlayer = this.lastGamePayload.turnOrder.currentPlayerNickname;
+        if (currentPlayer == null) {
+            return null;
+        }
+        return this.lastGamePayload.board.offerSpaces.stream()
+                .filter(offer -> currentPlayer.equals(offer.occupiedByNickname))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Returns whether the current turn belongs to this client.
+     */
+    private boolean isCurrentUsersTurn() {
+        return this.lastGamePayload != null
+                && this.lastGamePayload.turnOrder != null
+                && this.nickname.equals(this.lastGamePayload.turnOrder.currentPlayerNickname);
+    }
+
+    /**
+     * Returns whether the latest game payload is in the given round phase.
+     */
+    private boolean isRoundPhase(String phase) {
+        return this.lastGamePayload != null
+                && this.lastGamePayload.turnOrder != null
+                && phase.equals(this.lastGamePayload.turnOrder.currentRoundPhase);
+    }
+
+    /**
+     * Returns the active player's nickname, or a neutral fallback when unavailable.
+     */
+    private String currentTurnPlayerName() {
+        if (this.lastGamePayload == null
+                || this.lastGamePayload.turnOrder == null
+                || this.lastGamePayload.turnOrder.currentPlayerNickname == null) {
+            return "another player";
+        }
+        return this.lastGamePayload.turnOrder.currentPlayerNickname;
+    }
+
+    /**
+     * Updates the short action hint shown near the turn information.
+     */
+    private void updateActionHint() {
+        if (this.selectedCardLabel == null) {
             return;
         }
-        if (payload.event != LobbyEventType.LOBBY_CREATED
-                && payload.event != LobbyEventType.LOBBY_JOINED
-                && payload.event != LobbyEventType.LOBBY_STARTED) {
+        if (this.lastGamePayload == null || this.lastGamePayload.turnOrder == null) {
+            this.selectedCardLabel.setText("Waiting for match data.");
             return;
         }
-
-        this.renderCurrentLobbySnapshot(payload);
-    }
-
-    private void renderCurrentLobbySnapshot(LobbyUpdatePayload payload) {
-        this.currentLobbyId = payload.lobbyId;
-        this.currentLobbyHostNickname = payload.hostNickname;
-        this.currentLobbyStatus = this.statusFromLobbyUpdate(payload);
-        if (this.currentLobbyTitleLabel != null)
-            this.currentLobbyTitleLabel.setText(
-                    payload.lobbyId == null ? "Current lobby" : "Lobby #" + payload.lobbyId);
-        if (this.currentLobbyHostLabel != null)
-            this.currentLobbyHostLabel.setText(
-                    payload.hostNickname == null ? "Host: -" : "Host: " + payload.hostNickname);
-        int currentPlayers = payload.players == null ? 0 : payload.players.size();
-        String maxPlayers = payload.maxPlayers == null ? "-" : String.valueOf(payload.maxPlayers);
-        if (this.currentLobbyPlayersLabel != null)
-            this.currentLobbyPlayersLabel.setText("Players: " + currentPlayers + "/" + maxPlayers);
-        if (this.currentLobbyStateLabel != null)
-            this.currentLobbyStateLabel.setText(this.displayLobbyStatus(this.currentLobbyStatus));
-        if (this.playersInLobby != null) {
-
-            List<String> lobbyPlayers = payload.players == null ? List.of() : payload.players;
-
-            StringBuilder builder = new StringBuilder();
-
-            for (int i = 0; i < lobbyPlayers.size(); i++) {
-                builder.append(lobbyPlayers.get(i));
-                builder.append("\n");
-            }
-            this.playersInLobby.setText("Players in lobby:\n" + builder);
+        if (!this.isCurrentUsersTurn()) {
+            this.selectedCardLabel.setText(this.currentTurnPlayerName() + "'s turn: your actions are paused.");
+            return;
         }
+        if (this.isRoundPhase("PLACING_TOTEMS")) {
+            this.selectedCardLabel.setText("Your turn: click a free offer-path space.");
+            return;
+        }
+        if (this.isRoundPhase("PLAYER_DRAWS")) {
+            OfferSpacePayload currentOffer = this.currentPlayersOfferSpace();
+            int upper = currentOffer == null ? 0 : Math.max(0, currentOffer.topRowCardsToTake - this.localUpperChoicesUsed);
+            int lower = currentOffer == null ? 0 : Math.max(0, currentOffer.bottomRowCardsToTake - this.localLowerChoicesUsed);
+            this.selectedCardLabel.setText("Your turn: choose cards from the market. Upper: "
+                    + upper + " | lower: " + lower + ".");
+            return;
+        }
+        if (this.isRoundPhase("EXTRA_DRAWS")) {
+            this.selectedCardLabel.setText("Extra draw: click an available card.");
+            return;
+        }
+        this.selectedCardLabel.setText("Phase " + this.lastGamePayload.turnOrder.currentRoundPhase + " in progress.");
     }
 
-    private void renderNoCurrentLobby() {
-        if (this.currentLobbyTitleLabel != null) this.currentLobbyTitleLabel.setText("No lobby selected");
-        if (this.currentLobbyHostLabel != null) this.currentLobbyHostLabel.setText("Host: -");
-        if (this.currentLobbyPlayersLabel != null) this.currentLobbyPlayersLabel.setText("Players: -");
-        if (this.playersInLobby != null) this.playersInLobby.setText("Players: -");
-        if (this.currentLobbyStateLabel != null) this.currentLobbyStateLabel.setText("Waiting");
-    }
-
+    /**
+     * Clears match-specific state after the final result screen.
+     */
     private void resetAfterMatch() {
         this.lastGamePayload = null;
         this.localDraftTurnKey = null;
@@ -1354,73 +1734,103 @@ public class GUIController implements ClientView {
         this.lobbyStatusLabel.setText("Match complete. Choose a new lobby or create one.");
     }
 
-    private String statusFromLobbyUpdate(LobbyUpdatePayload payload) {
-        if (payload.event == LobbyEventType.LOBBY_STARTED) {
-            return "STARTING";
+
+    // ---------------------------------------------------------------------
+    // Shared formatting and server dispatch helpers
+    // ---------------------------------------------------------------------
+    /*
+     * Small helpers shared across multiple sections. They format payload values,
+     * switch visible pages, and centralize calls to the ServerProxy so GUI
+     * errors are reported consistently.
+     */
+
+    private String renderTurn(TurnOrderPayload order, TurnStatePayload state) {
+        String phase = state == null ? "setup" : state.phase;
+        if (order == null) {
+            return "Phase " + phase + " | waiting for turn";
         }
-        int currentPlayers = payload.players == null ? 0 : payload.players.size();
-        return payload.maxPlayers != null && currentPlayers >= payload.maxPlayers ? "READY" : "WAITING";
+        return "Round " + order.roundNumber + " | " + order.currentRoundPhase
+                + " | " + order.currentPlayerNickname + "'s turn";
     }
 
-    private String displayLobbyStatus(String status) {
-        if ("WAITING".equalsIgnoreCase(status)) {
-            return "Waiting";
+    /**
+     * Converts the zero-based era value from the payload to the one-based value shown in the UI.
+     */
+    private int displayEra(int currentEra) {
+        return currentEra + 1;
+    }
+
+    /**
+     * Converts a lobby event enum into the status message shown in the lobby area.
+     */
+    private String describeLobbyEvent(LobbyEventType event) {
+        if (event == null) {
+            return "Aggiornamento lobby ricevuto.";
         }
-        if ("STARTING".equalsIgnoreCase(status)) {
-            return "Starting";
+        return switch (event) {
+            case LOBBY_CREATED -> "Lobby creata.";
+            case LOBBY_JOINED -> "Lobby raggiunta.";
+            case LOBBY_LEFT -> "Sei uscito dalla lobby.";
+            case LOBBY_STARTED -> "Match started.";
+        };
+    }
+
+    /**
+     * Shows one page from the FXML page stack and hides the others.
+     *
+     * <p>This method also starts or stops the lobby auto-refresh timer based on
+     * which page is visible.
+     */
+    private void showPage(javafx.scene.Node page) {
+        for (javafx.scene.Node node : this.pages.getChildren()) {
+            node.setVisible(node == page);
+            node.setManaged(node == page);
         }
-        return status == null ? "Waiting" : status;
-    }
-
-    private boolean isCurrentLobby(int lobbyId) {
-        return this.currentLobbyId != null && this.currentLobbyId == lobbyId;
-    }
-
-    private boolean isCurrentUser(String nickname) {
-        return nickname != null && nickname.equals(this.nickname);
-    }
-
-    private boolean isCurrentUserHost() {
-        return this.currentLobbyId != null
-                && this.currentLobbyHostNickname != null
-                && this.currentLobbyHostNickname.equals(this.nickname);
-    }
-
-    private void updateLobbyActions() {
-        boolean inLobby = this.currentLobbyId != null;
-        boolean isHost = this.isCurrentUserHost();
-        boolean isReady = "READY".equalsIgnoreCase(this.currentLobbyStatus);
-        this.lobbyActionTitleLabel.setText(inLobby ? "Your table" : "Create table");
-        this.lobbyActionSubtitleLabel.setText(inLobby
-                ? "You are already seated. Use the table actions below or exit from the lobby list."
-                : "Pick a table size from 2 to 5 players and become the host.");
-        this.capacityLabel.setVisible(!inLobby);
-        this.capacityLabel.setManaged(!inLobby);
-        this.capacityComboBox.setVisible(!inLobby);
-        this.capacityComboBox.setManaged(!inLobby);
-        this.createLobbyButton.setVisible(!inLobby);
-        this.createLobbyButton.setManaged(!inLobby);
-        this.capacityComboBox.setDisable(inLobby);
-        this.createLobbyButton.setDisable(inLobby);
-        this.startLobbyButton.setDisable(!isHost || !isReady);
-        this.exitLobbyButton.setDisable(!inLobby);
-        this.openCreateTableButton.setDisable(inLobby);
-        this.backToLobbyListButton.setDisable(inLobby);
-    }
-
-
-    //remember that this code will be runned both by the thread that is charge of displaying the UI
-    //(platform thread) and by the thread that is charge of receiving the server updates (server listener thread),
-    // so we need to make sure that any update to the UI is runned on the platform thread
-    private void runOnFx(Runnable runnable) {
-        if (Platform.isFxApplicationThread()) {
-            runnable.run();
-        } else {
-            Platform.runLater(runnable);
+        boolean loginVisible = page == this.loginPage;
+        this.topBar.setVisible(!loginVisible);
+        this.topBar.setManaged(!loginVisible);
+        if (page == this.lobbyPage) {
+            if (this.lobbyRefreshTimer != null) {
+                this.lobbyRefreshTimer.play();
+            }
+        } else if (this.lobbyRefreshTimer != null) {
+            this.lobbyRefreshTimer.stop();
         }
+    }
+
+    /**
+     * Executes a server command and converts local GUI-side failures into visible errors.
+     */
+    private void callServer(ServerCall call) {
+        if (this.serverProxy == null) {
+            this.showError(new ErrorPayload("CLIENT_GUI_ERROR", "ServerProxy non collegato."));
+            return;
+        }
+        try {
+            call.run();
+        } catch (RuntimeException exception) {
+            this.showError(new ErrorPayload("CLIENT_GUI_ERROR", exception.getMessage()));
+        }
+    }
+
+    /**
+     * Writes a short status message into a label.
+     */
+    private void showTransientStatus(Label label, String message) {
+        label.setText(message);
+    }
+
+    /**
+     * Returns whether an error payload represents a closed connection.
+     */
+    private boolean isConnectionClosed(ErrorPayload payload) {
+        return payload != null && "CONNECTION_CLOSED".equals(payload.code);
     }
 
     @FunctionalInterface
+    /**
+     * Command callback used by {@link #callServer(ServerCall)}.
+     */
     private interface ServerCall {
         void run();
     }
