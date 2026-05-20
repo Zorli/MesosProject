@@ -3,7 +3,12 @@ package it.polimi.ingsoft.mesos.server.model.game.game;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
 import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.OfferSpace;
 import it.polimi.ingsoft.mesos.server.model.game.board.offerpath.StartingBlock;
+import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
 import it.polimi.ingsoft.mesos.server.model.game.cards.Card;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Builder;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Hunter;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Inventor;
+import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Shaman;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
@@ -231,11 +236,27 @@ final class GamePayloadMapper {
      * @return payload containing id, runtime card type, and era ordinal
      */
     private static CardPayload toCardPayload(Card card) {
-        return new CardPayload(
-                card.getId(),
-                card.getClass().getSimpleName(),
-                card.getEra().ordinal()
-        );
+        int id = card.getId();
+        int era = card.getIntegerEra();
+        String type = card.getCardType();
+
+        if (card instanceof Shaman shaman) {
+            return CardPayload.shaman(id, type, era, shaman.getStars());
+        }
+        if (card instanceof Hunter hunter) {
+            return CardPayload.hunter(id, type, era, hunter.getHasEffect());
+        }
+        if (card instanceof Inventor inventor) {
+            return CardPayload.inventor(id, type, era, inventor.getInventionType().name());
+        }
+        if (card instanceof Builder builder) {
+            return CardPayload.builder(id, type, era, builder.getPriceDiscount(), builder.getPrestigePoints());
+        }
+        if (card instanceof BuildingCard buildingCard) {
+            return CardPayload.building(id, type, era, buildingCard.getFoodCost());
+        }
+
+        return CardPayload.base(id, type, era);
     }
 
     /**
