@@ -595,10 +595,10 @@ the refactor.
 6. `applyChosenCardToPlayer` treats every non-building card as a `CharacterCard`.
    This assumes event cards are never selectable/drawable by players.
 
-7. `TurnOrderTrack` allows constructing a restored state with any non-negative
+7. `TurnOrderTrack` allows constructing a custom state with any non-negative
    round number and any non-null phase. It does not validate phase consistency.
 
-8. `PlayersTurnFSM` stores counters by `Player` object identity/equality. Restored
+8. `PlayersTurnFSM` stores counters by `Player` object identity/equality. Rebuilt
    players must therefore be the same logical player objects used by the game.
 
 9. `completeExtraDrawTurn` advances to the next player in the extra-draw order

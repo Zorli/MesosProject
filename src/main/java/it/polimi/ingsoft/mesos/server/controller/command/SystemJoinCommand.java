@@ -1,8 +1,7 @@
 package it.polimi.ingsoft.mesos.server.controller.command;
 
 /**
- * Internal queue command used to move an authenticated session into a lobby or
- * back into a resumable controller flow (game).
+ * Internal queue command used to move an authenticated session into a lobby.
  *
  * <p>The command is produced by server-side routing logic after validation has
  * selected the target controller. It carries only the {@code sessionId}. The
@@ -16,15 +15,14 @@ public class SystemJoinCommand implements QueuedCommand {
     /**
      * Constructs a new system join command.
      *
-     * @param sessionId the unique identifier of the authenticated player session that
-     *                  is joining or reconnecting
+     * @param sessionId the unique identifier of the authenticated player session that is joining
      */
     public SystemJoinCommand(String sessionId) {
         this.sessionId = sessionId;
     }
 
     /**
-     * Retrieves the session ID of the player attempting to join or reconnect.
+     * Retrieves the session ID of the player attempting to join.
      *
      * @return the unique session ID string
      */
