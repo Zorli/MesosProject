@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.server.controller.command;
 
 /**
  * Internal queue command used to move an authenticated session into a lobby or
- * back into a resumable controller flow.
+ * back into a resumable controller flow (game).
  *
  * <p>The command is produced by server-side routing logic after validation has
  * selected the target controller. It carries only the {@code sessionId}. The

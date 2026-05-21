@@ -22,7 +22,7 @@ import java.util.Objects;
  *   <li>If the host leaves, host authority is automatically re-assigned to the next available player.</li>
  *   <li>If all players leave, the lobby status changes to {@link LobbyStatus#CLOSED}.</li>
  *   <li>The lobby status transitions to {@link LobbyStatus#READY} when it is full (i.e. number of players matches capacity).
- *       Only in {@link LobbyStatus#READY} or {@link LobbyStatus#RESUMABLE} status can the match be started by the host.</li>
+ *       Only in {@link LobbyStatus#READY}  status can the match be started by the host.</li>
  * </ul>
  *
  * <p><strong>Error Handling Pattern:</strong>
@@ -42,8 +42,6 @@ public class Lobby {
     private final int capacity;
     /** Ordered list of nicknames representing current players in the lobby. */
     private final List<String> players;
-    /** List of nicknames representing players allowed to rejoin a suspended (resumable) lobby. */
-    private final List<String> resumableRoster;
     /** Nickname of the host player who has privileges to start the game match. */
     private String hostNickname;
     /** Current status of the lobby lifecycle. */
@@ -70,7 +68,6 @@ public class Lobby {
         this.id = id;
         this.capacity = capacity;
         this.players = new ArrayList<>();
-        this.resumableRoster = List.of();
         this.hostNickname = validateNickname(hostNickname);
         this.status = LobbyStatus.WAITING;
         this.players.add(this.hostNickname);
@@ -147,20 +144,6 @@ public class Lobby {
     }
 
     /**
-     * Attempts to rejoin a player to a resumable lobby.
-     *
-     * @param nickname the nickname of the rejoining player
-     * @param requesterView the client's listener interface to register
-     * @return {@code true} if the player rejoined successfully, {@code false} otherwise
-     */
-    public boolean rejoinResumablePlayer(String nickname, Listener requesterView) {
-        return this.executeLobbyAction(() -> {
-            this.rejoinResumablePlayerInternal(nickname);
-            this.addListener(requesterView);
-        }, requesterView);
-    }
-
-    /**
      * Sends a phase error update to the target listener when they perform an out-of-phase action.
      *
      * @param target the target listener interface to receive the phase error notification
@@ -215,13 +198,9 @@ public class Lobby {
         if (!this.isHost(nickname)) {
             throw new IllegalStateException("Only the lobby host can start the match");
         }
-        if (this.status != LobbyStatus.READY && this.status != LobbyStatus.RESUMABLE) {
+        if (this.status != LobbyStatus.READY) {
             throw new IllegalStateException("Cannot start lobby with status: " + this.status);
         }
-        if (!this.canStart()) {
-            throw new IllegalStateException("Cannot start lobby that cannot start");
-        }
-
         this.status = LobbyStatus.STARTED;
     }
 
@@ -244,23 +223,6 @@ public class Lobby {
         if (this.canStart()) {
             this.status = LobbyStatus.READY;
         }
-    }
-
-    /**
-     * Domain logic to rejoin a player to a resumable lobby.
-     */
-    private void rejoinResumablePlayerInternal(String nickname) {
-        String validatedNickname = validateNickname(nickname);
-        if (this.status != LobbyStatus.RESUMABLE) {
-            throw new IllegalStateException("Cannot resume lobby with status: " + this.status);
-        }
-        if (!this.resumableRoster.contains(validatedNickname)) {
-            throw new IllegalStateException("User not allowed to resume this lobby: " + validatedNickname);
-        }
-        if (this.players.contains(validatedNickname)) {
-            throw new IllegalStateException("User already present in lobby: " + validatedNickname);
-        }
-        this.players.add(validatedNickname);
     }
 
     /**
@@ -360,10 +322,6 @@ public class Lobby {
 
     /** @return {@code true} if the player is currently in the lobby, {@code false} otherwise */
     public boolean hasPlayer(String nickname) { return this.players.contains(validateNickname(nickname)); }
-
-    /** @return {@code true} if the player is expected to reconnect to this suspended lobby */
-    public boolean isExpectedResumePlayer(String nickname) { return this.resumableRoster.contains(validateNickname(nickname)); }
-
     /**
      * Checks if a player is permitted to join this lobby based on its status and limits.
      *
@@ -372,9 +330,6 @@ public class Lobby {
      */
     public boolean canBeJoinedBy(String nickname) {
         String validatedNickname = validateNickname(nickname);
-        if (this.status == LobbyStatus.RESUMABLE) {
-            return this.resumableRoster.contains(validatedNickname) && !this.players.contains(validatedNickname);
-        }
         return this.status != LobbyStatus.CLOSED
                 && this.status != LobbyStatus.STARTED
                 && !this.players.contains(validatedNickname)

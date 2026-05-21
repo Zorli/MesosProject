@@ -298,21 +298,6 @@ class LobbyTest {
     }
 
     /**
-     * Test name: rejoinResumablePlayerFailsWhenNotResumable
-     * 1. This test verifies that a player cannot rejoin as a resumable player if the lobby status is not RESUMABLE.
-     * 2. It asserts that rejoinResumablePlayer returns false and unicasts an error payload to the requester.
-     */
-    @Test
-    void rejoinResumablePlayerFailsWhenNotResumable() {
-        boolean success = lobby.rejoinResumablePlayer("Alice", secondListener);
-        assertFalse(success);
-        assertEquals(1, secondListener.receivedPayloads.size());
-        ErrorPayload error = (ErrorPayload) secondListener.receivedPayloads.get(0);
-        assertEquals("IllegalStateException", error.code);
-        assertTrue(error.message.contains("Cannot resume lobby with status"));
-    }
-
-    /**
      * Test name: reportPhaseErrorSendsPayload
      * 1. This test verifies that calling reportPhaseError on a listener correctly transmits a PHASE_ERROR payload.
      * 2. It asserts that the listener receives exactly one ErrorPayload of type "PHASE_ERROR".
@@ -362,82 +347,6 @@ class LobbyTest {
         lobby.clearListeners();
         lobby.notifyPlayerJoined("Bob");
         assertEquals(0, hostListener.receivedPayloads.size());
-    }
-
-    /**
-     * Test name: testRejoinResumablePlayerSuccessfully
-     * 1. This test verifies that an expected player can rejoin the lobby when it is in RESUMABLE status.
-     * 2. It asserts that rejoining Bob succeeds, Bob is in the players list, and no errors are unicast.
-     */
-    @Test
-    void testRejoinResumablePlayerSuccessfully() throws Exception {
-        java.lang.reflect.Field statusField = Lobby.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(lobby, LobbyStatus.RESUMABLE);
-
-        java.lang.reflect.Field rosterField = Lobby.class.getDeclaredField("resumableRoster");
-        rosterField.setAccessible(true);
-        rosterField.set(lobby, List.of("Alice", "Bob"));
-
-        assertTrue(lobby.isExpectedResumePlayer("Bob"));
-        assertTrue(lobby.canBeJoinedBy("Bob"));
-
-        boolean success = lobby.rejoinResumablePlayer("Bob", secondListener);
-        assertTrue(success);
-        assertTrue(lobby.hasPlayer("Bob"));
-        assertEquals(0, secondListener.receivedPayloads.size());
-    }
-
-    /**
-     * Test name: testRejoinResumablePlayerFailsWhenNotExpected
-     * 1. This test verifies that a player not in the resumable roster cannot rejoin the lobby.
-     * 2. It asserts that rejoining Charlie fails, and a class simple-name exception payload is unicast to him.
-     */
-    @Test
-    void testRejoinResumablePlayerFailsWhenNotExpected() throws Exception {
-        java.lang.reflect.Field statusField = Lobby.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(lobby, LobbyStatus.RESUMABLE);
-
-        java.lang.reflect.Field rosterField = Lobby.class.getDeclaredField("resumableRoster");
-        rosterField.setAccessible(true);
-        rosterField.set(lobby, List.of("Alice", "Bob"));
-
-        assertFalse(lobby.isExpectedResumePlayer("Charlie"));
-        assertFalse(lobby.canBeJoinedBy("Charlie"));
-
-        boolean success = lobby.rejoinResumablePlayer("Charlie", secondListener);
-        assertFalse(success);
-        assertEquals(1, secondListener.receivedPayloads.size());
-        ErrorPayload error = (ErrorPayload) secondListener.receivedPayloads.get(0);
-        assertEquals("IllegalStateException", error.code);
-        assertTrue(error.message.contains("User not allowed to resume this lobby"));
-    }
-
-    /**
-     * Test name: testRejoinResumablePlayerFailsWhenAlreadyJoined
-     * 1. This test verifies that a player already in the lobby cannot rejoin it under resumable state.
-     * 2. It asserts that rejoining Alice (who is already in players) fails and unicasts an exception payload.
-     */
-    @Test
-    void testRejoinResumablePlayerFailsWhenAlreadyJoined() throws Exception {
-        java.lang.reflect.Field statusField = Lobby.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(lobby, LobbyStatus.RESUMABLE);
-
-        java.lang.reflect.Field rosterField = Lobby.class.getDeclaredField("resumableRoster");
-        rosterField.setAccessible(true);
-        rosterField.set(lobby, List.of("Alice", "Bob"));
-
-        assertTrue(lobby.isExpectedResumePlayer("Alice"));
-        assertFalse(lobby.canBeJoinedBy("Alice")); // already joined
-
-        boolean success = lobby.rejoinResumablePlayer("Alice", secondListener);
-        assertFalse(success);
-        assertEquals(1, secondListener.receivedPayloads.size());
-        ErrorPayload error = (ErrorPayload) secondListener.receivedPayloads.get(0);
-        assertEquals("IllegalStateException", error.code);
-        assertTrue(error.message.contains("User already present in lobby"));
     }
 
     /**
