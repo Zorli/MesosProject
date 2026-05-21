@@ -7,58 +7,38 @@ feature aggiuntive:
 - supporto per multi-partita in parallelo sullo stesso server
 - Resilienza alle disconnessioni da parte dei client
 
-## Usage
-
-### Configurazione server
-
-`LaunchServer` legge la configurazione dal file locale `server.env`.
-Il file usa il formato `KEY=value`:
-
-```env
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=localhost
-```
-
-`MESOS_TCP_PORT` è la porta usata dal server TCP.
-`MESOS_RMI_PORT` è la porta del registry RMI.
-`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce negli stub esportati dal server.
-Se server e client sono sulla stessa macchina può essere `localhost`.
-Se il server deve essere raggiunto da un altro dispositivo nella stessa rete o hotspot, deve essere l'IP del server in quella rete.
-
-Esempio su hotspot:
-
-```env
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=172.20.10.2
-```
-
-`server.env` è l'unica fonte di verità per la configurazione di rete del server.
-Le variabili d'ambiente del processo non sovrascrivono questi valori.
-
-### Configurazione client
-
-`LaunchClient` legge la configurazione dal file locale `client.env`:
-
-```env
-MESOS_SERVER_HOST=172.20.10.2
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_CLIENT_RMI_HOST=172.20.10.3
-```
-
-`MESOS_SERVER_HOST` è l'IP della macchina su cui gira il server.
-`MESOS_TCP_PORT` è la porta TCP del server.
-`MESOS_RMI_PORT` è la porta del registry RMI del server.
-`MESOS_CLIENT_RMI_HOST` è l'IP del client, usato solo quando si sceglie RMI perché il server deve richiamare il client tramite callback.
-
 ## Architettura del progetto
 In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
-sottosezioni verranno spiegati in dettaglio i particolari implementativi e i pattern applicati.
+sottosezioni verranno spiegati in dettaglio i pattern applicati e i dettagli implementativi.
 
 Il design pattern principale del progetto è quello del[Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
-MVC in cui la view si trova su una altra macchina rispetto al controller e il model, come si può vedere nella seguente immagine:
+MVC in cui la View si trova su una altra macchina rispetto al Controller e al Model.
+
+Ricordiamo che nel pattern MVC classico è un Pattern architetturale che separa il modello dei dati di una applicazione dalla
+rappresentazione grafica (view) e dalla logica di controllo (controller). 
+L'idea è quella di avere la view che si occupa della logica di presentazione delle informazioni
+all'utente e si occupa anche di raccogliere input dall'utente, il controller invece si occupa di coordinare il Model,
+per gestire le richieste dell'utente. Infine il Model si occupa di mantenere lo stato e la logica di dominio. 
+In generale esistono diverse varianti del MVC non distribuito, che hanno alcune differenza su come 
+la view interagisce con gli altri due componenti, in particolare qui è stata implementata la versione nella quale
+la view viene notificata dal Model a seguito di un update, la view non conosce quindi il Model, e sotto un certo
+punto di vista il Model non conosce la view, poichè viene applicato il pattern observer.
+Di seguito uno schema illustrato del pattern:
+![MVC.png](assets/MVC.png)
+
+L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
+1) La view contatta il controller a seguito dell'input utente
+2) Il controller fa una prima validazione della richiesta, e sa, in base alla richiesta ricevuta, che cosa
+richiedere al model. Qui si può fare una prima distinzione tra controller thin e fat, a seconda di quanta logica di dominio
+viene spostata all'interno del controler. In general in this implementation we have always preferred to have
+a thin controller. So when the model receives the request from the controller, valida that request and 
+consequentialy update it's internal state. 
+3) After the model changed it's internal state and has applied the domain logic, it has to notify the relative virtualviews.
+They can be more that once, given that more users can use the same model. In our pattern application we made the choice
+to not let the model to know 
+
+
+
 ![project-architecture.png](assets/project-architecture.png)
 
 L'idea è quindi quella di applicare il pattern classico nascondendo però la presenza della rete
@@ -302,3 +282,50 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 
 ### Architettura del Server
 #### Session Registry 
+
+
+## Usage
+
+### Configurazione server
+
+`LaunchServer` legge la configurazione dal file locale `server.env`.
+Il file usa il formato `KEY=value`:
+
+```env
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_SERVER_RMI_HOST=localhost
+```
+
+`MESOS_TCP_PORT` è la porta usata dal server TCP.
+`MESOS_RMI_PORT` è la porta del registry RMI.
+`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce negli stub esportati dal server.
+Se server e client sono sulla stessa macchina può essere `localhost`.
+Se il server deve essere raggiunto da un altro dispositivo nella stessa rete o hotspot, deve essere l'IP del server in quella rete.
+
+Esempio su hotspot:
+
+```env
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_SERVER_RMI_HOST=172.20.10.2
+```
+
+`server.env` è l'unica fonte di verità per la configurazione di rete del server.
+Le variabili d'ambiente del processo non sovrascrivono questi valori.
+
+### Configurazione client
+
+`LaunchClient` legge la configurazione dal file locale `client.env`:
+
+```env
+MESOS_SERVER_HOST=172.20.10.2
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_CLIENT_RMI_HOST=172.20.10.3
+```
+
+`MESOS_SERVER_HOST` è l'IP della macchina su cui gira il server.
+`MESOS_TCP_PORT` è la porta TCP del server.
+`MESOS_RMI_PORT` è la porta del registry RMI del server.
+`MESOS_CLIENT_RMI_HOST` è l'IP del client, usato solo quando si sceglie RMI perché il server deve richiamare il client tramite callback.
