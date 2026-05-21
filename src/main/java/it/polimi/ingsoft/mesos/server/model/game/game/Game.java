@@ -119,10 +119,9 @@ public class Game {
     /**
      * Applies a real player disconnection to the domain model.
      *
-     * <p>The controller calls this method only after it has decided that the
-     * queued disconnect command is still valid and is not stale because of a
-     * newer reconnect. From this point on the disconnection is a game event, not
-     * a transport event.
+     * <p>The controller calls this method when a queued transport disconnect is
+     * accepted as a game event. From this point on the player is disconnected in
+     * the match model too.
      *
      * <p>The method first marks the player as disconnected in
      * {@link #connectedPlayers}. If no player is connected anymore, the match is

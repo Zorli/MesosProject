@@ -211,11 +211,13 @@ class ServerControllerTest {
      */
     @Test
     void testAuthenticationWithPendingReconnection() throws Exception {
+        String oldSid = registry.registerConnection(new MockListener());
+        registry.authenticate(oldSid, "Alice");
+        registry.recordGameDisconnection(oldSid, 5);
+        registry.unregister(oldSid);
+
         MockListener conn = new MockListener();
         String sid = controller.registerConnection(conn);
-
-        // Register disconnected user in registry
-        registry.registerDisconnection("Alice", 5);
 
         // Mock game orchestrator in registry
         MockGameController mockGameCtrl = new MockGameController(5, registry);

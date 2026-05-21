@@ -32,6 +32,7 @@ import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -119,7 +120,7 @@ class GameControllerTest {
 
     /**
      * Gameplay commands from a session that can no longer be resolved are
-     * ignored. This keeps stale network messages from stopping the game worker.
+     * ignored. This keeps messages from removed sessions from stopping the game worker.
      */
     @Test
     void gameplayCommandFromUnknownSessionIsIgnored() throws Exception {
@@ -158,35 +159,6 @@ class GameControllerTest {
     }
 
     /**
-     * A disconnect command can be stale: the old network session may disconnect
-     * after the same nickname has already authenticated with a new session. In
-     * that case the old listener is detached, but the domain player must not be
-     * marked as disconnected.
-     */
-    @Test
-    void staleDisconnectRemovesOldListenerWithoutDisconnectingTheReconnectedPlayer() throws Exception {
-        ServerSessionRegistry sessions = new ServerSessionRegistry();
-        RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
-        DummyConnection oldConnection = new DummyConnection();
-        String oldSessionId = authenticatedGameSession(sessions, "Alice", game.getId(), oldConnection);
-        sessions.registerDisconnection("Alice", game.getId());
-        sessions.unregister(oldSessionId);
-
-        String newSessionId = sessions.registerConnection(new DummyConnection());
-        sessions.authenticate(newSessionId, "Alice");
-
-        Thread worker = start(controller);
-        controller.enqueueMessage(new SystemDisconnectCommand(oldSessionId, "Alice", oldConnection));
-
-        await(() -> game.removedListeners.contains(oldConnection));
-        stop(worker);
-
-        assertTrue(game.disconnectedPlayers.isEmpty());
-        assertTrue(game.removedListeners.contains(oldConnection));
-    }
-
-    /**
      * A real disconnect removes the old listener, marks the domain player as
      * disconnected, and unregisters the old session from the registry.
      */
@@ -199,13 +171,14 @@ class GameControllerTest {
         String sessionId = authenticatedGameSession(sessions, "Alice", game.getId(), connection);
 
         Thread worker = start(controller);
-        controller.enqueueMessage(new SystemDisconnectCommand(sessionId, "Alice", connection));
+        controller.enqueueMessage(new SystemDisconnectCommand(sessionId));
 
         await(() -> game.disconnectedPlayers.size() == 1);
         stop(worker);
 
         assertEquals("Alice", game.disconnectedPlayers.getFirst().getNickname());
         assertTrue(game.removedListeners.contains(connection));
+        assertEquals(game.getId(), sessions.reconnectGameIdOf("Alice"));
         assertThrows(RuntimeException.class, () -> sessions.nicknameOf(sessionId));
     }
 
@@ -222,7 +195,7 @@ class GameControllerTest {
         String bobSessionId = authenticatedGameSession(sessions, "Bob", game.getId(), new DummyConnection());
 
         Thread worker = start(controller);
-        controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId, "Bob", null));
+        controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId));
         await(() -> lastPlayerTimerTask(controller) != null);
 
         lastPlayerTimerTask(controller).run();
@@ -242,7 +215,10 @@ class GameControllerTest {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
         GameController controller = new GameController(game, "Alice", sessions);
-        sessions.registerDisconnection("Alice", game.getId());
+        String oldSessionId = sessions.registerConnection(new DummyConnection());
+        sessions.authenticate(oldSessionId, "Alice");
+        sessions.recordGameDisconnection(oldSessionId, game.getId());
+        sessions.unregister(oldSessionId);
         DummyConnection newConnection = new DummyConnection();
         String newSessionId = sessions.registerConnection(newConnection);
         sessions.authenticate(newSessionId, "Alice");
@@ -270,7 +246,10 @@ class GameControllerTest {
         GameController controller = new GameController(game, "Alice", sessions);
         authenticatedGameSession(sessions, "Alice", game.getId(), new DummyConnection());
         sessions.registerGameOrchestrator(game.getId(), controller);
-        sessions.registerDisconnection("Bob", game.getId());
+        String bobSessionId = sessions.registerConnection(new DummyConnection());
+        sessions.authenticate(bobSessionId, "Bob");
+        sessions.recordGameDisconnection(bobSessionId, game.getId());
+        sessions.unregister(bobSessionId);
 
         Thread worker = start(controller);
         controller.enqueueMessage(new SystemCloseGameCommand());
@@ -282,7 +261,7 @@ class GameControllerTest {
         assertEquals(GameStatus.FINISHED, game.getStatus());
         assertTrue(controller.isClosing());
         assertEquals(null, sessions.getGameOrchestrator(game.getId()));
-        assertFalse(sessions.isDisconnected("Bob"));
+        assertNull(sessions.reconnectGameIdOf("Bob"));
     }
 
     /**
