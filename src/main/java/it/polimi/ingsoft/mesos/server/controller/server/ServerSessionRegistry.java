@@ -110,7 +110,7 @@ public class ServerSessionRegistry {
     }
 
     /**
-     * Registers an externally created or restored Lobby model.
+     * Registers an externally created Lobby model.
      *
      * @param lobby the Lobby instance to register
      * @throws NullPointerException     if the lobby is null
