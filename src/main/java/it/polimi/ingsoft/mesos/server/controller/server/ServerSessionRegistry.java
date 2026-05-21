@@ -294,36 +294,7 @@ public class ServerSessionRegistry {
         this.DisconnectedNicknameOnGame.put(nickname, gameId);
     }
 
-    /**
-     * Checks whether an old disconnect command has been superseded by a reconnect.
-     * The replacement session does not need to be in {@link Phase#GAME} yet.
-     * During a fast reconnect, the new session can already be authenticated while
-     * its {@code SystemJoinCommand} is still waiting behind the old disconnect in
-     * the game queue. For resilience purposes that authenticated replacement is
-     * already enough to make the old disconnect stale.
-     *
-     * @param nickname     player nickname carried by the old disconnect command
-     * @param gameId       game that owns the queued disconnect
-     * @param oldSessionId session that produced the old disconnect
-     * @return true when a newer authenticated session owns the nickname
-     * and is either waiting to rejoin this game or has already rejoined it
-     */
-    public synchronized boolean isReconnectedInGame(String nickname, int gameId, String oldSessionId) {
-        String currentSessionId = this.sessionIdByNickname.get(nickname);
-        if (currentSessionId == null || currentSessionId.equals(oldSessionId)) {
-            return false;
-        }
 
-        SessionState currentSession = this.sessionsById.get(currentSessionId);
-        if (currentSession == null || currentSession.user == null) {
-            return false;
-        }
-
-        boolean pendingReconnect = Objects.equals(this.DisconnectedNicknameOnGame.get(nickname), gameId);
-        boolean completedReconnect = currentSession.phase == Phase.GAME
-                && Objects.equals(currentSession.gameId, gameId);
-        return pendingReconnect || completedReconnect;
-    }
 
     /**
      * Moves an authenticated reconnecting session back into its previous game.

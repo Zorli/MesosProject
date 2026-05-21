@@ -237,7 +237,6 @@ class ServerSessionRegistryTest {
         // Reconnect session
         String newSid = registry.registerConnection(conn);
         registry.authenticate(newSid, "Alice");
-        assertTrue(registry.isReconnectedInGame("Alice", 5, sid));
 
         registry.RegisterReConnection(newSid);
         assertFalse(registry.isDisconnected("Alice"));
