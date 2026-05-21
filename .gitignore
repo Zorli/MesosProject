@@ -28,7 +28,7 @@ dist/
 .DS_Store
 Thumbs.db
 myversion.puml
-
+api/
 
 # Game checkpoint files (runtime persistence, not for version control)
 data/
