@@ -187,9 +187,6 @@
                     </links>
                     <javadocDirectory>${project.basedir}/src/main/resources</javadocDirectory>
                     <doclint>none</doclint>
-                    <addStylesheets>
-                        <addStylesheet>javadoc-style.css</addStylesheet>
-                    </addStylesheets>
                 </configuration>
                 <executions>
                     <execution>
