@@ -393,14 +393,6 @@ public class GameController implements Runnable  {
         if (nickname == null) {
             return;
         }
-        //Copre il caso in cui uno faccia disconnesione e poi rientri e viene processato prima
-        //il rientro della disconnessione
-        if (this.sessions.isReconnectedInGame(nickname, this.game.getId(), sessionId)) {
-            if (playerListener != null) {
-                this.game.removeListener(playerListener);
-            }
-            return;
-        }
 
         Player player;
         try {
@@ -414,8 +406,8 @@ public class GameController implements Runnable  {
 
         this.game.disconnectedPlayer(player);
 
-
         this.checkGameEndAndCleanup();
+
         if (this.game.getStatus() == GameStatus.FINISHED) {
             try {
                 this.sessions.unregister(sessionId);
@@ -459,10 +451,9 @@ public class GameController implements Runnable  {
 
         this.game.reconnectedPlayer(player);
 
-
-        if (this.game.getStartTimer()) {
-            this.startLastPlayerTimer();
-        } else {
+        //If the player that entered make it possible to play (>=2 player)
+        //we can interrupt the destructive timer
+        if (!this.game.getStartTimer()) {
             this.cancelLastPlayerTimer();
         }
         this.checkGameEndAndCleanup();
