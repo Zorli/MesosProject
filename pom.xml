@@ -187,6 +187,9 @@
                     </links>
                     <javadocDirectory>${project.basedir}/src/main/resources</javadocDirectory>
                     <doclint>none</doclint>
+                    <additionalOptions>
+                        <additionalOption>--show-packages all</additionalOption>
+                    </additionalOptions>
                 </configuration>
                 <executions>
                     <execution>
