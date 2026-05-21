@@ -20,16 +20,32 @@ public class ClientPayloadCommand implements QueuedCommand {
     private final String sessionId;
     private final ClientPayload payload;
 
+    /**
+     * Constructs a new command wrapper for a client-to-server payload.
+     *
+     * @param sessionId the unique identifier of the network session that sent the payload
+     * @param payload the client-to-server payload containing the action-specific data
+     */
     public ClientPayloadCommand(String sessionId, ClientPayload payload) {
         this.sessionId = sessionId;
         this.payload = payload;
     }
 
+    /**
+     * Retrieves the session ID of the client that sent the payload.
+     *
+     * @return the unique session ID string
+     */
     @Override
     public String getSessionId() {
         return this.sessionId;
     }
 
+    /**
+     * Retrieves the network payload containing the specific client action parameters.
+     *
+     * @return the wrapped {@link ClientPayload}
+     */
     public ClientPayload getPayload() {
         return this.payload;
     }

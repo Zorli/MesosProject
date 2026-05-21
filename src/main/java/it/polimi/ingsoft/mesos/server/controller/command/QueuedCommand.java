@@ -15,5 +15,15 @@ package it.polimi.ingsoft.mesos.server.controller.command;
  * derived values.
  */
 public interface QueuedCommand {
+    /**
+     * Retrieves the unique session identifier associated with this queued command.
+     *
+     * <p>The session ID is used by controllers to resolve session-scoped resources
+     * (such as the player's nickname, network listener, or their corresponding
+     * player instance in a match) from the central registry.
+     *
+     * @return the unique session identifier, or {@code null} if the command is
+     *         system-wide and not initiated by or bound to a specific client session
+     */
     String getSessionId();
 }

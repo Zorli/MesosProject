@@ -19,25 +19,62 @@ public class SystemDisconnectCommand implements QueuedCommand {
     private final String nickname;
     private final Listener listener;
 
+    /**
+     * Constructs a disconnect command using only the session ID.
+     *
+     * <p>This constructor is typically used for disconnects in the pre-lobby or
+     * lobby phases, where advanced session validation or player reconnection tracking
+     * is not required.
+     *
+     * @param sessionId the unique identifier of the session that disconnected
+     */
     public SystemDisconnectCommand(String sessionId) {
         this(sessionId, null, null);
     }
 
+    /**
+     * Constructs a fully populated disconnect command.
+     *
+     * <p>This constructor is used for disconnects occurring during an active game.
+     * Since the network session may be cleaned up or unregistered from the central
+     * session registry before this command is processed by the game controller's
+     * single-threaded queue, copying the nickname and listener here ensures the
+     * controller can safely process the disconnection and clean up resources.
+     *
+     * @param sessionId the unique identifier of the session that disconnected
+     * @param nickname the nickname of the user associated with this session
+     * @param listener the virtual view listener associated with the session
+     */
     public SystemDisconnectCommand(String sessionId, String nickname, Listener listener) {
         this.sessionId = sessionId;
         this.nickname = nickname;
         this.listener = listener;
     }
 
+    /**
+     * Retrieves the session ID of the disconnected client.
+     *
+     * @return the unique session ID string
+     */
     @Override
     public String getSessionId() {
         return this.sessionId;
     }
 
+    /**
+     * Retrieves the nickname of the user who disconnected.
+     *
+     * @return the user nickname, or {@code null} if not provided/applicable
+     */
     public String getNickname() {
         return this.nickname;
     }
 
+    /**
+     * Retrieves the network listener (virtual view) that was attached to the disconnected session.
+     *
+     * @return the active {@link Listener} interface, or {@code null} if not provided
+     */
     public Listener getListener() {
         return this.listener;
     }

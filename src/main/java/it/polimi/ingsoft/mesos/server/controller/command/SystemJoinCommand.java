@@ -13,10 +13,21 @@ package it.polimi.ingsoft.mesos.server.controller.command;
 public class SystemJoinCommand implements QueuedCommand {
     private final String sessionId;
 
+    /**
+     * Constructs a new system join command.
+     *
+     * @param sessionId the unique identifier of the authenticated player session that
+     *                  is joining or reconnecting
+     */
     public SystemJoinCommand(String sessionId) {
         this.sessionId = sessionId;
     }
 
+    /**
+     * Retrieves the session ID of the player attempting to join or reconnect.
+     *
+     * @return the unique session ID string
+     */
     @Override
     public String getSessionId() {
         return this.sessionId;
