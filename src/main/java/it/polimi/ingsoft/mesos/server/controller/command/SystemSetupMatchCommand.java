@@ -13,6 +13,12 @@ package it.polimi.ingsoft.mesos.server.controller.command;
  * command before resolving session-scoped data.
  */
 public class SystemSetupMatchCommand implements QueuedCommand {
+    /**
+     * Returns the session identifier for this system command.
+     *
+     * @return {@code null} because match setup is a system-triggered process that is not
+     *         initiated by or tied to a single client session
+     */
     @Override
     public String getSessionId() {
         return null;

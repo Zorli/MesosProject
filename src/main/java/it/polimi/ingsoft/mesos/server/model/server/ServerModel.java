@@ -10,27 +10,62 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Entry point for the server's pre-lobby business logic and session coordination.
+ *
+ * <p>This model class handles client requests before they transition into a specific
+ * lobby or match controller. It coordinates user authentication, lobby list queries,
+ * lobby creation, and lobby joining checks.
+ *
+ * <p>The model acts as a pure MVC component, validating requests against the shared
+ * registry {@link ServerSessionRegistry} and directly pushing updates or unicast errors
+ * to the connected client {@link Listener} interfaces.
+ */
 public class ServerModel {
+    /** Registry containing all session-scoped routing data, active users, and matches. */
     private final ServerSessionRegistry sessions;
+    /** Data mapper to convert internal models/events into serializable network payloads. */
     private final PreLobbyPayloadMapper payloadMapper;
 
-    // Mappa globale dei Listener (Livello 1 - Tutte le VirtualView connesse)
+    /** Global map of active listeners (virtual views) indexed by session ID. */
     private final Map<String, Listener> globalListeners = new ConcurrentHashMap<>();
 
+    /**
+     * Constructs a new ServerModel.
+     *
+     * @param sessions the centralized server session registry
+     */
     public ServerModel(ServerSessionRegistry sessions) {
         this.sessions = sessions;
         this.payloadMapper = new PreLobbyPayloadMapper();
     }
 
-
+    /**
+     * Registers a global network listener (virtual view) for a newly connected session.
+     *
+     * @param sessionId the unique identifier of the client session
+     * @param listener the listener interface used to push updates to the client
+     */
     public void addGlobalListener(String sessionId, Listener listener) {
         this.globalListeners.put(sessionId, listener);
     }
 
+    /**
+     * Unregisters the global listener associated with the specified session.
+     *
+     * @param sessionId the unique identifier of the client session
+     */
     public void removeGlobalListener(String sessionId) {
         this.globalListeners.remove(sessionId);
     }
 
+    /**
+     * Sends a targeted error payload to the listener associated with the specified session.
+     *
+     * @param sessionId the unique identifier of the target client session
+     * @param errorType the type classification of the error
+     * @param message a descriptive error message explaining the failure
+     */
     private void sendUnicastError(String sessionId, String errorType, String message) {
         Listener listener = this.globalListeners.get(sessionId);
         if (listener != null) {
@@ -38,10 +73,22 @@ public class ServerModel {
         }
     }
 
+    /**
+     * Pushes a phase error notification to the client indicating their requested action
+     * is not permitted in the current state.
+     *
+     * @param sessionId the unique identifier of the client session
+     */
     public void reportPhaseError(String sessionId) {
         this.sendUnicastError(sessionId, "PHASE_ERROR", "Action non permitted in this phase.");
     }
 
+    /**
+     * Pushes a joining error notification with a custom message to the client.
+     *
+     * @param sessionId the unique identifier of the client session
+     * @param message the descriptive reason for the joining failure
+     */
     public void reportJoinError(String sessionId, String message) {
         this.sendUnicastError(sessionId, "JOIN_ERROR", message);
     }
@@ -49,6 +96,18 @@ public class ServerModel {
 
     // --- METODI DI BUSINESS (Fase PRE-LOBBY) ---
 
+    /**
+     * Authenticates a client session with a unique nickname.
+     *
+     * <p>If authentication is successful, the nickname is registered in the central
+     * session registry and a success payload is sent to the client. If authentication fails
+     * (e.g., the nickname is already taken or invalid), an error payload is sent.
+     *
+     * @param sessionId the unique identifier of the client session
+     * @param nickname the nickname chosen by the user
+     * @param clientView the network listener interface representing the client's view
+     * @return {@code true} if the authentication succeeded, {@code false} otherwise
+     */
     public boolean authenticate(String sessionId, String nickname, Listener clientView) {
         try {
             this.sessions.authenticate(sessionId, nickname);
@@ -62,6 +121,12 @@ public class ServerModel {
         }
     }
 
+    /**
+     * Retrieves the list of currently open/joinable lobbies and pushes it to the client.
+     *
+     * @param sessionId the unique identifier of the requesting client session
+     * @param clientView the network listener interface representing the client's view
+     */
     public void listOpenLobbies(String sessionId, Listener clientView) {
         try {
             List<Lobby> openLobbies = this.sessions.getOpenLobbies();
@@ -72,6 +137,18 @@ public class ServerModel {
         }
     }
 
+    /**
+     * Creates a new lobby with the requested player capacity and registers the host.
+     *
+     * <p>This method ensures the requesting session is eligible to enter a lobby, resolves
+     * its authenticated nickname, creates the lobby domain aggregate in the session registry,
+     * registers the creator's listener as an observer on the lobby, and returns the new lobby instance.
+     *
+     * @param sessionId the unique identifier of the client session requesting creation
+     * @param chosenCapacity the maximum player capacity of the new lobby
+     * @param clientView the network listener interface representing the host client's view
+     * @return the newly created {@link Lobby} instance, or {@code null} if creation failed
+     */
     public Lobby createLobby(String sessionId, int chosenCapacity, Listener clientView) {
         try {
             this.ensureSessionCanEnterLobby(sessionId);
@@ -89,6 +166,23 @@ public class ServerModel {
         }
     }
 
+    /**
+     * Validates if a client session is permitted to join the specified lobby.
+     *
+     * <p>Performs checks to assert that:
+     * <ul>
+     *     <li>The session is not already associated with any lobby;</li>
+     *     <li>The session has authenticated and has an active nickname;</li>
+     *     <li>The target lobby exists;</li>
+     *     <li>The user nickname is not registered in another active lobby;</li>
+     *     <li>The target lobby is in a joinable status.</li>
+     * </ul>
+     *
+     * @param sessionId the unique identifier of the client session attempting to join
+     * @param clientView the network listener interface representing the client's view
+     * @param lobbyId the identifier of the target lobby to join
+     * @return {@code true} if all validation checks pass, {@code false} otherwise (triggers an error payload unicast)
+     */
     public boolean joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
         try {
             if (this.sessions.lobbyIdOf(sessionId) != null) {
@@ -113,6 +207,12 @@ public class ServerModel {
 
     // --- CHECK DI DOMINIO PRIVATI ---
 
+    /**
+     * Asserts that a session and its associated nickname are not already registered in any lobby.
+     *
+     * @param sessionId the unique identifier of the client session
+     * @throws IllegalStateException if the session or nickname is already associated with a lobby
+     */
     private void ensureSessionCanEnterLobby(String sessionId) {
         if (this.sessions.lobbyIdOf(sessionId) != null) {
             throw new IllegalStateException("Already in a lobby.");
@@ -123,6 +223,13 @@ public class ServerModel {
         }
     }
 
+    /**
+     * Resolves the authenticated nickname for a session, throwing an exception if not authenticated.
+     *
+     * @param sessionId the unique identifier of the client session
+     * @return the authenticated nickname
+     * @throws IllegalStateException if no nickname is associated with this session in the registry
+     */
     private String requireNickname(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
         if (nickname == null || nickname.isBlank()) {
