@@ -4,50 +4,78 @@ Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java
 giocare con altri player, ognuno dal proprio device, collegandosi a un server.
 È possibile giocare sia da interfaccia testuale che grafica. La versione qui implementata ha inoltre le seguenti
 feature aggiuntive:
-- supporto per multi-partita in parallelo sullo stesso server
+- Supporto partite parallele sullo stesso server
 - Resilienza alle disconnessioni da parte dei client
 
 ## Architettura del progetto
 In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
 sottosezioni verranno spiegati in dettaglio i pattern applicati e i dettagli implementativi.
 
-Il design pattern principale del progetto è quello del[Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc), ovvero una versione del
-MVC in cui la View si trova su una altra macchina rispetto al Controller e al Model.
+Il design pattern principale del progetto è quello del[Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc),
+ovvero una versione del  MVC in cui la View si trova su una altra macchina rispetto al Controller 
+e al Model.
 
-Ricordiamo che nel pattern MVC classico è un Pattern architetturale che separa il modello dei dati di una applicazione dalla
+Ricordiamo il pattern MVC classico è un Pattern architetturale che separa il modello dei dati 
+di una applicazione(model) dalla
 rappresentazione grafica (view) e dalla logica di controllo (controller). 
-L'idea è quella di avere la view che si occupa della logica di presentazione delle informazioni
-all'utente e si occupa anche di raccogliere input dall'utente, il controller invece si occupa di coordinare il Model,
-per gestire le richieste dell'utente. Infine il Model si occupa di mantenere lo stato e la logica di dominio. 
+L'idea è quella di avere la View che si occupa della logica di presentazione delle informazioni
+e di raccogliere input dall'utente, il controller invece si occupa 
+di coordinare il Model,
+per gestire le richieste dell'utente. Infine il Model si occupa di mantenere lo stato e la logica 
+di dominio. 
 In generale esistono diverse varianti del MVC non distribuito, che hanno alcune differenza su come 
-la view interagisce con gli altri due componenti, in particolare qui è stata implementata la versione nella quale
-la view viene notificata dal Model a seguito di un update, la view non conosce quindi il Model, e sotto un certo
-punto di vista il Model non conosce la view, poichè viene applicato il pattern observer.
+la view interagisce con gli altri due componenti, in particolare qui è stata implementata 
+la versione nella quale
+la view viene notificata dal Model a seguito di un update, la view non conosce quindi il Model, 
+e sotto un certo
+punto di vista il Model non conosce la view, poichè viene applicato il pattern observer, ovvero il model
+ha riferimenti alla view sotto forma di interfacce listener.
 Di seguito uno schema illustrato del pattern:
+
 ![MVC.png](assets/MVC.png)
 
 L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
 1) La view contatta il controller a seguito dell'input utente
-2) Il controller fa una prima validazione della richiesta, e sa, in base alla richiesta ricevuta, che cosa
-richiedere al model. Qui si può fare una prima distinzione tra controller thin e fat, a seconda di quanta logica di dominio
-viene spostata all'interno del controler. In general in this implementation we have always preferred to have
-a thin controller. So when the model receives the request from the controller, valida that request and 
-consequentialy update it's internal state. 
-3) After the model changed it's internal state and has applied the domain logic, it has to notify the relative virtualviews.
-They can be more that once, given that more users can use the same model. In our pattern application we made the choice
-to not let the model to know 
+2) Il controller fa una prima validazione della richiesta, e sa, in base alla richiesta ricevuta, 
+che cosa
+richiedere al model. Qui si può fare una prima distinzione tra controller thin e fat, 
+a seconda di quanta logica di dominio
+viene spostata all'interno del controler. In generale in questa implementazione abbiamo sempre
+optato per avere controller thin. 
+Il controller dopo aver validato la richiesta, richiede il servizio effettivo al model, che di conseguenza
+reagisce e aggiorna il suo stato interno.
+3) Dopo che il modello ha modificato il proprio stato interno e ha applicato la logica di dominio, 
+deve notificare le relative virtual view.  Possono essercene più di una, dato che più utenti 
+possono utilizzare lo stesso modello. Nella nostra applicazione del pattern abbiamo scelto 
+di non permettere al modello di conoscere direttamente le view, ma di avere invece iscritti dei listener,
+che poi di fatto sono concretizzati dalle virtualview.
 
+L'idea adesso è quella di prendere il pattern classico ed adattarlo ad un contesto nel quale la 
+view si trova sulla macchina dell'utente, invece il model ed il controller si trovano sul server. 
+E' quindi necessario aggiungere un layer di rete per il trasporto delle informazioni, nascondendo però
+ai blocchi del pattern il fatto che di mezzo ci sia la rete. Ovvero per ottenere una architettura il quanto
+più pulità possibile la rete deve essere nascosta, non deve essere parte integrante di questo modello.
+Per nascondere la presenza della rete sono stati introdotti contratti comuni, che rappresentano 
+localmente gli oggetti  remoti con cui ciascun lato deve interagire.
+Sul client, la user interface non comunica direttamente con la rete, ma usa un `ServerProxy`, 
+che rappresenta il server remoto ed espone i servizi applicativi richiedibili dal client. Ovvero 
+è stato applicato il remote proxy pattern.
+Sempre sul client, il `VirtualServer` rappresenta il canale attraverso cui arrivano 
+i messaggi dal server verso l'interfaccia utente locale. Espone infatti i servizi che il server può
+richiedere sul client.
+Sul server, la `VirtualView` rappresenta invece l'interfaccia utente remota del client: 
+riceve i comandi provenienti dal
+client e permette al server di notificare aggiornamenti verso quel client. Espone i servizi che 
+il client può richiedere al server.
+Non è stato introdotto un `ServerProxy` simmetrico lato server, perché il server non deve invocare 
+una varietà di
+servizi applicativi sul client. In quel verso della comunicazione è sufficiente la `VirtualView`,
+che mantiene il
+riferimento al client remoto e offre il punto unico attraverso cui inviargli notifiche.
 
+Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
-![project-architecture.png](assets/project-architecture.png)
-
-L'idea è quindi quella di applicare il pattern classico nascondendo però la presenza della rete
-ai blocchi core del pattern.
-Resources:
-https://developer.mozilla.org/en-US/docs/Glossary/MVC
-https://www.geeksforgeeks.org/system-design/proxy-design-pattern/
-https://www.geeksforgeeks.org/system-design/mvc-design-pattern/
-
+![project-architecture.png](assets/distributedMVC.png)
 
 ### Protocollo di comunicazione
 Come da specifica di progetto, supportiamo connessioni sia con il protocollo TCP che con 
