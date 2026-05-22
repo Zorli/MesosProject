@@ -60,10 +60,9 @@ public class ServerSessionRegistry {
     private final Map<String, String> sessionIdByNickname = new HashMap<>();
 
     /**
-     * Map keeping track of disconnected player nicknames and the ID of the game they disconnected from,
-     * allowing them to perform a future reconnection to the same game.
+     * Map from disconnected player nicknames to the game they may reconnect to.
      */
-    private final Map<String, Integer> DisconnectedNicknameOnGame = new HashMap<>();
+    private final Map<String, Integer> reconnectGameIdByNickname = new HashMap<>();
 
     /**
      * Registry map linking active lobby IDs to their respective LobbyController instance.
@@ -269,94 +268,60 @@ public class ServerSessionRegistry {
     }
 
     /**
-     * Registers that the authenticated session left a running game.
+     * Opens a reconnect slot for the nickname bound to a game session.
      *
-     * @param sessionId the disconnected session ID
-     * @param gameId    the game ID that can accept a later reconnect from this player
+     * <p>The game controller calls this only after the game model has accepted
+     * the disconnection. Until then the old session keeps its nickname and a new
+     * authentication with the same nickname is rejected.
+     *
+     * @param sessionId disconnected game session
+     * @param gameId game that can accept a later reconnect from this player
      */
-    public synchronized void RegisterDisconnection(String sessionId, int gameId) {
+    public synchronized void recordGameDisconnection(String sessionId, int gameId) {
         String nickname = this.nicknameOf(sessionId);
-        this.registerDisconnection(nickname, gameId);
-    }
-
-    /**
-     * Registers a disconnected nickname for a running game.
-     * This overload is used when the old session is already being removed but
-     * the server still knows which nickname disconnected.
-     *
-     * @param nickname disconnected player nickname
-     * @param gameId   game that can accept a later reconnect
-     */
-    public synchronized void registerDisconnection(String nickname, int gameId) {
         if (nickname == null || nickname.isBlank()) {
             return;
         }
-        this.DisconnectedNicknameOnGame.put(nickname, gameId);
+        this.reconnectGameIdByNickname.put(nickname, gameId);
     }
 
-    /**
-     * Checks whether an old disconnect command has been superseded by a reconnect.
-     * The replacement session does not need to be in {@link Phase#GAME} yet.
-     * During a fast reconnect, the new session can already be authenticated while
-     * its {@code SystemJoinCommand} is still waiting behind the old disconnect in
-     * the game queue. For resilience purposes that authenticated replacement is
-     * already enough to make the old disconnect stale.
-     *
-     * @param nickname     player nickname carried by the old disconnect command
-     * @param gameId       game that owns the queued disconnect
-     * @param oldSessionId session that produced the old disconnect
-     * @return true when a newer authenticated session owns the nickname
-     * and is either waiting to rejoin this game or has already rejoined it
-     */
-    public synchronized boolean isReconnectedInGame(String nickname, int gameId, String oldSessionId) {
-        String currentSessionId = this.sessionIdByNickname.get(nickname);
-        if (currentSessionId == null || currentSessionId.equals(oldSessionId)) {
-            return false;
-        }
 
-        SessionState currentSession = this.sessionsById.get(currentSessionId);
-        if (currentSession == null || currentSession.user == null) {
-            return false;
-        }
-
-        boolean pendingReconnect = Objects.equals(this.DisconnectedNicknameOnGame.get(nickname), gameId);
-        boolean completedReconnect = currentSession.phase == Phase.GAME
-                && Objects.equals(currentSession.gameId, gameId);
-        return pendingReconnect || completedReconnect;
-    }
 
     /**
-     * Moves an authenticated reconnecting session back into its previous game.
+     * Consumes the reconnect slot for an authenticated session.
      *
-     * @param sessionId the new authenticated session ID
-     * @throws IllegalStateException if there is no pending disconnected game recorded for the nickname
+     * <p>The session must already be authenticated with a nickname that has a
+     * reconnect slot. The slot is removed and the session is moved into the game
+     * recorded in that slot.
+     *
+     * @param sessionId authenticated reconnecting session
+     * @throws IllegalStateException if the nickname has no reconnect slot
      */
-    public synchronized void RegisterReConnection(String sessionId) {
+    public synchronized void consumeReconnectSlot(String sessionId) {
         String nickname = this.nicknameOf(sessionId);
-        Integer gameId = this.DisconnectedNicknameOnGame.get(nickname);
+        Integer gameId = this.reconnectGameIdByNickname.get(nickname);
         if (gameId == null) {
-            throw new IllegalStateException("No disconnected game for nickname: " + nickname);
+            throw new IllegalStateException("No reconnect slot for nickname: " + nickname);
         }
-        this.DisconnectedNicknameOnGame.remove(nickname);
+        this.reconnectGameIdByNickname.remove(nickname);
         this.enterGame(sessionId, gameId);
     }
 
     /**
-     * Removes all disconnected nickname references associated with a specific game.
+     * Removes every reconnect slot associated with one game.
      *
-     * @param gameId the ID of the game
+     * @param gameId game whose reconnect slots must be removed
      */
-    public synchronized void removeDisconnectedReference(int gameId) {
-        this.DisconnectedNicknameOnGame.values().removeIf(id -> Integer.valueOf(gameId).equals(id));
+    public synchronized void removeReconnectSlotsForGame(int gameId) {
+        this.reconnectGameIdByNickname.values().removeIf(id -> Integer.valueOf(gameId).equals(id));
     }
 
     /**
-     * Removes a disconnected nickname reference.
+     * Removes the reconnect slot of one nickname.
      *
-     * @param nickname the nickname of the player to remove
      */
-    public synchronized void removeDisconnectedReference(String nickname) {
-        this.DisconnectedNicknameOnGame.remove(nickname);
+    public synchronized void removeReconnectSlot(String nickname) {
+        this.reconnectGameIdByNickname.remove(nickname);
     }
 
     /**
@@ -481,23 +446,13 @@ public class ServerSessionRegistry {
     }
 
     /**
-     * Checks if a nickname is registered as disconnected from an ongoing game.
+     * Returns the game recorded in a nickname reconnect slot.
      *
      * @param nickname the nickname to query
-     * @return true if registered as disconnected, false otherwise
+     * @return the game ID, or {@code null} if the nickname has no reconnect slot
      */
-    public synchronized boolean isDisconnected(String nickname) {
-        return this.DisconnectedNicknameOnGame.containsKey(nickname);
-    }
-
-    /**
-     * Retrieves the game ID from which a player disconnected.
-     *
-     * @param nickname the nickname of the player
-     * @return the game ID
-     */
-    public synchronized int DisconnectedFrom(String nickname) {
-        return this.DisconnectedNicknameOnGame.get(nickname);
+    public synchronized Integer reconnectGameIdOf(String nickname) {
+        return this.reconnectGameIdByNickname.get(nickname);
     }
 
     /**

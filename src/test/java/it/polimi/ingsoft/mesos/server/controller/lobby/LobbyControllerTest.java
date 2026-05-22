@@ -134,7 +134,7 @@ class LobbyControllerTest {
         controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
 
-        controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId, "Bob", bobConnection));
+        controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId));
 
         awaitCondition(() -> !lobby.hasPlayer("Bob"));
         assertEquals(1, lobby.getPlayers().size());
@@ -254,7 +254,7 @@ class LobbyControllerTest {
      */
     @Test
     void testDisconnectHostDisposesLobby() throws Exception {
-        controller.enqueueMessage(new SystemDisconnectCommand(aliceSessionId, "Alice", aliceConnection));
+        controller.enqueueMessage(new SystemDisconnectCommand(aliceSessionId));
 
         awaitCondition(() -> sessions.getLobbyController(1) == null);
     }

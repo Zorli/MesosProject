@@ -226,27 +226,24 @@ class ServerSessionRegistryTest {
         String sid = registry.registerConnection(conn);
         registry.authenticate(sid, "Alice");
 
-        assertFalse(registry.isDisconnected("Alice"));
+        assertNull(registry.reconnectGameIdOf("Alice"));
 
-        // Register disconnection
-        registry.RegisterDisconnection(sid, 5);
+        registry.recordGameDisconnection(sid, 5);
         registry.unregister(sid); // Clear nickname lock on old session
-        assertTrue(registry.isDisconnected("Alice"));
-        assertEquals(5, registry.DisconnectedFrom("Alice"));
+        assertEquals(5, registry.reconnectGameIdOf("Alice"));
 
         // Reconnect session
         String newSid = registry.registerConnection(conn);
         registry.authenticate(newSid, "Alice");
-        assertTrue(registry.isReconnectedInGame("Alice", 5, sid));
 
-        registry.RegisterReConnection(newSid);
-        assertFalse(registry.isDisconnected("Alice"));
+        registry.consumeReconnectSlot(newSid);
+        assertNull(registry.reconnectGameIdOf("Alice"));
         assertEquals(Phase.GAME, registry.getPhaseOf(newSid));
         assertEquals(5, registry.gameIdOf(newSid));
     }
 
     /**
-     * Verifies clearing disconnected entries by game ID or nickname.
+     * Verifies clearing reconnect slots by game ID or nickname.
      */
     @Test
     void testRemoveDisconnectedReferences() {
@@ -255,17 +252,17 @@ class ServerSessionRegistryTest {
         String sid = registry.registerConnection(conn);
         registry.authenticate(sid, "Alice");
 
-        registry.RegisterDisconnection(sid, 10);
-        assertTrue(registry.isDisconnected("Alice"));
+        registry.recordGameDisconnection(sid, 10);
+        assertEquals(10, registry.reconnectGameIdOf("Alice"));
 
-        registry.removeDisconnectedReference("Alice");
-        assertFalse(registry.isDisconnected("Alice"));
+        registry.removeReconnectSlot("Alice");
+        assertNull(registry.reconnectGameIdOf("Alice"));
 
-        registry.RegisterDisconnection(sid, 10);
-        assertTrue(registry.isDisconnected("Alice"));
+        registry.recordGameDisconnection(sid, 10);
+        assertEquals(10, registry.reconnectGameIdOf("Alice"));
 
-        registry.removeDisconnectedReference(10);
-        assertFalse(registry.isDisconnected("Alice"));
+        registry.removeReconnectSlotsForGame(10);
+        assertNull(registry.reconnectGameIdOf("Alice"));
     }
 
     /**

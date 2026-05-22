@@ -183,14 +183,26 @@ final class TuiPayloadRenderer {
             return builder.toString();
         }
 
-        List<PlayerPayload> players = new ArrayList<>(payload.players);
+        List<PlayerPayload> players = new ArrayList<>();
+        List<PlayerPayload> disconnectedPlayers = new ArrayList<>();
+        for (PlayerPayload player : payload.players) {
+            if (player.isConnected) {
+                players.add(player);
+            } else {
+                disconnectedPlayers.add(player);
+            }
+        }
+
         players.sort(new Comparator<PlayerPayload>() {
             @Override
             public int compare(PlayerPayload firstPlayer, PlayerPayload secondPlayer) {
-                if (firstPlayer.isConnected != secondPlayer.isConnected) {
-                    return Boolean.compare(secondPlayer.isConnected, firstPlayer.isConnected);
-                }
                 return Integer.compare(secondPlayer.prestigePoints, firstPlayer.prestigePoints);
+            }
+        });
+        disconnectedPlayers.sort(new Comparator<PlayerPayload>() {
+            @Override
+            public int compare(PlayerPayload firstPlayer, PlayerPayload secondPlayer) {
+                return firstPlayer.nickname.compareTo(secondPlayer.nickname);
             }
         });
 
@@ -202,6 +214,11 @@ final class TuiPayloadRenderer {
                     .append(player.nickname)
                     .append(" prestige=")
                     .append(player.prestigePoints);
+        }
+        for (PlayerPayload player : disconnectedPlayers) {
+            builder.append(System.lineSeparator())
+                    .append(player.nickname)
+                    .append(" disconnected - not included in the leaderboard");
         }
 
         return builder.toString();
