@@ -11,8 +11,6 @@ package it.polimi.ingsoft.mesos.server.model.lobby.enums;
  *       only the host player is authorized to start the match. If any player leaves, the status reverts back to {@link #WAITING}.</li>
  *   <li>{@link #STARTED}: Transitioned when the host successfully commands the lobby to start. The lobby transition
  *       process will begin, creating the game instance and starting the game worker thread.</li>
- *   <li>{@link #RESUMABLE}: Indicates a suspended/disconnected game that is waiting for the players in the original
- *       roster to reconnect and resume the match.</li>
  *   <li>{@link #CLOSED}: Terminal state when the lobby becomes empty or is explicitly disposed of. No further actions
  *       should be accepted.</li>
  * </ul>
@@ -20,8 +18,6 @@ package it.polimi.ingsoft.mesos.server.model.lobby.enums;
 public enum LobbyStatus {
     /** The lobby exists but does not yet have enough players to start. */
     WAITING,
-    /** The lobby represents a suspended match waiting for its original players to reconnect. */
-    RESUMABLE,
     /** The lobby has enough players and can be turned into a game. */
     READY,
     /** A match has been created from the lobby. */

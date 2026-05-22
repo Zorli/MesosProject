@@ -134,7 +134,7 @@ class LobbyControllerTest {
         controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
 
-        controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId, "Bob", bobConnection));
+        controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId));
 
         awaitCondition(() -> !lobby.hasPlayer("Bob"));
         assertEquals(1, lobby.getPlayers().size());
@@ -198,27 +198,6 @@ class LobbyControllerTest {
     }
 
     /**
-     * Test name: testRejoinResumableUserCommand
-     * 1. This test verifies that rejoining a player to a RESUMABLE lobby works correctly at the controller level.
-     * 2. It asserts that Bob can successfully rejoin the resumable lobby.
-     */
-    @Test
-    void testRejoinResumableUserCommand() throws Exception {
-        java.lang.reflect.Field statusField = Lobby.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(lobby, LobbyStatus.RESUMABLE);
-
-        java.lang.reflect.Field rosterField = Lobby.class.getDeclaredField("resumableRoster");
-        rosterField.setAccessible(true);
-        rosterField.set(lobby, List.of("Alice", "Bob"));
-
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
-
-        awaitCondition(() -> lobby.hasPlayer("Bob"));
-        assertTrue(sessions.sessionsInLobby(1).stream().anyMatch(s -> s.user().getNickname().equals("Bob")));
-    }
-
-    /**
      * Test name: testDisconnectUserCommandWithInvalidSession
      * 1. This test verifies that disconnecting an unknown session handles the exception and returns early without crashing.
      * 2. It asserts that sending a disconnect command for a non-existent session is ignored gracefully.
@@ -267,28 +246,6 @@ class LobbyControllerTest {
         assertTrue(controllerThread.isAlive());
     }
 
-    /**
-     * Test name: testRejoinResumableUserCommandAlreadyInPlayers
-     * 1. This test verifies that rejoining a player who is already present in a RESUMABLE lobby fails.
-     * 2. It asserts that Alice (already in players) is not rejoined and the rejoin action returns early.
-     */
-    @Test
-    void testRejoinResumableUserCommandAlreadyInPlayers() throws Exception {
-        java.lang.reflect.Field statusField = Lobby.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(lobby, LobbyStatus.RESUMABLE);
-
-        java.lang.reflect.Field rosterField = Lobby.class.getDeclaredField("resumableRoster");
-        rosterField.setAccessible(true);
-        rosterField.set(lobby, List.of("Alice", "Bob"));
-
-        controller.enqueueMessage(new SystemJoinCommand(aliceSessionId));
-
-        // Let the queue process the command
-        Thread.sleep(100);
-        // Alice should still be the only player (since Bob didn't join)
-        assertEquals(1, lobby.getPlayers().size());
-    }
 
     /**
      * Test name: testDisconnectHostDisposesLobby
@@ -297,7 +254,7 @@ class LobbyControllerTest {
      */
     @Test
     void testDisconnectHostDisposesLobby() throws Exception {
-        controller.enqueueMessage(new SystemDisconnectCommand(aliceSessionId, "Alice", aliceConnection));
+        controller.enqueueMessage(new SystemDisconnectCommand(aliceSessionId));
 
         awaitCondition(() -> sessions.getLobbyController(1) == null);
     }

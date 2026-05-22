@@ -135,24 +135,12 @@ public class LobbyController implements Runnable {
 
     /**
      * Handles adding an authenticated user connection to the lobby state.
-     * Supports both regular joins and rejoining a resumable lobby.
      *
      * @param sessionId the session identifier of the client joining
      */
     private void joinUser(String sessionId) {
         String nickname = this.sessions.nicknameOf(sessionId);
         Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
-
-        // Resume flow for suspended lobby matches
-        if (this.lobby.getStatus() == LobbyStatus.RESUMABLE && this.lobby.isExpectedResumePlayer(nickname)) {
-            if (!this.lobby.rejoinResumablePlayer(nickname, clientView)) {
-                return;
-            }
-            this.sessions.enterLobby(sessionId, this.lobby.getId());
-            this.lobby.notifyPlayerJoined(nickname);
-            return;
-        }
-
         // Delegate validation and model modifications to Lobby model
         boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView);
 
@@ -178,7 +166,7 @@ public class LobbyController implements Runnable {
             this.lobby.notifyPlayerLeft(nickname, leavingListener);
         }
 
-        // Dispose empty lobbies that cannot be resumed
+        // Dispose empty lobbies
         if (this.shouldDisposeEmptyLobby()) {
             this.sessions.removeLobbyController(this.lobby.getId());
             this.sessions.removeLobbyModel(this.lobby.getId());
@@ -216,7 +204,7 @@ public class LobbyController implements Runnable {
      * Helper to verify if an empty lobby should be deleted.
      */
     private boolean shouldDisposeEmptyLobby() {
-        return this.lobby.isEmpty() && this.lobby.getStatus() != LobbyStatus.RESUMABLE;
+        return this.lobby.isEmpty();
     }
 
     /**

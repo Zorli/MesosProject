@@ -46,11 +46,7 @@ public class ServerConnectionLifecycle {
         if (snapshot.phase() == ServerSessionRegistry.Phase.GAME && snapshot.gameId() != null) {
             GameController orchestrator = this.sessions.getGameOrchestrator(snapshot.gameId());
             if (orchestrator != null) {
-                String nickname = snapshot.user() == null ? null : snapshot.user().getNickname();
-                Listener listener = snapshot.connection() instanceof Listener l ? l : null;
-                this.sessions.registerDisconnection(nickname, snapshot.gameId());
-                this.sessions.unregister(sessionId);
-                orchestrator.enqueueMessage(new SystemDisconnectCommand(snapshot.sessionId(), nickname, listener));
+                orchestrator.enqueueMessage(new SystemDisconnectCommand(snapshot.sessionId()));
                 return;
             }
         } else if (snapshot.phase() == ServerSessionRegistry.Phase.LOBBY && snapshot.lobbyId() != null) {

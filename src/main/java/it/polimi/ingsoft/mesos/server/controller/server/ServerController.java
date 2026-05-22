@@ -140,8 +140,11 @@ public class ServerController implements Runnable {
     }
 
     /**
-     * Authenticates a user session with a chosen nickname. If the player was previously
-     * disconnected from an active game, they are immediately queued to rejoin that game.
+     * Authenticates a user session with a chosen nickname.
+     *
+     * <p>If authentication succeeds and the nickname has a reconnect slot, the
+     * session is queued to rejoin that game. If the old game is already closed,
+     * the reconnect slot is removed.
      *
      * @param sessionId the unique session ID of the client
      * @param nickname  the chosen nickname
@@ -151,12 +154,12 @@ public class ServerController implements Runnable {
         if (!this.serverModel.authenticate(sessionId, nickname, clientView)) {
             return;
         }
-        if(this.sessions.isDisconnected(nickname))
+        Integer gameId = this.sessions.reconnectGameIdOf(nickname);
+        if(gameId != null)
         {
-            int gameId = this.sessions.DisconnectedFrom(nickname);
             GameController gameController = this.sessions.getGameOrchestrator(gameId);
             if(gameController == null || gameController.isClosing() ){
-                this.sessions.removeDisconnectedReference(nickname);
+                this.sessions.removeReconnectSlot(nickname);
                 return;
             }
             gameController.enqueueMessage(new SystemJoinCommand(sessionId));
