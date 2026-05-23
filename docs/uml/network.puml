@@ -41,6 +41,8 @@ skinparam class<<mapper>> {
   BorderColor #95A5A6
 }
 
+skinparam linetype ortho
+
 ' ─── CLIENT SIDE ───────────────────────────────────────────────────────────
 package "Client" {
 

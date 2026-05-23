@@ -1,6 +1,6 @@
 @startuml server-game
 !theme plain
-top to bottom direction
+left to right direction
 
 skinparam classAttributeIconSize 0
 skinparam defaultFontName "Segoe UI"
@@ -59,11 +59,15 @@ skinparam class<<mapper>> {
   BorderColor #95A5A6
 }
 
+skinparam linetype ortho
+
 ' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
-class MessageRouter <<dep>>
-class ServerSessionRegistry <<dep>>
-hide MessageRouter members
-hide ServerSessionRegistry members
+package "shared" <<dep>> {
+  class MessageRouter <<dep>>
+  class ServerSessionRegistry <<dep>>
+  hide MessageRouter members
+  hide ServerSessionRegistry members
+}
 
 ' ─── CONTROLLER ────────────────────────────────────────────────────────────
 class GameController <<controller>> {

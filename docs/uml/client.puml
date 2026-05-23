@@ -45,6 +45,8 @@ skinparam class<<mapper>> {
   BorderColor #95A5A6
 }
 
+skinparam linetype ortho
+
 ' ─── ENTRY POINT ───────────────────────────────────────────────────────────
 class LaunchClient {
   <color:#1E8449>+</color> {static} main(args: String[]): void

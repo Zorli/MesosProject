@@ -50,6 +50,8 @@ skinparam class<<mapper>> {
   BorderColor #95A5A6
 }
 
+skinparam linetype ortho
+
 ' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
 package "shared" <<dep>> {
   class MessageRouter <<dep>>

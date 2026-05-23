@@ -18,6 +18,8 @@ skinparam package {
   FontStyle bold
 }
 
+skinparam linetype ortho
+
 hide members
 
 ' ─── PACKAGES ───────────────────────────────────────────────────────────────
