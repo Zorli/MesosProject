@@ -29,6 +29,27 @@ skinparam package {
   BorderColor #888
 }
 
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+
 ' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
 package "shared" <<dep>> {
   class MessageRouter <<dep>>
@@ -40,83 +61,83 @@ package "shared" <<dep>> {
 ' ─── LOBBY DOMAIN ──────────────────────────────────────────────────────────
 package "lobby" {
 
-  class LobbyController {
-    - lobby: Lobby
-    - sessions: ServerSessionRegistry
-    - gameFactory: GameFactory
-    - lobbyPlayerFactory: LobbyPlayerFactory
-    - commandQueue: BlockingQueue<QueuedCommand>
-    + LobbyController(lobby: Lobby, sessions: ServerSessionRegistry, factory: GameFactory)
-    + enqueueMessage(cmd: QueuedCommand): void
-    + run(): void
-    - joinUser(sessionId: String): void
-    - exitLobby(sessionId: String): void
-    - disconnectUser(sessionId: String): void
-    - shouldDisposeEmptyLobby(): boolean
-    - startLobby(sessionId: String): void
-    - startNewMatch(): GameController
-    - startGameWorker(gc: GameController): void
-    - attachLobbySessionsToGame(gc: GameController): void
-    - completeLobbyTransition(gc: GameController): void
-    - startMatchCountdown(gc: GameController): void
-    - reportPhaseError(sessionId: String): void
+  class LobbyController <<controller>> {
+    <color:#C0392B>-</color> lobby: Lobby
+    <color:#C0392B>-</color> sessions: ServerSessionRegistry
+    <color:#C0392B>-</color> gameFactory: GameFactory
+    <color:#C0392B>-</color> lobbyPlayerFactory: LobbyPlayerFactory
+    <color:#C0392B>-</color> commandQueue: BlockingQueue<QueuedCommand>
+    <color:#1E8449>+</color> LobbyController(lobby: Lobby, sessions: ServerSessionRegistry, factory: GameFactory)
+    <color:#1E8449>+</color> enqueueMessage(cmd: QueuedCommand): void
+    <color:#1E8449>+</color> run(): void
+    <color:#C0392B>-</color> joinUser(sessionId: String): void
+    <color:#C0392B>-</color> exitLobby(sessionId: String): void
+    <color:#C0392B>-</color> disconnectUser(sessionId: String): void
+    <color:#C0392B>-</color> shouldDisposeEmptyLobby(): boolean
+    <color:#C0392B>-</color> startLobby(sessionId: String): void
+    <color:#C0392B>-</color> startNewMatch(): GameController
+    <color:#C0392B>-</color> startGameWorker(gc: GameController): void
+    <color:#C0392B>-</color> attachLobbySessionsToGame(gc: GameController): void
+    <color:#C0392B>-</color> completeLobbyTransition(gc: GameController): void
+    <color:#C0392B>-</color> startMatchCountdown(gc: GameController): void
+    <color:#C0392B>-</color> reportPhaseError(sessionId: String): void
   }
 
   class Lobby {
-    + {static} MIN_PLAYERS: int
-    + {static} MAX_PLAYERS: int
-    - id: int
-    - capacity: int
-    - players: List<String>
-    - hostNickname: String
-    - status: LobbyStatus
-    - listeners: List<Listener>
-    - payloadMapper: LobbyPayloadMapper
-    + Lobby(id: int, hostNickname: String, capacity: int)
-    + addListener(l: Listener): void
-    + removeListener(l: Listener): void
-    + startMatch(nickname: String): boolean
-    + addPlayer(nickname: String, view: Listener): boolean
-    + removePlayer(nickname: String, view: Listener): boolean
-    + reportPhaseError(target: Listener): void
-    + notifyPlayerJoined(nickname: String): void
-    + notifyPlayerLeft(nickname: String, leaving: Listener): void
-    + notifyMatchStarted(nickname: String, target: Listener): void
-    + clearListeners(): void
-    + getId(): int
-    + getHostNickname(): String
-    + getPlayers(): List<String>
-    + getChosenCapacity(): int
-    + getStatus(): LobbyStatus
-    + hasPlayer(nickname: String): boolean
-    + canBeJoinedBy(nickname: String): boolean
-    + isHost(nickname: String): boolean
-    + canStart(): boolean
-    + isFull(): boolean
-    + isEmpty(): boolean
-    - startMatchInternal(nickname: String): void
-    - addPlayerInternal(nickname: String): void
-    - removePlayerInternal(nickname: String): void
-    - executeLobbyAction(action: Runnable, errorTarget: Listener): boolean
-    - notifyListeners(payload: Object): void
-    - validateNickname(nickname: String): String
+    <color:#1E8449>+</color> {static} MIN_PLAYERS: int
+    <color:#1E8449>+</color> {static} MAX_PLAYERS: int
+    <color:#C0392B>-</color> id: int
+    <color:#C0392B>-</color> capacity: int
+    <color:#C0392B>-</color> players: List<String>
+    <color:#C0392B>-</color> hostNickname: String
+    <color:#C0392B>-</color> status: LobbyStatus
+    <color:#C0392B>-</color> listeners: List<Listener>
+    <color:#C0392B>-</color> payloadMapper: LobbyPayloadMapper
+    <color:#1E8449>+</color> Lobby(id: int, hostNickname: String, capacity: int)
+    <color:#1E8449>+</color> addListener(l: Listener): void
+    <color:#1E8449>+</color> removeListener(l: Listener): void
+    <color:#1E8449>+</color> startMatch(nickname: String): boolean
+    <color:#1E8449>+</color> addPlayer(nickname: String, view: Listener): boolean
+    <color:#1E8449>+</color> removePlayer(nickname: String, view: Listener): boolean
+    <color:#1E8449>+</color> reportPhaseError(target: Listener): void
+    <color:#1E8449>+</color> notifyPlayerJoined(nickname: String): void
+    <color:#1E8449>+</color> notifyPlayerLeft(nickname: String, leaving: Listener): void
+    <color:#1E8449>+</color> notifyMatchStarted(nickname: String, target: Listener): void
+    <color:#1E8449>+</color> clearListeners(): void
+    <color:#1E8449>+</color> getId(): int
+    <color:#1E8449>+</color> getHostNickname(): String
+    <color:#1E8449>+</color> getPlayers(): List<String>
+    <color:#1E8449>+</color> getChosenCapacity(): int
+    <color:#1E8449>+</color> getStatus(): LobbyStatus
+    <color:#1E8449>+</color> hasPlayer(nickname: String): boolean
+    <color:#1E8449>+</color> canBeJoinedBy(nickname: String): boolean
+    <color:#1E8449>+</color> isHost(nickname: String): boolean
+    <color:#1E8449>+</color> canStart(): boolean
+    <color:#1E8449>+</color> isFull(): boolean
+    <color:#1E8449>+</color> isEmpty(): boolean
+    <color:#C0392B>-</color> startMatchInternal(nickname: String): void
+    <color:#C0392B>-</color> addPlayerInternal(nickname: String): void
+    <color:#C0392B>-</color> removePlayerInternal(nickname: String): void
+    <color:#C0392B>-</color> executeLobbyAction(action: Runnable, errorTarget: Listener): boolean
+    <color:#C0392B>-</color> notifyListeners(payload: Object): void
+    <color:#C0392B>-</color> validateNickname(nickname: String): String
   }
 
-  class LobbyPayloadMapper {
-    + lobbyJoined(nickname: String, lobby: Lobby): LobbyUpdatePayload
-    + lobbyLeft(nickname: String, lobby: Lobby, lobbyId: int): LobbyUpdatePayload
-    + lobbyStarted(nickname: String, lobby: Lobby): LobbyUpdatePayload
-    - fromLobby(event: LobbyEventType, nick: String, msg: String, lobby: Lobby): LobbyUpdatePayload
+  class LobbyPayloadMapper <<mapper>> {
+    <color:#1E8449>+</color> lobbyJoined(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    <color:#1E8449>+</color> lobbyLeft(nickname: String, lobby: Lobby, lobbyId: int): LobbyUpdatePayload
+    <color:#1E8449>+</color> lobbyStarted(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    <color:#C0392B>-</color> fromLobby(event: LobbyEventType, nick: String, msg: String, lobby: Lobby): LobbyUpdatePayload
   }
 
-  class LobbyPlayerFactory {
-    - {static} AVAILABLE_TOTEMS: List<TotemColor>
-    + createPlayers(nicknames: List<String>): List<Player>
+  class LobbyPlayerFactory <<factory>> {
+    <color:#C0392B>-</color> {static} AVAILABLE_TOTEMS: List<TotemColor>
+    <color:#1E8449>+</color> createPlayers(nicknames: List<String>): List<Player>
   }
 
   interface GameFactory {
-    + createGame(players: List<Player>): Game
-    + createGame(gameId: int, players: List<Player>): Game
+    <color:#1E8449>+</color> createGame(players: List<Player>): Game
+    <color:#1E8449>+</color> createGame(gameId: int, players: List<Player>): Game
   }
 
   enum LobbyStatus {
@@ -143,4 +164,13 @@ Lobby *-- LobbyPayloadMapper : owns
 ' Lobby has status
 Lobby --> LobbyStatus : has >
 
+
+legend right
+  <b>Visibilità metodi</b>
+  ====
+  <color:#1E8449>+</color> public
+  <color:#C0392B>-</color> private
+  <color:#E67E22>#</color> protected
+  <color:#1F618D>~</color> package-private
+endlegend
 @enduml

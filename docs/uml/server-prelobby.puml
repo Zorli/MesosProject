@@ -25,6 +25,27 @@ skinparam package {
   BorderColor #888
 }
 
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+
 ' ─── SHARED DEPENDENCIES (nome only) ───────────────────────────────────────
 package "shared" <<dep>> {
   class MessageRouter <<dep>>
@@ -36,72 +57,72 @@ package "shared" <<dep>> {
 ' ─── PRE-LOBBY DOMAIN ──────────────────────────────────────────────────────
 package "pre-lobby" {
 
-  class ServerController {
-    - sessions: ServerSessionRegistry
-    - serverModel: ServerModel
-    - gameFactory: GameFactory
-    - connectionLifecycle: ServerConnectionLifecycle
-    - pingPongRoutine: PingPongRoutine
-    - commandQueue: BlockingQueue<QueuedCommand>
-    + ServerController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
-    + getSessionRegistry(): ServerSessionRegistry
-    + enqueueMessage(cmd: QueuedCommand): void
-    + run(): void
-    + registerConnection(conn: ClientConnection): String
-    + recordPong(sessionId: String): void
-    + disconnectSession(sessionId: String): void
-    + reportPhaseError(sessionId: String): void
-    - authenticate(sessionId: String, nickname: String): void
-    - listOpenLobbies(sessionId: String): void
-    - createLobby(sessionId: String, capacity: int): void
-    - joinLobby(sessionId: String, lobbyId: int): void
+  class ServerController <<controller>> {
+    <color:#C0392B>-</color> sessions: ServerSessionRegistry
+    <color:#C0392B>-</color> serverModel: ServerModel
+    <color:#C0392B>-</color> gameFactory: GameFactory
+    <color:#C0392B>-</color> connectionLifecycle: ServerConnectionLifecycle
+    <color:#C0392B>-</color> pingPongRoutine: PingPongRoutine
+    <color:#C0392B>-</color> commandQueue: BlockingQueue<QueuedCommand>
+    <color:#1E8449>+</color> ServerController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
+    <color:#1E8449>+</color> getSessionRegistry(): ServerSessionRegistry
+    <color:#1E8449>+</color> enqueueMessage(cmd: QueuedCommand): void
+    <color:#1E8449>+</color> run(): void
+    <color:#1E8449>+</color> registerConnection(conn: ClientConnection): String
+    <color:#1E8449>+</color> recordPong(sessionId: String): void
+    <color:#1E8449>+</color> disconnectSession(sessionId: String): void
+    <color:#1E8449>+</color> reportPhaseError(sessionId: String): void
+    <color:#C0392B>-</color> authenticate(sessionId: String, nickname: String): void
+    <color:#C0392B>-</color> listOpenLobbies(sessionId: String): void
+    <color:#C0392B>-</color> createLobby(sessionId: String, capacity: int): void
+    <color:#C0392B>-</color> joinLobby(sessionId: String, lobbyId: int): void
   }
 
   class ServerModel {
-    - sessions: ServerSessionRegistry
-    - payloadMapper: PreLobbyPayloadMapper
-    - globalListeners: Map<String, Listener>
-    + ServerModel(sessions: ServerSessionRegistry)
-    + addGlobalListener(sessionId: String, listener: Listener): void
-    + removeGlobalListener(sessionId: String): void
-    + reportPhaseError(sessionId: String): void
-    + reportJoinError(sessionId: String, message: String): void
-    + authenticate(sessionId: String, nickname: String, view: Listener): boolean
-    + listOpenLobbies(sessionId: String, view: Listener): void
-    + createLobby(sessionId: String, capacity: int, view: Listener): Lobby
-    + joinLobbyValidation(sessionId: String, view: Listener, lobbyId: int): boolean
-    - sendUnicastError(sessionId: String, type: String, msg: String): void
-    - ensureSessionCanEnterLobby(sessionId: String): void
-    - requireNickname(sessionId: String): String
+    <color:#C0392B>-</color> sessions: ServerSessionRegistry
+    <color:#C0392B>-</color> payloadMapper: PreLobbyPayloadMapper
+    <color:#C0392B>-</color> globalListeners: Map<String, Listener>
+    <color:#1E8449>+</color> ServerModel(sessions: ServerSessionRegistry)
+    <color:#1E8449>+</color> addGlobalListener(sessionId: String, listener: Listener): void
+    <color:#1E8449>+</color> removeGlobalListener(sessionId: String): void
+    <color:#1E8449>+</color> reportPhaseError(sessionId: String): void
+    <color:#1E8449>+</color> reportJoinError(sessionId: String, message: String): void
+    <color:#1E8449>+</color> authenticate(sessionId: String, nickname: String, view: Listener): boolean
+    <color:#1E8449>+</color> listOpenLobbies(sessionId: String, view: Listener): void
+    <color:#1E8449>+</color> createLobby(sessionId: String, capacity: int, view: Listener): Lobby
+    <color:#1E8449>+</color> joinLobbyValidation(sessionId: String, view: Listener, lobbyId: int): boolean
+    <color:#C0392B>-</color> sendUnicastError(sessionId: String, type: String, msg: String): void
+    <color:#C0392B>-</color> ensureSessionCanEnterLobby(sessionId: String): void
+    <color:#C0392B>-</color> requireNickname(sessionId: String): String
   }
 
-  class PreLobbyPayloadMapper {
-    + authenticated(nickname: String): AuthenticationResultPayload
-    + lobbyCreated(nickname: String, lobby: Lobby): LobbyUpdatePayload
-    + lobbyList(lobbies: List<Lobby>): LobbyListPayload
-    - fromLobby(event: LobbyEventType, nick: String, msg: String, lobby: Lobby): LobbyUpdatePayload
-    - summary(lobby: Lobby): LobbySummaryPayload
+  class PreLobbyPayloadMapper <<mapper>> {
+    <color:#1E8449>+</color> authenticated(nickname: String): AuthenticationResultPayload
+    <color:#1E8449>+</color> lobbyCreated(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    <color:#1E8449>+</color> lobbyList(lobbies: List<Lobby>): LobbyListPayload
+    <color:#C0392B>-</color> fromLobby(event: LobbyEventType, nick: String, msg: String, lobby: Lobby): LobbyUpdatePayload
+    <color:#C0392B>-</color> summary(lobby: Lobby): LobbySummaryPayload
   }
 
-  class ServerConnectionLifecycle {
-    - sessions: ServerSessionRegistry
-    - serverModel: ServerModel
-    + ServerConnectionLifecycle(sessions: ServerSessionRegistry, model: ServerModel)
-    + registerConnection(conn: ClientConnection): String
-    + recordPong(sessionId: String): void
-    + disconnectSession(sessionId: String): void
-    + handleConnectionTimeout(sessionId: String): void
+  class ServerConnectionLifecycle <<service>> {
+    <color:#C0392B>-</color> sessions: ServerSessionRegistry
+    <color:#C0392B>-</color> serverModel: ServerModel
+    <color:#1E8449>+</color> ServerConnectionLifecycle(sessions: ServerSessionRegistry, model: ServerModel)
+    <color:#1E8449>+</color> registerConnection(conn: ClientConnection): String
+    <color:#1E8449>+</color> recordPong(sessionId: String): void
+    <color:#1E8449>+</color> disconnectSession(sessionId: String): void
+    <color:#1E8449>+</color> handleConnectionTimeout(sessionId: String): void
   }
 
-  class PingPongRoutine {
-    - {static} PING_INTERVAL_SECONDS: long
-    - sessions: ServerSessionRegistry
-    - connectionLifecycle: ServerConnectionLifecycle
-    - scheduler: ScheduledExecutorService
-    + PingPongRoutine(sessions: ServerSessionRegistry, lifecycle: ServerConnectionLifecycle)
-    + start(): void
-    + stop(): void
-    - tick(): void
+  class PingPongRoutine <<service>> {
+    <color:#C0392B>-</color> {static} PING_INTERVAL_SECONDS: long
+    <color:#C0392B>-</color> sessions: ServerSessionRegistry
+    <color:#C0392B>-</color> connectionLifecycle: ServerConnectionLifecycle
+    <color:#C0392B>-</color> scheduler: ScheduledExecutorService
+    <color:#1E8449>+</color> PingPongRoutine(sessions: ServerSessionRegistry, lifecycle: ServerConnectionLifecycle)
+    <color:#1E8449>+</color> start(): void
+    <color:#1E8449>+</color> stop(): void
+    <color:#C0392B>-</color> tick(): void
   }
 }
 
@@ -126,4 +147,13 @@ ServerModel ..> ServerSessionRegistry : uses >
 ServerConnectionLifecycle ..> ServerSessionRegistry : uses >
 PingPongRoutine ..> ServerSessionRegistry : uses >
 
+
+legend right
+  <b>Visibilità metodi</b>
+  ====
+  <color:#1E8449>+</color> public
+  <color:#C0392B>-</color> private
+  <color:#E67E22>#</color> protected
+  <color:#1F618D>~</color> package-private
+endlegend
 @enduml
