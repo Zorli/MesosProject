@@ -1,0 +1,303 @@
+@startuml client
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam enum {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+' ─── ENTRY POINT ───────────────────────────────────────────────────────────
+class LaunchClient {
+  + {static} main(args: String[]): void
+  - {static} chooseClientView(scanner: Scanner): ClientView
+  - {static} chooseServerProxy(scanner: Scanner, view: ClientView, env: Map): ServerProxy
+  - {static} resolveServerHost(env: Map): String
+  - {static} resolveTcpPort(env: Map): int
+  - {static} resolveRmiPort(env: Map): int
+  - {static} resolveClientRmiHost(env: Map): String
+  - {static} startClient(view: ClientView, proxy: ServerProxy): void
+  - {static} loadEnvironmentFile(path: String): Map
+}
+
+' ─── PROXY LAYER ───────────────────────────────────────────────────────────
+package "serverproxy" {
+  interface ServerProxy {
+    + isConnected(): boolean
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(capacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
+  }
+
+  class ServerProxyTCP {
+    - socket: Socket
+    - writer: PrintWriter
+    - clientView: ClientView
+    - virtualServer: VirtualServerTCP
+    - virtualServerThread: Thread
+    + ServerProxyTCP(host: String, port: int, view: ClientView)
+    ~ ServerProxyTCP(socket: Socket, view: ClientView)
+    + waitForVirtualServer(): void
+    + isConnected(): boolean
+    + sendPong(): void
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(capacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
+    + closeConnection(): void
+    - send(msg: ClientMessage): void
+    - notifyLocalError(code: String, msg: String): void
+  }
+
+  class ServerProxyRMI {
+    - serverStub: RmiServerService
+    - callbackReceiver: VirtualServerRMI
+    - connected: boolean
+    + ServerProxyRMI(service: RmiConnectionService, view: ClientView)
+    ~ ServerProxyRMI(service: RmiConnectionService, view: ClientView, export: boolean)
+    + isConnected(): boolean
+    + sendPong(): void
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(capacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
+    - send(payload: ClientPayload): void
+    - handleDisconnection(e: RemoteException): void
+    - notifyLocalError(code: String, msg: String): void
+    - ensureConnected(): boolean
+  }
+}
+
+' ─── VIRTUAL SERVER LAYER ──────────────────────────────────────────────────
+package "virtualserver" {
+  interface VirtualServer {
+    + handleMessage(msg: ServerMessage): void
+    + handlePing(): void
+    + close(): void
+  }
+
+  class VirtualServerTCP {
+    - socket: Socket
+    - serverProxy: ServerProxyTCP
+    - closeRequestedByClient: boolean
+    - messageRouter: MessageRouter
+    + VirtualServerTCP(socket: Socket, view: ClientView, proxy: ServerProxyTCP)
+    + run(): void
+    + requestCloseByClient(): void
+    + handleMessage(msg: ServerMessage): void
+    + handlePing(): void
+    + close(): void
+    - isCloseRequestedByClient(): boolean
+    - readServerMessages(reader: BufferedReader): void
+    - handleServerMessage(raw: String): void
+    - buildServerMessage(type: ServerMessageType, el: JsonElement): ServerMessage
+    - handleError(code: String, msg: String): void
+    - handleError(payload: ErrorPayload): void
+  }
+
+  class VirtualServerRMI {
+    - messageRouter: MessageRouter
+    - exported: boolean
+    - serverProxy: ServerProxyRMI
+    + VirtualServerRMI(view: ClientView)
+    ~ VirtualServerRMI(view: ClientView, exported: boolean)
+    + handleMessage(msg: ServerMessage): void
+    + handlePing(): void
+    + attachServerProxy(proxy: ServerProxyRMI): void
+    + close(): void
+  }
+}
+
+' ─── VIEW LAYER ────────────────────────────────────────────────────────────
+package "view" {
+  interface ClientView {
+    + showError(payload: ErrorPayload): void
+    + showAuthenticationResult(payload: AuthenticationResultPayload): void
+    + showLobbyUpdate(payload: LobbyUpdatePayload): void
+    + showLobbyList(payload: LobbyListPayload): void
+    + showGameUpdate(payload: GamePayload): void
+    + showFinalGameResult(payload: GamePayload): void
+  }
+
+  class MessageRouter {
+    - clientView: ClientView
+    + MessageRouter(view: ClientView)
+    + routeMessage(msg: ServerMessage): void
+    - routeGameUpdate(payload: GamePayload): void
+  }
+
+  class TuiController {
+    - scanner: Scanner
+    - out: PrintStream
+    - commandParser: TuiCommandParser
+    - payloadRenderer: TuiPayloadRenderer
+    - lastGamePayload: GamePayload
+    - localNickname: String
+    - serverProxy: ServerProxy
+    + TuiController()
+    + TuiController(scanner: Scanner, out: PrintStream)
+    + attachServerProxy(proxy: ServerProxy): void
+    + start(): void
+    + showError(payload: ErrorPayload): void
+    + showAuthenticationResult(payload: AuthenticationResultPayload): void
+    + showLobbyUpdate(payload: LobbyUpdatePayload): void
+    + showLobbyList(payload: LobbyListPayload): void
+    + showGameUpdate(payload: GamePayload): void
+    + showFinalGameResult(payload: GamePayload): void
+    - handleInputLine(line: String): boolean
+    - executeCommand(cmd: TuiCommand): boolean
+    - closeServerProxy(): void
+    - renderHelp(): void
+    - render(text: String): void
+    - renderPrompt(): void
+    - printPrompt(): void
+  }
+
+  class GUIController {
+    - serverProxy: ServerProxy
+    - nickname: String
+    - lastGamePayload: GamePayload
+    - lastLobbyListPayload: LobbyListPayload
+    - lastLobbyUpdatePayload: LobbyUpdatePayload
+    + {static} FXML_RESOURCE: String
+    + {static} CSS_RESOURCE: String
+    + attachServerProxy(proxy: ServerProxy): void
+    + start(): void
+    + initialize(): void
+    + showError(payload: ErrorPayload): void
+    + showAuthenticationResult(payload: AuthenticationResultPayload): void
+    + showLobbyUpdate(payload: LobbyUpdatePayload): void
+    + showLobbyList(payload: LobbyListPayload): void
+    + showGameUpdate(payload: GamePayload): void
+  }
+
+  package "tui" {
+    class TuiCommandParser {
+      + parse(line: String): TuiCommand
+      - splitLineIntoWords(line: String): String[]
+      - parseType(word: String): TuiCommandType
+    }
+
+    class TuiCommand {
+      - type: TuiCommandType
+      - argument: String
+      + TuiCommand(type: TuiCommandType, argument: String)
+      + type(): TuiCommandType
+      + argument(): String
+      + intArgument(): int
+    }
+
+    enum TuiCommandType {
+      HELP
+      AUTH
+      LIST_LOBBIES
+      CREATE_LOBBY
+      JOIN_LOBBY
+      QUIT_LOBBY
+      START_LOBBY
+      MOVE_TOTEM
+      CHOOSE_CARD
+      EXTRA_DRAW
+      QUIT
+      --
+      - usage: String
+      - argumentRequired: boolean
+      - integerArgument: boolean
+      + usage(): String
+      + argumentRequired(): boolean
+      + integerArgument(): boolean
+    }
+
+    class TuiPayloadRenderer {
+      + renderError(e: ErrorPayload, g: GamePayload, nick: String): String
+      + renderAuthenticationResult(p: AuthenticationResultPayload): String
+      + renderLobbyUpdate(p: LobbyUpdatePayload): String
+      + renderLobbyList(p: LobbyListPayload): String
+      + renderGame(p: GamePayload, nick: String): String
+      + renderFinalGameResult(p: GamePayload): String
+      - appendPlayers(sb: StringBuilder, players: List): void
+      - appendBoard(sb: StringBuilder, board: BoardPayload): void
+      - formatCards(cards: List): String
+      - formatOfferSpaces(spaces: List): String
+      - formatStartingBlocks(blocks: List): String
+      - formatModifier(val: int): String
+      - valueOrDash(obj: Object): String
+    }
+  }
+}
+
+' ─── NOTES ──────────────────────────────────────────────────────────────────
+note right of VirtualServerRMI : "implements RmiClientService\n(external RMI interface)"
+note right of GUIController    : "Extends javafx.application.Application.\nContains FXML-injected UI nodes\nand ~80 private render helpers."
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Entry point
+LaunchClient ..> ServerProxy : creates >
+LaunchClient ..> ClientView  : creates >
+
+' Proxy hierarchy
+ServerProxy <|.. ServerProxyTCP
+ServerProxy <|.. ServerProxyRMI
+
+' Virtual server hierarchy
+VirtualServer <|.. VirtualServerTCP
+
+' View hierarchy
+ClientView <|.. TuiController
+ClientView <|.. GUIController
+
+' Proxy ↔ VirtualServer compositions
+ServerProxyTCP *-- VirtualServerTCP : owns
+ServerProxyRMI *-- VirtualServerRMI : owns
+
+' VirtualServer → MessageRouter
+VirtualServerTCP *-- MessageRouter : owns
+VirtualServerRMI *-- MessageRouter : owns
+
+' MessageRouter → ClientView
+MessageRouter --> ClientView : routes to >
+
+' TUI internal
+TuiController *-- TuiCommandParser : owns
+TuiController *-- TuiPayloadRenderer : owns
+TuiCommandParser ..> TuiCommand : creates >
+TuiCommand --> TuiCommandType : uses >
+
+@enduml

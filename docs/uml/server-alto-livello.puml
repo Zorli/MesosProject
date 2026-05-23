@@ -1,0 +1,71 @@
+@startuml server-alto-livello
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+  FontSize 13
+  FontStyle bold
+}
+
+hide members
+
+' ─── PACKAGES ───────────────────────────────────────────────────────────────
+
+package "server.network" {
+  class ConnectionAcceptor
+  class MessageRouter
+  class PingPongRoutine
+  class ServerConnectionLifecycle
+  class ClientCommandHandler
+  class ProtocolErrorMapper
+}
+
+package "server.virtualview" {
+  interface VirtualView
+  interface Listener
+  class VirtualViewTCP
+  class VirtualViewRMI
+  class RmiConnectionEntryPoint
+}
+
+package "server.controller" {
+  class ServerController
+  class LobbyController
+  class GameController
+  class ServerSessionRegistry
+}
+
+package "server.model" {
+  class ServerModel
+  class Lobby
+  class Game
+  class Player
+  class Board
+}
+
+package "server.factory" {
+  interface GameFactory
+  class DefaultGameFactory
+}
+
+' ─── PACKAGE-LEVEL RELATIONSHIPS ─────────────────────────────────────────────
+' (only architecturally significant arrows between packages)
+
+"server.network" -[#444]--> "server.controller"   : routes messages >
+"server.virtualview" -[#444]--> "server.network"  : implements / uses >
+"server.controller" -[#444]--> "server.model"     : reads / writes >
+"server.controller" -[#444]--> "server.factory"   : uses >
+"server.factory" -[#444]--> "server.model"        : creates >
+
+@enduml

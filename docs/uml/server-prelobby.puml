@@ -1,0 +1,129 @@
+@startuml server-prelobby
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam class<<dep>> {
+  BackgroundColor #F0F0F0
+  BorderColor #999
+  FontStyle italic
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+' ─── SHARED DEPENDENCIES (nome only) ───────────────────────────────────────
+package "shared" <<dep>> {
+  class MessageRouter <<dep>>
+  class ServerSessionRegistry <<dep>>
+  hide MessageRouter members
+  hide ServerSessionRegistry members
+}
+
+' ─── PRE-LOBBY DOMAIN ──────────────────────────────────────────────────────
+package "pre-lobby" {
+
+  class ServerController {
+    - sessions: ServerSessionRegistry
+    - serverModel: ServerModel
+    - gameFactory: GameFactory
+    - connectionLifecycle: ServerConnectionLifecycle
+    - pingPongRoutine: PingPongRoutine
+    - commandQueue: BlockingQueue<QueuedCommand>
+    + ServerController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
+    + getSessionRegistry(): ServerSessionRegistry
+    + enqueueMessage(cmd: QueuedCommand): void
+    + run(): void
+    + registerConnection(conn: ClientConnection): String
+    + recordPong(sessionId: String): void
+    + disconnectSession(sessionId: String): void
+    + reportPhaseError(sessionId: String): void
+    - authenticate(sessionId: String, nickname: String): void
+    - listOpenLobbies(sessionId: String): void
+    - createLobby(sessionId: String, capacity: int): void
+    - joinLobby(sessionId: String, lobbyId: int): void
+  }
+
+  class ServerModel {
+    - sessions: ServerSessionRegistry
+    - payloadMapper: PreLobbyPayloadMapper
+    - globalListeners: Map<String, Listener>
+    + ServerModel(sessions: ServerSessionRegistry)
+    + addGlobalListener(sessionId: String, listener: Listener): void
+    + removeGlobalListener(sessionId: String): void
+    + reportPhaseError(sessionId: String): void
+    + reportJoinError(sessionId: String, message: String): void
+    + authenticate(sessionId: String, nickname: String, view: Listener): boolean
+    + listOpenLobbies(sessionId: String, view: Listener): void
+    + createLobby(sessionId: String, capacity: int, view: Listener): Lobby
+    + joinLobbyValidation(sessionId: String, view: Listener, lobbyId: int): boolean
+    - sendUnicastError(sessionId: String, type: String, msg: String): void
+    - ensureSessionCanEnterLobby(sessionId: String): void
+    - requireNickname(sessionId: String): String
+  }
+
+  class PreLobbyPayloadMapper {
+    + authenticated(nickname: String): AuthenticationResultPayload
+    + lobbyCreated(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    + lobbyList(lobbies: List<Lobby>): LobbyListPayload
+    - fromLobby(event: LobbyEventType, nick: String, msg: String, lobby: Lobby): LobbyUpdatePayload
+    - summary(lobby: Lobby): LobbySummaryPayload
+  }
+
+  class ServerConnectionLifecycle {
+    - sessions: ServerSessionRegistry
+    - serverModel: ServerModel
+    + ServerConnectionLifecycle(sessions: ServerSessionRegistry, model: ServerModel)
+    + registerConnection(conn: ClientConnection): String
+    + recordPong(sessionId: String): void
+    + disconnectSession(sessionId: String): void
+    + handleConnectionTimeout(sessionId: String): void
+  }
+
+  class PingPongRoutine {
+    - {static} PING_INTERVAL_SECONDS: long
+    - sessions: ServerSessionRegistry
+    - connectionLifecycle: ServerConnectionLifecycle
+    - scheduler: ScheduledExecutorService
+    + PingPongRoutine(sessions: ServerSessionRegistry, lifecycle: ServerConnectionLifecycle)
+    + start(): void
+    + stop(): void
+    - tick(): void
+  }
+}
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Controller owns its components
+ServerController *-- ServerModel              : owns
+ServerController *-- ServerConnectionLifecycle : owns
+ServerController *-- PingPongRoutine          : owns
+
+' Model owns mapper
+ServerModel *-- PreLobbyPayloadMapper : owns
+
+' Controller → shared dependencies
+ServerController ..> MessageRouter        : uses >
+ServerController ..> ServerSessionRegistry : uses >
+
+' Model → shared dependency
+ServerModel ..> ServerSessionRegistry : uses >
+
+' Lifecycle and ping → shared
+ServerConnectionLifecycle ..> ServerSessionRegistry : uses >
+PingPongRoutine ..> ServerSessionRegistry : uses >
+
+@enduml

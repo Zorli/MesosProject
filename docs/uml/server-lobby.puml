@@ -1,0 +1,146 @@
+@startuml server-lobby
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam enum {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<dep>> {
+  BackgroundColor #F0F0F0
+  BorderColor #999
+  FontStyle italic
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
+package "shared" <<dep>> {
+  class MessageRouter <<dep>>
+  class ServerSessionRegistry <<dep>>
+  hide MessageRouter members
+  hide ServerSessionRegistry members
+}
+
+' ─── LOBBY DOMAIN ──────────────────────────────────────────────────────────
+package "lobby" {
+
+  class LobbyController {
+    - lobby: Lobby
+    - sessions: ServerSessionRegistry
+    - gameFactory: GameFactory
+    - lobbyPlayerFactory: LobbyPlayerFactory
+    - commandQueue: BlockingQueue<QueuedCommand>
+    + LobbyController(lobby: Lobby, sessions: ServerSessionRegistry, factory: GameFactory)
+    + enqueueMessage(cmd: QueuedCommand): void
+    + run(): void
+    - joinUser(sessionId: String): void
+    - exitLobby(sessionId: String): void
+    - disconnectUser(sessionId: String): void
+    - shouldDisposeEmptyLobby(): boolean
+    - startLobby(sessionId: String): void
+    - startNewMatch(): GameController
+    - startGameWorker(gc: GameController): void
+    - attachLobbySessionsToGame(gc: GameController): void
+    - completeLobbyTransition(gc: GameController): void
+    - startMatchCountdown(gc: GameController): void
+    - reportPhaseError(sessionId: String): void
+  }
+
+  class Lobby {
+    + {static} MIN_PLAYERS: int
+    + {static} MAX_PLAYERS: int
+    - id: int
+    - capacity: int
+    - players: List<String>
+    - hostNickname: String
+    - status: LobbyStatus
+    - listeners: List<Listener>
+    - payloadMapper: LobbyPayloadMapper
+    + Lobby(id: int, hostNickname: String, capacity: int)
+    + addListener(l: Listener): void
+    + removeListener(l: Listener): void
+    + startMatch(nickname: String): boolean
+    + addPlayer(nickname: String, view: Listener): boolean
+    + removePlayer(nickname: String, view: Listener): boolean
+    + reportPhaseError(target: Listener): void
+    + notifyPlayerJoined(nickname: String): void
+    + notifyPlayerLeft(nickname: String, leaving: Listener): void
+    + notifyMatchStarted(nickname: String, target: Listener): void
+    + clearListeners(): void
+    + getId(): int
+    + getHostNickname(): String
+    + getPlayers(): List<String>
+    + getChosenCapacity(): int
+    + getStatus(): LobbyStatus
+    + hasPlayer(nickname: String): boolean
+    + canBeJoinedBy(nickname: String): boolean
+    + isHost(nickname: String): boolean
+    + canStart(): boolean
+    + isFull(): boolean
+    + isEmpty(): boolean
+    - startMatchInternal(nickname: String): void
+    - addPlayerInternal(nickname: String): void
+    - removePlayerInternal(nickname: String): void
+    - executeLobbyAction(action: Runnable, errorTarget: Listener): boolean
+    - notifyListeners(payload: Object): void
+    - validateNickname(nickname: String): String
+  }
+
+  class LobbyPayloadMapper {
+    + lobbyJoined(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    + lobbyLeft(nickname: String, lobby: Lobby, lobbyId: int): LobbyUpdatePayload
+    + lobbyStarted(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    - fromLobby(event: LobbyEventType, nick: String, msg: String, lobby: Lobby): LobbyUpdatePayload
+  }
+
+  class LobbyPlayerFactory {
+    - {static} AVAILABLE_TOTEMS: List<TotemColor>
+    + createPlayers(nicknames: List<String>): List<Player>
+  }
+
+  interface GameFactory {
+    + createGame(players: List<Player>): Game
+    + createGame(gameId: int, players: List<Player>): Game
+  }
+
+  enum LobbyStatus {
+    OPEN
+    FULL
+    IN_GAME
+  }
+}
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Controller owns components
+LobbyController *-- Lobby              : owns
+LobbyController *-- LobbyPlayerFactory : owns
+
+' Controller depends on
+LobbyController ..> GameFactory         : uses >
+LobbyController ..> MessageRouter       : uses >
+LobbyController ..> ServerSessionRegistry : uses >
+
+' Lobby owns mapper
+Lobby *-- LobbyPayloadMapper : owns
+
+' Lobby has status
+Lobby --> LobbyStatus : has >
+
+@enduml
