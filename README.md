@@ -56,7 +56,7 @@ E' quindi necessario aggiungere un layer di rete per il trasporto delle informaz
 ai blocchi del pattern il fatto che di mezzo ci sia la rete. Ovvero per ottenere una architettura il quanto
 più pulità possibile la rete deve essere nascosta, non deve essere parte integrante di questo modello.
 Per nascondere la presenza della rete sono stati introdotti contratti comuni, che rappresentano 
-localmente gli oggetti  remoti con cui ciascun lato deve interagire.
+localmente gli oggetti remoti con cui ciascun lato deve interagire.
 Sul client, la user interface non comunica direttamente con la rete, ma usa un `ServerProxy`, 
 che rappresenta il server remoto ed espone i servizi applicativi richiedibili dal client. Ovvero 
 è stato applicato il remote proxy pattern.
@@ -77,14 +77,17 @@ Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
 ![project-architecture.png](assets/distributedMVC.png)
 
-### Protocollo di comunicazione
-Come da specifica di progetto, supportiamo connessioni sia con il protocollo TCP che con 
-il protocollo RMI. Per riuscire a mantenere coerenza tra questi due protocolli è stato necessario fissare
-in modo chiaro i contratti che devono essere offerti dalla rete per poter comunicare tra il client e il server.
+## Protocollo di comunicazione
+L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
+Per mantenere coerente l'architettura e le funzionalità tra i due protocolli,
+sono stati definiti contratti comuni per la comunicazione tra client e server.
 In particolare sono stati fissati i seguenti contratti:
 - Servizi che il client espone al server per ricevere messaggi server -> client: Interfaccia `VirtualServer`
 - Servizi che il server espone al client per ricevere comandi client -> server: Interfaccia `VirtualView`
 - Messaggi che vengono scambiati via rete tramite questi servizi di rete
+
+Le interfacce appena citate vengono sfruttare sia per il protocollo di comunicazione che per l'implementazione del MVC
+distribuito.
 
 I nomi delle interfacce possono essere fuorvianti poiché sullo stesso blocco logico
 convivono MVC distribuito e Remote Proxy Pattern:
