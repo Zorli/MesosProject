@@ -32,3 +32,7 @@ myversion.puml
 
 # Game checkpoint files (runtime persistence, not for version control)
 data/
+
+# Generated Javadocs
+docs/api/
+
