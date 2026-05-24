@@ -79,59 +79,215 @@ Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
-Per mantenere coerente l'architettura e le funzionalità tra i due protocolli,
-sono stati definiti contratti comuni per la comunicazione tra client e server.
+Per mantenere coerente l'architettura e le funzionalità tra i due protocolli, sono stati definiti contratti comuni 
+per la comunicazione tra client e server.
+
 In particolare sono stati fissati i seguenti contratti:
-- Servizi che il client espone al server per ricevere messaggi server -> client: Interfaccia `VirtualServer`
-- Servizi che il server espone al client per ricevere comandi client -> server: Interfaccia `VirtualView`
-- Messaggi che vengono scambiati via rete tramite questi servizi di rete
+- Servizi che il client espone al server per ricevere messaggi server -> client: interfaccia `VirtualServer`
+- Servizi che il server espone al client per ricevere comandi client -> server: interfaccia `VirtualView`
+- Messaggi che vengono scambiati via rete tramite questi servizi
 
-Le interfacce appena citate vengono sfruttare sia per il protocollo di comunicazione che per l'implementazione del MVC
-distribuito.
+Questi contratti derivano direttamente dalla scelta di adottare un MVC distribuito: poiché interfaccia utente, 
+controller e model non si trovano nello stesso processo, alcune interazioni
+devono necessariamente attraversare la rete.
+Per evitare che il protocollo di rete entri nella logica applicativa, tali interazioni sono state espresse 
+tramite interfacce comuni.
+Ogni implementazione di rete, TCP o RMI, deve quindi offrire gli stessi servizi, 
+così da mantenere invariato il comportamento funzionale del sistema indipendentemente dal protocollo scelto.
 
-I nomi delle interfacce possono essere fuorvianti poiché sullo stesso blocco logico
-convivono MVC distribuito e Remote Proxy Pattern:
-- Nel MVC distribuito la `VirtualView` è la rappresentazione lato server della view remota del client.
-  In questo modo il server può aggiornare una view senza sapere se dietro ci sia TCP, RMI o una view locale.
-- Sempre in questa ottica, il `VirtualServer` è il punto di ingresso lato client per i messaggi provenienti dal server.
-  Non è il proxy usato dal client per chiamare il server, ma il contratto che permette al server di notificare il client.
-- Il `ServerProxy`, invece, è il vero proxy remoto lato client: viene usato dalla UI per inviare comandi al server
-  come se il server fosse un oggetto locale. Non ha un equivalente simmetrico lato server perché quel ruolo
-  è già coperto dalla `VirtualView` e il server non necessita di chiamare servizi applicativi del client,
-  oltre alle sole notifiche verso la view.
 
-Il primo passo è stato quindi fissare i servizi che il server e il client devono offrire reciprocamente, 
-in modo da poter poi implementare questi servizi sia in TCP che in RMI. Per fissarli abbiamo 
-creato le relativi interfacce con i metodi, sorge pero un problema tecnico, ovvero che RMI
-negli stessi metodi di TCP deve dichiarare che lanciano RemoteException, mentre in TCP non è necessario. 
-Inoltre il funzionamento di RMI prescrive che le interfacce debanno essere shared tra client e server, 
-pertanto fisicamente abbiamo le interfacce di rete duplicate a livello fisico, ma a livello logico 
-rappresentano lo stesso contratto, il must è tenerle allineate, in particolare si ha che:
-- Interfaccia `VirtualServer` e `RmiClientService` sono lo stesso contratto logico
-- Interfaccia `VirtualView` e `RmiServerService` sono lo stesso contratto logico
-Per motivi tecnici RMI ha inoltre anche un altra interfaccia, quella del RMIConnectionService, necessario
-per poter richiedere lo stub.
+Gli stessi contratti hanno quindi un doppio ruolo: a livello architetturale realizzano il MVC distribuito, 
+mentre a livello implementativo definiscono il comportamento che TCP e RMI
+devono offrire in modo equivalente.
 
-#### Differenze tra TCP e RMI
-Il protocollo TCP è un protocollo di comunicazione a basso livello, in cui i messaggi vengono scambiati come stringhe 
-tramite json, è quindi necessario avere delle classi helper per serializzare e deserializzare i messaggi, inoltre è necessario
-conoscere a priori il payload che si sta gestendo, nella sezione successiva verranno infatti spiegati i payload che rappresentano
-il contratto del contenuto informativo condiviso fra i due protocolli scambiato via rete.
+Il primo passo è stato quindi fissare i servizi che server e client devono offrire reciprocamente,
+in modo da poterli implementare sia con TCP che con RMI.
 
-In particolare per TCP è necessario gestire i socket, canali di streaming di dati in formato di stringa, 
-è quindi necessario avere un thread che esegua la continua lettura dei messaggi in arrivo sulla socket, essendo la read bloccante.
-Come vedremo nelle sezioni successive istanziamo sia sul client che sul server appositi thread per gestire questo fatto.
-La socket è full-duplex, quindi lettura e scrittura possono avvenire indipendentemente:
-il thread dedicato serve per restare in ascolto dei messaggi in arrivo, mentre in uscita non serve un thread dedicato,
-perchè la scrittura viene fatta direttamente quando c'è un messaggio da inviare.
+A livello di codice questo introduce una differenza tecnica tra i due protocolli.
+Nel caso TCP le interfacce possono essere normali interfacce Java, usate direttamente dalle classi concrete.
+Nel caso RMI, invece, le interfacce remote devono estendere `Remote`, devono essere visibili sia al client 
+che al server e i loro metodi devono dichiarare `RemoteException`.
 
-Per serializzare e deserializzare i messaggi in TCP viene usata GSON, che inferisce dalla dichiarazione della classe, 
-se abbastanza semplice, come serializzare e deserializzare, in questo modo è sufficiente dichiarare i payload come classi con i campi,
-e GSON si occupa di tutto il resto, inoltre è possibile usare i payload anche in RMI, in questo modo si mantiene coerenza tra i due protocolli.
+Per questo motivo i contratti logici descritti sopra hanno una controparte specifica per RMI nel package shared:
+- `VirtualServer` e `RmiClientService` rappresentano il contratto logico server -> client
+- `VirtualView` e `RmiServerService` rappresentano il contratto logico client -> server
 
-#### Come viene usata GSON
+Queste interfacce non sono identiche a livello tecnico, ma devono rimanere allineate a livello funzionale: 
+ogni servizio disponibile in TCP deve avere il corrispondente servizio anche in
+RMI.
+
+RMI richiede inoltre un ulteriore contratto, `RmiConnectionService`, usato dal client per aprire 
+la connessione iniziale e ottenere lo stub della propria sessione server-side
+
+### Messaggi e Payload usati dal protocollo
+Come già detto per comunicare via rete è stato necessario fissare i contratti dei messaggi scambiati, in modo tale
+da poter implementare sia TCP che RMI in modo coerente. In particolare si è cercato di mantenere 
+i payload il più possibile
+semplici e snelli in modo da ridurre la quantità di dati scambiati e riuscire ad avere 
+una gestione semplice sia nella serializzazione JSON con GSON, sia nel passaggio degli oggetti tramite RMI.
+
+Per comodità abbiamo suddiviso in maniera gerarchica i payload rispetto alla fase di gioco a cui fanno riferimento,
+ovvero:
+- pre-lobby: payload usati per la fase di pre-lobby
+- lobby: payload usati per la fase di lobby
+- in-game: payload usati per la fase di gioco
+
+Abbiamo inoltre la suddivisione rispetto al senso di comunicazione, ovvero:
+- client -> server: payload usati per i messaggi inviati dal client al server(package `clienttoserver`)
+- server -> client: payload usati per i messaggi inviati dal server al client(package `servertoclient`)
+
+Nel codice bisogna distinguere tra messaggio e payload.
+Il payload contiene i dati applicativi veri e propri: ad esempio il nickname scelto dal client,
+l'id della lobby, la carta selezionata o lo stato aggiornato della partita.
+Il messaggio invece aggiunge l'informazione necessaria per interpretare quel payload.
+
+Nel caso TCP questa distinzione è esplicita, perché sulla socket arriva solo una stringa JSON:
+per questo il payload viene inserito dentro un messaggio wrapper formato da:
+- `type`: indica il tipo del messaggio
+- `payload`: contiene i dati associati a quel tipo
+
+Nel codice questo wrapper esiste in due varianti, una per ciascuna direzione:
+- `ClientMessage`, con un `ClientMessageType` e un payload che implementa `ClientPayload`,
+  per i messaggi client -> server
+- `ServerMessage`, con un `ServerMessageType` e un payload che implementa `ServerPayload`,
+  per i messaggi server -> client
+
+Gli enum `ClientMessageType` e `ServerMessageType` indicano il tipo del messaggio applicativo
+e permettono al codice di capire quale payload aspettarsi e quindi quale classe concreta usare
+in fase di deserializzazione.
+
+Ad esempio, un comando client -> server ha questa forma logica:
+```json
+{
+  "type": "AUTHENTICATE",
+  "payload": {
+    "nickname": "tom"
+  }
+}
+```
+
+Il campo `type` è necessario perché il campo `payload` è generico: prima si legge il tipo del messaggio,
+poi si sceglie la classe concreta con cui deserializzare il payload.
+Nel caso RMI il problema della deserializzazione JSON non esiste, perché gli oggetti vengono passati
+direttamente tramite invocazione remota.
+Tuttavia vengono riutilizzati gli stessi payload, così TCP e RMI mantengono lo stesso contratto dati
+a livello applicativo.
+
+Ora vediamo in dettaglio i payload che vengono usati dal client per comunicare con il server.
+Il `ClientMessage` rappresenta il messaggio inviato dal client al server ed è composto da
+un `ClientMessageType` e da un payload.
+I payload veri e propri implementano invece l'interfaccia `ClientPayload`, che rappresenta il contratto
+di base per i dati inviati dal client al server.
+
+`ClientPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
+`PreLobbyClientPayload`, `LobbyClientPayload`, `GameClientPayload` e `ConnectionClientPayload`.
+
+Fra i payload che implementano `PreLobbyClientPayload` abbiamo:
+- `AuthenticationPayload`, che contiene il nickname scelto dal client
+- `CreateLobbyPayload`, che contiene la dimensione scelta per la lobby
+- `JoinLobbyPayload`, che contiene l'id della lobby a cui unirsi
+- `ListLobbiesPayload`, che non contiene campi e serve solo a richiedere la lista delle lobby
+
+Fra i payload che implementano `LobbyClientPayload` abbiamo:
+- `StartLobbyPayload`, usato per richiedere l'avvio della lobby
+- `ExitLobbyPayload`, usato per uscire dalla lobby
+
+Fra i payload che implementano `GameClientPayload` abbiamo:
+- `MoveTotemPayload`, che contiene la tile su cui spostare il totem
+- `ChooseCardPayload`, che contiene l'id della carta scelta
+- `ExtraDrawPayload`, che contiene l'id della carta scelta per la pescata extra
+
+Infine, fra i payload di connessione abbiamo `PongPayload`, che implementa `ConnectionClientPayload`
+e viene usato per rispondere al ping del server(spiegato in una sezione successiva)
+
+Per quanto riguarda invece i payload che vengono inviati dal server al client, anche qui bisogna distinguere
+tra messaggio e payload: `ServerMessage` rappresenta il messaggio inviato dal server al client ed è composto
+da un `ServerMessageType` e da un payload.
+I payload veri e propri implementano l'interfaccia `ServerPayload`, che rappresenta il contratto di base
+per i dati inviati dal server al client.
+
+`ServerPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
+`PreLobbyServerPayload`, `LobbyServerPayload`, `GameServerPayload` ed `ErrorServerPayload`.
+
+Fra i payload che implementano `PreLobbyServerPayload` abbiamo:
+- `AuthenticationResultPayload`, che contiene il risultato della fase di autenticazione
+- `LobbyListPayload`, che contiene la lista delle lobby disponibili tramite oggetti `LobbySummaryPayload`
+
+Fra i payload che implementano `LobbyServerPayload` abbiamo:
+- `LobbyUpdatePayload`, che rappresenta un aggiornamento della fase di lobby, ad esempio autenticazione,
+  creazione lobby, join, uscita o avvio della partita
+
+Fra i payload che implementano `GameServerPayload` abbiamo:
+- `GamePayload`, che rappresenta lo stato della partita inviato al client, contenente stato del gioco,
+  era corrente, ordine dei turni, stato del turno, giocatori e board
+
+Fra i payload di errore abbiamo:
+- `ErrorPayload`, che contiene codice e messaggio dell'errore
+
+Alcuni payload, come `LobbySummaryPayload`, `BoardPayload`, `PlayerPayload`, `CardPayload`,
+`OfferSpacePayload`, `StartingBlockPayload`, `TribePayload`, `TurnOrderPayload` e `TurnStatePayload`,
+non sono messaggi principali inviati direttamente,
+ma payload di supporto contenuti dentro payload più grandi.
+
+In sintesi, i payload definiscono il contratto dati comune.
+TCP li trasporta dentro messaggi JSON con `type` e `payload`, mentre RMI li passa direttamente come oggetti
+nelle invocazioni remote.
+
+### Protocollo TCP
+TCP è un protocollo di trasporto a basso livello che permette a due processi di comunicare tramite socket.
+Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato da un indirizzo IP e da una porta.
+Una connessione TCP è quindi identificata dalla coppia di endpoint coinvolti, cioè endpoint client ed endpoint server.
+
+Nel modello client-server, il server apre una `ServerSocket` su una porta e rimane in attesa di connessioni 
+tramite `accept()`.
+Quando un client si collega creando una `Socket` verso quell'indirizzo e quella porta, il server riceve una 
+nuova socket dedicata a quella connessione.
+Da quel momento client e server comunicano usando gli stream associati alla socket: un input stream 
+per leggere e un output stream per scrivere.
+
+Dal punto di vista delle socket i dati sono uno stream continuo di byte: è quindi responsabilità dell'applicazione 
+stabilire come separare un messaggio dal successivo.
+Nel nostro caso è stato definito un semplice protocollo applicativo sopra TCP, ogni messaggio viene 
+serializzato in JSON e scritto sulla socket come una singola riga di testo.
+Dall'altro lato il messaggio viene letto con `readLine()`, quindi una riga corrisponde 
+a un messaggio applicativo completo.
+
+La socket è full-duplex: la stessa connessione permette lettura e scrittura in entrambi i versi.
+Nel codice, però, la lettura deve restare sempre attiva ed è bloccante; per questo viene eseguita 
+in un thread dedicato.
+
+```java
+while ((message = reader.readLine()) != null) {
+    handleMessage(message);
+}
+```
+
+La chiamata a `readLine()` rimane in attesa finché non arriva una riga completa.
+Se la connessione viene chiusa dall'altro lato, `readLine()` restituisce `null` e il ciclo termina.
+Per questo la lettura non può stare nello stesso flusso che gestisce l'interazione dell'utente.
+
+La scrittura, invece, avviene solo quando c'è effettivamente un messaggio da inviare:
+
+```java
+writer.println(serializedMessage);
+```
+
+Non serve quindi un thread dedicato alla scrittura, il codice scrive sulla socket nel momento in cui deve 
+inviare un comando o una notifica.
+
+Sul client, `ServerProxyTCP` apre la socket, gestisce la scrittura dei comandi verso il server e avvia 
+un `VirtualServerTCP` in un thread separato per leggere i messaggi provenienti dal server.
+Sul server, `ConnectionAcceptor` mantiene aperta la `ServerSocket`, accetta nuove connessioni 
+e crea una `VirtualViewTCP` dedicata per ogni client connesso.
+
+Questa scelta riprende il modello di server TCP multi-thread: il thread principale del listener accetta 
+nuove connessioni, mentre ogni `VirtualViewTCP` gestisce la comunicazione con uno specifico client.
+La `VirtualViewTCP` legge i messaggi in arrivo dal client, li fa deserializzare e 
+li inoltra al router applicativo; quando deve inviare un messaggio al client, usa la stessa socket in uscita.
+#### GSON
 GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
-Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo, non oggetti Java.
+Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo sotto 
+forma di byte, non oggetti Java.
 
 Quando il client invia un comando, `ServerProxyTCP` crea un `ClientMessage`, composto da:
 - `type`: indica il tipo di messaggio, ad esempio `AUTHENTICATE`
@@ -142,7 +298,7 @@ Un messaggio client -> server serializzato in JSON ha quindi questa forma:
 {
   "type": "AUTHENTICATE",
   "payload": {
-    "nickname": "ada"
+    "nickname": "tom"
   }
 }
 ```
@@ -192,82 +348,11 @@ quindi non è necessario gestire i dettagli di basso livello.
 Non serve quindi un ciclo esplicito di lettura sulla socket, perchè la ricezione dei messaggi avviene tramite invocazione
 dei metodi remoti esposti dagli stub.
 
-#### Payload condivisi
-Come già detto per comunicare via rete è stato necessario fissare i contratti dei messaggi scambiati, in modo tale 
-da poter implementare sia TCP che RMI in modo coerente. In particolare si è cercato di mantenere i payload il più possibile 
-semplici e snelli in modo da ridurre la quantità di dati scambiati e riuscire ad avere la gestione semplice fornita da GSON.
+### Protocollo RMI
 
-Per comodità abbiamo suddiviso in maniera gerarchica i payload rispetto alla fase di gioco a cui fanno riferimento,
-ovvero:
-- pre-lobby: payload usati per la fase di pre-lobby
-- lobby: payload usati per la fase di lobby
-- in-game: payload usati per la fase di gioco
 
-Abbiamo inoltre la suddivisione rispetto al senso di comunicazione, ovvero:
-- client -> server: payload usati per i messaggi inviati dal client al server(package `clienttoserver`)
-- server -> client: payload usati per i messaggi inviati dal server al client(package `servertoclient`)
 
-Ora vediamo in dettaglio i payload che vengono usati dal client per comunicare con il server.
-Nel codice bisogna distinguere tra messaggio e payload: `ClientMessage` rappresenta il messaggio inviato
-dal client al server ed è composto da un `ClientMessageType` e da un payload. I payload veri e propri
-implementano invece l'interfaccia `ClientPayload`, che rappresenta il contratto di base per i dati inviati
-dal client al server.
-
-`ClientPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
-`PreLobbyClientPayload`, `LobbyClientPayload`, `GameClientPayload` e `ConnectionClientPayload`.
-
-Fra i payload che implementano `PreLobbyClientPayload` abbiamo:
-- `AuthenticationPayload`, che contiene il nickname scelto dal client
-- `CreateLobbyPayload`, che contiene la dimensione scelta per la lobby
-- `JoinLobbyPayload`, che contiene l'id della lobby a cui unirsi
-- `ListLobbiesPayload`, che non contiene campi e serve solo a richiedere la lista delle lobby
-
-Fra i payload che implementano `LobbyClientPayload` abbiamo:
-- `StartLobbyPayload`, usato per richiedere l'avvio della lobby
-- `ExitLobbyPayload`, usato per uscire dalla lobby
-
-Fra i payload che implementano `GameClientPayload` abbiamo:
-- `MoveTotemPayload`, che contiene la tile su cui spostare il totem
-- `ChooseCardPayload`, che contiene l'id della carta scelta
-- `ExtraDrawPayload`, che contiene l'id della carta scelta per la pescata extra
-
-Infine, fra i payload di connessione abbiamo `PongPayload`, che implementa `ConnectionClientPayload`
-e viene usato per rispondere al ping del server(spiegato in una sezione successiva)
-
-Per quanto riguarda invece i payload che vengono inviati dal server al client, anche qui bisogna distinguere
-tra messaggio e payload: `ServerMessage` rappresenta il messaggio inviato dal server al client ed è composto
-da un `ServerMessageType` e da un payload. I payload veri e propri implementano l'interfaccia `ServerPayload`,
-che rappresenta il contratto di base per i dati inviati dal server al client.
-
-`ServerPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
-`PreLobbyServerPayload`, `LobbyServerPayload`, `GameServerPayload` ed `ErrorServerPayload`.
-
-Fra i payload che implementano `PreLobbyServerPayload` abbiamo:
-- `LobbyListPayload`, che contiene la lista delle lobby disponibili tramite oggetti `LobbySummaryPayload`
-
-Fra i payload che implementano `LobbyServerPayload` abbiamo:
-- `LobbyUpdatePayload`, che rappresenta un aggiornamento della fase di lobby, ad esempio autenticazione,
-  creazione lobby, join, uscita o avvio della partita
-
-Fra i payload che implementano `GameServerPayload` abbiamo:
-- `GamePayload`, che rappresenta lo stato della partita inviato al client, contenente stato del gioco,
-  era corrente, ordine dei turni, stato del turno, giocatori e board
-
-Fra i payload di errore abbiamo:
-- `ErrorPayload`, che contiene codice e messaggio dell'errore
-
-Alcuni payload, come `LobbySummaryPayload`, `BoardPayload`, `PlayerPayload`, `CardPayload`,
-`OfferSpacePayload`, `StartingBlockPayload`, `TribePayload`, `TurnOrderPayload` e `TurnStatePayload`,
-non sono messaggi principali inviati direttamente,
-ma payload di supporto contenuti dentro payload più grandi.
-
-Il wrapper `ClientMessage`/`ServerMessage` serve soprattutto nel caso TCP, perché il messaggio arriva come stringa JSON e
-GSON non può sapere da solo quale classe concreta usare per deserializzare il payload generico.
-Per questo nel wrapper viene sempre inserito anche il `type`: prima si legge il type del messaggio,
-poi in base a quel type si deserializza il payload nella relativa classe concreta.
-In RMI invece la serializzazione degli oggetti viene gestita direttamente RMI.
-
-### Architettura del Client
+## Architettura del Client
 Ricordiamo che il client deve poter scegliere sia la tipologia di user interface (che può essere di tipo
 testuale o grafica) sia la tipologia di protocollo di rete (che può essere TCP o RMI). 
 Il punto di avvio del client è la classe `LaunchClient` che si occupa di leggere da riga di comando
@@ -311,8 +396,8 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In uscita: controller UI -> ServerProxy -> server
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
-### Architettura del Server
-#### Session Registry 
+## Architettura del Server
+### Session Registry 
 
 
 ## Usage
