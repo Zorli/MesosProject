@@ -165,7 +165,7 @@
                         </VBox>
                     </VBox>
 
-                    <!-- Player summary area: dynamically filled by GUIController. -->
+                    <!-- Player summary area: dynamically filled by GUIView. -->
                     <VBox spacing="10" styleClass="surface-panel players-band">
                         <HBox alignment="CENTER_LEFT">
                             <Label text="Players info" styleClass="panel-title"/>

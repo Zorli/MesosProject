@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
@@ -72,9 +73,8 @@ public class ClientCommandHandler {
         if (payload == null) {
             throw new IllegalArgumentException("Malformed payload for type " + type);
         }
-
-        // BAM! Unica chiamata alla VirtualView. Niente attesa, niente return.
-        this.virtualView.sendMessage(payload);
+        ClientMessage clientMessage = new ClientMessage(type, payload);
+        this.virtualView.handleClientMessage(clientMessage);
     }
 
     // =========================================================

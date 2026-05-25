@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
@@ -58,13 +59,14 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     //Gestione del messaggio in arrivo dal client, viene inoltrato al router che decidera chi ha
     //la mansione di gestirlo
     @Override
-    public void sendMessage(ClientPayload payload) throws RemoteException {
+    public void handleClientMessage(ClientMessage clientMessage) throws RemoteException {
         try {
-            this.out.println("[RMI] Received " + this.describePayload(payload) + " from " + this.describeSession());
-            if (payload == null) {
-                this.sendError(new IllegalArgumentException("Malformed payload"));
+            if (clientMessage == null || !(clientMessage.payload instanceof ClientPayload payload)) {
+                this.sendError(new IllegalArgumentException("Malformed message"));
                 return;
             }
+
+            this.out.println("[RMI] Received " + this.describePayload(payload) + " from " + this.describeSession());
             this.router.routeMessage(this.sessionId, payload);
         } catch (RuntimeException exception) {
             this.sendError(exception);

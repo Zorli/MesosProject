@@ -102,7 +102,7 @@ package "Client" {
       <color:#1E8449>+</color> chooseCard(cardId: int): void
       <color:#1E8449>+</color> extraDraw(cardId: int): void
       <color:#1E8449>+</color> close(): void
-      <color:#C0392B>-</color> send(payload: ClientPayload): void
+      <color:#C0392B>-</color> send(message: ClientMessage): void
       <color:#C0392B>-</color> handleDisconnection(e: RemoteException): void
       <color:#C0392B>-</color> notifyLocalError(code: String, message: String): void
       <color:#C0392B>-</color> ensureConnected(): boolean
@@ -154,7 +154,7 @@ package "Shared (RmiNetworkInterfaces)" {
     <color:#1E8449>+</color> connect(clientCallback: RmiClientService): RmiServerService
   }
   interface RmiServerService {
-    <color:#1E8449>+</color> sendMessage(payload: ClientPayload): void
+    <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
     <color:#1E8449>+</color> pong(payload: PongPayload): void
     <color:#1E8449>+</color> closeSession(): void
   }
@@ -169,7 +169,7 @@ package "Server" {
 
   together {
     interface VirtualView {
-      <color:#1E8449>+</color> sendMessage(payload: ClientPayload): void
+      <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
       <color:#1E8449>+</color> pong(payload: PongPayload): void
       <color:#1E8449>+</color> closeSession(): void
     }
@@ -196,7 +196,7 @@ package "Server" {
       <color:#C0392B>-</color> cleanupDone: boolean
       <color:#1E8449>+</color> VirtualViewTCP(clientSocket: Socket, serverController: ServerController, router: MessageRouter)
       <color:#1E8449>+</color> run(): void
-      <color:#1E8449>+</color> sendMessage(payload: ClientPayload): void
+      <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
       <color:#1E8449>+</color> pong(payload: PongPayload): void
       <color:#1E8449>+</color> closeSession(): void
       <color:#1E8449>+</color> sendPing(): void
@@ -215,7 +215,7 @@ package "Server" {
       <color:#C0392B>-</color> out: PrintStream
       <color:#C0392B>-</color> cleanupDone: boolean
       <color:#1E8449>+</color> VirtualViewRMI(serverController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
-      <color:#1E8449>+</color> sendMessage(payload: ClientPayload): void
+      <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
       <color:#1E8449>+</color> pong(payload: PongPayload): void
       <color:#1E8449>+</color> closeSession(): void
       <color:#1E8449>+</color> sendPing(): void

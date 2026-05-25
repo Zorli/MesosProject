@@ -5,7 +5,7 @@ package it.polimi.ingsoft.mesos.client.view.tui;
  *
  * <p>This class is a small package-private value object used only inside the TUI
  * package. {@link TuiCommandParser} creates it after reading a raw input line,
- * and {@link TuiController} reads it to decide which method must be called on
+ * and {@link TuiView} reads it to decide which method must be called on
  * the server proxy.
  *
  * <p>The class does not validate the command. Validation belongs to

@@ -120,7 +120,7 @@ package "serverproxy" {
     <color:#1E8449>+</color> chooseCard(cardId: int): void
     <color:#1E8449>+</color> extraDraw(cardId: int): void
     <color:#1E8449>+</color> close(): void
-    <color:#C0392B>-</color> send(payload: ClientPayload): void
+    <color:#C0392B>-</color> send(message: ClientMessage): void
     <color:#C0392B>-</color> handleDisconnection(e: RemoteException): void
     <color:#C0392B>-</color> notifyLocalError(code: String, message: String): void
     <color:#C0392B>-</color> ensureConnected(): boolean
@@ -186,7 +186,7 @@ package "view" {
   }
 
   package "tui" {
-    class TuiController <<controller>> {
+    class TuiView <<view>> {
       <color:#C0392B>-</color> scanner: Scanner
       <color:#C0392B>-</color> out: PrintStream
       <color:#C0392B>-</color> commandParser: TuiCommandParser
@@ -194,8 +194,8 @@ package "view" {
       <color:#C0392B>-</color> lastGamePayload: GamePayload
       <color:#C0392B>-</color> localNickname: String
       <color:#C0392B>-</color> serverProxy: ServerProxy
-      <color:#1E8449>+</color> TuiController()
-      <color:#1E8449>+</color> TuiController(scanner: Scanner, out: PrintStream)
+      <color:#1E8449>+</color> TuiView()
+      <color:#1E8449>+</color> TuiView(scanner: Scanner, out: PrintStream)
       <color:#1E8449>+</color> attachServerProxy(proxy: ServerProxy): void
       <color:#1E8449>+</color> start(): void
       <color:#1E8449>+</color> showError(payload: ErrorPayload): void
@@ -267,7 +267,7 @@ package "view" {
   }
 
   package "gui" {
-    class GUIController <<controller>> {
+    class GUIView <<view>> {
       <color:#C0392B>-</color> serverProxy: ServerProxy
       <color:#C0392B>-</color> nickname: String
       <color:#C0392B>-</color> lastGamePayload: GamePayload
@@ -290,7 +290,7 @@ package "view" {
 
 ' ─── NOTES ──────────────────────────────────────────────────────────────────
 note right of VirtualServerRMI : "implements RmiClientService\n(external RMI interface)"
-note right of GUIController    : "Controls FXML-injected UI nodes\nand ~80 private render helpers."
+note right of GUIView          : "Controls FXML-injected UI nodes\nand ~80 private render helpers."
 
 ' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
 
@@ -306,8 +306,8 @@ ServerProxy <|.. ServerProxyRMI
 VirtualServer <|.. VirtualServerTCP
 
 ' View hierarchy
-ClientView <|.. TuiController
-ClientView <|.. GUIController
+ClientView <|.. TuiView
+ClientView <|.. GUIView
 
 ' Proxy ↔ VirtualServer compositions
 ServerProxyTCP *-- VirtualServerTCP : owns
@@ -321,8 +321,8 @@ VirtualServerRMI *-- MessageRouter : owns
 MessageRouter --> ClientView : routes to 
 
 ' TUI internal
-TuiController *-- TuiCommandParser : owns
-TuiController *-- TuiPayloadRenderer : owns
+TuiView *-- TuiCommandParser : owns
+TuiView *-- TuiPayloadRenderer : owns
 TuiCommandParser ..> TuiCommand : <<create>>
 TuiCommand --> TuiCommandType : uses 
 
