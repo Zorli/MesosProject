@@ -4,9 +4,10 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
+import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
+import it.polimi.ingsoft.mesos.shared.messages.ClientMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.CreateLobbyPayload;
@@ -81,20 +82,20 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     /**
-     * Sends one already-built client payload to the remote server.
+     * Sends one already-built client message to the remote server.
      * <p>
      * This is the low-level sending primitive used by all public command methods except {@link #sendPong()},
      * because PONG replies use a dedicated remote method on {@link RmiServerService}.
      *
-     * @param payload application-level payload to send to the server
+     * @param message application-level message to send to the server
      */
-    private void send(ClientPayload payload) {
+    private void send(ClientMessage message) {
         if (!this.ensureConnected()) {
             return;
         }
 
         try {
-            this.serverStub.sendMessage(payload);
+            this.serverStub.handleClientMessage(message);
         } catch (RemoteException e) {
             this.handleDisconnection(e);
         }
@@ -108,7 +109,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void authenticate(String nickname) {
         AuthenticationPayload payload = new AuthenticationPayload(nickname);
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.AUTHENTICATE, payload);
+        this.send(message);
     }
 
     /**
@@ -117,7 +119,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void listLobbies() {
         ListLobbiesPayload payload = new ListLobbiesPayload();
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.LIST_LOBBIES, payload);
+        this.send(message);
     }
 
     /**
@@ -128,7 +131,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void createLobby(int chosenCapacity) {
         CreateLobbyPayload payload = new CreateLobbyPayload(chosenCapacity);
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.CREATE_LOBBY, payload);
+        this.send(message);
     }
 
     /**
@@ -139,7 +143,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void joinLobby(int lobbyId) {
         JoinLobbyPayload payload = new JoinLobbyPayload(lobbyId);
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.JOIN_LOBBY, payload);
+        this.send(message);
     }
 
     /**
@@ -148,7 +153,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void exitLobby() {
         ExitLobbyPayload payload = new ExitLobbyPayload();
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.EXIT_LOBBY, payload);
+        this.send(message);
     }
 
     /**
@@ -157,7 +163,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void startLobby() {
         StartLobbyPayload payload = new StartLobbyPayload();
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.START_LOBBY, payload);
+        this.send(message);
     }
 
     /**
@@ -168,7 +175,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void moveTotem(String tile) {
         MoveTotemPayload payload = new MoveTotemPayload(tile);
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.MOVE_TOTEM, payload);
+        this.send(message);
     }
 
     /**
@@ -179,7 +187,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void chooseCard(int cardId) {
         ChooseCardPayload payload = new ChooseCardPayload(cardId);
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.CHOOSE_CARD, payload);
+        this.send(message);
     }
 
     /**
@@ -190,7 +199,8 @@ public class ServerProxyRMI implements ServerProxy {
     @Override
     public void extraDraw(int cardId) {
         ExtraDrawPayload payload = new ExtraDrawPayload(cardId);
-        this.send(payload);
+        ClientMessage message = new ClientMessage(ClientMessageType.EXTRA_DRAW, payload);
+        this.send(message);
     }
 
     /**

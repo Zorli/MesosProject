@@ -21,7 +21,7 @@ import java.util.List;
  *
  * <p>The renderer does not read user input, does not print directly to the terminal,
  * and does not send messages to the server. Its only responsibility is formatting:
- * {@link TuiController} gives it payload objects, and this class returns strings
+ * {@link TuiView} gives it payload objects, and this class returns strings
  * that can be printed with a {@link java.io.PrintStream}.
  *
  * <p>The class is stateless. Every method depends only on its parameters, so the

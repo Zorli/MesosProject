@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.messages;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -9,7 +10,7 @@ import java.util.Objects;
  * Each message specifies a {@link ClientMessageType} indicating how the server
  * should interpret and route the payload object.
  */
-public class ClientMessage {
+public class ClientMessage implements Serializable {
     /** The type classification of the client message. */
     public final ClientMessageType type;
 

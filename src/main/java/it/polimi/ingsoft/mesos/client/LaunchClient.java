@@ -4,8 +4,8 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyRMI;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxyTCP;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
-import it.polimi.ingsoft.mesos.client.view.gui.GUIController;
-import it.polimi.ingsoft.mesos.client.view.tui.TuiController;
+import it.polimi.ingsoft.mesos.client.view.gui.GUIView;
+import it.polimi.ingsoft.mesos.client.view.tui.TuiView;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.IOException;
@@ -71,10 +71,10 @@ public class LaunchClient {
 
             String choice = scanner.nextLine().trim();
             if ("1".equals(choice)) {
-                return new GUIController();
+                return new GUIView();
             }
             if ("2".equals(choice)) {
-                return new TuiController(scanner, System.out);
+                return new TuiView(scanner, System.out);
             }
 
             System.out.println("Invalid UI mode. Please enter 1 or 2.\n");
@@ -165,13 +165,13 @@ public class LaunchClient {
     }
 
     private static void startClient(ClientView clientView, ServerProxy serverProxy) {
-        if (clientView instanceof TuiController tuiController) {
+        if (clientView instanceof TuiView tuiController) {
             tuiController.attachServerProxy(serverProxy);
             tuiController.start();
             return;
         }
 
-        if (clientView instanceof GUIController guiController) {
+        if (clientView instanceof GUIView guiController) {
             guiController.attachServerProxy(serverProxy);
             guiController.start();
         }

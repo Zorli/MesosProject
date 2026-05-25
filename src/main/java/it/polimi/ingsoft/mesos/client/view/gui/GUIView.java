@@ -62,11 +62,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * event handlers referenced from the FXML file through attributes such as
  * {@code onAction="#handleLogin"}.</p>
  *
- * <p>{@code GUIController} contains the behavior behind that structure. User actions
+ * <p>{@code GUIView} contains the behavior behind that structure. User actions
  * call the attached {@link ServerProxy}, while server messages arrive through the
  * {@link ClientView} methods implemented by this class. In other words, outgoing
  * commands follow {@code GUI -> ServerProxy -> server}; incoming updates follow
- * {@code server -> client networking layer -> ClientView -> GUIController}.</p>
+ * {@code server -> client networking layer -> ClientView -> GUIView}.</p>
  *
  * <p>All JavaFX nodes must be read or modified on the JavaFX Application Thread.
  * Button handlers are already executed on that thread, but server updates can arrive
@@ -82,7 +82,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@code offerPathContainer}, {@code playerListContainer}, {@code tribeCardsContainer},
  * and {@code finalRankingContainer}.</p>
  */
-public class GUIController implements ClientView {
+public class GUIView implements ClientView {
     /*
      * Resource paths used to build the JavaFX scene and to load the bitmap
      * assets rendered dynamically at runtime.
@@ -244,11 +244,11 @@ public class GUIController implements ClientView {
      */
     private void openStage(Stage targetStage) {
         try {
-            FXMLLoader loader = new FXMLLoader(GUIController.class.getResource(FXML_RESOURCE));
+            FXMLLoader loader = new FXMLLoader(GUIView.class.getResource(FXML_RESOURCE));
             loader.setController(this);
             Parent root = loader.load();
             Scene scene = new Scene(root, 1180, 760);
-            String stylesheet = GUIController.class.getResource(CSS_RESOURCE).toExternalForm();
+            String stylesheet = GUIView.class.getResource(CSS_RESOURCE).toExternalForm();
             scene.getStylesheets().add(stylesheet);
             targetStage.setTitle("Mesos");
             targetStage.setMinWidth(980);
@@ -989,8 +989,8 @@ public class GUIController implements ClientView {
     private Image cardImage(int cardId) {
         String resource = String.format(CARD_RESOURCE_PATTERN, cardId);
         return new Image(Objects.requireNonNullElse(
-                GUIController.class.getResourceAsStream(resource),
-                GUIController.class.getResourceAsStream(String.format(CARD_RESOURCE_PATTERN, 1))
+                GUIView.class.getResourceAsStream(resource),
+                GUIView.class.getResourceAsStream(String.format(CARD_RESOURCE_PATTERN, 1))
         ));
     }
 
@@ -1067,7 +1067,7 @@ public class GUIController implements ClientView {
      * Loads an image resource from the classpath.
      */
     private Image resourceImage(String resource) {
-        InputStream stream = GUIController.class.getResourceAsStream(resource);
+        InputStream stream = GUIView.class.getResourceAsStream(resource);
         if (stream == null) {
             return null;
         }

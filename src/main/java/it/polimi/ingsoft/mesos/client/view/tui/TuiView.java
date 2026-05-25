@@ -34,7 +34,7 @@ import java.util.Scanner;
  * <p>For this reason, the methods that print output are synchronized: command
  * output and server updates must not write to the terminal at the same time.
  */
-public class TuiController implements ClientView {
+public class TuiView implements ClientView {
     private final Scanner scanner;
     private final PrintStream out;
     private final TuiCommandParser commandParser;
@@ -46,7 +46,7 @@ public class TuiController implements ClientView {
     /**
      * Creates a TUI connected to the real standard input and standard output.
      */
-    public TuiController() {
+    public TuiView() {
         this(new Scanner(System.in), System.out);
     }
 
@@ -59,7 +59,7 @@ public class TuiController implements ClientView {
      * @param scanner source of user command lines
      * @param out destination used to print TUI output
      */
-    public TuiController(Scanner scanner, PrintStream out) {
+    public TuiView(Scanner scanner, PrintStream out) {
         this.scanner = Objects.requireNonNull(scanner, "scanner cannot be null");
         this.out = Objects.requireNonNull(out, "out cannot be null");
         this.commandParser = new TuiCommandParser();
