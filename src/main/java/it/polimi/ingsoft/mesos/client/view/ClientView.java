@@ -17,8 +17,8 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListP
  *
  * <p>In the current client architecture this interface is used by
  * {@link MessageRouter}: the router reads the payload type and calls the method
- * that matches that type. {@code TuiController} prints the payloads as text,
- * while {@code GUIController} can render the same information graphically.
+ * that matches that type. {@code TuiView} prints the payloads as text,
+ * while {@code GUIView} can render the same information graphically.
  */
 public interface ClientView {
 

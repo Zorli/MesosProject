@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
+import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
@@ -120,11 +121,13 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
         return "unauthenticated-client";
     }
 
-    //Chaiamata interna per mandare messaggio al router, in tcp deve essere chiamata
+    //Chiamata interna per mandare il messaggio al router, in TCP deve essere chiamata
     //dal deserializzatore
     @Override
-    public void sendMessage(ClientPayload payload) {
-        this.router.routeMessage(this.sessionId, payload);
+    public void handleClientMessage(ClientMessage clientMessage) {
+        //Estrazione del payload dal messaggio gia' validato dal deserializzatore
+        Object payload = clientMessage.payload;
+        this.router.routeMessage(this.sessionId, (ClientPayload) payload);
     }
 
     @Override

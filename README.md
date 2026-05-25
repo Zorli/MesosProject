@@ -294,7 +294,7 @@ al client un dato messaggio nell'interfaccia `ClientView`.
 Le implementazioni concrete seguono direttamente queste astrazioni:
 - `ServerProxyTCP` e `ServerProxyRMI` implementano `ServerProxy`, quindi espongono alla UI gli stessi metodi per comunicare con il server, cambiando solo il protocollo usato.
 - `VirtualServerTCP` e `VirtualServerRMI` rappresentano i due modi in cui il client riceve messaggi dal server. Entrambi ricevono un `ServerMessage` e lo passano al `MessageRouter`.
-- `TuiController` e `GUIController` implementano `ClientView`, quindi il `MessageRouter` può aggiornare la view senza sapere se l'utente sta usando TUI o GUI.
+- `TuiView` e `GUIView` implementano `ClientView`, quindi il `MessageRouter` può aggiornare la view senza sapere se l'utente sta usando TUI o GUI.
 
 Quindi riassumendo il flusso dei messaggi è il seguente:
 - In uscita: controller UI -> ServerProxy -> server

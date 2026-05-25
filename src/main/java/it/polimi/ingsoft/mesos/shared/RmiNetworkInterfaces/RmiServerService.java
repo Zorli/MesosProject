@@ -1,6 +1,6 @@
 package it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces;
 
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.PongPayload;
 
 import java.rmi.Remote;
@@ -15,7 +15,7 @@ import java.rmi.RemoteException;
  * <p>
  * The concrete server-side implementation is {@code VirtualViewRMI}. It adapts RMI calls to the same server
  * controller and message-router flow used by the TCP transport. In other words, TCP and RMI differ only in
- * transport mechanics: once a {@link ClientPayload} reaches the server-side virtual view, it is routed through
+ * transport mechanics: once a {@link ClientMessage} reaches the server-side virtual view, it is routed through
  * the normal server application pipeline.
  * <p>
  * All methods return {@code void} because server responses are not returned directly from the RMI call. The
@@ -25,21 +25,21 @@ import java.rmi.RemoteException;
 public interface RmiServerService extends Remote {
 
     /**
-     * Sends one application command from the client to the server.
+     * Sends one application command message from the client to the server.
      * <p>
-     * The payload already identifies the command by its concrete class, for example authentication, lobby
-     * creation, lobby join, totem movement, card choice, or extra draw. The server-side implementation routes
-     * the payload using the session associated with this remote object.
+     * The message contains the protocol type and the client-to-server payload. The server-side implementation
+     * uses the session associated with this remote object and routes the message through the normal server
+     * pipeline.
      *
-     * @param payload client-to-server command payload
+     * @param clientMessage client-to-server command message
      * @throws RemoteException if the remote session cannot receive or process the call at the RMI level
      */
-    void sendMessage(ClientPayload payload) throws RemoteException;
+    void handleClientMessage(ClientMessage clientMessage) throws RemoteException;
 
     /**
      * Sends a keep-alive PONG reply from the client to the server.
      * <p>
-     * This method is separate from {@link #sendMessage(ClientPayload)} because the ping-pong protocol is
+     * This method is separate from {@link #handleClientMessage(ClientMessage)} because the ping-pong protocol is
      * connection-level infrastructure, not a user command. The server uses it to record that the client is
      * still alive.
      *
