@@ -82,9 +82,9 @@ public class LaunchClient {
     }
 
     private static ServerProxy chooseServerProxy(Scanner scanner, ClientView clientView, Map<String, String> environment) {
-        String serverHost = resolveServerHost(environment);
-        int tcpPort = resolveTcpPort(environment);
-        int rmiPort = resolveRmiPort(environment);
+        String defaultHost = resolveServerHost(environment);
+        int defaultTcpPort = resolveTcpPort(environment);
+        int defaultRmiPort = resolveRmiPort(environment);
         String clientRmiHost = resolveClientRmiHost(environment);
 
         while (true) {
@@ -95,19 +95,42 @@ public class LaunchClient {
             String choice = scanner.nextLine().trim();
             try {
                 if ("1".equals(choice)) {
-                    return new ServerProxyTCP(serverHost, tcpPort, clientView);
+                    String host = promptHost(scanner, defaultHost);
+                    int port = promptPort(scanner, defaultTcpPort);
+                    return new ServerProxyTCP(host, port, clientView);
                 }
                 if ("2".equals(choice)) {
+                    String host = promptHost(scanner, defaultHost);
+                    int port = promptPort(scanner, defaultRmiPort);
                     if (clientRmiHost != null) {
                         System.setProperty("java.rmi.server.hostname", clientRmiHost);
                     }
-                    String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
+                    String registryUrl = "rmi://" + host + ":" + port + "/MesosServer";
                     RmiConnectionService connectionService = (RmiConnectionService) Naming.lookup(registryUrl);
                     return new ServerProxyRMI(connectionService, clientView);
                 }
                 System.out.println("Invalid network mode. Please enter 1 or 2.\n");
             } catch (Exception exception) {
                 System.out.println("Failed to connect to the server: " + exception.getMessage());
+            }
+        }
+    }
+
+    private static String promptHost(Scanner scanner, String defaultHost) {
+        System.out.printf("Server host [%s]: ", defaultHost);
+        String input = scanner.nextLine().trim();
+        return input.isBlank() ? defaultHost : input;
+    }
+
+    private static int promptPort(Scanner scanner, int defaultPort) {
+        while (true) {
+            System.out.printf("Server port [%d]: ", defaultPort);
+            String input = scanner.nextLine().trim();
+            if (input.isBlank()) return defaultPort;
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port number. Please enter an integer.");
             }
         }
     }

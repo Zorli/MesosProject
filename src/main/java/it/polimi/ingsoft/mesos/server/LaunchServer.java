@@ -10,12 +10,14 @@ import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 
 /**
@@ -35,10 +37,42 @@ public final class LaunchServer {
 
     public static void main(String[] args) {
         Map<String, String> environment = loadEnvironmentFile(SERVER_ENV_FILE);
+        Scanner scanner = new Scanner(System.in);
 
-        int exitCode = run(environment, System.out, System.err);
+        int tcpPort = promptPort(scanner, "TCP port", resolveTcpPort(environment));
+        int rmiPort = promptPort(scanner, "RMI port", resolveRmiPort(environment));
+
+        int exitCode = run(tcpPort, rmiPort, resolveServerRmiHost(environment), System.out, System.err);
         if (exitCode != 0) {
             System.exit(exitCode);
+        }
+    }
+
+    private static int promptPort(Scanner scanner, String label, int defaultPort) {
+        while (true) {
+            System.out.printf("%s [%d]: ", label, defaultPort);
+            String input = scanner.nextLine().trim();
+            int port = defaultPort;
+            if (!input.isBlank()) {
+                try {
+                    port = Integer.parseInt(input);
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid port number. Please enter an integer.");
+                    continue;
+                }
+            }
+            if (isPortAvailable(port)) {
+                return port;
+            }
+            System.out.println("Port " + port + " is already in use. Please try a different port.");
+        }
+    }
+
+    private static boolean isPortAvailable(int port) {
+        try (ServerSocket ignored = new ServerSocket(port)) {
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
     /*
@@ -49,7 +83,7 @@ public final class LaunchServer {
     - Harness vari protocol dependent delle virtualview : connection acceptor, commandhandler, etc
     - Command Router: Dato un payload recuper lo snapshot della sessione del player e lo instrada correttamente
     */
-    static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
+    static int run(int tcpPort, int rmiPort, String serverRmiHost, PrintStream out, PrintStream err) {
         try {
 
             // ==========================================
@@ -76,12 +110,9 @@ public final class LaunchServer {
             // ==========================================
 
             // Start RMI (Passing the shared router and registry)
-            int rmiPort = resolveRmiPort(environment);
-            String serverRmiHost = resolveServerRmiHost(environment);
             startRmiServer(serverController, router, rmiPort, serverRmiHost, out);
 
             // Start TCP (Passing the shared router and registry)
-            int tcpPort = resolveTcpPort(environment);
             ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
             acceptor.start();
             Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
