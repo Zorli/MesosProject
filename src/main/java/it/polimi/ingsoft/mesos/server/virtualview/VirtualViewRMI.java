@@ -19,7 +19,10 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.*;
 import java.rmi.NoSuchObjectException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 /**
  * Dedicated RMI remote session for a single authenticated client.
  * <p>
@@ -142,6 +145,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         for (int attempt = 1; attempt <= CALLBACK_ATTEMPTS; attempt++) {
             try {
                 this.out.println("[RMI-DEBUG][SERVER] callback message attempt " + attempt + "/" + CALLBACK_ATTEMPTS + " " + message.type + " to " + this.describeSession());
+                this.probeCallbackEndpoint("message " + message.type);
                 this.clientCallback.handleMessage(message);
                 return;
             } catch (RemoteException exception) {
@@ -158,6 +162,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         for (int attempt = 1; attempt <= CALLBACK_ATTEMPTS; attempt++) {
             try {
                 this.out.println("[RMI-DEBUG][SERVER] callback ping attempt " + attempt + "/" + CALLBACK_ATTEMPTS + " to " + this.describeSession());
+                this.probeCallbackEndpoint("ping");
                 this.clientCallback.handlePing();
                 return;
             } catch (RemoteException exception) {
@@ -177,6 +182,32 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             Thread.sleep(CALLBACK_RETRY_DELAY_MILLIS);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void probeCallbackEndpoint(String operation) {
+        String callbackDescription = String.valueOf(this.clientCallback);
+        int endpointStart = callbackDescription.indexOf("endpoint:[");
+        if (endpointStart < 0) {
+            this.out.println("[RMI-DEBUG][SERVER] callback probe skipped before " + operation + ": endpoint not found in " + callbackDescription);
+            return;
+        }
+
+        int hostStart = endpointStart + "endpoint:[".length();
+        int hostEnd = callbackDescription.indexOf(':', hostStart);
+        int portEnd = callbackDescription.indexOf(']', hostEnd);
+        if (hostEnd < 0 || portEnd < 0) {
+            this.out.println("[RMI-DEBUG][SERVER] callback probe skipped before " + operation + ": malformed endpoint in " + callbackDescription);
+            return;
+        }
+
+        String host = callbackDescription.substring(hostStart, hostEnd);
+        int port = Integer.parseInt(callbackDescription.substring(hostEnd + 1, portEnd));
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, port), 1000);
+            this.out.println("[RMI-DEBUG][SERVER] callback TCP probe OK before " + operation + " to " + host + ":" + port);
+        } catch (IOException exception) {
+            this.out.println("[RMI-DEBUG][SERVER] callback TCP probe FAILED before " + operation + " to " + host + ":" + port + ": " + exception);
         }
     }
 

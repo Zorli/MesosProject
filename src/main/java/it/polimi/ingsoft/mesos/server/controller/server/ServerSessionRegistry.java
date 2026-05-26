@@ -29,7 +29,7 @@ public class ServerSessionRegistry {
     /**
      * Timeout duration in milliseconds after which an inactive session is considered timed out.
      */
-    private static final long TIMEOUT_MILLIS = Duration.ofSeconds(8).toMillis();
+    private static final long TIMEOUT_MILLIS = Duration.ofSeconds(30).toMillis();
 
     /**
      * Represents the distinct phases a user session can be in during their connection lifetime.
