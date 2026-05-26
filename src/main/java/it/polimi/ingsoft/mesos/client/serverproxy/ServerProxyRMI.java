@@ -53,6 +53,10 @@ public class ServerProxyRMI implements ServerProxy {
         this(connectionService, clientView, true);
     }
 
+    public ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView, int callbackPort) throws RemoteException {
+        this(connectionService, clientView, true, callbackPort);
+    }
+
     /**
      * Creates the proxy with explicit control over callback export.
      * <p>
@@ -65,7 +69,11 @@ public class ServerProxyRMI implements ServerProxy {
      * @throws RemoteException if the callback cannot be exported or the server cannot create the session
      */
     ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView, boolean exportCallback) throws RemoteException {
-        this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback);
+        this(connectionService, clientView, exportCallback, 0);
+    }
+
+    ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView, boolean exportCallback, int callbackPort) throws RemoteException {
+        this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback, callbackPort);
         this.serverStub = connectionService.connect(this.callbackReceiver);
         this.callbackReceiver.attachServerProxy(this);
         this.connected = true;

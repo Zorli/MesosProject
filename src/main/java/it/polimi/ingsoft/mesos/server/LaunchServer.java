@@ -32,6 +32,7 @@ public final class LaunchServer {
     private static final String SERVER_ENV_FILE = "server.env";
     private static final int DEFAULT_TCP_PORT = 12345;
     private static final int DEFAULT_RMI_PORT = 1099;
+    private static final int DEFAULT_RMI_OBJECT_PORT = 1100;
 
     public static void main(String[] args) {
         Map<String, String> environment = loadEnvironmentFile(SERVER_ENV_FILE);
@@ -77,8 +78,9 @@ public final class LaunchServer {
 
             // Start RMI (Passing the shared router and registry)
             int rmiPort = resolveRmiPort(environment);
+            int rmiObjectPort = resolveRmiObjectPort(environment);
             String serverRmiHost = resolveServerRmiHost(environment);
-            startRmiServer(serverController, router, rmiPort, serverRmiHost, out);
+            startRmiServer(serverController, router, rmiPort, rmiObjectPort, serverRmiHost, out);
 
             // Start TCP (Passing the shared router and registry)
             int tcpPort = resolveTcpPort(environment);
@@ -99,18 +101,19 @@ public final class LaunchServer {
         }
     }
 
-    private static void startRmiServer(ServerController controller, MessageRouter router, int port, String serverRmiHost, PrintStream out) throws Exception {
+    private static void startRmiServer(ServerController controller, MessageRouter router, int port, int objectPort, String serverRmiHost, PrintStream out) throws Exception {
         if (serverRmiHost != null && !serverRmiHost.isBlank()) {
             System.setProperty("java.rmi.server.hostname", serverRmiHost);
         }
 
         // Pass dependencies down to the RMI entry point
-        RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router);
+        RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router, objectPort);
         LocateRegistry.createRegistry(port);
         Registry registry = LocateRegistry.getRegistry(port);
         registry.rebind("MesosServer", rmiEntryPoint);
 
         out.println("RMI listener active on port " + port);
+        out.println("RMI objects exported on port " + objectPort);
     }
 
     private static int resolveTcpPort(Map<String, String> environment) {
@@ -140,6 +143,21 @@ public final class LaunchServer {
             return Integer.parseInt(rawPort);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("MESOS_RMI_PORT must be an integer", exception);
+        }
+    }
+
+    private static int resolveRmiObjectPort(Map<String, String> environment) {
+        if (environment == null) {
+            return DEFAULT_RMI_OBJECT_PORT;
+        }
+        String rawPort = environment.get("MESOS_RMI_OBJECT_PORT");
+        if (rawPort == null || rawPort.isBlank()) {
+            return DEFAULT_RMI_OBJECT_PORT;
+        }
+        try {
+            return Integer.parseInt(rawPort);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("MESOS_RMI_OBJECT_PORT must be an integer", exception);
         }
     }
 

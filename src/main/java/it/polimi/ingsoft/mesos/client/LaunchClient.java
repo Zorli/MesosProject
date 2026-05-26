@@ -24,6 +24,7 @@ public class LaunchClient {
     private static final String DEFAULT_SERVER_HOST = "localhost";
     private static final int DEFAULT_TCP_PORT = 12_345;
     private static final int DEFAULT_RMI_PORT = 1099;
+    private static final int DEFAULT_CLIENT_RMI_PORT = 1101;
 
     // Nota su architettura del client
     // La UI può essere TUI o GUI
@@ -86,6 +87,7 @@ public class LaunchClient {
         int tcpPort = resolveTcpPort(environment);
         int rmiPort = resolveRmiPort(environment);
         String clientRmiHost = resolveClientRmiHost(environment);
+        int clientRmiPort = resolveClientRmiPort(environment);
 
         while (true) {
             System.out.println("Select network technology:");
@@ -103,7 +105,7 @@ public class LaunchClient {
                     }
                     String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
                     RmiConnectionService connectionService = (RmiConnectionService) Naming.lookup(registryUrl);
-                    return new ServerProxyRMI(connectionService, clientView);
+                    return new ServerProxyRMI(connectionService, clientView, clientRmiPort);
                 }
                 System.out.println("Invalid network mode. Please enter 1 or 2.\n");
             } catch (Exception exception) {
@@ -162,6 +164,21 @@ public class LaunchClient {
             return null;
         }
         return rawHost.trim();
+    }
+
+    private static int resolveClientRmiPort(Map<String, String> environment) {
+        if (environment == null) {
+            return DEFAULT_CLIENT_RMI_PORT;
+        }
+        String rawPort = environment.get("MESOS_CLIENT_RMI_PORT");
+        if (rawPort == null || rawPort.isBlank()) {
+            return DEFAULT_CLIENT_RMI_PORT;
+        }
+        try {
+            return Integer.parseInt(rawPort);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("MESOS_CLIENT_RMI_PORT must be an integer", exception);
+        }
     }
 
     private static void startClient(ClientView clientView, ServerProxy serverProxy) {

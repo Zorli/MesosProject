@@ -17,15 +17,21 @@ import java.rmi.server.UnicastRemoteObject;
 public class RmiConnectionEntryPoint extends UnicastRemoteObject implements RmiConnectionService {
     private final ServerController serverController;
     private final MessageRouter router;
+    private final int rmiObjectPort;
 
     public RmiConnectionEntryPoint(ServerController serverController, MessageRouter router) throws RemoteException {
-        super();
+        this(serverController, router, 0);
+    }
+
+    public RmiConnectionEntryPoint(ServerController serverController, MessageRouter router, int rmiObjectPort) throws RemoteException {
+        super(rmiObjectPort);
         this.serverController = serverController;
         this.router = router;
+        this.rmiObjectPort = rmiObjectPort;
     }
 
     @Override
     public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-        return new VirtualViewRMI(this.serverController, clientCallback, this.router);
+        return new VirtualViewRMI(this.serverController, clientCallback, this.router, this.rmiObjectPort, System.out);
     }
 }

@@ -49,6 +49,10 @@ public class VirtualServerRMI implements RmiClientService {
         this(clientView, true);
     }
 
+    public VirtualServerRMI(ClientView clientView, int callbackPort) throws RemoteException {
+        this(clientView, true, callbackPort);
+    }
+
     /**
      * Creates the client callback object, optionally exporting it through Java RMI.
      * <p>
@@ -60,8 +64,12 @@ public class VirtualServerRMI implements RmiClientService {
      * @throws RemoteException if export is requested and fails
      */
     public VirtualServerRMI(ClientView clientView, boolean exported) throws RemoteException {
+        this(clientView, exported, 0);
+    }
+
+    public VirtualServerRMI(ClientView clientView, boolean exported, int callbackPort) throws RemoteException {
         if (exported) {
-            UnicastRemoteObject.exportObject(this, 0);
+            UnicastRemoteObject.exportObject(this, callbackPort);
         }
         this.messageRouter = new MessageRouter(Objects.requireNonNull(clientView, "clientView cannot be null"));
         this.exported = exported;

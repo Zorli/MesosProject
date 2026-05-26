@@ -45,7 +45,11 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router, PrintStream out) throws RemoteException {
-        super();
+        this(serverController, clientCallback, router, 0, out);
+    }
+
+    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router, int rmiObjectPort, PrintStream out) throws RemoteException {
+        super(rmiObjectPort);
         this.serverController = serverController;
         this.clientCallback = clientCallback;
         this.sessionId = this.serverController.registerConnection(this);
