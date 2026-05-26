@@ -75,7 +75,7 @@ riferimento al client remoto e offre il punto unico attraverso cui inviargli not
 
 Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
-![project-architecture.png](assets/distributedMVC.png)
+![project-architecture.png](assets/DistributedMVC.png)
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
