@@ -120,7 +120,6 @@ public class GUIView implements ClientView {
     private int localUpperChoicesUsed;
     private int localLowerChoicesUsed;
     private String pendingDraftRow;
-    private boolean returnedToLobbyAfterMatch;
 
     /*
      * Nodes injected from gui.fxml.
@@ -472,7 +471,6 @@ public class GUIView implements ClientView {
                 }
             }
             if (payload.event == LobbyEventType.LOBBY_STARTED) {
-                this.returnedToLobbyAfterMatch = false;
                 this.cancelAuthenticatedRedirect();
                 this.showPage(this.gamePage);
             }
@@ -546,12 +544,6 @@ public class GUIView implements ClientView {
     public void showGameUpdate(GamePayload payload) {
         this.runOnFx(() -> {
             this.cancelAuthenticatedRedirect();
-            if (this.returnedToLobbyAfterMatch && this.isFinalScoring(payload)) {
-                return;
-            }
-            if (payload != null && !this.isFinalScoring(payload)) {
-                this.returnedToLobbyAfterMatch = false;
-            }
             this.lastGamePayload = payload;
             if (payload == null) {
                 this.matchTitleLabel.setText("Match");
@@ -570,12 +562,7 @@ public class GUIView implements ClientView {
             this.renderPlayers(payload.players);
             this.renderTribe(payload.players);
             this.updateActionHint();
-//            if (this.isFinalScoring(payload)) {
-//                this.renderFinalRanking(payload.players);
-//                this.showPage(this.endPage);
-//            } else {
-//                this.showPage(this.gamePage);
-//            }
+            this.showPage(this.gamePage);
         });
     }
 
@@ -1533,15 +1520,6 @@ public class GUIView implements ClientView {
     }
 
     /**
-     * Returns whether a game payload represents the final-scoring phase.
-     */
-    private boolean isFinalScoring(GamePayload payload) {
-        return payload != null
-                && payload.turnOrder != null
-                && "FINAL_SCORING".equals(payload.turnOrder.currentRoundPhase);
-    }
-
-    /**
      * Sends a totem move when the clicked offer-path tile is legal for the current phase.
      */
     private void moveTotemFromBoard(String tile) {
@@ -1745,7 +1723,6 @@ public class GUIView implements ClientView {
         this.currentLobbyStatus = "WAITING";
         this.lastLobbyUpdatePayload = null;
         this.lastLobbyListPayload = null;
-        this.returnedToLobbyAfterMatch = true;
         this.renderNoCurrentLobby();
         this.updateLobbyActions();
         this.renderGameSkeleton();
