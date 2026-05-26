@@ -102,15 +102,20 @@ public final class LaunchServer {
     }
 
     private static void startRmiServer(ServerController controller, MessageRouter router, int port, int objectPort, String serverRmiHost, PrintStream out) throws Exception {
+        out.println("[RMI-DEBUG][SERVER] starting RMI registryPort=" + port + ", objectPort=" + objectPort + ", host=" + serverRmiHost);
         if (serverRmiHost != null && !serverRmiHost.isBlank()) {
             System.setProperty("java.rmi.server.hostname", serverRmiHost);
+            out.println("[RMI-DEBUG][SERVER] java.rmi.server.hostname=" + System.getProperty("java.rmi.server.hostname"));
         }
 
         // Pass dependencies down to the RMI entry point
         RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router, objectPort);
+        out.println("[RMI-DEBUG][SERVER] RmiConnectionEntryPoint exported");
         LocateRegistry.createRegistry(port);
+        out.println("[RMI-DEBUG][SERVER] registry created on port " + port);
         Registry registry = LocateRegistry.getRegistry(port);
         registry.rebind("MesosServer", rmiEntryPoint);
+        out.println("[RMI-DEBUG][SERVER] MesosServer bound in registry");
 
         out.println("RMI listener active on port " + port);
         out.println("RMI objects exported on port " + objectPort);

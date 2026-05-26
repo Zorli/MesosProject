@@ -55,6 +55,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         this.sessionId = this.serverController.registerConnection(this);
         this.router = router;
         this.out = out;
+        this.out.println("[RMI-DEBUG][SERVER] VirtualViewRMI exported sessionId=" + this.sessionId + ", objectPort=" + rmiObjectPort + ", callback=" + clientCallback);
     }
     // VirtualView should only handle transport/protocol errors.
     // Application errors are produced by the model and sent back through notifyUpdate.
@@ -78,34 +79,44 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     private void sendError(RuntimeException exception) throws RemoteException {
+        this.out.println("[RMI-DEBUG][SERVER] sending ERROR to " + this.describeSession() + ": " + exception.getMessage());
         ErrorPayload errorPayload = ProtocolErrorMapper.toErrorPayload(exception);
         this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+        this.out.println("[RMI-DEBUG][SERVER] sent ERROR to " + this.describeSession());
     }
 
     //Update in uscita
     @Override
     public void notifyUpdate(Object payload) {
         try {
+            this.out.println("[RMI-DEBUG][SERVER] notifyUpdate payload=" + this.describeObject(payload) + " to " + this.describeSession());
             if (payload instanceof GamePayload gamePayload) {
                 this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
+                this.out.println("[RMI-DEBUG][SERVER] sent GAME_UPDATE to " + this.describeSession());
                 return;
             }
             if (payload instanceof ErrorPayload errorPayload) {
                 this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+                this.out.println("[RMI-DEBUG][SERVER] sent ERROR to " + this.describeSession());
                 return;
             }
             if (payload instanceof AuthenticationResultPayload authenticationResultPayload) {
                 this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, authenticationResultPayload));
+                this.out.println("[RMI-DEBUG][SERVER] sent AUTHENTICATION_RESULT to " + this.describeSession());
                 return;
             }
             if (payload instanceof LobbyListPayload lobbyListPayload) {
                 this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
+                this.out.println("[RMI-DEBUG][SERVER] sent LOBBY_LIST to " + this.describeSession());
                 return;
             }
             if (payload instanceof LobbyUpdatePayload lobbyUpdatePayload) {
                 this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.LOBBY_UPDATE, lobbyUpdatePayload));
+                this.out.println("[RMI-DEBUG][SERVER] sent LOBBY_UPDATE to " + this.describeSession());
             }
-        } catch (RemoteException ignored) {
+        } catch (RemoteException exception) {
+            this.out.println("[RMI-DEBUG][SERVER] notifyUpdate failed for " + this.describeSession() + ": " + exception);
+            exception.printStackTrace(this.out);
         }
     }
 
@@ -113,8 +124,13 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void sendPing() {
         try {
+            this.out.println("[RMI-DEBUG][SERVER] sending PING to " + this.describeSession());
             this.clientCallback.handlePing();
-        } catch (RemoteException ignored) {
+            this.serverController.recordPong(this.sessionId);
+            this.out.println("[RMI-DEBUG][SERVER] PING callback succeeded for " + this.describeSession());
+        } catch (RemoteException exception) {
+            this.out.println("[RMI-DEBUG][SERVER] PING callback failed for " + this.describeSession() + ": " + exception);
+            exception.printStackTrace(this.out);
         }
     }
 
@@ -129,6 +145,13 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     private String describePayload(ClientPayload payload) {
+        if (payload == null) {
+            return "null";
+        }
+        return payload.getClass().getSimpleName();
+    }
+
+    private String describeObject(Object payload) {
         if (payload == null) {
             return "null";
         }
@@ -153,13 +176,17 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public synchronized void close() {
         if (this.cleanupDone) {
+            this.out.println("[RMI-DEBUG][SERVER] close ignored, cleanup already done for sessionId=" + this.sessionId);
             return;
         }
+        this.out.println("[RMI-DEBUG][SERVER] closing sessionId=" + this.sessionId + ", user=" + this.describeSession());
         this.cleanupDone = true;
         this.serverController.disconnectSession(this.sessionId);
         try {
             UnicastRemoteObject.unexportObject(this, true);
+            this.out.println("[RMI-DEBUG][SERVER] unexported sessionId=" + this.sessionId);
         } catch (NoSuchObjectException ignored) {
+            this.out.println("[RMI-DEBUG][SERVER] unexport skipped, no such object for sessionId=" + this.sessionId);
         }
     }
 

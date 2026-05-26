@@ -73,9 +73,14 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView, boolean exportCallback, int callbackPort) throws RemoteException {
+        System.out.println("[RMI-DEBUG][CLIENT] creating ServerProxyRMI exportCallback=" + exportCallback + ", callbackPort=" + callbackPort);
         this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback, callbackPort);
+        System.out.println("[RMI-DEBUG][CLIENT] callback receiver ready: " + this.callbackReceiver);
+        System.out.println("[RMI-DEBUG][CLIENT] calling connectionService.connect(...)");
         this.serverStub = connectionService.connect(this.callbackReceiver);
+        System.out.println("[RMI-DEBUG][CLIENT] connect succeeded, serverStub=" + this.serverStub);
         this.callbackReceiver.attachServerProxy(this);
+        System.out.println("[RMI-DEBUG][CLIENT] callback attached to proxy");
         this.connected = true;
     }
 
@@ -103,8 +108,12 @@ public class ServerProxyRMI implements ServerProxy {
         }
 
         try {
+            System.out.println("[RMI-DEBUG][CLIENT] sending " + this.describeMessage(message));
             this.serverStub.handleClientMessage(message);
+            System.out.println("[RMI-DEBUG][CLIENT] sent " + this.describeMessage(message));
         } catch (RemoteException e) {
+            System.out.println("[RMI-DEBUG][CLIENT] send failed for " + this.describeMessage(message) + ": " + e);
+            e.printStackTrace(System.out);
             this.handleDisconnection(e);
         }
     }
@@ -223,9 +232,13 @@ public class ServerProxyRMI implements ServerProxy {
         }
 
         try {
+            System.out.println("[RMI-DEBUG][CLIENT] sending PONG");
             PongPayload payload = new PongPayload();
             this.serverStub.pong(payload);
+            System.out.println("[RMI-DEBUG][CLIENT] sent PONG");
         } catch (RemoteException e) {
+            System.out.println("[RMI-DEBUG][CLIENT] PONG failed: " + e);
+            e.printStackTrace(System.out);
             this.handleDisconnection(e);
         }
     }
@@ -236,6 +249,7 @@ public class ServerProxyRMI implements ServerProxy {
      * @param e remote failure raised by the RMI server stub
      */
     private void handleDisconnection(RemoteException e) {
+        System.out.println("[RMI-DEBUG][CLIENT] marking disconnected: " + e);
         this.connected = false;
         this.notifyLocalError("CONNECTION_CLOSED", e.getMessage());
     }
@@ -250,13 +264,16 @@ public class ServerProxyRMI implements ServerProxy {
      */
     @Override
     public void close() throws IOException {
+        System.out.println("[RMI-DEBUG][CLIENT] close requested");
         this.connected = false;
         try {
             if (this.serverStub != null) {
+                System.out.println("[RMI-DEBUG][CLIENT] closing remote server session");
                 this.serverStub.closeSession();
                 this.serverStub = null;
             }
         } finally {
+            System.out.println("[RMI-DEBUG][CLIENT] closing local callback receiver");
             this.callbackReceiver.close();
         }
     }
@@ -287,7 +304,16 @@ public class ServerProxyRMI implements ServerProxy {
         if (this.connected) {
             return true;
         }
+        System.out.println("[RMI-DEBUG][CLIENT] ensureConnected failed");
         this.notifyLocalError("CONNECTION_CLOSED", "Client is not connected");
         return false;
+    }
+
+    private String describeMessage(ClientMessage message) {
+        if (message == null) {
+            return "null";
+        }
+        Object payload = message.payload;
+        return message.type + "/" + (payload == null ? "null" : payload.getClass().getSimpleName());
     }
 }

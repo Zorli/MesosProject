@@ -100,16 +100,21 @@ public class LaunchClient {
                     return new ServerProxyTCP(serverHost, tcpPort, clientView);
                 }
                 if ("2".equals(choice)) {
+                    System.out.println("[RMI-DEBUG][CLIENT] selected RMI serverHost=" + serverHost + ", registryPort=" + rmiPort + ", clientHost=" + clientRmiHost + ", callbackPort=" + clientRmiPort);
                     if (clientRmiHost != null) {
                         System.setProperty("java.rmi.server.hostname", clientRmiHost);
+                        System.out.println("[RMI-DEBUG][CLIENT] java.rmi.server.hostname=" + System.getProperty("java.rmi.server.hostname"));
                     }
                     String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
+                    System.out.println("[RMI-DEBUG][CLIENT] lookup " + registryUrl);
                     RmiConnectionService connectionService = (RmiConnectionService) Naming.lookup(registryUrl);
+                    System.out.println("[RMI-DEBUG][CLIENT] lookup succeeded: " + connectionService);
                     return new ServerProxyRMI(connectionService, clientView, clientRmiPort);
                 }
                 System.out.println("Invalid network mode. Please enter 1 or 2.\n");
             } catch (Exception exception) {
                 System.out.println("Failed to connect to the server: " + exception.getMessage());
+                exception.printStackTrace(System.out);
             }
         }
     }

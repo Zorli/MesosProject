@@ -28,10 +28,14 @@ public class RmiConnectionEntryPoint extends UnicastRemoteObject implements RmiC
         this.serverController = serverController;
         this.router = router;
         this.rmiObjectPort = rmiObjectPort;
+        System.out.println("[RMI-DEBUG][SERVER] entry point exported on objectPort=" + rmiObjectPort);
     }
 
     @Override
     public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-        return new VirtualViewRMI(this.serverController, clientCallback, this.router, this.rmiObjectPort, System.out);
+        System.out.println("[RMI-DEBUG][SERVER] connect() received callback=" + clientCallback);
+        RmiServerService session = new VirtualViewRMI(this.serverController, clientCallback, this.router, this.rmiObjectPort, System.out);
+        System.out.println("[RMI-DEBUG][SERVER] connect() returning session=" + session);
+        return session;
     }
 }

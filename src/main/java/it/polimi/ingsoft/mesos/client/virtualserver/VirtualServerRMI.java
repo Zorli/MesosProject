@@ -34,7 +34,6 @@ public class VirtualServerRMI implements RmiClientService {
 
     private final MessageRouter messageRouter;
     private final boolean exported;
-    private ServerProxyRMI serverProxy;
 
     /**
      * Creates and exports the client callback object used by the RMI server.
@@ -69,7 +68,9 @@ public class VirtualServerRMI implements RmiClientService {
 
     public VirtualServerRMI(ClientView clientView, boolean exported, int callbackPort) throws RemoteException {
         if (exported) {
+            System.out.println("[RMI-DEBUG][CLIENT] exporting callback on port " + callbackPort);
             UnicastRemoteObject.exportObject(this, callbackPort);
+            System.out.println("[RMI-DEBUG][CLIENT] callback exported on port " + callbackPort);
         }
         this.messageRouter = new MessageRouter(Objects.requireNonNull(clientView, "clientView cannot be null"));
         this.exported = exported;
@@ -85,40 +86,33 @@ public class VirtualServerRMI implements RmiClientService {
      * @param message message sent by the remote server
      */
     public void handleMessage(ServerMessage message) {
+        System.out.println("[RMI-DEBUG][CLIENT] callback handleMessage " + this.describeMessage(message));
         if (message.type == ServerMessageType.PING) {
             this.handlePing();
             return;
         }
 
         this.messageRouter.routeMessage(message);
+        System.out.println("[RMI-DEBUG][CLIENT] routed " + this.describeMessage(message));
     }
 
     /**
-     * Connects this server-to-client callback with the matching client-to-server proxy.
-     * <p>
-     * The reference is needed only for heartbeat handling: when the server sends a PING callback, this object
-     * answers by asking {@link ServerProxyRMI} to send PONG to the remote server session.
-     *
      * @param serverProxy proxy connected to the same RMI server session
      */
     public void attachServerProxy(ServerProxyRMI serverProxy) {
-        this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
+        Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
+        System.out.println("[RMI-DEBUG][CLIENT] attachServerProxy called");
     }
 
     /**
      * Handles the RMI heartbeat request sent by the server.
      * <p>
-     * PING is not shown to the user. The callback answers by using the attached {@link ServerProxyRMI} to send
-     * PONG on the client-to-server direction of the RMI session.
-     *
-     * @throws IllegalStateException if the callback has not yet been attached to its proxy
+     * PING is not shown to the user. In RMI, receiving this callback is already enough for the server to know
+     * that the client callback object is reachable.
      */
     @Override
     public void handlePing() {
-        if (this.serverProxy == null) {
-            throw new IllegalStateException("Cannot reply to ping before connection");
-        }
-        this.serverProxy.sendPong();
+        System.out.println("[RMI-DEBUG][CLIENT] callback handlePing");
     }
 
     /**
@@ -131,7 +125,17 @@ public class VirtualServerRMI implements RmiClientService {
      */
     public void close() throws NoSuchObjectException {
         if (this.exported) {
+            System.out.println("[RMI-DEBUG][CLIENT] unexporting callback");
             UnicastRemoteObject.unexportObject(this, true);
+            System.out.println("[RMI-DEBUG][CLIENT] callback unexported");
         }
+    }
+
+    private String describeMessage(ServerMessage message) {
+        if (message == null) {
+            return "null";
+        }
+        Object payload = message.payload;
+        return message.type + "/" + (payload == null ? "null" : payload.getClass().getSimpleName());
     }
 }
