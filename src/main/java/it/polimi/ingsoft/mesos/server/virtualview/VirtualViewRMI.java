@@ -33,6 +33,9 @@ import java.io.PrintStream;
  * outbound server updates back to the client via asynchronous RMI callbacks.
  */
 public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, ClientConnection, Listener {
+    private static final int CALLBACK_ATTEMPTS = 5;
+    private static final long CALLBACK_RETRY_DELAY_MILLIS = 500;
+
     private final ServerController serverController;
     private final RmiClientService clientCallback; // Per mandare gli update al client
     private final String sessionId;
@@ -81,7 +84,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     private void sendError(RuntimeException exception) throws RemoteException {
         this.out.println("[RMI-DEBUG][SERVER] sending ERROR to " + this.describeSession() + ": " + exception.getMessage());
         ErrorPayload errorPayload = ProtocolErrorMapper.toErrorPayload(exception);
-        this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+        this.sendMessageWithRetry(new ServerMessage(ServerMessageType.ERROR, errorPayload));
         this.out.println("[RMI-DEBUG][SERVER] sent ERROR to " + this.describeSession());
     }
 
@@ -91,27 +94,27 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         try {
             this.out.println("[RMI-DEBUG][SERVER] notifyUpdate payload=" + this.describeObject(payload) + " to " + this.describeSession());
             if (payload instanceof GamePayload gamePayload) {
-                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
+                this.sendMessageWithRetry(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
                 this.out.println("[RMI-DEBUG][SERVER] sent GAME_UPDATE to " + this.describeSession());
                 return;
             }
             if (payload instanceof ErrorPayload errorPayload) {
-                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
+                this.sendMessageWithRetry(new ServerMessage(ServerMessageType.ERROR, errorPayload));
                 this.out.println("[RMI-DEBUG][SERVER] sent ERROR to " + this.describeSession());
                 return;
             }
             if (payload instanceof AuthenticationResultPayload authenticationResultPayload) {
-                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, authenticationResultPayload));
+                this.sendMessageWithRetry(new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, authenticationResultPayload));
                 this.out.println("[RMI-DEBUG][SERVER] sent AUTHENTICATION_RESULT to " + this.describeSession());
                 return;
             }
             if (payload instanceof LobbyListPayload lobbyListPayload) {
-                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
+                this.sendMessageWithRetry(new ServerMessage(ServerMessageType.LOBBY_LIST, lobbyListPayload));
                 this.out.println("[RMI-DEBUG][SERVER] sent LOBBY_LIST to " + this.describeSession());
                 return;
             }
             if (payload instanceof LobbyUpdatePayload lobbyUpdatePayload) {
-                this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.LOBBY_UPDATE, lobbyUpdatePayload));
+                this.sendMessageWithRetry(new ServerMessage(ServerMessageType.LOBBY_UPDATE, lobbyUpdatePayload));
                 this.out.println("[RMI-DEBUG][SERVER] sent LOBBY_UPDATE to " + this.describeSession());
             }
         } catch (RemoteException exception) {
@@ -125,12 +128,55 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     public void sendPing() {
         try {
             this.out.println("[RMI-DEBUG][SERVER] sending PING to " + this.describeSession());
-            this.clientCallback.handlePing();
+            this.sendPingWithRetry();
             this.serverController.recordPong(this.sessionId);
             this.out.println("[RMI-DEBUG][SERVER] PING callback succeeded for " + this.describeSession());
         } catch (RemoteException exception) {
             this.out.println("[RMI-DEBUG][SERVER] PING callback failed for " + this.describeSession() + ": " + exception);
             exception.printStackTrace(this.out);
+        }
+    }
+
+    private void sendMessageWithRetry(ServerMessage message) throws RemoteException {
+        RemoteException lastException = null;
+        for (int attempt = 1; attempt <= CALLBACK_ATTEMPTS; attempt++) {
+            try {
+                this.out.println("[RMI-DEBUG][SERVER] callback message attempt " + attempt + "/" + CALLBACK_ATTEMPTS + " " + message.type + " to " + this.describeSession());
+                this.clientCallback.handleMessage(message);
+                return;
+            } catch (RemoteException exception) {
+                lastException = exception;
+                this.out.println("[RMI-DEBUG][SERVER] callback message attempt failed " + attempt + "/" + CALLBACK_ATTEMPTS + " " + message.type + " to " + this.describeSession() + ": " + exception);
+                this.sleepBeforeRetry(attempt);
+            }
+        }
+        throw lastException;
+    }
+
+    private void sendPingWithRetry() throws RemoteException {
+        RemoteException lastException = null;
+        for (int attempt = 1; attempt <= CALLBACK_ATTEMPTS; attempt++) {
+            try {
+                this.out.println("[RMI-DEBUG][SERVER] callback ping attempt " + attempt + "/" + CALLBACK_ATTEMPTS + " to " + this.describeSession());
+                this.clientCallback.handlePing();
+                return;
+            } catch (RemoteException exception) {
+                lastException = exception;
+                this.out.println("[RMI-DEBUG][SERVER] callback ping attempt failed " + attempt + "/" + CALLBACK_ATTEMPTS + " to " + this.describeSession() + ": " + exception);
+                this.sleepBeforeRetry(attempt);
+            }
+        }
+        throw lastException;
+    }
+
+    private void sleepBeforeRetry(int attempt) {
+        if (attempt == CALLBACK_ATTEMPTS) {
+            return;
+        }
+        try {
+            Thread.sleep(CALLBACK_RETRY_DELAY_MILLIS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
         }
     }
 
