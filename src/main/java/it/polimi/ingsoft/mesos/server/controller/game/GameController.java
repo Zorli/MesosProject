@@ -74,7 +74,7 @@ public class GameController implements Runnable  {
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
     private final Timer lastPlayerTimer = new Timer("last-player-timer", true);
     private TimerTask lastPlayerTimerTask;
-    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 10;
+    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 30_000L;
 
     /**
      * Protects the closing flag read by routing code while teardown is running.
@@ -252,10 +252,18 @@ public class GameController implements Runnable  {
      * Closes the match because of a server-side lifecycle decision.
      *
      * <p>This is used for forced closure, not for a normal player command.
+     *
+     * <p>The close command is enqueued by the last-player timer, but a reconnect
+     * command may have already been processed before this one reaches the head of
+     * the queue. If that happened, the single-player condition is no longer true
+     * and the close must be ignored so the reconnected match can continue.
      */
     private void closeGame() {
-       this.game.closeGame();
-       this.checkGameEndAndCleanup();
+        if (!this.game.getStartTimer()) {
+            return;
+        }
+        this.game.closeGame();
+        this.checkGameEndAndCleanup();
     }
     /**
      * Places a player's totem.

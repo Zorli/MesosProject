@@ -251,6 +251,14 @@ class GameControllerTest {
         sessions.recordGameDisconnection(bobSessionId, game.getId());
         sessions.unregister(bobSessionId);
 
+        // The close command is only triggered by the last-player timer, which fires
+        // when exactly one player is connected. Reflect that precondition in the
+        // game model so the guard in closeGame() does not skip the command.
+        Player bob = game.getPlayers().stream()
+                .filter(p -> p.getNickname().equals("Bob"))
+                .findFirst().orElseThrow();
+        game.disconnectedPlayer(bob);
+
         Thread worker = start(controller);
         controller.enqueueMessage(new SystemCloseGameCommand());
 
