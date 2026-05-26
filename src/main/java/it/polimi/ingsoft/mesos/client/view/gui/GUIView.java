@@ -1307,92 +1307,47 @@ public class GUIView implements ClientView {
      */
     @Override
     public void showFinalGameResult(GamePayload gamePayload) {
-        this.finalRankingContainer.getChildren().clear();
-        if (gamePayload == null) {
-            this.finalRankingContainer.getChildren().add(
-                    this.emptyState("Final ranking unavailable", "Waiting for the final match payload."));
-            return;
-        }
+        this.runOnFx(() -> {
+            this.finalRankingContainer.getChildren().clear();
+            if (gamePayload == null) {
+                this.finalRankingContainer.getChildren().add(
+                        this.emptyState("Final ranking unavailable", "Waiting for the final match payload."));
+                return;
+            }
 
-//        StringBuilder builder = new StringBuilder();
-//        builder.append("[SERVER][GAME FINISHED] #")
-//                .append(payload.id)
-//                .append(System.lineSeparator())
-//                .append("Final results:");
-//
-//        if (payload.players == null || payload.players.isEmpty()) {
-//            builder.append(" -");
-//            return builder.toString();
-//        }
-//
-//        List<PlayerPayload> players = new ArrayList<>();
-//        List<PlayerPayload> disconnectedPlayers = new ArrayList<>();
-//        for (PlayerPayload player : payload.players) {
-//            if (player.isConnected) {
-//                players.add(player);
-//            } else {
-//                disconnectedPlayers.add(player);
-//            }
-//        }
-//
-//        players.sort(new Comparator<PlayerPayload>() {
-//            @Override
-//            public int compare(PlayerPayload firstPlayer, PlayerPayload secondPlayer) {
-//                return Integer.compare(secondPlayer.prestigePoints, firstPlayer.prestigePoints);
-//            }
-//        });
-//        disconnectedPlayers.sort(new Comparator<PlayerPayload>() {
-//            @Override
-//            public int compare(PlayerPayload firstPlayer, PlayerPayload secondPlayer) {
-//                return firstPlayer.nickname.compareTo(secondPlayer.nickname);
-//            }
-//        });
-//
-//        for (int i = 0; i < players.size(); i++) {
-//            PlayerPayload player = players.get(i);
-//            builder.append(System.lineSeparator())
-//                    .append(i + 1)
-//                    .append(". ")
-//                    .append(player.nickname)
-//                    .append(" prestige=")
-//                    .append(player.prestigePoints);
-//        }
-//        for (PlayerPayload player : disconnectedPlayers) {
-//            builder.append(System.lineSeparator())
-//                    .append(player.nickname)
-//                    .append(" disconnected - not included in the leaderboard");
-//        }
-//
-//        return builder.toString();
-        List<PlayerPayload> players = gamePayload.players.stream().filter(player -> player.isConnected).toList();
-        List<PlayerPayload> disconnectedPlayers = gamePayload.players.stream().filter(player -> !player.isConnected).toList();
+            List<PlayerPayload> players = new ArrayList<>(
+                    gamePayload.players.stream().filter(player -> player.isConnected).toList()
+            );
+            List<PlayerPayload> disconnectedPlayers = gamePayload.players.stream().filter(player -> !player.isConnected).toList();
 
-        players.sort(Comparator
-                .comparingInt((PlayerPayload player) -> player.prestigePoints)
-                .thenComparingInt(player -> player.food)
-                .reversed());
-        for (int i = 0; i < players.size(); i++) {
-            PlayerPayload player = players.get(i);
-            HBox row = new HBox(16);
-            row.getStyleClass().add(i == 0 ? "winner-row" : "ranking-row");
-            Label position = new Label(String.valueOf(i + 1));
-            position.getStyleClass().add("rank-number");
-            Label name = new Label(player.nickname);
-            name.getStyleClass().add("player-name");
-            Label score = new Label(player.prestigePoints + " pp");
-            score.getStyleClass().add("score-pill");
-            row.getChildren().addAll(position, name, score);
-            this.finalRankingContainer.getChildren().add(row);
-        }
-        Label disconnect = new Label("Disconnected players (not ranked)");
-        this.finalRankingContainer.getChildren().add(disconnect);
-        for (int i = 0; i < disconnectedPlayers.size(); i++) {
-            PlayerPayload player = disconnectedPlayers.get(i);
-            HBox row = new HBox(16);
-            Label name = new Label(player.nickname);
-            row.getChildren().add(name);
-            this.finalRankingContainer.getChildren().add(row);
-        }
+            players.sort(Comparator
+                    .comparingInt((PlayerPayload player) -> player.prestigePoints)
+                    .thenComparingInt(player -> player.food)
+                    .reversed());
+            for (int i = 0; i < players.size(); i++) {
+                PlayerPayload player = players.get(i);
+                HBox row = new HBox(16);
+                row.getStyleClass().add(i == 0 ? "winner-row" : "ranking-row");
+                Label position = new Label(String.valueOf(i + 1));
+                position.getStyleClass().add("rank-number");
+                Label name = new Label(player.nickname);
+                name.getStyleClass().add("player-name");
+                Label score = new Label(player.prestigePoints + " pp");
+                score.getStyleClass().add("score-pill");
+                row.getChildren().addAll(position, name, score);
+                this.finalRankingContainer.getChildren().add(row);
+            }
+            Label disconnect = new Label("Disconnected players (not ranked)");
+            this.finalRankingContainer.getChildren().add(disconnect);
+            for (int i = 0; i < disconnectedPlayers.size(); i++) {
+                PlayerPayload player = disconnectedPlayers.get(i);
+                HBox row = new HBox(16);
+                Label name = new Label(player.nickname);
+                row.getChildren().add(name);
+                this.finalRankingContainer.getChildren().add(row);
+            }
+            this.showPage(this.endPage);
+        });
     }
 
 

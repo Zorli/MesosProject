@@ -60,12 +60,7 @@ public interface ClientView {
     /**
      * Shows the final game result.
      *
-     * <p>The default implementation reuses {@link #showGameUpdate(GamePayload)}
-     * because a view that has no special final-screen rendering can still show
-     * the final game state correctly.
-     *
      * @param payload complete final game state, including winner information
      */
-    default void showFinalGameResult(GamePayload payload) {
-    }
+    void showFinalGameResult(GamePayload payload);
 }

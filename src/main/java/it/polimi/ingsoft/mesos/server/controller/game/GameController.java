@@ -74,7 +74,7 @@ public class GameController implements Runnable  {
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
     private final Timer lastPlayerTimer = new Timer("last-player-timer", true);
     private TimerTask lastPlayerTimerTask;
-    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 10;
+    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 30000;
 
     /**
      * Protects the closing flag read by routing code while teardown is running.
