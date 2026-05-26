@@ -148,7 +148,6 @@ public class Game {
         this.actionExecutor.execute(() -> {
             this.connectedPlayers.put(player, false);
             if(!connectedPlayers.values().stream().anyMatch(Boolean::booleanValue)){
-                //Non c'è più nessuno connesso posso interrompere la partita
                 this.markStateChanged();
                 this.finishGame();
                 return;

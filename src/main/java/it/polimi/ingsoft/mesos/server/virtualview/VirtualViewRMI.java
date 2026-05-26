@@ -34,7 +34,7 @@ import java.io.PrintStream;
  */
 public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, ClientConnection, Listener {
     private final ServerController serverController;
-    private final RmiClientService clientCallback; // Per mandare gli update al client
+    private final RmiClientService clientCallback;
     private final String sessionId;
     private final MessageRouter router;
     private final PrintStream out;
@@ -56,8 +56,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     // Application errors are produced by the model and sent back through notifyUpdate.
 
 
-    //Gestione del messaggio in arrivo dal client, viene inoltrato al router che decidera chi ha
-    //la mansione di gestirlo
     @Override
     public void handleClientMessage(ClientMessage clientMessage) throws RemoteException {
         try {
@@ -78,7 +76,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.ERROR, errorPayload));
     }
 
-    //Update in uscita
     @Override
     public void notifyUpdate(Object payload) {
         try {
@@ -138,8 +135,6 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
         }
         return "unauthenticated-client";
     }
-
-    //metodi di chiusura pulita
 
     @Override
     public void closeSession() throws RemoteException {

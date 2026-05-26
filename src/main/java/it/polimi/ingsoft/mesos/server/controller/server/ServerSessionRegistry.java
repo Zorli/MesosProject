@@ -91,7 +91,7 @@ public class ServerSessionRegistry {
     }
 
     // ==========================================
-    // GESTIONE DEI MODEL (Lobby)
+    // LOBBY MODEL MANAGEMENT
     // ==========================================
 
     /**
@@ -403,7 +403,7 @@ public class ServerSessionRegistry {
     }
 
     // ==========================================
-    // LIFECYCLE DELLA SESSIONE
+    // SESSION LIFECYCLE
     // ==========================================
 
     /**
@@ -532,7 +532,7 @@ public class ServerSessionRegistry {
     }
 
     // ==========================================
-    // SNAPSHOTS (Per lettura sicura e iterazioni)
+    // SNAPSHOTS (safe reads and iterations)
     // ==========================================
 
     /**

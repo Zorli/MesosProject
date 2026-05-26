@@ -156,8 +156,8 @@ class BoardTest {
         board.removeLowerCard(lowerCard);
         board.removeUpperCard(upperBuilding);
 
-        assertEquals(CardRow.NOT_PRESENT, board.getCardRow(lowerCard), "La carta inferiore pescata non deve essere più sulla board");
-        assertEquals(CardRow.NOT_PRESENT, board.getCardRow(upperBuilding), "L'edificio pescato non deve essere più sulla board");
+        assertEquals(CardRow.NOT_PRESENT, board.getCardRow(lowerCard), "Drawn lower card must no longer be on the board");
+        assertEquals(CardRow.NOT_PRESENT, board.getCardRow(upperBuilding), "Drawn upper building must no longer be on the board");
 
         assertFalse(board.getLowerRowCards().contains(lowerCard));
         assertFalse(board.getUpperRowCards().contains(upperBuilding));
@@ -179,9 +179,9 @@ class BoardTest {
         );
         board.setupInitialRows();
 
-        assertTrue(board.canPlayerDrawCard(alice, boardCard), "Alice dovrebbe poter pescare una carta base presente sulla plancia");
+        assertTrue(board.canPlayerDrawCard(alice, boardCard), "Alice should be able to draw a card that is on the board");
 
-        assertFalse(board.canPlayerDrawCard(alice, missingCard), "Non si può pescare una carta inesistente sulla plancia, anche se si hanno i requisiti");
+        assertFalse(board.canPlayerDrawCard(alice, missingCard), "Cannot draw a card that is not on the board, even if requirements are met");
     }
 
     /**
@@ -201,15 +201,15 @@ class BoardTest {
 
         Player alice = dummyPlayers.get(0);
 
-        assertTrue(board.isSpaceAvailable("B"), "Lo spazio B deve essere libero all'inizio");
+        assertTrue(board.isSpaceAvailable("B"), "Space B should be free at the start");
 
         board.placePlayerOnOfferSpace(alice, "B");
 
-        assertFalse(board.isSpaceAvailable("B"), "Lo spazio B non deve più essere disponibile dopo averci piazzato Alice");
+        assertFalse(board.isSpaceAvailable("B"), "Space B should no longer be available after Alice is placed on it");
 
         int[] draftRules = board.returnNumberDrawableCard(alice);
-        assertEquals(0, draftRules[0], "Lo spazio B dà 0 carte top");
-        assertEquals(1, draftRules[1], "Lo spazio B dà 1 carta bottom");
+        assertEquals(0, draftRules[0], "Space B gives 0 top cards");
+        assertEquals(1, draftRules[1], "Space B gives 1 bottom card");
     }
 
     /**
@@ -234,13 +234,13 @@ class BoardTest {
         board.placePlayerOnOfferSpace(bob, "D");
         board.placePlayerOnOfferSpace(charlie, "C");
 
-        assertEquals(List.of(charlie, bob), board.getResolutionOrder(), "L'ordine di risoluzione deve ignorare A e seguire le posizioni");
+        assertEquals(List.of(charlie, bob), board.getResolutionOrder(), "Resolution order must ignore space A and follow positions");
 
         board.resolveEventA();
 
-        assertTrue(board.isSpaceAvailable("A"), "Lo spazio A deve tornare libero dopo la risoluzione");
-        assertTrue(board.getNextRoundTurnOrder().contains(alice), "Il giocatore su A deve tornare alla starting tile");
-        assertArrayEquals(new int[]{0, 0}, board.returnNumberDrawableCard(alice), "Un giocatore già rientrato non deve avere più carte pescabili");
+        assertTrue(board.isSpaceAvailable("A"), "Space A must be free again after resolution");
+        assertTrue(board.getNextRoundTurnOrder().contains(alice), "Player on A must return to the starting tile");
+        assertArrayEquals(new int[]{0, 0}, board.returnNumberDrawableCard(alice), "Player who already returned must have no more drawable cards");
     }
 
     /**

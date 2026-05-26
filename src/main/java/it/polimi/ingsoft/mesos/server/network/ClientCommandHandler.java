@@ -56,18 +56,11 @@ public class ClientCommandHandler {
         }
         this.out.println("[TCP] Received " + type + " from " + this.virtualView.describeSession());
 
-        // =========================================================
-        // SMISTAMENTO E DESERIALIZZAZIONE
-        // =========================================================
-
-        // Se è un PONG, lo gestiamo istantaneamente bypassando la logica di gioco
         if (type == ClientMessageType.PONG) {
             this.virtualView.pong(new PongPayload());
-            return; // Fine dell'esecuzione
+            return;
         }
 
-        // Per tutti gli altri messaggi, deserializziamo nella classe corretta
-        // e imbustiamo il payload come ClientPayload generico
         ClientPayload payload = deserializePayload(type, payloadElement);
 
         if (payload == null) {
@@ -77,9 +70,6 @@ public class ClientCommandHandler {
         this.virtualView.handleClientMessage(clientMessage);
     }
 
-    // =========================================================
-    // METODO DI SUPPORTO PER LA DESERIALIZZAZIONE
-    // =========================================================
     private ClientPayload deserializePayload(ClientMessageType type, JsonElement payloadElement) {
         try {
             return switch (type) {

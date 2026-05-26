@@ -101,7 +101,7 @@ class DeckTemplateTest {
 
         assertEquals(2, template.getTribeCardTemplateCount());
         assertEquals(1, template.getBuildingCardTemplateCount());
-        assertEquals(2, tribeDeck.getCardsInOrder().size(), "Il deck completo deve usare tutti i blueprint senza filtrare per player count");
+        assertEquals(2, tribeDeck.getCardsInOrder().size(), "Full deck must use all blueprints without filtering by player count");
     }
 
     @Test

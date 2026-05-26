@@ -47,12 +47,12 @@ class LowerPileTest {
 
         lowerPile.discardLowerRow();
 
-        assertEquals(0, lowerPile.getTribeCardsSize(), "Le tribù dovrebbero essere state scartate");
-        assertEquals(1, lowerPile.getAllCards().size(), "L'edificio deve sopravvivere al fine round");
-        assertTrue(lowerPile.getAllCards().contains(basicBuilding), "La carta rimanente deve essere l'edificio");
+        assertEquals(0, lowerPile.getTribeCardsSize(), "Tribe cards should have been discarded");
+        assertEquals(1, lowerPile.getAllCards().size(), "Building card must survive end-of-round");
+        assertTrue(lowerPile.getAllCards().contains(basicBuilding), "The remaining card should be the building");
 
         lowerPile.discardLowerBuildings();
-        assertEquals(0, lowerPile.getAllCards().size(), "La pila ora deve essere completamente vuota");
+        assertEquals(0, lowerPile.getAllCards().size(), "Pile should now be completely empty");
     }
 
     /**
@@ -67,8 +67,8 @@ class LowerPileTest {
         lowerPile.addTribeCards(new ArrayList<>(tribes));
         lowerPile.addBuildingCards(buildings);
 
-        assertEquals(2, lowerPile.getTribeCardsSize(), "Il bulk add delle tribù deve funzionare");
-        assertEquals(3, lowerPile.getAllCards().size(), "Tutte le carte devono essere presenti");
+        assertEquals(2, lowerPile.getTribeCardsSize(), "Bulk add of tribe cards must work correctly");
+        assertEquals(3, lowerPile.getAllCards().size(), "All cards must be present");
     }
 
     /**
@@ -103,10 +103,10 @@ class LowerPileTest {
 
         lowerPile.resolveLowerRowEvents(dummyPlayers);
 
-        assertEquals(2, executionLog.size(), "Dovrebbero essersi attivati esattamente 2 eventi");
+        assertEquals(2, executionLog.size(), "Exactly 2 events should have fired");
 
-        assertEquals("HUNT", executionLog.get(0), "L'evento normale (Hunt) deve agire per primo");
-        assertEquals("SUSTENANCE", executionLog.get(1), "Il Sustenance DEVE agire rigorosamente per ultimo");
+        assertEquals("HUNT", executionLog.get(0), "Regular event (Hunt) must fire first");
+        assertEquals("SUSTENANCE", executionLog.get(1), "Sustenance event must fire last");
     }
 
     /**
@@ -119,9 +119,9 @@ class LowerPileTest {
 
         lowerPile.removeCard(basicBuilding);
 
-        assertEquals(1, lowerPile.getTribeCardsSize(), "La tribù deve rimanere intatta");
-        assertEquals(List.of(basicTribe), lowerPile.getTribeCards(), "La carta tribù non deve essere toccata");
-        assertTrue(lowerPile.getBuildingCards().isEmpty(), "L'edificio rimosso non deve più essere presente");
+        assertEquals(1, lowerPile.getTribeCardsSize(), "Tribe card must remain untouched");
+        assertEquals(List.of(basicTribe), lowerPile.getTribeCards(), "Tribe card should not be affected");
+        assertTrue(lowerPile.getBuildingCards().isEmpty(), "Removed building should no longer be present");
     }
 
     /**
@@ -159,7 +159,7 @@ class LowerPileTest {
 
         lowerPile.resolveLowerRowEvents(dummyPlayers);
 
-        assertEquals(List.of("HUNT"), executionLog, "Senza Sustenance va risolto solo l'evento presente");
+        assertEquals(List.of("HUNT"), executionLog, "Without Sustenance only the present event must be resolved");
     }
     /**
      * Multiple sustenance events resolve by era order.
@@ -184,9 +184,9 @@ class LowerPileTest {
 
         lowerPile.resolveLowerRowEvents(dummyPlayers);
 
-        assertEquals(2, executionLog.size(), "Entrambi gli eventi devono essere risolti");
-        assertEquals("SUST_ERA1", executionLog.get(0), "Il Sustenance della prima Era deve agire per primo");
-        assertEquals("SUST_ERA3", executionLog.get(1), "Il Sustenance della terza Era deve agire per secondo");
+        assertEquals(2, executionLog.size(), "Both events must be resolved");
+        assertEquals("SUST_ERA1", executionLog.get(0), "Era 1 Sustenance must fire first");
+        assertEquals("SUST_ERA3", executionLog.get(1), "Era 3 Sustenance must fire second");
     }
 
     /**
@@ -212,9 +212,9 @@ class LowerPileTest {
 
         lowerPile.resolveLowerRowEvents(dummyPlayers);
 
-        assertEquals(2, executionLog.size(), "Entrambi gli eventi devono essere risolti");
-        assertEquals("HUNT_ERA1", executionLog.get(0), "L'evento Hunt della prima Era deve agire per primo");
-        assertEquals("HUNT_ERA2", executionLog.get(1), "L'evento Hunt della seconda Era deve agire per secondo");
+        assertEquals(2, executionLog.size(), "Both events must be resolved");
+        assertEquals("HUNT_ERA1", executionLog.get(0), "Era 1 Hunt event must fire first");
+        assertEquals("HUNT_ERA2", executionLog.get(1), "Era 2 Hunt event must fire second");
     }
 
     /**
