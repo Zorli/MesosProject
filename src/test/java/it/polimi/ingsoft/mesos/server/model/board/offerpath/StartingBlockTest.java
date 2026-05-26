@@ -28,7 +28,7 @@ class StartingBlockTest {
         StartingBlock block = new StartingBlock(1, 2, 0, player);
         block.resolveEffect();
 
-        assertEquals(3, player.getFood(), "Il giocatore dovrebbe avere 1+2=3 cibo");
+        assertEquals(3, player.getFood(), "Player should have 1+2=3 food");
     }
 
     /**
@@ -40,8 +40,8 @@ class StartingBlockTest {
         StartingBlock block = new StartingBlock(1, -1, -5, player);
         block.resolveEffect();
 
-        assertEquals(0, player.getFood(), "Il giocatore dovrebbe aver pagato 1 cibo");
-        assertEquals(10, player.getPrestigePoints(), "Il prestigio non dovrebbe cambiare");
+        assertEquals(0, player.getFood(), "Player should have paid 1 food");
+        assertEquals(10, player.getPrestigePoints(), "Prestige should not change");
     }
 
     /**
@@ -53,8 +53,8 @@ class StartingBlockTest {
         StartingBlock block = new StartingBlock(1, -5, -2, player);
         block.resolveEffect();
 
-        assertEquals(1, player.getFood(), "Il cibo non deve cambiare se il giocatore non può pagare");
-        assertEquals(8, player.getPrestigePoints(), "Il giocatore dovrebbe aver perso 2 punti prestigio");
+        assertEquals(1, player.getFood(), "Food should not change when the player cannot afford to pay");
+        assertEquals(8, player.getPrestigePoints(), "Player should have lost 2 prestige points");
     }
 
     /**

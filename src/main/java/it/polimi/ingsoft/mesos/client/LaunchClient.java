@@ -25,33 +25,15 @@ public class LaunchClient {
     private static final int DEFAULT_TCP_PORT = 12_345;
     private static final int DEFAULT_RMI_PORT = 1099;
 
-    // Nota su architettura del client
-    // La UI può essere TUI o GUI
-    // La rete può essere TCP o RMI
-    // Per rendere intercambiabili queste scelte servono contratti chiari e comuni per evitare macello:
+    // Architecture overview:
+    // - ClientView: UI contract; exposes methods the network layer calls to show errors, lobbies, and game state.
+    // - ServerProxy: contract used by the UI controller to send commands to the server (TCP and RMI implementations).
+    // - VirtualServer: contract used by the network layer to deliver server messages to the client. Delegates
+    //   routing to MessageRouter rather than deciding which view method to call directly.
+    // - MessageRouter: sits between VirtualServer and ClientView; reads the ServerMessage type and dispatches
+    //   the correct view method, keeping VirtualServer focused on transport only.
     //
-    // - ClientView:
-    //   contratto implementato dalla UI.
-    //   Espone i metodi che la rete usa per mostrare errori, lobby e stato partita.
-    //
-    // - ServerProxy:
-    //   contratto usato dal controller UI per inviare comandi al server.
-    //   Ha implementazioni TCP e RMI: ServerProxyTCP e ServerProxyRMI.
-    //
-    // - VirtualServer:
-    //   contratto usato dalla rete per consegnare al client i messaggi ricevuti dal server.
-    //   In TCP legge i messaggi dalla socket tramite VirtualServerTCP.
-    //   In RMI riceve callback remote tramite VirtualServerRMI.
-    //   Non decide lui quale metodo della view chiamare, ma passa un ServerMessage al MessageRouter.
-    //
-    // - MessageRouter:
-    //   classe che sta tra VirtualServer e ClientView.
-    //   Guarda il type del ServerMessage e decide quale metodo chiamare sulla view.
-    //   Cosi VirtualServer resta solo  rete, e la logica di instradamento sta in un posto solo.
-    //
-    // Quindi in generale il flusso da avere in testa è questo:
-    // controller UI -> ServerProxy -> server
-    // server -> VirtualServer -> MessageRouter -> ClientView
+    // Data flow: UI controller -> ServerProxy -> server -> VirtualServer -> MessageRouter -> ClientView
 
     public static void main(String[] args) {
         Map<String, String> environment = loadEnvironmentFile(CLIENT_ENV_FILE);

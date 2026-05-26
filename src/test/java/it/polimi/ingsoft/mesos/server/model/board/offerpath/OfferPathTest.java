@@ -41,8 +41,8 @@ class OfferPathTest {
     void placePlayer_MovesPlayerFromStartingTileToOfferSpace() {
         offerPath.placePlayer(player1, "B");
 
-        assertFalse(offerPath.checkOfferSpace("B"), "Lo spazio B non dovrebbe più essere disponibile");
-        assertFalse(offerPath.getNextRoundTurnOrder().contains(player1), "Alice non dovrebbe più essere sulla Starting Tile");
+        assertFalse(offerPath.checkOfferSpace("B"), "Space B should no longer be available");
+        assertFalse(offerPath.getNextRoundTurnOrder().contains(player1), "Alice should no longer be on the Starting Tile");
     }
 
     /**
@@ -54,11 +54,11 @@ class OfferPathTest {
         offerPath.placePlayer(player2, "C");
 
         int[] action = offerPath.resolveActionForPlayer(player2);
-        assertEquals(1, action[0], "Dovrebbe pescare 1 da sopra");
-        assertEquals(0, action[1], "Dovrebbe pescare 0 da sotto");
+        assertEquals(1, action[0], "Should draw 1 from top");
+        assertEquals(0, action[1], "Should draw 0 from bottom");
 
         int[] fallbackAction = offerPath.resolveActionForPlayer(player4);
-        assertArrayEquals(new int[]{0, 0}, fallbackAction, "Un giocatore non piazzato dovrebbe ricevere [0, 0]");
+        assertArrayEquals(new int[]{0, 0}, fallbackAction, "An unplaced player should receive [0, 0]");
     }
 
     /**
@@ -68,16 +68,16 @@ class OfferPathTest {
     @Test
     void resolveEventA_GrantsBonusAndReturnsPlayerToStart() {
         offerPath.resolveEventA();
-        assertEquals(2, player1.getFood(), "Nessuno è su A, il cibo non deve cambiare");
+        assertEquals(2, player1.getFood(), "Nobody is on A, food must not change");
 
         offerPath.placePlayer(player1, "A");
         assertFalse(offerPath.getNextRoundTurnOrder().contains(player1));
 
         offerPath.resolveEventA();
 
-        assertEquals(8, player1.getFood(), "Alice era su A, dovrebbe aver ricevuto 3 cibo extra");
-        assertTrue(offerPath.checkOfferSpace("A"), "Lo spazio A dovrebbe essere tornato disponibile dopo la risoluzione");
-        assertTrue(offerPath.getNextRoundTurnOrder().contains(player1), "Alice deve essere stata rimessa sulla Starting Tile");
+        assertEquals(8, player1.getFood(), "Alice was on A and should have received 3 extra food");
+        assertTrue(offerPath.checkOfferSpace("A"), "Space A should be available again after resolution");
+        assertTrue(offerPath.getNextRoundTurnOrder().contains(player1), "Alice must have been placed back on the Starting Tile");
     }
 
     /**
@@ -90,8 +90,8 @@ class OfferPathTest {
 
         offerPath.returnPlayerToStartingTile(player3);
 
-        assertTrue(offerPath.checkOfferSpace("D"), "Lo spazio D deve essere tornato disponibile");
-        assertTrue(offerPath.getNextRoundTurnOrder().contains(player3), "Charlie deve essere tornato sulla Starting Tile");
+        assertTrue(offerPath.checkOfferSpace("D"), "Space D must be available again");
+        assertTrue(offerPath.getNextRoundTurnOrder().contains(player3), "Charlie must have returned to the Starting Tile");
     }
 
     /**
@@ -106,10 +106,10 @@ class OfferPathTest {
 
         List<Player> resolutionOrder = offerPath.getPlayersInOrder();
 
-        assertEquals(2, resolutionOrder.size(), "Dovrebbero esserci 2 giocatori (Spazio A ignorato)");
+        assertEquals(2, resolutionOrder.size(), "Should have 2 players (space A is ignored)");
 
-        assertEquals(player2, resolutionOrder.get(0), "Bob su C dovrebbe agire per primo");
-        assertEquals(player3, resolutionOrder.get(1), "Charlie su D dovrebbe agire per secondo");
+        assertEquals(player2, resolutionOrder.get(0), "Bob on C should act first");
+        assertEquals(player3, resolutionOrder.get(1), "Charlie on D should act second");
     }
 
     /**

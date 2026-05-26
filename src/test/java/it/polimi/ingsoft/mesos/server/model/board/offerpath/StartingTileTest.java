@@ -51,9 +51,9 @@ class StartingTileTest {
 
         List<Player> order = startingTile.getNextRoundOrder();
 
-        assertEquals(2, order.size(), "Dovrebbero esserci esattamente 2 giocatori piazzati");
-        assertEquals(player1, order.get(0), "Alice dovrebbe essere sul primo blocco disponibile");
-        assertEquals(player2, order.get(1), "Bob dovrebbe essere sul secondo blocco");
+        assertEquals(2, order.size(), "There should be exactly 2 players placed");
+        assertEquals(player1, order.get(0), "Alice should be on the first available block");
+        assertEquals(player2, order.get(1), "Bob should be on the second block");
     }
 
     /**
@@ -72,10 +72,10 @@ class StartingTileTest {
 
         List<Player> nextRoundOrder = startingTile.getNextRoundOrder();
 
-        assertEquals(3, nextRoundOrder.size(), "Dovrebbero esserci 3 giocatori piazzati");
-        assertEquals(player3, nextRoundOrder.get(0), "Charlie è tornato per primo, sarà il primo di turno");
-        assertEquals(player1, nextRoundOrder.get(1), "Alice è tornata per seconda");
-        assertEquals(player2, nextRoundOrder.get(2), "Bob è tornato per ultimo");
+        assertEquals(3, nextRoundOrder.size(), "There should be 3 players placed");
+        assertEquals(player3, nextRoundOrder.get(0), "Charlie returned first, so he goes first next round");
+        assertEquals(player1, nextRoundOrder.get(1), "Alice returned second");
+        assertEquals(player2, nextRoundOrder.get(2), "Bob returned last");
     }
 
     /**
@@ -88,8 +88,8 @@ class StartingTileTest {
 
         List<Player> order = startingTile.getNextRoundOrder();
 
-        assertEquals(2, order.size(), "Dovrebbero rimanere solo 2 giocatori");
-        assertFalse(order.contains(player1), "Alice non dovrebbe più essere sulla Starting Tile");
+        assertEquals(2, order.size(), "Only 2 players should remain");
+        assertFalse(order.contains(player1), "Alice should no longer be on the Starting Tile");
     }
 
     /**
@@ -104,8 +104,8 @@ class StartingTileTest {
         startingTile.placePlayerOnNextAvailableBlock(hackerPlayer);
 
         List<Player> order = startingTile.getNextRoundOrder();
-        assertEquals(3, order.size(), "I posti totali devono rimanere 3");
-        assertFalse(order.contains(hackerPlayer), "L'intruso non deve aver trovato posto");
+        assertEquals(3, order.size(), "Total slots must remain 3");
+        assertFalse(order.contains(hackerPlayer), "The extra player must not have found a slot");
     }
 
     /**
@@ -122,7 +122,7 @@ class StartingTileTest {
 
         List<StartingBlock> blocks = twoPlayerTile.getStartingBlocks();
 
-        assertEquals(2, blocks.size(), "Con 2 giocatori devono esserci 2 blocchi");
+        assertEquals(2, blocks.size(), "A 2-player game must have 2 blocks");
         assertEquals(1, blocks.get(0).getPosition());
         assertEquals(1, blocks.get(0).getFoodModifier());
         assertEquals(0, blocks.get(0).getPrestigeModifier());
@@ -176,7 +176,7 @@ class StartingTileTest {
         StartingTile unsupportedTile = new StartingTile();
         unsupportedTile.setup(List.of(new Player("Solo", 2, 0, TotemColor.RED, null)));
 
-        assertTrue(unsupportedTile.getStartingBlocks().isEmpty(), "Con un numero non supportato di giocatori non vanno creati blocchi");
+        assertTrue(unsupportedTile.getStartingBlocks().isEmpty(), "An unsupported player count must not create any blocks");
     }
 
     /**
@@ -196,9 +196,9 @@ class StartingTileTest {
         twoPlayerTile.placePlayerOnNextAvailableBlock(first);
         twoPlayerTile.placePlayerOnNextAvailableBlock(second);
 
-        assertEquals(2, first.getFood(), "Il primo blocco deve assegnare il bonus cibo previsto");
-        assertEquals(0, second.getFood(), "Il secondo blocco non deve pagare cibo che il giocatore non possiede");
-        assertEquals(3, second.getPrestigePoints(), "Se il giocatore non paga il malus cibo deve perdere prestigio");
+        assertEquals(2, first.getFood(), "First block must grant the expected food bonus");
+        assertEquals(0, second.getFood(), "Second block must not deduct food the player does not have");
+        assertEquals(3, second.getPrestigePoints(), "Player who cannot pay the food penalty must lose prestige instead");
     }
 
     /**
