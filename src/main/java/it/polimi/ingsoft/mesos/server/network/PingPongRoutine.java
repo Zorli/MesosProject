@@ -47,6 +47,10 @@ public class PingPongRoutine {
 
     private void tick() {
         for (SessionSnapshot session : this.sessions.snapshots()) {
+            if (session.user() == null) {
+                continue;
+            }
+
             if (session.timedOut()) {
                 System.out.println("Disconnected session " + session.sessionId());
                 this.connectionLifecycle.handleConnectionTimeout(session.sessionId());
