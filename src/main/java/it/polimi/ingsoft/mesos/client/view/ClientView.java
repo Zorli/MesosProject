@@ -67,6 +67,5 @@ public interface ClientView {
      * @param payload complete final game state, including winner information
      */
     default void showFinalGameResult(GamePayload payload) {
-        showGameUpdate(payload);
     }
 }
