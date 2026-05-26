@@ -380,6 +380,21 @@
     -fx-border-color: #e7b64f;
 }
 
+.final-disconnected-title {
+    -fx-text-fill: #fff4cf;
+    -fx-font-weight: 900;
+}
+
+.final-disconnected-row {
+    -fx-alignment: center-left;
+    -fx-background-color: #151c1d;
+    -fx-background-radius: 8;
+    -fx-border-color: #6d3d45;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 12 15;
+}
+
 .status-pill,
 .session-pill,
 .turn-pill,

@@ -1325,11 +1325,14 @@ public class GUIView implements ClientView {
                 this.finalRankingContainer.getChildren().add(row);
             }
             Label disconnect = new Label("Disconnected players (not ranked)");
+            disconnect.getStyleClass().add("final-disconnected-title");
             this.finalRankingContainer.getChildren().add(disconnect);
             for (int i = 0; i < disconnectedPlayers.size(); i++) {
                 PlayerPayload player = disconnectedPlayers.get(i);
                 HBox row = new HBox(16);
+                row.getStyleClass().add("final-disconnected-row");
                 Label name = new Label(player.nickname);
+                name.getStyleClass().add("player-name");
                 row.getChildren().add(name);
                 this.finalRankingContainer.getChildren().add(row);
             }
