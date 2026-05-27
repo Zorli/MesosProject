@@ -76,14 +76,22 @@ public class GUIView implements ClientView {
      * Runtime state owned by the controller. State that belongs only to lobby
      * or turn flows has moved into the collaborators created in initialize().
      */
+    /** Network proxy used to communicate with the remote server. */
     private ServerProxy serverProxy;
+    /** Current player's nickname, defaults to "Guest". */
     private String nickname = "Guest";
+    /** Last game payload received from the server. */
     private GamePayload lastGamePayload;
+    /** Transition timer used to delay redirection after a successful login. */
     private PauseTransition authRedirectDelay;
+    /** Timeline timer used to periodically auto-refresh the lobby list. */
     private Timeline lobbyRefreshTimer;
 
+    /** Collaborator responsible for rendering lobby-related screens and tables. */
     private LobbyRenderer lobbyRenderer;
+    /** Collaborator responsible for rendering the game board, players, and final rankings. */
     private BoardRenderer boardRenderer;
+    /** Collaborator responsible for managing turn logic, card pick rules, and client-side validation. */
     private GameTurnController gameTurnController;
 
     /*
@@ -91,44 +99,83 @@ public class GUIView implements ClientView {
      * FXMLLoader resolves fx:id attributes by reflection against this object.
      * The collaborators receive the references they need in their constructors.
      */
+    /** StackPane container that holds every page of the application as a sibling node. */
     @FXML private StackPane pages;
+    /** Top navigation/status bar visible on every page except the login page. */
     @FXML private HBox topBar;
+    /** Nickname entry / login screen. */
     @FXML private StackPane loginPage;
+    /** Screen that lists all open lobbies and enables searching/refreshing. */
     @FXML private VBox lobbyPage;
+    /** Screen used to configure a new lobby or manage a joined one. */
     @FXML private VBox lobbyFormPage;
+    /** Screen displaying the active match (board, players, cards, paths). */
     @FXML private ScrollPane gamePage;
+    /** Screen displaying the final rankings once a match ends. */
     @FXML private VBox endPage;
+    /** Input field where the user enters their nickname. */
     @FXML private TextField nicknameField;
+    /** Button clicked to submit the nickname and log in. */
     @FXML private Button loginButton;
+    /** Status line displaying login validation errors or server messages. */
     @FXML private Label loginStatusLabel;
+    /** Right-aligned pill displaying the authenticated nickname. */
     @FXML private Label sessionNicknameLabel;
+    /** Subtitle on the lobby page used to show status and event feedback. */
     @FXML private Label lobbyStatusLabel;
+    /** Pill counting the total number of currently open lobbies. */
     @FXML private Label lobbyCountLabel;
+    /** Title of the lobby action panel (e.g. "Create table" / "Your table"). */
     @FXML private Label lobbyActionTitleLabel;
+    /** Subtitle of the lobby action panel displaying action errors or feedback. */
     @FXML private Label lobbyActionSubtitleLabel;
+    /** Label displaying the current lobby ID (e.g. "Lobby #123"). */
     @FXML private Label currentLobbyTitleLabel;
+    /** Label displaying the host's nickname. */
     @FXML private Label currentLobbyHostLabel;
+    /** Label displaying player count vs capacity (e.g. "Players: 3/4"). */
     @FXML private Label currentLobbyPlayersLabel;
+    /** Pill indicating current lobby status (Waiting, Ready, Starting...). */
     @FXML private Label currentLobbyStateLabel;
+    /** Text area listing every player currently seated in the lobby. */
     @FXML private Label playersInLobby;
+    /** Capacity selector label. */
     @FXML private Label capacityLabel;
+    /** Capacity selector ComboBox. */
     @FXML private ComboBox<Integer> capacityComboBox;
+    /** Vertical container hosting cards of available lobbies. */
     @FXML private VBox lobbyListContainer;
+    /** Button that opens the create lobby screen. */
     @FXML private Button openCreateTableButton;
+    /** Button that returns the user to the lobby list. */
     @FXML private Button backToLobbyListButton;
+    /** Button clicked to create a lobby with the chosen capacity. */
     @FXML private Button createLobbyButton;
+    /** Button clicked by the host to start the game. */
     @FXML private Button startLobbyButton;
+    /** Button clicked to exit the current lobby. */
     @FXML private Button exitLobbyButton;
+    /** Label showing the current match identifier. */
     @FXML private Label matchTitleLabel;
+    /** Label displaying current era and match state. */
     @FXML private Label matchMetaLabel;
+    /** Status pill displaying round and active player information. */
     @FXML private Label turnLabel;
+    /** Action-hint bar providing instructions for the local player's next move. */
     @FXML private Label selectedCardLabel;
+    /** Horizontal container hosting the upper row market cards. */
     @FXML private HBox upperRowContainer;
+    /** Horizontal container hosting the lower row market cards. */
     @FXML private HBox lowerRowContainer;
+    /** Horizontal container hosting the offer path and starting tiles. */
     @FXML private HBox offerPathContainer;
+    /** Vertical container hosting player summary rows. */
     @FXML private VBox playerListContainer;
+    /** Vertical container hosting tribe cards for all players. */
     @FXML private VBox tribeCardsContainer;
+    /** Vertical container hosting final ranking slots. */
     @FXML private VBox finalRankingContainer;
+    /** ScrollPane wrapper around the lobby list. */
     @FXML private ScrollPane lobbyScrollPane;
 
     // ---------------------------------------------------------------------
