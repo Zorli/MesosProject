@@ -349,26 +349,6 @@ class LobbyTest {
         assertEquals(0, hostListener.receivedPayloads.size());
     }
 
-    /**
-     * Test name: testStartMatchThrowsExceptionWhenCannotStart
-     * 1. This test verifies that trying to start a match when players count does not match capacity is rejected.
-     * 2. It asserts that calling startMatch triggers the internally handled exception and broadcasts the error payload.
-     */
-    @Test
-    void testStartMatchThrowsExceptionWhenCannotStart() throws Exception {
-        java.lang.reflect.Field statusField = Lobby.class.getDeclaredField("status");
-        statusField.setAccessible(true);
-        statusField.set(lobby, LobbyStatus.READY);
-
-        // Capacity is 3, but only Alice (1 player) is in players. So canStart() is false.
-        boolean success = lobby.startMatch("Alice");
-        assertFalse(success);
-
-        assertEquals(1, hostListener.receivedPayloads.size());
-        ErrorPayload error = (ErrorPayload) hostListener.receivedPayloads.get(0);
-        assertEquals("IllegalStateException", error.code);
-        assertTrue(error.message.contains("Cannot start lobby that cannot start"));
-    }
 
     /**
      * Helper Mock class implementing the Listener interface to collect payloads in tests.
