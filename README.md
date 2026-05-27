@@ -7,6 +7,99 @@ feature aggiuntive:
 - Supporto partite parallele sullo stesso server
 - Resilienza alle disconnessioni da parte dei client
 
+## Configurazione, Compilazione e Avvio
+
+In questa sezione viene spiegato come configurare l'ambiente, compilare il progetto in un archivio JAR ed eseguirlo (sia Server che Client) da riga di comando.
+
+### 1. Trovare l'indirizzo IP locale
+Se si desidera giocare in modalità multiplayer su una rete locale (LAN o hotspot), è necessario conoscere l'indirizzo IP del computer su cui gira il Server. Di seguito i comandi per trovarlo a seconda del sistema operativo:
+
+* **macOS**:
+  ```bash
+  ipconfig getifaddr en0
+  ```
+  *(Se si è connessi via Wi-Fi; se connessi via cavo o altra interfaccia, verificare con `ifconfig`)*
+* **Linux**:
+  ```bash
+  ip route get 1.1.1.1 | awk '{print $7}'
+  ```
+  *(In alternativa, eseguire `ip a` o `hostname -I`)*
+* **Windows**:
+  Eseguire nel prompt dei comandi (cmd) o PowerShell:
+  ```cmd
+  ipconfig
+  ```
+  Cercare la voce `Indirizzo IPv4` (es. `192.168.1.XX` o `172.20.10.XX`).
+
+---
+
+### 2. Configurazione di Rete (.env)
+Il progetto utilizza due file di configurazione locali nella root del progetto per mappare porte e host:
+
+#### Server (`server.env`)
+```env
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_SERVER_RMI_HOST=localhost
+```
+* Se il server deve essere raggiungibile da altri dispositivi nella stessa rete, imposta `MESOS_SERVER_RMI_HOST` con l'IP locale del server trovato al punto 1 (es. `192.168.1.56`).
+
+#### Client (`client.env`)
+```env
+MESOS_SERVER_HOST=localhost
+MESOS_TCP_PORT=12345
+MESOS_RMI_PORT=1099
+MESOS_CLIENT_RMI_HOST=localhost
+```
+* `MESOS_SERVER_HOST`: Impostare l'IP del Server (se diverso da `localhost`).
+* `MESOS_CLIENT_RMI_HOST`: Impostare l'IP del Client locale (necessario solo per RMI a causa delle callback server-to-client).
+
+---
+
+### 3. Compilazione del progetto
+Per compilare il codice ed esportare il file JAR comprensivo di tutte le dipendenze esterne (es. JavaFX, Gson, ControlsFX) necessarie per l'esecuzione, utilizzare Maven wrapper (`mvnw`):
+
+```bash
+./mvnw clean package dependency:copy-dependencies -DskipTests
+```
+*Su Windows (Prompt dei comandi), usare `mvnw.cmd` o `mvn`:*
+```cmd
+mvnw.cmd clean package dependency:copy-dependencies -DskipTests
+```
+Questo comando genererà:
+* Il JAR principale in `target/mesos-1.0-SNAPSHOT.jar`.
+* Tutte le librerie esterne di dipendenza nella cartella `target/dependency/`.
+
+---
+
+### 4. Avvio dell'Applicazione
+
+#### Esecuzione tramite file JAR
+Una volta compilato il progetto con successo, è possibile lanciare l'applicazione tramite Java sfruttando i moduli del Java Module System (`--module-path`):
+
+* **Avvio del Server**:
+  ```bash
+  java --module-path target/mesos-1.0-SNAPSHOT.jar:target/dependency --module it.polimi.ingsoft.mesos/it.polimi.ingsoft.mesos.server.LaunchServer
+  ```
+* **Avvio del Client**:
+  ```bash
+  java --module-path target/mesos-1.0-SNAPSHOT.jar:target/dependency --module it.polimi.ingsoft.mesos/it.polimi.ingsoft.mesos.client.LaunchClient
+  ```
+
+#### Esecuzione diretta tramite Maven (Sviluppo)
+In alternativa, durante la fase di sviluppo, è possibile compilare ed eseguire i moduli al volo senza generare i JAR:
+
+* **Avvio del Server**:
+  ```bash
+  ./mvnw exec:java -Dexec.mainClass="it.polimi.ingsoft.mesos.server.LaunchServer"
+  ```
+* **Avvio del Client**:
+  ```bash
+  ./mvnw exec:java
+  ```
+
+---
+
 ## Architettura del progetto
 In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
 sottosezioni verranno spiegati in dettaglio i pattern applicati e i dettagli implementativi.
@@ -400,48 +493,4 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 ### Session Registry 
 
 
-## Usage
 
-### Configurazione server
-
-`LaunchServer` legge la configurazione dal file locale `server.env`.
-Il file usa il formato `KEY=value`:
-
-```env
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=localhost
-```
-
-`MESOS_TCP_PORT` è la porta usata dal server TCP.
-`MESOS_RMI_PORT` è la porta del registry RMI.
-`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce negli stub esportati dal server.
-Se server e client sono sulla stessa macchina può essere `localhost`.
-Se il server deve essere raggiunto da un altro dispositivo nella stessa rete o hotspot, deve essere l'IP del server in quella rete.
-
-Esempio su hotspot:
-
-```env
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=172.20.10.2
-```
-
-`server.env` è l'unica fonte di verità per la configurazione di rete del server.
-Le variabili d'ambiente del processo non sovrascrivono questi valori.
-
-### Configurazione client
-
-`LaunchClient` legge la configurazione dal file locale `client.env`:
-
-```env
-MESOS_SERVER_HOST=172.20.10.2
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_CLIENT_RMI_HOST=172.20.10.3
-```
-
-`MESOS_SERVER_HOST` è l'IP della macchina su cui gira il server.
-`MESOS_TCP_PORT` è la porta TCP del server.
-`MESOS_RMI_PORT` è la porta del registry RMI del server.
-`MESOS_CLIENT_RMI_HOST` è l'IP del client, usato solo quando si sceglie RMI perché il server deve richiamare il client tramite callback.
