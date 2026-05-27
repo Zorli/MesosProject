@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.server.network.PingPongRoutine;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
@@ -278,7 +279,7 @@ class ServerControllerTest {
         public void close() throws IOException {}
 
         @Override
-        public void notifyUpdate(Object update) {
+        public void notifyUpdate(ServerPayload update) {
             receivedUpdates.add(update);
         }
     }

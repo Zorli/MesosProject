@@ -12,6 +12,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
@@ -116,12 +117,11 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
 
     @Override
     public void handleClientMessage(ClientMessage clientMessage) {
-        Object payload = clientMessage.payload;
-        this.router.routeMessage(this.sessionId, (ClientPayload) payload);
+        this.router.routeMessage(this.sessionId, clientMessage.payload);
     }
 
     @Override
-    public void notifyUpdate(Object payload) {
+    public void notifyUpdate(ServerPayload payload) {
         if (payload instanceof GamePayload gamePayload) {
             this.sendServerMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
             return;

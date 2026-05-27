@@ -301,8 +301,9 @@ Ad esempio, un comando client -> server ha questa forma logica:
 }
 ```
 
-Il campo `type` è necessario perché il campo `payload` è generico: prima si legge il tipo del messaggio,
-poi si sceglie la classe concreta con cui deserializzare il payload.
+Il campo `type` è necessario perché il campo `payload` è tipizzato sull'interfaccia della direzione
+(`ClientPayload` o `ServerPayload`): prima si legge il tipo del messaggio, poi si sceglie la classe
+concreta con cui deserializzare il payload.
 Nel caso RMI il problema della deserializzazione JSON non esiste, perché gli oggetti vengono passati
 direttamente tramite invocazione remota.
 Tuttavia vengono riutilizzati gli stessi payload, così TCP e RMI mantengono lo stesso contratto dati
@@ -439,30 +440,43 @@ Un messaggio client -> server serializzato in JSON ha quindi questa forma:
   }
 }
 ```
-O più in generale direttamente dalla classe ServerMessage abbiamo:
+Il wrapper client -> server è quindi:
 ```java
-public class ServerMessage implements Serializable {
-    public final ServerMessageType type;
-    public final Object payload;
+public class ClientMessage implements Serializable {
+    public final ClientMessageType type;
+    public final ClientPayload payload;
 
-    public ServerMessage(ServerMessageType type, Object payload) {
+    public ClientMessage(ClientMessageType type, ClientPayload payload) {
         this.type = Objects.requireNonNull(type, "type cannot be null");
         this.payload = payload;
     }
 }
 ```
-Come si nota il campo payload è tipizzato come 
-Quindi ci aspettiamo di poter inferire il payload in arrivo direttamente leggendo il campo type e chiedendo a GSON di 
+
+Il wrapper server -> client è equivalente, ma usa i tipi della direzione opposta:
+```java
+public class ServerMessage implements Serializable {
+    public final ServerMessageType type;
+    public final ServerPayload payload;
+
+    public ServerMessage(ServerMessageType type, ServerPayload payload) {
+        this.type = Objects.requireNonNull(type, "type cannot be null");
+        this.payload = payload;
+    }
+}
+```
+Il campo payload è quindi vincolato all'interfaccia corretta della direzione del messaggio.
+Ci aspettiamo comunque di inferire il payload concreto in arrivo leggendo il campo type e chiedendo a GSON di
 deserializzare quella data classe.
 
 La serializzazione avviene con:
 
 ```java
-ClientMessage message = New ClientMessage(AUTH , new AuthenticationPayload("tom"));
+ClientMessage message = new ClientMessage(ClientMessageType.AUTHENTICATE, new AuthenticationPayload("tom"));
 String serializedMessage = GSON.toJson(message);
 ```
 
-La deserializzazione avviene con:
+In generale invece la deserializzazione avviene con:
 ```java
 GSON.fromJson(json, ClasseDaCreare.class)
 ```
@@ -475,7 +489,8 @@ String type = message.get("type").getAsString();
 JsonObject payload = message.getAsJsonObject("payload");
 ```
 
-Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`ServerMessage` è generico.
+Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`ServerMessage` è astratto dietro
+`ClientPayload`/`ServerPayload`.
 GSON può serializzarlo facilmente, ma quando deve deserializzarlo deve sapere quale classe concreta usare.
 Per questo il codice legge prima il `type` e poi associa quel tipo alla classe di payload corretta.
 

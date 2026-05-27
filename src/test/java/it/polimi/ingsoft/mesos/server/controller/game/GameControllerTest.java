@@ -20,6 +20,8 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayl
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.GameClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -155,7 +157,9 @@ class GameControllerTest {
         await(() -> !connection.receivedPayloads.isEmpty());
         stop(worker);
 
-        assertEquals(List.of("phase-error"), connection.receivedPayloads);
+        ErrorPayload payload = (ErrorPayload) connection.receivedPayloads.getFirst();
+        assertEquals("PHASE_ERROR", payload.code);
+        assertEquals("phase-error", payload.message);
     }
 
     /**
@@ -431,7 +435,7 @@ class GameControllerTest {
          */
         @Override
         public void reportPhaseError(Listener target) {
-            target.notifyUpdate("phase-error");
+            target.notifyUpdate(new ErrorPayload("PHASE_ERROR", "phase-error"));
         }
 
         /**
@@ -457,7 +461,7 @@ class GameControllerTest {
          * Listener callback used by the controller/game to deliver updates.
          */
         @Override
-        public void notifyUpdate(Object payload) {
+        public void notifyUpdate(ServerPayload payload) {
             this.receivedPayloads.add(payload);
         }
 

@@ -16,6 +16,7 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.game.cards.TribeDeck;
 import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -332,6 +333,6 @@ class ServerSessionRegistryTest {
         @Override
         public void close() throws IOException {}
         @Override
-        public void notifyUpdate(Object update) {}
+        public void notifyUpdate(ServerPayload update) {}
     }
 }
