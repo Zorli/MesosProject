@@ -1,8 +1,10 @@
 # Mesos 
-Progetto prova finale per l'esame di Ingegneria del Software.
+//TODO : Questa introduzione va fatta meglio, inoltre va letta la mail sulla compliance del readme
+Progetto prova finale per l'esame di Ingegneria del Software 2026.
 Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java, in modo da poter
 giocare con altri player, ognuno dal proprio device, collegandosi a un server.
-È possibile giocare sia da interfaccia testuale che grafica. La versione qui implementata ha inoltre le seguenti
+È possibile giocare sia da interfaccia testuale che grafica.
+La versione qui implementata ha inoltre le seguenti
 feature aggiuntive:
 - Supporto partite parallele sullo stesso server
 - Resilienza alle disconnessioni da parte dei client
@@ -37,7 +39,6 @@ Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema 
   ```
   Cercare la voce `Indirizzo IPv4`, ad esempio `192.168.1.56`.
 
----
 
 ### 2. Avvio usando parametri da terminale
 Il codice non legge argomenti posizionali passati al `main`, quindi la configurazione da terminale
@@ -95,7 +96,7 @@ e il client con:
 java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/mesos-client-mac-aarch64.jar
 ```
 
----
+
 
 ### 3. Configurazione tramite file `.env`
 In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
@@ -135,24 +136,7 @@ Le righe vuote, le righe che iniziano con `#` e le righe che non hanno forma `KE
 vengono ignorate. Se un valore non viene specificato, il codice usa i default: `localhost`
 per l'indirizzo del server visto dal client, porta TCP `12345` e porta RMI `1099`.
 
----
 
-### 4. Compilazione del progetto
-Se si vuole rigenerare il JAR principale del progetto, si può usare Maven wrapper:
-
-```bash
-./mvnw clean package dependency:copy-dependencies -DskipTests
-```
-
-Su Windows:
-
-```cmd
-mvnw.cmd clean package dependency:copy-dependencies -DskipTests
-```
-
-Questo comando genera:
-* il JAR principale in `target/mesos-1.0-SNAPSHOT.jar`
-* le dipendenze esterne nella cartella `target/dependency/`
 
 
 
@@ -386,7 +370,8 @@ nelle invocazioni remote.
 
 ### Protocollo TCP
 TCP è un protocollo di trasporto a basso livello che permette a due processi di comunicare tramite socket.
-Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato da un indirizzo IP e da una porta.
+Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato 
+da un indirizzo IP e da una porta.
 Una connessione TCP è quindi identificata dalla coppia di endpoint coinvolti, cioè endpoint client ed endpoint server.
 
 Nel modello client-server, il server apre una `ServerSocket` su una porta e rimane in attesa di connessioni 
@@ -435,6 +420,7 @@ Questa scelta riprende il modello di server TCP multi-thread: il thread principa
 nuove connessioni, mentre ogni `VirtualViewTCP` gestisce la comunicazione con uno specifico client.
 La `VirtualViewTCP` legge i messaggi in arrivo dal client, li fa deserializzare e 
 li inoltra al router applicativo; quando deve inviare un messaggio al client, usa la stessa socket in uscita.
+
 #### GSON
 GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
 Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo sotto 
@@ -465,12 +451,15 @@ public class ServerMessage implements Serializable {
     }
 }
 ```
+Come si nota il campo payload è tipizzato come 
 Quindi ci aspettiamo di poter inferire il payload in arrivo direttamente leggendo il campo type e chiedendo a GSON di 
 deserializzare quella data classe.
 
 La serializzazione avviene con:
+
 ```java
-GSON.toJson(message)
+ClientMessage message = New ClientMessage(AUTH , new AuthenticationPayload("tom"));
+String serializedMessage = GSON.toJson(message);
 ```
 
 La deserializzazione avviene con:
