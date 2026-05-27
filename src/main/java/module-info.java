@@ -48,4 +48,5 @@
       opens it.polimi.ingsoft.mesos.shared.messages to com.google.gson;
       exports it.polimi.ingsoft.mesos.client.serverproxy to java.rmi;
       exports it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces to java.rmi;
+      exports it.polimi.ingsoft.mesos.server.network to java.rmi;
   }

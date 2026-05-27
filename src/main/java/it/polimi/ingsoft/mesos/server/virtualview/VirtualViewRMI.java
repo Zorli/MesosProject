@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
+import it.polimi.ingsoft.mesos.server.network.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;

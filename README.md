@@ -430,15 +430,56 @@ writer.println(serializedMessage);
 Non serve quindi un thread dedicato alla scrittura, il codice scrive sulla socket nel momento in cui deve 
 inviare un comando o una notifica.
 
-Sul client, `ServerProxyTCP` apre la socket, gestisce la scrittura dei comandi verso il server e avvia 
-un `VirtualServerTCP` in un thread separato per leggere i messaggi provenienti dal server.
-Sul server, `ConnectionAcceptor` mantiene aperta la `ServerSocket`, accetta nuove connessioni 
-e crea una `VirtualViewTCP` dedicata per ogni client connesso.
+A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`.
+Prima viene aperta la `ServerSocket`, poi l'acceptor viene avviato su un thread dedicato:
 
-Questa scelta riprende il modello di server TCP multi-thread: il thread principale del listener accetta 
+```java
+ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
+acceptor.start();
+Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
+acceptorThread.start();
+```
+
+Dentro `ConnectionAcceptor`, il server rimane in attesa di nuovi client tramite `accept()`:
+
+```java
+while (this.running) {
+    Socket clientSocket = this.serverSocket.accept();
+    VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router);
+    Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
+    virtualViewThread.start();
+}
+```
+
+`accept()` è bloccante: il thread resta fermo finché un client non apre una connessione.
+Quando un client si collega, il server riceve una nuova socket dedicata a quel client e crea una `VirtualViewTCP`.
+
+Sul client, invece, `ServerProxyTCP` apre direttamente una socket verso indirizzo e porta del server.
+Da quella socket ricava il canale di uscita per mandare comandi e crea un `VirtualServerTCP` per leggere
+i messaggi in arrivo dal server:
+
+```java
+this.socket = new Socket(serverHost, port);
+this.writer = new PrintWriter(this.socket.getOutputStream(), true);
+this.virtualServer = new VirtualServerTCP(this.socket, clientView, this);
+this.virtualServerThread = new Thread(this.virtualServer, "mesos-client-server-message-receiver");
+this.virtualServerThread.start();
+```
+
+Questa scelta riprende il modello di server TCP multi-thread: il thread principale del listener accetta
 nuove connessioni, mentre ogni `VirtualViewTCP` gestisce la comunicazione con uno specifico client.
-La `VirtualViewTCP` legge i messaggi in arrivo dal client, li fa deserializzare e 
+La `VirtualViewTCP` legge i messaggi in arrivo dal client, li fa deserializzare e
 li inoltra al router applicativo; quando deve inviare un messaggio al client, usa la stessa socket in uscita.
+
+Quindi il flusso concreto TCP è:
+- il server crea un `ConnectionAcceptor`
+- `ConnectionAcceptor` apre una `ServerSocket`
+- il thread del server rimane bloccato su `accept()`
+- il client crea una `Socket` verso il server
+- `accept()` restituisce una socket dedicata a quel client
+- il server crea una `VirtualViewTCP` per quella connessione
+- il client usa `ServerProxyTCP` per scrivere sulla socket
+- il client usa `VirtualServerTCP` per leggere dalla stessa socket
 
 #### GSON
 GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
@@ -527,16 +568,115 @@ Per questo il `type` fa da discriminante: prima viene letto il tipo del messaggi
 viene scelta la classe concreta con cui deserializzare il payload.
 
 ### Protocollo RMI
-RMI(Remote Method Invocation) è una astrazione fornita da Java per semplificare la programmazione distribuita. 
-In particolare ci nasconde tutta la parte di gestione delle socket e della serializzazione. L'idea di fondo è 
-quella di trattare oggetti remoti, **come se** fossero oggetti locali. Ovvero viene nascosto all'utilizzatore il 
-fatto che tra chi fa la chiamata e l'oggetto concreto, ci sia di mezzo una rete. Per rendere questo possibile(
-ipotizziamo il classico scenario client-server, con oggetto remoto che 
-si trova sul server e utilizzatore lo usa sul client), viene installato un proxy sul client, che nasconde 
-all'utilizzatore la rete, serializzando la chiamata e gestendo la socket, stessa cosa lato server, dove il programmatore
-può usare un proxy del client. 
+RMI (Remote Method Invocation) è un'astrazione fornita da Java per semplificare la programmazione distribuita.
+L'idea di fondo è permettere a una JVM di invocare metodi su oggetti che si trovano in un'altra JVM,
+con una sintassi uguale a quella di una normale chiamata a metodo.
+RMI quindi nasconde al codice applicativo la gestione diretta delle socket e della serializzazione:
+il programmatore non deve scrivere manualmente byte su uno stream, come avviene in TCP,
+ma invoca un metodo su un oggetto che rappresenta l'oggetto remoto.
+Nel caso classico client-server, l'oggetto remoto si trova sul server e il client lo usa tramite uno stub.
+Lo stub è un proxy locale: implementa la stessa interfaccia remota dell'oggetto server e inoltra la chiamata
+attraverso la rete.
+Lato server, RMI riceve la chiamata, la deserializza e la fa arrivare all'oggetto remoto concreto.
+Quindi la rete non sparisce davvero: viene solo nascosta dietro il meccanismo degli stub e delle interfacce remote.
+Per questo i metodi remoti devono dichiarare `RemoteException`, perché una chiamata che sembra locale
+può comunque fallire per motivi di rete (è anche il motivo per il quale abbiamo dovuto duplicare le interfacce di rete 
+come già spiegato sopra).
 
+![RMI.png](assets/immages/HighLevelRMI.png)
 
+A livello operativo, il primo oggetto remoto pubblicato dal server è `RmiConnectionEntryPoint`.
+Questo oggetto implementa `RmiConnectionService` e viene registrato nel registry RMI con il nome 
+`MesosServer`.
+
+```java
+RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router);
+LocateRegistry.createRegistry(port);
+Registry registry = LocateRegistry.getRegistry(port);
+registry.rebind("MesosServer", rmiEntryPoint);
+```
+
+Il registry permette al client di ottenere lo stub dell'entry point remoto usando il nome `MesosServer`.
+
+Sul client, infatti, il primo passo è il lookup:
+
+```java
+String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
+RmiConnectionService connectionService =
+        (RmiConnectionService) Naming.lookup(registryUrl);
+```
+
+A questo punto il client possiede uno stub di tipo `RmiConnectionService`.
+Questo stub espone il metodo `connect(...)`, che serve ad aprire una connessione logica con il server.
+
+Prima di chiamare `connect(...)`, però, il client crea il proprio callback RMI, cioè `VirtualServerRMI`.
+Questo oggetto rappresenta il punto di ingresso lato client per i messaggi server -> client.
+
+```java
+this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback);
+this.serverStub = connectionService.connect(this.callbackReceiver);
+this.callbackReceiver.attachServerProxy(this);
+```
+
+La chiamata a `connect(...)` arriva sul server dentro `RmiConnectionEntryPoint`.
+Il server riceve il callback del client e crea una `VirtualViewRMI` dedicata a quella connessione:
+
+```java
+public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
+    return new VirtualViewRMI(this.serverController, clientCallback, this.router);
+}
+```
+
+La `VirtualViewRMI` è quindi la sessione remota del singolo client lato server.
+Quando viene creata, registra una nuova connessione nel `ServerController` e conserva il callback del client:
+
+```java
+this.clientCallback = clientCallback;
+this.sessionId = this.serverController.registerConnection(this);
+```
+
+Il valore ritornato da `connect(...)` è uno stub di tipo `RmiServerService`.
+Da quel momento il client non usa più il registry per inviare comandi:
+usa direttamente lo stub della propria sessione remota.
+
+```java
+this.serverStub.handleClientMessage(message);
+```
+
+Sul server, la chiamata arriva in `VirtualViewRMI.handleClientMessage(...)`.
+Qui il messaggio viene ricevuto come oggetto Java, non come stringa JSON, e viene inoltrato al router applicativo:
+
+```java
+ClientPayload payload = clientMessage.payload;
+this.router.routeMessage(this.sessionId, payload);
+```
+
+Il flusso inverso funziona usando il callback passato dal client.
+Quando il server deve notificare un aggiornamento, `VirtualViewRMI` invoca un metodo sul callback remoto
+`RmiClientService`:
+
+```java
+this.clientCallback.handleMessage(
+        new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, authenticationResultPayload)
+);
+```
+
+Sul client questa chiamata arriva in `VirtualServerRMI.handleMessage(...)`, che inoltra il messaggio
+al `MessageRouter` della user interface:
+
+```java
+this.messageRouter.routeMessage(message);
+```
+
+Quindi il flusso concreto è:
+- il server registra `RmiConnectionEntryPoint` nel registry come `MesosServer`
+- il client fa lookup e ottiene lo stub `RmiConnectionService`
+- il client esporta `VirtualServerRMI` come callback
+- il client chiama `connect(callback)`
+- il server crea una `VirtualViewRMI` dedicata
+- il client riceve lo stub `RmiServerService` della propria sessione
+- client -> server: `ServerProxyRMI` chiama `VirtualViewRMI`
+- server -> client: `VirtualViewRMI` chiama `VirtualServerRMI`
 
 
 
@@ -587,4 +727,3 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ## Architettura del Server
-

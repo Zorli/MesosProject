@@ -1,7 +1,7 @@
-package it.polimi.ingsoft.mesos.server.virtualview;
+package it.polimi.ingsoft.mesos.server.network;
 
 import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
-import it.polimi.ingsoft.mesos.server.network.MessageRouter;
+import it.polimi.ingsoft.mesos.server.virtualview.VirtualViewRMI;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
