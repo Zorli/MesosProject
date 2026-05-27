@@ -40,7 +40,25 @@ Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema 
   Cercare la voce `Indirizzo IPv4`, ad esempio `192.168.1.56`.
 
 
-### 2. Avvio usando parametri da terminale
+### 2. Permessi firewall
+Se server e client non sono sulla stessa macchina, il sistema operativo può bloccare le connessioni anche
+quando IP e porte sono corretti.
+
+Sulla macchina che esegue il server bisogna permettere a Java di ricevere connessioni in entrata e di usare
+connessioni in uscita. A seconda di come viene avviato il progetto, il programma da autorizzare può comparire
+come `java`, `javaw`, `JavaVM` oppure `IntelliJ IDEA`.
+
+Questo vale su macOS, Windows e Linux:
+- il server deve poter accettare connessioni TCP sulla porta `MESOS_TCP_PORT`;
+- il server deve poter pubblicare e servire RMI sulla porta `MESOS_RMI_PORT`;
+- con RMI, anche il client deve poter ricevere la callback del server, quindi può essere necessario autorizzare
+  Java o IntelliJ anche sulla macchina client.
+
+Se il firewall chiede se consentire l'accesso alla rete, bisogna permetterlo almeno per la rete locale usata
+per giocare. In caso contrario il client può non riuscire a connettersi, oppure RMI può collegarsi ma non
+riuscire a consegnare le risposte.
+
+### 3. Avvio usando parametri da terminale
 Il codice non legge argomenti posizionali passati al `main`, quindi la configurazione da terminale
 deve essere passata come proprietà Java, cioè con `-D` prima di `-jar`.
 Queste proprietà sovrascrivono i valori presenti nei file `.env`.
@@ -98,7 +116,7 @@ java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=10
 
 
 
-### 3. Configurazione tramite file `.env`
+### 4. Configurazione tramite file `.env`
 In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
 I file vengono cercati nella directory da cui viene lanciato il comando, quindi per usare quelli già presenti
 in `deliverables` bisogna prima spostarsi in quella cartella:
@@ -466,8 +484,9 @@ public class ServerMessage implements Serializable {
 }
 ```
 Il campo payload è quindi vincolato all'interfaccia corretta della direzione del messaggio.
-Ci aspettiamo comunque di inferire il payload concreto in arrivo leggendo il campo type e chiedendo a GSON di
-deserializzare quella data classe.
+Quando arriva un messaggio, però, bisogna comunque capire quale payload concreto contiene.
+Per farlo il codice legge prima il campo `type` e poi chiede a GSON di deserializzare il `payload`
+usando la classe corrispondente.
 
 La serializzazione avviene con:
 
@@ -480,30 +499,46 @@ In generale invece la deserializzazione avviene con:
 ```java
 GSON.fromJson(json, ClasseDaCreare.class)
 ```
-
-Nei punti in cui il codice deve prima capire il tipo del messaggio, il JSON viene letto come `JsonObject`.
-Questo permette di leggere prima il campo `type` e poi scegliere la classe corretta del payload:
+Il motivo per cui il wrapper deve contenere il type, cosi come già detto, è dovuto al fatto che quando in
+TCP viene ricevuta la stringa in JSON non si sa a priori che classe concreta fra le varie esistenti di tipo payload
+andare a ricreare, pertanto è qui che entra in gioco il type. Il type ci fornisce il tipo di payload, cosi possiamo
+chidedere a GSON di deserializzare quella stringa GSON e ricostruire proprio una determinata classe.
+Ad esempio si puo vedere questo processo nel CommandHandler sul server.
+Qui il messaggio viene prima letto come `JsonObject`, così il codice può leggere il `type` prima di
+deserializzare il `payload`:
 ```java
-JsonObject message = GSON.fromJson(line, JsonObject.class);
-String type = message.get("type").getAsString();
-JsonObject payload = message.getAsJsonObject("payload");
+JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
+ClientMessageType type = ClientMessageType.valueOf(root.get("type").getAsString());
+JsonElement payloadElement = root.get("payload");
+
+ClientPayload payload = switch (type) {
+    case AUTHENTICATE -> GSON.fromJson(payloadElement, AuthenticationPayload.class);
+    case CREATE_LOBBY -> GSON.fromJson(payloadElement, CreateLobbyPayload.class);
+    case MOVE_TOTEM -> GSON.fromJson(payloadElement, MoveTotemPayload.class);
+    // altri type mappati sulle rispettive classi di payload
+};
 ```
 
-Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`ServerMessage` è astratto dietro
-`ClientPayload`/`ServerPayload`.
-GSON può serializzarlo facilmente, ma quando deve deserializzarlo deve sapere quale classe concreta usare.
-Per questo il codice legge prima il `type` e poi associa quel tipo alla classe di payload corretta.
-
-
-
-
-Per RMI invece la situazione è più semplice, poiche il remote method invocation si occupa di tutto il meccanismo di comunicazione, 
-è sufficiente implementare le interfacce e registrare gli stub, inoltre RMI gestisce in automatico la serializzazione degli oggetti, 
-quindi non è necessario gestire i dettagli di basso livello.
-Non serve quindi un ciclo esplicito di lettura sulla socket, perchè la ricezione dei messaggi avviene tramite invocazione
-dei metodi remoti esposti dagli stub.
+Il punto è che il campo `payload` di `ClientMessage` non è dichiarato come `AuthenticationPayload`
+o `MoveTotemPayload`, ma come `ClientPayload`.
+Questa informazione è sufficiente per il contratto Java, ma non basta a GSON per ricostruire l'oggetto
+concreto quando riceve una stringa JSON.
+Per questo il `type` fa da discriminante: prima viene letto il tipo del messaggio, poi in base a quel tipo
+viene scelta la classe concreta con cui deserializzare il payload.
 
 ### Protocollo RMI
+RMI(Remote Method Invocation) è una astrazione fornita da Java per semplificare la programmazione distribuita. 
+In particolare ci nasconde tutta la parte di gestione delle socket e della serializzazione. L'idea di fondo è 
+quella di trattare oggetti remoti, **come se** fossero oggetti locali. Ovvero viene nascosto all'utilizzatore il 
+fatto che tra chi fa la chiamata e l'oggetto concreto, ci sia di mezzo una rete. Per rendere questo possibile(
+ipotizziamo il classico scenario client-server, con oggetto remoto che 
+si trova sul server e utilizzatore lo usa sul client), viene installato un proxy sul client, che nasconde 
+all'utilizzatore la rete, serializzando la chiamata e gestendo la socket, stessa cosa lato server, dove il programmatore
+può usare un proxy del client. 
+
+
+
+
 
 
 
@@ -552,4 +587,4 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ## Architettura del Server
-### Session Registry 
+
