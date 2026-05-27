@@ -43,7 +43,6 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     private final ClientCommandHandler commandHandler;
     private boolean cleanupDone;
 
-    //Consutrctor
     public VirtualViewTCP(Socket clientSocket, ServerController serverController, MessageRouter router) {
         this(clientSocket, serverController, router, System.out);
     }
@@ -75,13 +74,8 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
 
             while ((rawMessage = reader.readLine()) != null) {
                 try {
-                    // Il commandHandler fa il parse del JSON e lancia il payload nel MessageRouter.
-                    // Non ci sono più valori di ritorno da aspettare.
                     this.commandHandler.handle(rawMessage);
-
                 } catch (RuntimeException exception) {
-                    // Se il pacchetto è palesemente malformato, non disturba nemmeno
-                    // i Controller e risponde subito con l'errore.
                     this.sendError(exception);
                 }
             }
@@ -91,7 +85,6 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
             }
         } finally {
             try {
-                //pessimo
                 this.close();
             } catch (IOException ignored) {
             }
@@ -121,11 +114,8 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
         return "unauthenticated-client";
     }
 
-    //Chiamata interna per mandare il messaggio al router, in TCP deve essere chiamata
-    //dal deserializzatore
     @Override
     public void handleClientMessage(ClientMessage clientMessage) {
-        //Estrazione del payload dal messaggio gia' validato dal deserializzatore
         Object payload = clientMessage.payload;
         this.router.routeMessage(this.sessionId, (ClientPayload) payload);
     }
@@ -170,7 +160,6 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     }
 
 
-    //Metodi di chiusura pulita
     @Override
     public void closeSession() {
         try {

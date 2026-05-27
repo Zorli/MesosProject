@@ -1,0 +1,320 @@
+@startuml network
+!theme plain
+left to right direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+
+skinparam linetype ortho
+
+' ─── CLIENT SIDE ───────────────────────────────────────────────────────────
+package "Client" {
+
+  together {
+    interface ServerProxy {
+      + isConnected(): boolean
+      + authenticate(nickname: String): void
+      + listLobbies(): void
+      + createLobby(chosenCapacity: int): void
+      + joinLobby(lobbyId: int): void
+      + exitLobby(): void
+      + startLobby(): void
+      + moveTotem(tile: String): void
+      + chooseCard(cardId: int): void
+      + extraDraw(cardId: int): void
+      + close(): void
+    }
+
+    class ServerProxyTCP <<service>> {
+      - socket: Socket
+      - clientView: ClientView
+      - virtualServer: VirtualServerTCP
+      + ServerProxyTCP(serverHost: String, port: int, clientView: ClientView)
+      + isConnected(): boolean
+      + sendPong(): void
+      + authenticate(nickname: String): void
+      + listLobbies(): void
+      + createLobby(chosenCapacity: int): void
+      + joinLobby(lobbyId: int): void
+      + exitLobby(): void
+      + startLobby(): void
+      + moveTotem(tile: String): void
+      + chooseCard(cardId: int): void
+      + extraDraw(cardId: int): void
+      + close(): void
+    }
+
+    class ServerProxyRMI <<service>> {
+      - serverStub: RmiServerService
+      - callbackReceiver: VirtualServerRMI
+      + ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView)
+      + isConnected(): boolean
+      + sendPong(): void
+      + authenticate(nickname: String): void
+      + listLobbies(): void
+      + createLobby(chosenCapacity: int): void
+      + joinLobby(lobbyId: int): void
+      + exitLobby(): void
+      + startLobby(): void
+      + moveTotem(tile: String): void
+      + chooseCard(cardId: int): void
+      + extraDraw(cardId: int): void
+      + close(): void
+    }
+  }
+
+  together {
+    interface VirtualServer {
+      + handleMessage(message: ServerMessage): void
+      + handlePing(): void
+      + close(): void
+    }
+
+    class VirtualServerTCP <<service>> {
+      - socket: Socket
+      - serverProxy: ServerProxyTCP
+      - messageRouter: MessageRouter
+      + VirtualServerTCP(socket: Socket, clientView: ClientView, serverProxy: ServerProxyTCP)
+      + run(): void
+      + requestCloseByClient(): void
+      + handleMessage(message: ServerMessage): void
+      + handlePing(): void
+      + close(): void
+    }
+
+    class VirtualServerRMI <<service>> {
+      - messageRouter: MessageRouter
+      - serverProxy: ServerProxyRMI
+      + VirtualServerRMI(clientView: ClientView)
+      + handleMessage(message: ServerMessage): void
+      + handlePing(): void
+      + attachServerProxy(serverProxy: ServerProxyRMI): void
+      + close(): void
+    }
+  }
+}
+
+' ─── SHARED (RMI INTERFACES) ───────────────────────────────────────────────
+package "Shared (RmiNetworkInterfaces)" {
+  interface RmiConnectionService {
+    + connect(clientCallback: RmiClientService): RmiServerService
+  }
+  interface RmiServerService {
+    + handleClientMessage(clientMessage: ClientMessage): void
+    + pong(payload: PongPayload): void
+    + closeSession(): void
+  }
+  interface RmiClientService {
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+  }
+}
+
+' ─── SERVER SIDE ───────────────────────────────────────────────────────────
+package "Server" {
+
+  together {
+    interface VirtualView {
+      + handleClientMessage(clientMessage: ClientMessage): void
+      + pong(payload: PongPayload): void
+      + closeSession(): void
+    }
+
+    interface ClientConnection {
+      + sendPing(): void
+      + close(): void
+    }
+
+    interface Listener {
+      + notifyUpdate(payload: Object): void
+    }
+  }
+
+  together {
+    class VirtualViewTCP <<service>> {
+      - clientSocket: Socket
+      - serverController: ServerController
+      - sessionId: String
+      - router: MessageRouter
+      - commandHandler: ClientCommandHandler
+      + VirtualViewTCP(clientSocket: Socket, serverController: ServerController, router: MessageRouter)
+      + run(): void
+      + handleClientMessage(clientMessage: ClientMessage): void
+      + pong(payload: PongPayload): void
+      + closeSession(): void
+      + sendPing(): void
+      + notifyUpdate(payload: Object): void
+      + close(): void
+    }
+
+    class VirtualViewRMI <<service>> {
+      - serverController: ServerController
+      - clientCallback: RmiClientService
+      - sessionId: String
+      - router: MessageRouter
+      + VirtualViewRMI(serverController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
+      + handleClientMessage(clientMessage: ClientMessage): void
+      + pong(payload: PongPayload): void
+      + closeSession(): void
+      + sendPing(): void
+      + notifyUpdate(payload: Object): void
+      + close(): void
+    }
+  }
+
+  ' Entry points (TCP + RMI)
+  together {
+    class ConnectionAcceptor <<service>> {
+      - port: int
+      - serverController: ServerController
+      - router: MessageRouter
+      + ConnectionAcceptor(port: int, serverController: ServerController, router: MessageRouter)
+      + start(): void
+      + run(): void
+    }
+
+    class RmiConnectionEntryPoint <<service>> {
+      - serverController: ServerController
+      - router: MessageRouter
+      + RmiConnectionEntryPoint(serverController: ServerController, router: MessageRouter)
+      + connect(clientCallback: RmiClientService): RmiServerService
+    }
+  }
+
+  ' Message processing / routing
+  together {
+    class ClientCommandHandler <<handler>> {
+      - virtualView: VirtualViewTCP
+      + ClientCommandHandler(out: PrintStream, virtualView: VirtualViewTCP)
+      + handle(rawMessage: String): void
+    }
+
+    class MessageRouter <<service>> {
+      - registry: ServerSessionRegistry
+      - serverController: ServerController
+      + MessageRouter(registry: ServerSessionRegistry, serverController: ServerController)
+      + routeMessage(sessionId: String, payload: ClientPayload): void
+    }
+
+    class ProtocolErrorMapper <<mapper>> {
+      + {static} toErrorPayload(exception: RuntimeException): ErrorPayload
+    }
+
+    class ServerConnectionLifecycle <<service>> {
+      - sessions: ServerSessionRegistry
+      - serverModel: ServerModel
+      + ServerConnectionLifecycle(sessions: ServerSessionRegistry, serverModel: ServerModel)
+      + registerConnection(connection: ClientConnection): String
+      + recordPong(sessionId: String): void
+      + disconnectSession(sessionId: String): void
+      + handleConnectionTimeout(sessionId: String): void
+    }
+
+    class PingPongRoutine <<service>> {
+      - sessions: ServerSessionRegistry
+      - connectionLifecycle: ServerConnectionLifecycle
+      + PingPongRoutine(sessions: ServerSessionRegistry, connectionLifecycle: ServerConnectionLifecycle)
+      + start(): void
+      + stop(): void
+    }
+  }
+}
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Client hierarchy
+ServerProxy <|.. ServerProxyTCP
+ServerProxy <|.. ServerProxyRMI
+VirtualServer <|.. VirtualServerTCP
+
+' Client compositions
+ServerProxyTCP *-- VirtualServerTCP : owns
+ServerProxyRMI *-- VirtualServerRMI : owns
+
+' Server hierarchy
+' VirtualViewTCP: implements VirtualView, ClientConnection, Listener
+' VirtualViewRMI: implements RmiServerService, ClientConnection, Listener (NOT VirtualView)
+VirtualView <|.. VirtualViewTCP
+ClientConnection <|.. VirtualViewTCP
+ClientConnection <|.. VirtualViewRMI
+Listener <|.. VirtualViewTCP
+Listener <|.. VirtualViewRMI
+
+' Server internal
+VirtualViewTCP *-- ClientCommandHandler : owns
+ConnectionAcceptor ..> VirtualViewTCP : <<create>>
+
+' RMI interface implementations
+RmiConnectionService <|.. RmiConnectionEntryPoint
+RmiServerService <|.. VirtualViewRMI
+RmiClientService <|.. VirtualServerRMI
+
+' RMI creation/lookup
+RmiConnectionEntryPoint ..> VirtualViewRMI : <<create>>
+ServerProxyRMI ..> RmiConnectionService : looks up / uses >
+
+' ─── TCP NETWORK BOUNDARY (blue) ───────────────────────────────────────────
+ServerProxyTCP -[#2980B9,bold]-> VirtualViewTCP : "TCP write\n(client → server)"
+VirtualServerTCP <-[#2980B9,bold]- VirtualViewTCP : "TCP read\n(server → client)"
+
+' ─── RMI NETWORK BOUNDARY (red) ────────────────────────────────────────────
+ServerProxyRMI -[#C0392B,bold]-> RmiServerService : "RMI call\n(client → server stub)"
+VirtualServerRMI <-[#C0392B,bold]- VirtualViewRMI : "RMI callback\n(server → client callback)"
+
+
+legend right
+  <b>Legenda Colori</b>
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco (gestione input/comandi) |
+  |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
+  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole di gioco o degli eventi interni |
+  |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
+  |<back:#EBF5FB>      </back> <b>Network</b> | Entrypoint di rete e stubs di comunicazione |
+  |<back:#E8F8F5>      </back> <b>VirtualView</b> | Rappresentazione virtuale del client sul server |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#FFFFFF>      </back> <b>Entity/Model</b> | Classi del modello di dominio (stato e dati) |
+  ====
+  <b>Visibilità metodi</b>
+  ====
+  + public
+  - private
+  # protected
+  ~ package-private
+endlegend
+@enduml

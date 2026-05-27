@@ -51,9 +51,9 @@ class UpperPileTest {
         List<BuildingCard> remainingBuildings = upperPile.removeAndReturnAllBuildingCards();
         List<Gatherer> remainingTribes = (List<Gatherer>)(List<?>) upperPile.removeAndReturnAllTribeCards();
 
-        assertEquals(1, remainingBuildings.size(), "L'edificio dovrebbe essere ancora al suo posto");
+        assertEquals(1, remainingBuildings.size(), "Building should still be in place");
         assertEquals(buildingCard1, remainingBuildings.get(0));
-        assertTrue(remainingTribes.isEmpty(), "La tribù dovrebbe essere stata rimossa correttamente");
+        assertTrue(remainingTribes.isEmpty(), "Tribe card should have been removed correctly");
     }
 
     /**
@@ -64,9 +64,9 @@ class UpperPileTest {
     void removeCard_EdgeCase_CardNotInPile_DoesNothing() {
         upperPile.addCard(tribeCard1);
 
-        assertDoesNotThrow(() -> upperPile.removeCard(tribeCard2), "Rimuovere una carta inesistente non deve far crashare il gioco");
+        assertDoesNotThrow(() -> upperPile.removeCard(tribeCard2), "Removing a non-existent card must not crash the game");
 
-        assertEquals(1, upperPile.removeAndReturnAllTribeCards().size(), "La carta presente non deve essere stata alterata");
+        assertEquals(1, upperPile.removeAndReturnAllTribeCards().size(), "Existing card must not have been altered");
     }
 
     /**
@@ -95,17 +95,17 @@ class UpperPileTest {
         List<?> returnedTribes = upperPile.removeAndReturnAllTribeCards();
         List<BuildingCard> returnedBuildings = upperPile.removeAndReturnAllBuildingCards();
 
-        assertEquals(2, returnedTribes.size(), "Dovrebbe restituire le 2 tribù");
-        assertEquals(1, returnedBuildings.size(), "Dovrebbe restituire l'edificio");
+        assertEquals(2, returnedTribes.size(), "Should return the 2 tribe cards");
+        assertEquals(1, returnedBuildings.size(), "Should return the building card");
 
         List<?> emptyTribes = upperPile.removeAndReturnAllTribeCards();
         List<BuildingCard> emptyBuildings = upperPile.removeAndReturnAllBuildingCards();
 
-        assertNotNull(emptyTribes, "Non deve mai restituire null, ma una lista vuota");
-        assertTrue(emptyTribes.isEmpty(), "La lista delle tribù deve essere vuota");
+        assertNotNull(emptyTribes, "Must never return null, but an empty list");
+        assertTrue(emptyTribes.isEmpty(), "Tribe card list must be empty");
 
-        assertNotNull(emptyBuildings, "Non deve mai restituire null, ma una lista vuota");
-        assertTrue(emptyBuildings.isEmpty(), "La lista degli edifici deve essere vuota");
+        assertNotNull(emptyBuildings, "Must never return null, but an empty list");
+        assertTrue(emptyBuildings.isEmpty(), "Building card list must be empty");
     }
 
     /**

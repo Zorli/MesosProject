@@ -1,0 +1,284 @@
+@startuml client
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam enum {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+
+skinparam linetype ortho
+
+' ─── ENTRY POINT ───────────────────────────────────────────────────────────
+class LaunchClient {
+  + {static} main(args: String[]): void
+}
+
+' ─── PROXY LAYER ───────────────────────────────────────────────────────────
+package "serverproxy" {
+  interface ServerProxy {
+    + isConnected(): boolean
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(chosenCapacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
+  }
+
+  class ServerProxyTCP <<service>> {
+    - socket: Socket
+    - clientView: ClientView
+    - virtualServer: VirtualServerTCP
+    + ServerProxyTCP(serverHost: String, port: int, clientView: ClientView)
+    + isConnected(): boolean
+    + sendPong(): void
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(chosenCapacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
+  }
+
+  class ServerProxyRMI <<service>> {
+    - serverStub: RmiServerService
+    - callbackReceiver: VirtualServerRMI
+    + ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView)
+    + isConnected(): boolean
+    + sendPong(): void
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(chosenCapacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
+  }
+}
+
+' ─── VIRTUAL SERVER LAYER ──────────────────────────────────────────────────
+package "virtualserver" {
+  interface VirtualServer {
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+    + close(): void
+  }
+
+  class VirtualServerTCP <<service>> {
+    - socket: Socket
+    - serverProxy: ServerProxyTCP
+    - messageRouter: MessageRouter
+    + VirtualServerTCP(socket: Socket, clientView: ClientView, serverProxy: ServerProxyTCP)
+    + run(): void
+    + requestCloseByClient(): void
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+    + close(): void
+  }
+
+  class VirtualServerRMI <<service>> {
+    - messageRouter: MessageRouter
+    - serverProxy: ServerProxyRMI
+    + VirtualServerRMI(clientView: ClientView)
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+    + attachServerProxy(serverProxy: ServerProxyRMI): void
+    + close(): void
+  }
+}
+
+' ─── VIEW LAYER ────────────────────────────────────────────────────────────
+package "view" {
+  interface ClientView {
+    + showError(payload: ErrorPayload): void
+    + showAuthenticationResult(payload: AuthenticationResultPayload): void
+    + showLobbyUpdate(payload: LobbyUpdatePayload): void
+    + showLobbyList(payload: LobbyListPayload): void
+    + showGameUpdate(payload: GamePayload): void
+    + {default} showFinalGameResult(payload: GamePayload): void
+  }
+
+  class MessageRouter <<service>> {
+    - clientView: ClientView
+    + MessageRouter(clientView: ClientView)
+    + routeMessage(message: ServerMessage): void
+  }
+
+  package "tui" {
+    class TuiView <<view>> {
+      - commandParser: TuiCommandParser
+      - payloadRenderer: TuiPayloadRenderer
+      - serverProxy: ServerProxy
+      + TuiView()
+      + attachServerProxy(proxy: ServerProxy): void
+      + start(): void
+      + showError(payload: ErrorPayload): void
+      + showAuthenticationResult(payload: AuthenticationResultPayload): void
+      + showLobbyUpdate(payload: LobbyUpdatePayload): void
+      + showLobbyList(payload: LobbyListPayload): void
+      + showGameUpdate(payload: GamePayload): void
+      + showFinalGameResult(payload: GamePayload): void
+    }
+
+    class TuiCommandParser <<mapper>> {
+      ~ parse(line: String): TuiCommand
+    }
+
+    class TuiCommand {
+      - type: TuiCommandType
+      - argument: String
+      ~ TuiCommand(type: TuiCommandType, argument: String)
+      ~ type(): TuiCommandType
+      ~ argument(): String
+      ~ intArgument(): int
+    }
+
+    enum TuiCommandType {
+      HELP
+      AUTH
+      LIST_LOBBIES
+      CREATE_LOBBY
+      JOIN_LOBBY
+      QUIT_LOBBY
+      START_LOBBY
+      MOVE_TOTEM
+      CHOOSE_CARD
+      EXTRA_DRAW
+      QUIT
+    }
+
+    class TuiPayloadRenderer <<mapper>> {
+      ~ renderError(payload: ErrorPayload, lastGamePayload: GamePayload, localNickname: String): String
+      ~ renderAuthenticationResult(payload: AuthenticationResultPayload): String
+      ~ renderLobbyUpdate(payload: LobbyUpdatePayload): String
+      ~ renderLobbyList(payload: LobbyListPayload): String
+      ~ renderGame(payload: GamePayload, localNickname: String): String
+      ~ renderFinalGameResult(payload: GamePayload): String
+    }
+  }
+
+  package "gui" {
+    class GUIView <<view>> {
+      - serverProxy: ServerProxy
+      - nickname: String
+      + attachServerProxy(proxy: ServerProxy): void
+      + start(): void
+      + start(stage: Stage): void
+      + showError(payload: ErrorPayload): void
+      + showAuthenticationResult(payload: AuthenticationResultPayload): void
+      + showLobbyUpdate(payload: LobbyUpdatePayload): void
+      + showLobbyList(payload: LobbyListPayload): void
+      + showGameUpdate(payload: GamePayload): void
+    }
+  }
+}
+
+' ─── NOTES ──────────────────────────────────────────────────────────────────
+note right of VirtualServerRMI : "implements RmiClientService\n(external RMI interface)"
+note right of GUIView          : "Controls FXML-injected UI nodes\nand ~80 private render helpers."
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Entry point
+LaunchClient ..> ServerProxy : <<create>>
+LaunchClient ..> ClientView  : <<create>>
+
+' Proxy hierarchy
+ServerProxy <|.. ServerProxyTCP
+ServerProxy <|.. ServerProxyRMI
+
+' Virtual server hierarchy
+VirtualServer <|.. VirtualServerTCP
+
+' View hierarchy
+ClientView <|.. TuiView
+ClientView <|.. GUIView
+
+' Proxy ↔ VirtualServer compositions
+ServerProxyTCP *-- VirtualServerTCP : owns
+ServerProxyRMI *-- VirtualServerRMI : owns
+
+' VirtualServer → MessageRouter
+VirtualServerTCP *-- MessageRouter : owns
+VirtualServerRMI *-- MessageRouter : owns
+
+' MessageRouter → ClientView
+MessageRouter --> ClientView : routes to 
+
+' TUI internal
+TuiView *-- TuiCommandParser : owns
+TuiView *-- TuiPayloadRenderer : owns
+TuiCommandParser ..> TuiCommand : <<create>>
+TuiCommand --> TuiCommandType : uses 
+
+
+legend right
+  <b>Legenda Colori</b>
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco (gestione input/comandi) |
+  |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
+  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole di gioco o degli eventi interni |
+  |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
+  |<back:#EBF5FB>      </back> <b>Network</b> | Entrypoint di rete e stubs di comunicazione |
+  |<back:#E8F8F5>      </back> <b>VirtualView</b> | Rappresentazione virtuale del client sul server |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#FFFFFF>      </back> <b>Entity/Model</b> | Classi di dati e value objects |
+  ====
+  <b>Visibilità metodi</b>
+  ====
+  + public
+  - private
+  # protected
+  ~ package-private
+endlegend
+@enduml

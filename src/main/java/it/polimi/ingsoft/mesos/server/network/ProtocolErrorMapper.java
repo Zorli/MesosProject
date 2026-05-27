@@ -8,8 +8,6 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
  * before reaching the application/domain logic.
  */
 
-// !!!! QUesto serve per essere condiviso dalle due virtualview che in caso di eccezioni/errori di solo protocollo di connessione
-//    si comportano allo stesso modo (osservabilità identica)
 public final class ProtocolErrorMapper {
     private ProtocolErrorMapper() {
     }

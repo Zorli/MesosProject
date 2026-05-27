@@ -162,8 +162,14 @@ public final class LaunchServer {
      */
     private static Map<String, String> loadEnvironmentFile(String environmentFile) {
         Map<String, String> environment = new HashMap<>();
+        Path environmentPath = Path.of(environmentFile);
+        if (!Files.exists(environmentPath)) {
+            applyRuntimeOverrides(environment);
+            return environment;
+        }
+
         try {
-            for (String line : Files.readAllLines(Path.of(environmentFile))) {
+            for (String line : Files.readAllLines(environmentPath)) {
                 line = line.trim();
                 if (line.isBlank() || line.startsWith("#")) {
                     continue;
@@ -179,7 +185,24 @@ public final class LaunchServer {
             System.err.println("Unable to load environment file: " + environmentFile);
         }
 
+        applyRuntimeOverrides(environment);
         return environment;
+    }
+
+    private static void applyRuntimeOverrides(Map<String, String> environment) {
+        applyRuntimeOverride(environment, "MESOS_TCP_PORT");
+        applyRuntimeOverride(environment, "MESOS_RMI_PORT");
+        applyRuntimeOverride(environment, "MESOS_SERVER_RMI_HOST");
+    }
+
+    private static void applyRuntimeOverride(Map<String, String> environment, String key) {
+        String value = System.getProperty(key);
+        if (value == null || value.isBlank()) {
+            value = System.getenv(key);
+        }
+        if (value != null && !value.isBlank()) {
+            environment.put(key, value.trim());
+        }
     }
 
 }

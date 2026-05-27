@@ -1,0 +1,31 @@
+--class-path
+'/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-controls/21.0.6/javafx-controls-21.0.6.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-graphics/21.0.6/javafx-graphics-21.0.6.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-base/21.0.6/javafx-base-21.0.6.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-fxml/21.0.6/javafx-fxml-21.0.6.jar:/Users/tommasovaccari/.m2/repository/com/google/errorprone/error_prone_annotations/2.27.0/error_prone_annotations-2.27.0.jar'
+--module-path
+'/Users/tommasovaccari/Coding/projects/swe-project-mesos/mesos/target/mesos-1.0-SNAPSHOT.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-fxml/21.0.6/javafx-fxml-21.0.6-mac-aarch64.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-controls/21.0.6/javafx-controls-21.0.6-mac-aarch64.jar:/Users/tommasovaccari/.m2/repository/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar:/Users/tommasovaccari/.m2/repository/org/controlsfx/controlsfx/11.2.1/controlsfx-11.2.1.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-graphics/21.0.6/javafx-graphics-21.0.6-mac-aarch64.jar:/Users/tommasovaccari/.m2/repository/org/openjfx/javafx-base/21.0.6/javafx-base-21.0.6-mac-aarch64.jar'
+--patch-module
+it.polimi.ingsoft.mesos='/Users/tommasovaccari/Coding/projects/swe-project-mesos/mesos/src/main/java:/Users/tommasovaccari/Coding/projects/swe-project-mesos/mesos/target/generated-sources/annotations:/Users/tommasovaccari/Coding/projects/swe-project-mesos/mesos/src/main/resources'
+-encoding
+'UTF-8'
+-public
+--module-source-path
+'/Users/tommasovaccari/Coding/projects/swe-project-mesos/mesos/docs/api/apidocs/src'
+--show-packages all
+-author
+-bottom
+'Copyright &#169; 2026. All rights reserved.'
+-charset
+'UTF-8'
+-d
+'/Users/tommasovaccari/Coding/projects/swe-project-mesos/mesos/docs/api/apidocs'
+-docencoding
+'UTF-8'
+-Xdoclint:none
+-doctitle
+'mesos 1.0-SNAPSHOT API'
+-link
+'https://docs.oracle.com/en/java/javase/21/docs/api'
+-nohelp
+-use
+-version
+-windowtitle
+'mesos 1.0-SNAPSHOT API'
