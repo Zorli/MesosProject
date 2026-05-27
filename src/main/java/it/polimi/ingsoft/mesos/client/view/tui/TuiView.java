@@ -96,7 +96,7 @@ public class TuiView implements ClientView {
             throw new IllegalStateException("serverProxy must be attached before starting the TUI");
         }
 
-        this.render("Mesos TUI started. Type 'help' to list commands.");
+        this.render(this.payloadRenderer.renderWelcome());
 
         while (this.scanner.hasNextLine()) {
             String line = this.scanner.nextLine().trim();
@@ -105,6 +105,11 @@ public class TuiView implements ClientView {
                 this.renderPrompt();
                 continue;
             }
+
+            // Clear the terminal as soon as the user submits a command so any
+            // subsequent output (server update, error, help) lands on a fresh
+            // screen instead of accumulating below the previous frame.
+            this.clearScreen();
 
             if (this.handleInputLine(line)) {
                 return;
@@ -165,7 +170,7 @@ public class TuiView implements ClientView {
             }
             case QUIT -> {
                 this.serverProxy.close();
-                this.render("Client closed.");
+                this.render(this.payloadRenderer.renderFarewell());
                 return true;
             }
         }
@@ -258,40 +263,7 @@ public class TuiView implements ClientView {
     }
 
     private void renderHelp() {
-        this.render("""
-                General:
-                help
-                auth <nickname>
-                quit
-
-                Lobby:
-                list-lobbies
-                create-lobby <capacity>
-                join-lobby <lobby-id>
-                quit-lobby
-                start-lobby
-
-                Match:
-                move-totem <tile>
-                choose-card <card-id>
-                extra-draw <card-id>
-
-                Aliases:
-                exit -> quit
-                lobbies -> list-lobbies
-                create -> create-lobby
-                join -> join-lobby
-                h -> help
-                ll -> list-lobbies
-                cl -> create-lobby
-                jl -> join-lobby
-                ql -> quit-lobby
-                sl -> start-lobby
-                mt -> move-totem
-                cc -> choose-card
-                ed -> extra-draw
-                q -> quit
-                """);
+        this.render(this.payloadRenderer.renderHelp());
     }
 
 
@@ -307,6 +279,11 @@ public class TuiView implements ClientView {
 
     private void printPrompt() {
         this.out.print("> ");
+        this.out.flush();
+    }
+
+    private synchronized void clearScreen() {
+        this.out.print(TuiStyle.CLEAR_SCREEN);
         this.out.flush();
     }
 }
