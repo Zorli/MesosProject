@@ -9,94 +9,152 @@ feature aggiuntive:
 
 ## Configurazione, Compilazione e Avvio
 
-In questa sezione viene spiegato come configurare l'ambiente, compilare il progetto in un archivio JAR ed eseguirlo (sia Server che Client) da riga di comando.
+In questa sezione viene spiegato come configurare la rete, e poi come avviare server e client usando
+i JAR già compilati presenti nella cartella `deliverables`.
 
-### 1. Trovare l'indirizzo IP locale
-Se si desidera giocare in modalità multiplayer su una rete locale (LAN o hotspot), è necessario conoscere l'indirizzo IP del computer su cui gira il Server. Di seguito i comandi per trovarlo a seconda del sistema operativo:
+### 1. Recuperare gli indirizzi IP locali
+Se server e client vengono eseguiti sulla stessa macchina, si può usare `localhost`.
+Se invece si vuole giocare in rete locale, ad esempio con più computer collegati alla stessa rete Wi-Fi
+o allo stesso hotspot, bisogna recuperare:
+- l'indirizzo IP della macchina su cui viene avviato il server
+- l'indirizzo IP della macchina su cui viene avviato il client, necessario solo se si sceglie RMI
+
+Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema operativo:
 
 * **macOS**:
   ```bash
   ipconfig getifaddr en0
   ```
-  *(Se si è connessi via Wi-Fi; se connessi via cavo o altra interfaccia, verificare con `ifconfig`)*
+  Se si è connessi con una interfaccia diversa dal Wi-Fi, verificare l'indirizzo con `ifconfig`.
 * **Linux**:
   ```bash
   ip route get 1.1.1.1 | awk '{print $7}'
   ```
-  *(In alternativa, eseguire `ip a` o `hostname -I`)*
+  In alternativa, eseguire `ip a` o `hostname -I`.
 * **Windows**:
-  Eseguire nel prompt dei comandi (cmd) o PowerShell:
   ```cmd
   ipconfig
   ```
-  Cercare la voce `Indirizzo IPv4` (es. `192.168.1.XX` o `172.20.10.XX`).
+  Cercare la voce `Indirizzo IPv4`, ad esempio `192.168.1.56`.
 
 ---
 
-### 2. Configurazione di Rete (.env)
-Il progetto utilizza due file di configurazione locali nella root del progetto per mappare porte e host:
+### 2. Avvio usando parametri da terminale
+Il codice non legge argomenti posizionali passati al `main`, quindi la configurazione da terminale
+deve essere passata come proprietà Java, cioè con `-D` prima di `-jar`.
+Queste proprietà sovrascrivono i valori presenti nei file `.env`.
+
+Il server avvia sempre sia TCP che RMI, mentre il client chiede da terminale quale interfaccia usare
+e quale protocollo di rete usare.
+
+#### Server
+```bash
+java \
+  -DMESOS_TCP_PORT=12345 \
+  -DMESOS_RMI_PORT=1099 \
+  -DMESOS_SERVER_RMI_HOST=<IP_SERVER> \
+  -jar deliverables/mesos-server.jar
+```
+
+`MESOS_TCP_PORT` è la porta usata per TCP.
+`MESOS_RMI_PORT` è la porta usata dal registry RMI.
+`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce nello stub del server: se si gioca in locale
+può essere `localhost`, se invece i client sono su altre macchine deve essere l'IP locale del server.
+
+#### Client
+Per il client bisogna usare il JAR adatto al sistema operativo:
+- `mesos-client-mac-aarch64.jar` per macOS Apple Silicon
+- `mesos-client-mac-x64.jar` per macOS Intel
+- `mesos-client-linux-x64.jar` per Linux x64
+- `mesos-client-windows-x64.jar` per Windows x64
+
+Esempio:
+```bash
+java \
+  -DMESOS_SERVER_HOST=<IP_SERVER> \
+  -DMESOS_TCP_PORT=12345 \
+  -DMESOS_RMI_PORT=1099 \
+  -DMESOS_CLIENT_RMI_HOST=<IP_CLIENT> \
+  -jar deliverables/mesos-client-mac-aarch64.jar
+```
+
+`MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
+`MESOS_CLIENT_RMI_HOST` serve solo per RMI, perchè in quel caso anche il server deve poter richiamare
+il client tramite callback. Se si sceglie TCP, questo valore viene ignorato.
+
+Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, si può avviare
+il server con:
+
+```bash
+java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-server.jar
+```
+
+e il client con:
+
+```bash
+java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/mesos-client-mac-aarch64.jar
+```
+
+---
+
+### 3. Configurazione tramite file `.env`
+In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
+I file vengono cercati nella directory da cui viene lanciato il comando, quindi per usare quelli già presenti
+in `deliverables` bisogna prima spostarsi in quella cartella:
+
+```bash
+cd deliverables
+```
 
 #### Server (`server.env`)
 ```env
 MESOS_TCP_PORT=12345
 MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=localhost
+MESOS_SERVER_RMI_HOST=<IP_SERVER>
 ```
-* Se il server deve essere raggiungibile da altri dispositivi nella stessa rete, imposta `MESOS_SERVER_RMI_HOST` con l'IP locale del server trovato al punto 1 (es. `192.168.1.56`).
 
 #### Client (`client.env`)
 ```env
-MESOS_SERVER_HOST=localhost
+MESOS_SERVER_HOST=<IP_SERVER>
 MESOS_TCP_PORT=12345
 MESOS_RMI_PORT=1099
-MESOS_CLIENT_RMI_HOST=localhost
+MESOS_CLIENT_RMI_HOST=<IP_CLIENT>
 ```
-* `MESOS_SERVER_HOST`: Impostare l'IP del Server (se diverso da `localhost`).
-* `MESOS_CLIENT_RMI_HOST`: Impostare l'IP del Client locale (necessario solo per RMI a causa delle callback server-to-client).
+
+Poi si possono avviare i JAR senza passare altre proprietà:
+
+```bash
+java -jar mesos-server.jar
+```
+
+```bash
+java -jar mesos-client-mac-aarch64.jar
+```
+
+Le righe vuote, le righe che iniziano con `#` e le righe che non hanno forma `KEY=value`
+vengono ignorate. Se un valore non viene specificato, il codice usa i default: `localhost`
+per l'indirizzo del server visto dal client, porta TCP `12345` e porta RMI `1099`.
 
 ---
 
-### 3. Compilazione del progetto
-Per compilare il codice ed esportare il file JAR comprensivo di tutte le dipendenze esterne (es. JavaFX, Gson, ControlsFX) necessarie per l'esecuzione, utilizzare Maven wrapper (`mvnw`):
+### 4. Compilazione del progetto
+Se si vuole rigenerare il JAR principale del progetto, si può usare Maven wrapper:
 
 ```bash
 ./mvnw clean package dependency:copy-dependencies -DskipTests
 ```
-*Su Windows (Prompt dei comandi), usare `mvnw.cmd` o `mvn`:*
+
+Su Windows:
+
 ```cmd
 mvnw.cmd clean package dependency:copy-dependencies -DskipTests
 ```
-Questo comando genererà:
-* Il JAR principale in `target/mesos-1.0-SNAPSHOT.jar`.
-* Tutte le librerie esterne di dipendenza nella cartella `target/dependency/`.
 
----
+Questo comando genera:
+* il JAR principale in `target/mesos-1.0-SNAPSHOT.jar`
+* le dipendenze esterne nella cartella `target/dependency/`
 
-### 4. Avvio dell'Applicazione
 
-#### Esecuzione tramite file JAR
-Una volta compilato il progetto con successo, è possibile lanciare l'applicazione tramite Java sfruttando i moduli del Java Module System (`--module-path`):
-
-* **Avvio del Server**:
-  ```bash
-  java --module-path target/mesos-1.0-SNAPSHOT.jar:target/dependency --module it.polimi.ingsoft.mesos/it.polimi.ingsoft.mesos.server.LaunchServer
-  ```
-* **Avvio del Client**:
-  ```bash
-  java --module-path target/mesos-1.0-SNAPSHOT.jar:target/dependency --module it.polimi.ingsoft.mesos/it.polimi.ingsoft.mesos.client.LaunchClient
-  ```
-
-#### Esecuzione diretta tramite Maven (Sviluppo)
-In alternativa, durante la fase di sviluppo, è possibile compilare ed eseguire i moduli al volo senza generare i JAR:
-
-* **Avvio del Server**:
-  ```bash
-  ./mvnw exec:java -Dexec.mainClass="it.polimi.ingsoft.mesos.server.LaunchServer"
-  ```
-* **Avvio del Client**:
-  ```bash
-  ./mvnw exec:java
-  ```
 
 ---
 
@@ -125,7 +183,7 @@ punto di vista il Model non conosce la view, poichè viene applicato il pattern 
 ha riferimenti alla view sotto forma di interfacce listener.
 Di seguito uno schema illustrato del pattern:
 
-![MVC.png](assets/MVC.png)
+![MVC.png](assets/immages/MVC.png)
 
 L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
 1) La view contatta il controller a seguito dell'input utente
@@ -168,7 +226,7 @@ riferimento al client remoto e offre il punto unico attraverso cui inviargli not
 
 Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
-![project-architecture.png](assets/DistributedMVC.png)
+![project-architecture.png](assets/immages/DistributedMVC.png)
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
@@ -454,7 +512,7 @@ per poter avviare il client. In particolare a gestire la user interface è un og
 Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view. 
 Il modo in cui vengono mostrate le informazioni dipende dalla 
 UI scelta. Di seguito una immagine della architettura del client, che renderà più chiaro il discorso:
-![client_architecture.png](assets/client-architecture.png)
+![client_architecture.png](assets/immages/client-architecture.png)
 
 I blocchi principali dell'architettura client sono:
 - `ClientView`: è l'interfaccia che rappresenta i metodi per modificare la view del client
@@ -491,4 +549,3 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 
 ## Architettura del Server
 ### Session Registry 
-
