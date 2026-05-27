@@ -268,18 +268,16 @@ public class TuiView implements ClientView {
 
 
     private synchronized void render(String message) {
-        this.out.println();
-        this.out.println(message);
-        this.printPrompt();
-    }
-
-    private synchronized void renderPrompt() {
-        this.printPrompt();
-    }
-
-    private void printPrompt() {
+        if (message != null) {
+            this.out.println();
+            this.out.println(message);
+        }
         this.out.print("> ");
         this.out.flush();
+    }
+
+    private void renderPrompt() {
+        this.render(null);
     }
 
     private synchronized void clearScreen() {
