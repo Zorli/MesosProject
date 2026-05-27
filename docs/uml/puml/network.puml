@@ -48,102 +48,84 @@ package "Client" {
 
   together {
     interface ServerProxy {
-      <color:#1E8449>+</color> isConnected(): boolean
-      <color:#1E8449>+</color> authenticate(nickname: String): void
-      <color:#1E8449>+</color> listLobbies(): void
-      <color:#1E8449>+</color> createLobby(chosenCapacity: int): void
-      <color:#1E8449>+</color> joinLobby(lobbyId: int): void
-      <color:#1E8449>+</color> exitLobby(): void
-      <color:#1E8449>+</color> startLobby(): void
-      <color:#1E8449>+</color> moveTotem(tile: String): void
-      <color:#1E8449>+</color> chooseCard(cardId: int): void
-      <color:#1E8449>+</color> extraDraw(cardId: int): void
-      <color:#1E8449>+</color> close(): void
+      + isConnected(): boolean
+      + authenticate(nickname: String): void
+      + listLobbies(): void
+      + createLobby(chosenCapacity: int): void
+      + joinLobby(lobbyId: int): void
+      + exitLobby(): void
+      + startLobby(): void
+      + moveTotem(tile: String): void
+      + chooseCard(cardId: int): void
+      + extraDraw(cardId: int): void
+      + close(): void
     }
 
     class ServerProxyTCP <<service>> {
-      <color:#C0392B>-</color> socket: Socket
-      <color:#C0392B>-</color> writer: PrintWriter
-      <color:#C0392B>-</color> clientView: ClientView
-      <color:#C0392B>-</color> virtualServer: VirtualServerTCP
-      <color:#C0392B>-</color> virtualServerThread: Thread
-      <color:#1E8449>+</color> ServerProxyTCP(serverHost: String, port: int, clientView: ClientView)
-      <color:#1E8449>+</color> isConnected(): boolean
-      <color:#1E8449>+</color> sendPong(): void
-      <color:#1E8449>+</color> authenticate(nickname: String): void
-      <color:#1E8449>+</color> listLobbies(): void
-      <color:#1E8449>+</color> createLobby(chosenCapacity: int): void
-      <color:#1E8449>+</color> joinLobby(lobbyId: int): void
-      <color:#1E8449>+</color> exitLobby(): void
-      <color:#1E8449>+</color> startLobby(): void
-      <color:#1E8449>+</color> moveTotem(tile: String): void
-      <color:#1E8449>+</color> chooseCard(cardId: int): void
-      <color:#1E8449>+</color> extraDraw(cardId: int): void
-      <color:#1E8449>+</color> close(): void
-      <color:#1E8449>+</color> closeConnection(): void
-      <color:#C0392B>-</color> send(message: ClientMessage): void
-      <color:#C0392B>-</color> notifyLocalError(code: String, message: String): void
+      - socket: Socket
+      - clientView: ClientView
+      - virtualServer: VirtualServerTCP
+      + ServerProxyTCP(serverHost: String, port: int, clientView: ClientView)
+      + isConnected(): boolean
+      + sendPong(): void
+      + authenticate(nickname: String): void
+      + listLobbies(): void
+      + createLobby(chosenCapacity: int): void
+      + joinLobby(lobbyId: int): void
+      + exitLobby(): void
+      + startLobby(): void
+      + moveTotem(tile: String): void
+      + chooseCard(cardId: int): void
+      + extraDraw(cardId: int): void
+      + close(): void
     }
 
     class ServerProxyRMI <<service>> {
-      <color:#C0392B>-</color> serverStub: RmiServerService
-      <color:#C0392B>-</color> callbackReceiver: VirtualServerRMI
-      <color:#C0392B>-</color> connected: boolean
-      <color:#1E8449>+</color> ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView)
-      <color:#1E8449>+</color> isConnected(): boolean
-      <color:#1E8449>+</color> sendPong(): void
-      <color:#1E8449>+</color> authenticate(nickname: String): void
-      <color:#1E8449>+</color> listLobbies(): void
-      <color:#1E8449>+</color> createLobby(chosenCapacity: int): void
-      <color:#1E8449>+</color> joinLobby(lobbyId: int): void
-      <color:#1E8449>+</color> exitLobby(): void
-      <color:#1E8449>+</color> startLobby(): void
-      <color:#1E8449>+</color> moveTotem(tile: String): void
-      <color:#1E8449>+</color> chooseCard(cardId: int): void
-      <color:#1E8449>+</color> extraDraw(cardId: int): void
-      <color:#1E8449>+</color> close(): void
-      <color:#C0392B>-</color> send(message: ClientMessage): void
-      <color:#C0392B>-</color> handleDisconnection(e: RemoteException): void
-      <color:#C0392B>-</color> notifyLocalError(code: String, message: String): void
-      <color:#C0392B>-</color> ensureConnected(): boolean
+      - serverStub: RmiServerService
+      - callbackReceiver: VirtualServerRMI
+      + ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView)
+      + isConnected(): boolean
+      + sendPong(): void
+      + authenticate(nickname: String): void
+      + listLobbies(): void
+      + createLobby(chosenCapacity: int): void
+      + joinLobby(lobbyId: int): void
+      + exitLobby(): void
+      + startLobby(): void
+      + moveTotem(tile: String): void
+      + chooseCard(cardId: int): void
+      + extraDraw(cardId: int): void
+      + close(): void
     }
   }
 
   together {
     interface VirtualServer {
-      <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-      <color:#1E8449>+</color> handlePing(): void
-      <color:#1E8449>+</color> close(): void
+      + handleMessage(message: ServerMessage): void
+      + handlePing(): void
+      + close(): void
     }
 
     class VirtualServerTCP <<service>> {
-      <color:#C0392B>-</color> socket: Socket
-      <color:#C0392B>-</color> serverProxy: ServerProxyTCP
-      <color:#C0392B>-</color> closeRequestedByClient: boolean
-      <color:#C0392B>-</color> messageRouter: MessageRouter
-      <color:#1E8449>+</color> VirtualServerTCP(socket: Socket, clientView: ClientView, serverProxy: ServerProxyTCP)
-      <color:#1E8449>+</color> run(): void
-      <color:#1E8449>+</color> requestCloseByClient(): void
-      <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-      <color:#1E8449>+</color> handlePing(): void
-      <color:#1E8449>+</color> close(): void
-      <color:#C0392B>-</color> isCloseRequestedByClient(): boolean
-      <color:#C0392B>-</color> readServerMessages(reader: BufferedReader): void
-      <color:#C0392B>-</color> handleServerMessage(serializedMessage: String): void
-      <color:#C0392B>-</color> buildServerMessage(type: ServerMessageType, payload: JsonElement): ServerMessage
-      <color:#C0392B>-</color> handleError(code: String, message: String): void
-      <color:#C0392B>-</color> handleError(payload: ErrorPayload): void
+      - socket: Socket
+      - serverProxy: ServerProxyTCP
+      - messageRouter: MessageRouter
+      + VirtualServerTCP(socket: Socket, clientView: ClientView, serverProxy: ServerProxyTCP)
+      + run(): void
+      + requestCloseByClient(): void
+      + handleMessage(message: ServerMessage): void
+      + handlePing(): void
+      + close(): void
     }
 
     class VirtualServerRMI <<service>> {
-      <color:#C0392B>-</color> messageRouter: MessageRouter
-      <color:#C0392B>-</color> exported: boolean
-      <color:#C0392B>-</color> serverProxy: ServerProxyRMI
-      <color:#1E8449>+</color> VirtualServerRMI(clientView: ClientView)
-      <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-      <color:#1E8449>+</color> handlePing(): void
-      <color:#1E8449>+</color> attachServerProxy(serverProxy: ServerProxyRMI): void
-      <color:#1E8449>+</color> close(): void
+      - messageRouter: MessageRouter
+      - serverProxy: ServerProxyRMI
+      + VirtualServerRMI(clientView: ClientView)
+      + handleMessage(message: ServerMessage): void
+      + handlePing(): void
+      + attachServerProxy(serverProxy: ServerProxyRMI): void
+      + close(): void
     }
   }
 }
@@ -151,16 +133,16 @@ package "Client" {
 ' ─── SHARED (RMI INTERFACES) ───────────────────────────────────────────────
 package "Shared (RmiNetworkInterfaces)" {
   interface RmiConnectionService {
-    <color:#1E8449>+</color> connect(clientCallback: RmiClientService): RmiServerService
+    + connect(clientCallback: RmiClientService): RmiServerService
   }
   interface RmiServerService {
-    <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
-    <color:#1E8449>+</color> pong(payload: PongPayload): void
-    <color:#1E8449>+</color> closeSession(): void
+    + handleClientMessage(clientMessage: ClientMessage): void
+    + pong(payload: PongPayload): void
+    + closeSession(): void
   }
   interface RmiClientService {
-    <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-    <color:#1E8449>+</color> handlePing(): void
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
   }
 }
 
@@ -169,126 +151,107 @@ package "Server" {
 
   together {
     interface VirtualView {
-      <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
-      <color:#1E8449>+</color> pong(payload: PongPayload): void
-      <color:#1E8449>+</color> closeSession(): void
+      + handleClientMessage(clientMessage: ClientMessage): void
+      + pong(payload: PongPayload): void
+      + closeSession(): void
     }
 
     interface ClientConnection {
-      <color:#1E8449>+</color> sendPing(): void
-      <color:#1E8449>+</color> close(): void
+      + sendPing(): void
+      + close(): void
     }
 
     interface Listener {
-      <color:#1E8449>+</color> notifyUpdate(payload: Object): void
+      + notifyUpdate(payload: Object): void
     }
   }
 
   together {
     class VirtualViewTCP <<service>> {
-      <color:#C0392B>-</color> clientSocket: Socket
-      <color:#C0392B>-</color> serverController: ServerController
-      <color:#C0392B>-</color> out: PrintStream
-      <color:#C0392B>-</color> writer: PrintWriter
-      <color:#C0392B>-</color> sessionId: String
-      <color:#C0392B>-</color> router: MessageRouter
-      <color:#C0392B>-</color> commandHandler: ClientCommandHandler
-      <color:#C0392B>-</color> cleanupDone: boolean
-      <color:#1E8449>+</color> VirtualViewTCP(clientSocket: Socket, serverController: ServerController, router: MessageRouter)
-      <color:#1E8449>+</color> run(): void
-      <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
-      <color:#1E8449>+</color> pong(payload: PongPayload): void
-      <color:#1E8449>+</color> closeSession(): void
-      <color:#1E8449>+</color> sendPing(): void
-      <color:#1E8449>+</color> notifyUpdate(payload: Object): void
-      <color:#1E8449>+</color> close(): void
-      <color:#1E8449>+</color> describeSession(): String
-      <color:#C0392B>-</color> sendServerMessage(message: ServerMessage): void
-      <color:#C0392B>-</color> sendError(exception: RuntimeException): void
+      - clientSocket: Socket
+      - serverController: ServerController
+      - sessionId: String
+      - router: MessageRouter
+      - commandHandler: ClientCommandHandler
+      + VirtualViewTCP(clientSocket: Socket, serverController: ServerController, router: MessageRouter)
+      + run(): void
+      + handleClientMessage(clientMessage: ClientMessage): void
+      + pong(payload: PongPayload): void
+      + closeSession(): void
+      + sendPing(): void
+      + notifyUpdate(payload: Object): void
+      + close(): void
     }
 
     class VirtualViewRMI <<service>> {
-      <color:#C0392B>-</color> serverController: ServerController
-      <color:#C0392B>-</color> clientCallback: RmiClientService
-      <color:#C0392B>-</color> sessionId: String
-      <color:#C0392B>-</color> router: MessageRouter
-      <color:#C0392B>-</color> out: PrintStream
-      <color:#C0392B>-</color> cleanupDone: boolean
-      <color:#1E8449>+</color> VirtualViewRMI(serverController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
-      <color:#1E8449>+</color> handleClientMessage(clientMessage: ClientMessage): void
-      <color:#1E8449>+</color> pong(payload: PongPayload): void
-      <color:#1E8449>+</color> closeSession(): void
-      <color:#1E8449>+</color> sendPing(): void
-      <color:#1E8449>+</color> notifyUpdate(payload: Object): void
-      <color:#1E8449>+</color> close(): void
-      <color:#C0392B>-</color> sendError(exception: RuntimeException): void
-      <color:#C0392B>-</color> describePayload(payload: ClientPayload): String
-      <color:#C0392B>-</color> describeSession(): String
+      - serverController: ServerController
+      - clientCallback: RmiClientService
+      - sessionId: String
+      - router: MessageRouter
+      + VirtualViewRMI(serverController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
+      + handleClientMessage(clientMessage: ClientMessage): void
+      + pong(payload: PongPayload): void
+      + closeSession(): void
+      + sendPing(): void
+      + notifyUpdate(payload: Object): void
+      + close(): void
     }
   }
 
   ' Entry points (TCP + RMI)
   together {
     class ConnectionAcceptor <<service>> {
-      <color:#C0392B>-</color> port: int
-      <color:#C0392B>-</color> serverController: ServerController
-      <color:#C0392B>-</color> serverSocket: ServerSocket
-      <color:#C0392B>-</color> router: MessageRouter
-      <color:#C0392B>-</color> running: boolean
-      <color:#1E8449>+</color> ConnectionAcceptor(port: int, serverController: ServerController, router: MessageRouter)
-      <color:#1E8449>+</color> start(): void
-      <color:#1E8449>+</color> run(): void
-      <color:#1E8449>+</color> getPort(): int
+      - port: int
+      - serverController: ServerController
+      - router: MessageRouter
+      + ConnectionAcceptor(port: int, serverController: ServerController, router: MessageRouter)
+      + start(): void
+      + run(): void
     }
 
     class RmiConnectionEntryPoint <<service>> {
-      <color:#C0392B>-</color> serverController: ServerController
-      <color:#C0392B>-</color> router: MessageRouter
-      <color:#1E8449>+</color> RmiConnectionEntryPoint(serverController: ServerController, router: MessageRouter)
-      <color:#1E8449>+</color> connect(clientCallback: RmiClientService): RmiServerService
+      - serverController: ServerController
+      - router: MessageRouter
+      + RmiConnectionEntryPoint(serverController: ServerController, router: MessageRouter)
+      + connect(clientCallback: RmiClientService): RmiServerService
     }
   }
 
   ' Message processing / routing
   together {
     class ClientCommandHandler <<handler>> {
-      <color:#C0392B>-</color> out: PrintStream
-      <color:#C0392B>-</color> virtualView: VirtualViewTCP
-      <color:#1E8449>+</color> ClientCommandHandler(out: PrintStream, virtualView: VirtualViewTCP)
-      <color:#1E8449>+</color> handle(rawMessage: String): void
-      <color:#C0392B>-</color> deserializePayload(type: ClientMessageType, payloadElement: JsonElement): ClientPayload
+      - virtualView: VirtualViewTCP
+      + ClientCommandHandler(out: PrintStream, virtualView: VirtualViewTCP)
+      + handle(rawMessage: String): void
     }
 
     class MessageRouter <<service>> {
-      <color:#C0392B>-</color> registry: ServerSessionRegistry
-      <color:#C0392B>-</color> serverController: ServerController
-      <color:#1E8449>+</color> MessageRouter(registry: ServerSessionRegistry, serverController: ServerController)
-      <color:#1E8449>+</color> routeMessage(sessionId: String, payload: ClientPayload): void
+      - registry: ServerSessionRegistry
+      - serverController: ServerController
+      + MessageRouter(registry: ServerSessionRegistry, serverController: ServerController)
+      + routeMessage(sessionId: String, payload: ClientPayload): void
     }
 
     class ProtocolErrorMapper <<mapper>> {
-      <color:#C0392B>-</color> ProtocolErrorMapper()
-      <color:#1E8449>+</color> {static} toErrorPayload(exception: RuntimeException): ErrorPayload
+      + {static} toErrorPayload(exception: RuntimeException): ErrorPayload
     }
 
     class ServerConnectionLifecycle <<service>> {
-      <color:#C0392B>-</color> sessions: ServerSessionRegistry
-      <color:#C0392B>-</color> serverModel: ServerModel
-      <color:#1E8449>+</color> ServerConnectionLifecycle(sessions: ServerSessionRegistry, serverModel: ServerModel)
-      <color:#1E8449>+</color> registerConnection(connection: ClientConnection): String
-      <color:#1E8449>+</color> recordPong(sessionId: String): void
-      <color:#1E8449>+</color> disconnectSession(sessionId: String): void
-      <color:#1E8449>+</color> handleConnectionTimeout(sessionId: String): void
+      - sessions: ServerSessionRegistry
+      - serverModel: ServerModel
+      + ServerConnectionLifecycle(sessions: ServerSessionRegistry, serverModel: ServerModel)
+      + registerConnection(connection: ClientConnection): String
+      + recordPong(sessionId: String): void
+      + disconnectSession(sessionId: String): void
+      + handleConnectionTimeout(sessionId: String): void
     }
 
     class PingPongRoutine <<service>> {
-      <color:#C0392B>-</color> sessions: ServerSessionRegistry
-      <color:#C0392B>-</color> connectionLifecycle: ServerConnectionLifecycle
-      <color:#C0392B>-</color> scheduler: ScheduledExecutorService
-      <color:#1E8449>+</color> PingPongRoutine(sessions: ServerSessionRegistry, connectionLifecycle: ServerConnectionLifecycle)
-      <color:#1E8449>+</color> start(): void
-      <color:#1E8449>+</color> stop(): void
-      <color:#C0392B>-</color> tick(): void
+      - sessions: ServerSessionRegistry
+      - connectionLifecycle: ServerConnectionLifecycle
+      + PingPongRoutine(sessions: ServerSessionRegistry, connectionLifecycle: ServerConnectionLifecycle)
+      + start(): void
+      + stop(): void
     }
   }
 }
@@ -349,9 +312,9 @@ legend right
   ====
   <b>Visibilità metodi</b>
   ====
-  <color:#1E8449>+</color> public
-  <color:#C0392B>-</color> private
-  <color:#E67E22>#</color> protected
-  <color:#1F618D>~</color> package-private
+  + public
+  - private
+  # protected
+  ~ package-private
 endlegend
 @enduml

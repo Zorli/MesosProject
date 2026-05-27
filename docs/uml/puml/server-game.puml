@@ -79,215 +79,127 @@ package "shared" <<dep>> {
 
 ' ─── CONTROLLER ────────────────────────────────────────────────────────────
 class GameController <<controller>> {
-  <color:#C0392B>-</color> game: Game
-  <color:#C0392B>-</color> players: List<Player>
-  <color:#C0392B>-</color> hostNickname: String
-  <color:#C0392B>-</color> sessions: ServerSessionRegistry
-  <color:#C0392B>-</color> commandQueue: BlockingQueue<QueuedCommand>
-  <color:#C0392B>-</color> lastPlayerTimer: Timer
-  <color:#C0392B>-</color> lastPlayerTimerTask: TimerTask
-  <color:#C0392B>-</color> {static} LAST_PLAYER_TIMEOUT_MILLIS: long
-  <color:#C0392B>-</color> closingLock: Object
-  <color:#C0392B>-</color> closing: boolean
-  <color:#1E8449>+</color> GameController(game: Game, hostNickname: String, sessions: ServerSessionRegistry)
-  <color:#1E8449>+</color> getGame(): Game
-  <color:#1E8449>+</color> getPlayers(): List<Player>
-  <color:#1E8449>+</color> isClosing(): boolean
-  <color:#1E8449>+</color> enqueueMessage(cmd: QueuedCommand): void
-  <color:#1E8449>+</color> run(): void
-  <color:#1E8449>+</color> setupMatch(): void
-  <color:#C0392B>-</color> moveTotem(player: Player, tile: String): void
-  <color:#C0392B>-</color> chooseCard(player: Player, cardId: int): void
-  <color:#C0392B>-</color> extraDrawn(player: Player, cardId: int): void
-  <color:#C0392B>-</color> closeGame(): void
-  <color:#C0392B>-</color> resolvePlayer(nickname: String): Player
-  <color:#C0392B>-</color> resolvePlayerBySession(sessionId: String): Player
-  <color:#C0392B>-</color> disconnectedPlayer(cmd: SystemDisconnectCommand): void
-  <color:#C0392B>-</color> reConnectedPlayer(sessionId: String): void
-  <color:#C0392B>-</color> checkGameEndAndCleanup(): void
-  <color:#C0392B>-</color> teardownGame(): void
-  <color:#C0392B>-</color> startLastPlayerTimer(): void
-  <color:#C0392B>-</color> cancelLastPlayerTimer(): void
-  <color:#C0392B>-</color> reportPhaseError(sessionId: String): void
-  <color:#C0392B>-</color> setClosing(closing: boolean): void
+  - game: Game
+  - players: List<Player>
+  - hostNickname: String
+  - sessions: ServerSessionRegistry
+  + GameController(game: Game, hostNickname: String, sessions: ServerSessionRegistry)
+  + getGame(): Game
+  + getPlayers(): List<Player>
+  + isClosing(): boolean
+  + enqueueMessage(cmd: QueuedCommand): void
+  + run(): void
+  + setupMatch(): void
 }
 
 ' ─── GAME CORE ─────────────────────────────────────────────────────────────
 package "game-core" {
 
   class Game <<model>> {
-    <color:#C0392B>-</color> id: int
-    <color:#C0392B>-</color> players: List<Player>
-    <color:#C0392B>-</color> currentEra: Era
-    <color:#C0392B>-</color> status: GameStatus
-    <color:#C0392B>-</color> stateVersion: long
-    <color:#C0392B>-</color> board: Board
-    <color:#C0392B>-</color> roundFlow: RoundFlow
-    <color:#C0392B>-</color> playerDraftState: PlayerDraftState
-    <color:#C0392B>-</color> listeners: List<Listener>
-    <color:#C0392B>-</color> connectedPlayers: Map<Player, Boolean>
-    <color:#C0392B>-</color> actionExecutor: GameActionExecutor
-    <color:#C0392B>-</color> totemPlacementHandler: TotemPlacementHandler
-    <color:#C0392B>-</color> cardDraftHandler: CardDraftHandler
-    <color:#C0392B>-</color> passiveRoundPhaseHandler: PassiveRoundPhaseHandler
-    <color:#1E8449>+</color> Game(id: int, players: List<Player>, board: Board)
-    <color:#1E8449>+</color> disconnectedPlayer(player: Player): void
-    <color:#1E8449>+</color> reconnectedPlayer(player: Player): void
-    <color:#1E8449>+</color> getId(): int
-    <color:#1E8449>+</color> getConnectedPlayers(): Map<Player, Boolean>
-    <color:#1E8449>+</color> getPlayers(): List<Player>
-    <color:#1E8449>+</color> getCurrentEra(): Era
-    <color:#1E8449>+</color> getStatus(): GameStatus
-    <color:#1E8449>+</color> getStateVersion(): long
-    <color:#1E8449>+</color> getBoard(): Board
-    <color:#1E8449>+</color> getRoundFlow(): RoundFlow
-    <color:#1E8449>+</color> getPlayerDraftState(): PlayerDraftState
-    <color:#1E8449>+</color> addListener(listener: Listener): void
-    <color:#1E8449>+</color> removeListener(listener: Listener): void
-    <color:#1E8449>+</color> notifyError(code: String, message: String): void
-    <color:#1E8449>+</color> reportPhaseError(target: Listener): void
-    <color:#1E8449>+</color> setup(): void
-    <color:#1E8449>+</color> moveTotem(player: Player, tileCode: String): void
-    <color:#1E8449>+</color> chooseCard(player: Player, cardId: int): void
-    <color:#1E8449>+</color> extraDrawn(player: Player, cardId: int): void
-    <color:#1E8449>+</color> buildPayload(): Object
-    <color:#1E8449>+</color> notifyListeners(payload: Object): void
-    <color:#1E8449>+</color> closeGame(): void
-    <color:#1E8449>+</color> getStartTimer(): Boolean
-    <color:#1F618D>~</color> markStateChanged(): void
-    <color:#1F618D>~</color> advanceEra(): void
-    <color:#1F618D>~</color> finishGame(): void
-    <color:#C0392B>-</color> setupInternal(): void
-    <color:#C0392B>-</color> applyInitialBenefit(): void
-    <color:#C0392B>-</color> connectedPlayersInOrder(): List<Player>
-    <color:#C0392B>-</color> onlyOneConnected(): void
-    <color:#C0392B>-</color> calculateInitialFood(playerIndex: int): int
-    <color:#1E8449>+</color> setStatus(status: GameStatus): void
+    - id: int
+    - players: List<Player>
+    - currentEra: Era
+    - status: GameStatus
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    - actionExecutor: GameActionExecutor
+    - totemPlacementHandler: TotemPlacementHandler
+    - cardDraftHandler: CardDraftHandler
+    - passiveRoundPhaseHandler: PassiveRoundPhaseHandler
+    + Game(id: int, players: List<Player>, board: Board)
+    + disconnectedPlayer(player: Player): void
+    + reconnectedPlayer(player: Player): void
+    + getId(): int
+    + getPlayers(): List<Player>
+    + getCurrentEra(): Era
+    + getStatus(): GameStatus
+    + getBoard(): Board
+    + getRoundFlow(): RoundFlow
+    + getPlayerDraftState(): PlayerDraftState
+    + addListener(listener: Listener): void
+    + removeListener(listener: Listener): void
+    + setup(): void
+    + moveTotem(player: Player, tileCode: String): void
+    + chooseCard(player: Player, cardId: int): void
+    + extraDrawn(player: Player, cardId: int): void
+    + buildPayload(): Object
+    + closeGame(): void
   }
 
   class GameActionExecutor <<handler>> {
-    <color:#C0392B>-</color> game: Game
-    <color:#1E8449>+</color> GameActionExecutor(game: Game)
-    <color:#1E8449>+</color> execute(action: Runnable): void
-    <color:#C0392B>-</color> notifyPayloadIfStateChanged(prevVersion: long): void
+    - game: Game
+    + GameActionExecutor(game: Game)
+    + execute(action: Runnable): void
   }
 
   class CardDraftHandler <<handler>> {
-    <color:#C0392B>-</color> game: Game
-    <color:#C0392B>-</color> board: Board
-    <color:#C0392B>-</color> roundFlow: RoundFlow
-    <color:#C0392B>-</color> playerDraftState: PlayerDraftState
-    <color:#1E8449>+</color> CardDraftHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
-    <color:#1E8449>+</color> chooseCard(player: Player, cardId: int): void
-    <color:#1E8449>+</color> extraDrawn(player: Player, cardId: int): void
-    <color:#1E8449>+</color> handlePlayerDisconnection(player: Player): void
-    <color:#1E8449>+</color> handleExtraDrawPlayerDisconnection(player: Player): void
-    <color:#C0392B>-</color> validateChooseCardRequest(player: Player): void
-    <color:#C0392B>-</color> validateExtraDrawRequest(player: Player): void
-    <color:#C0392B>-</color> startCardSelectionIfNeeded(player: Player): void
-    <color:#C0392B>-</color> validateAndRemoveChosenCard(player: Player, card: Card): CardRow
-    <color:#C0392B>-</color> validateAndRemoveExtraDrawCard(player: Player, card: Card): void
-    <color:#C0392B>-</color> validateUpperRowChoice(player: Player, row: CardRow): void
-    <color:#C0392B>-</color> validateLowerRowChoice(player: Player, row: CardRow): void
-    <color:#C0392B>-</color> applyChosenCardToPlayer(player: Player, card: Card): void
-    <color:#C0392B>-</color> completeCurrentPlayerDrawTurn(player: Player): void
-    <color:#C0392B>-</color> advanceToNextDrawablePlayerOrEndStandardDraft(): void
-    <color:#C0392B>-</color> skipPlayerWithoutUsefulDraw(player: Player): void
-    <color:#C0392B>-</color> skipDisconnectedPlayer(player: Player): void
-    <color:#C0392B>-</color> transitionAfterStandardDraft(): void
-    <color:#C0392B>-</color> findExtraDrawPlayer(order: List<Player>): Player
-    <color:#C0392B>-</color> canPerformUsefulExtraDraw(player: Player): boolean
-    <color:#C0392B>-</color> hasAnyAvailableDraw(player: Player): boolean
-    <color:#C0392B>-</color> hasAvailableUpperDraw(player: Player): boolean
-    <color:#C0392B>-</color> hasAvailableLowerDraw(player: Player): boolean
-    <color:#C0392B>-</color> hasAnyDraftableUpperCard(player: Player): boolean
-    <color:#C0392B>-</color> goToResolvingEffects(): void
+    - game: Game
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    + CardDraftHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
+    + chooseCard(player: Player, cardId: int): void
+    + extraDrawn(player: Player, cardId: int): void
+    + handlePlayerDisconnection(player: Player): void
+    + handleExtraDrawPlayerDisconnection(player: Player): void
   }
 
   class TotemPlacementHandler <<handler>> {
-    <color:#C0392B>-</color> game: Game
-    <color:#C0392B>-</color> board: Board
-    <color:#C0392B>-</color> roundFlow: RoundFlow
-    <color:#C0392B>-</color> playerDraftState: PlayerDraftState
-    <color:#1E8449>+</color> TotemPlacementHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
-    <color:#1E8449>+</color> moveTotem(player: Player, tileCode: String): void
-    <color:#1E8449>+</color> handlePlayerDisconnection(player: Player): void
-    <color:#C0392B>-</color> validateMoveTotemRequest(player: Player, tileCode: String): void
-    <color:#C0392B>-</color> placeTotemAndRegisterDrawQuota(player: Player, tileCode: String): void
-    <color:#C0392B>-</color> advanceAfterTotemPlacement(): void
-    <color:#C0392B>-</color> startPlayerDrawPhase(): void
+    - game: Game
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    + TotemPlacementHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
+    + moveTotem(player: Player, tileCode: String): void
+    + handlePlayerDisconnection(player: Player): void
   }
 
   class PassiveRoundPhaseHandler <<handler>> {
-    <color:#C0392B>-</color> {static} FINAL_ROUND_NUMBER: int
-    <color:#C0392B>-</color> game: Game
-    <color:#C0392B>-</color> board: Board
-    <color:#C0392B>-</color> roundFlow: RoundFlow
-    <color:#C0392B>-</color> playerDraftState: PlayerDraftState
-    <color:#1E8449>+</color> PassiveRoundPhaseHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
-    <color:#1E8449>+</color> advancePassivePhases(): void
-    <color:#C0392B>-</color> resolveEffects(): void
-    <color:#C0392B>-</color> resetBoardForNextRound(): void
-    <color:#C0392B>-</color> calculateFinalScore(): void
-    <color:#C0392B>-</color> applyFinalBuildingScore(player: Player): void
-    <color:#C0392B>-</color> applyFinalBuilderBonus(player: Player): void
-    <color:#C0392B>-</color> applyFinalArtistBonus(player: Player): void
-    <color:#C0392B>-</color> applyFinalInventorBonus(player: Player): void
+    - game: Game
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    + PassiveRoundPhaseHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
+    + advancePassivePhases(): void
   }
 
   class RoundFlow <<model>> {
-    <color:#C0392B>-</color> currentPhaseOrder: List<Player>
-    <color:#C0392B>-</color> currentPlayerIndex: int
-    <color:#C0392B>-</color> roundNumber: int
-    <color:#C0392B>-</color> currentRoundPhase: RoundPhase
-    <color:#1E8449>+</color> RoundFlow()
-    <color:#1E8449>+</color> getCurrentPlayer(): Player
-    <color:#1E8449>+</color> getRoundNumber(): int
-    <color:#1E8449>+</color> getCurrentRoundPhase(): RoundPhase
-    <color:#1E8449>+</color> getCurrentPhaseOrder(): List<Player>
-    <color:#1E8449>+</color> getCurrentPlayerIndex(): int
-    <color:#1E8449>+</color> setCurrentPhaseOrder(newOrder: List<Player>): void
-    <color:#1E8449>+</color> setCurrentRoundPhase(currentRoundPhase: RoundPhase): void
-    <color:#1E8449>+</color> advanceToNextPlayer(): void
-    <color:#1E8449>+</color> isLastPlayer(): boolean
-    <color:#1E8449>+</color> advanceRoundNumber(): void
-    <color:#C0392B>-</color> validateCurrentPhaseOrder(currentPhaseOrder: List<Player>): void
-    <color:#C0392B>-</color> validateCurrentPlayerIndex(currentPhaseOrder: List<Player>, currentPlayerIndex: int): void
-    <color:#C0392B>-</color> ensureCurrentPhaseOrderInitialized(): void
+    - currentPhaseOrder: List<Player>
+    - currentPlayerIndex: int
+    - roundNumber: int
+    - currentRoundPhase: RoundPhase
+    + RoundFlow()
+    + getCurrentPlayer(): Player
+    + getRoundNumber(): int
+    + getCurrentRoundPhase(): RoundPhase
+    + setCurrentPhaseOrder(newOrder: List<Player>): void
+    + setCurrentRoundPhase(currentRoundPhase: RoundPhase): void
+    + advanceToNextPlayer(): void
+    + isLastPlayer(): boolean
+    + advanceRoundNumber(): void
   }
 
   class PlayerDraftState <<model>> {
-    <color:#C0392B>-</color> phase: DraftTurnState
-    <color:#C0392B>-</color> remainingUpperChoicesByPlayer: Map<Player, Integer>
-    <color:#C0392B>-</color> remainingLowerChoicesByPlayer: Map<Player, Integer>
-    <color:#1E8449>+</color> PlayerDraftState()
-    <color:#1E8449>+</color> getPhase(): DraftTurnState
-    <color:#1E8449>+</color> getRemainingUpperChoices(player: Player): int
-    <color:#1E8449>+</color> getRemainingLowerChoices(player: Player): int
-    <color:#1E8449>+</color> getRemainingUpperChoicesByPlayer(): Map<Player, Integer>
-    <color:#1E8449>+</color> getRemainingLowerChoicesByPlayer(): Map<Player, Integer>
-    <color:#1E8449>+</color> registerDrawQuota(player: Player, upper: int, lower: int): void
-    <color:#1E8449>+</color> startCardSelection(player: Player): void
-    <color:#1E8449>+</color> isWaitingForCardSelection(): boolean
-    <color:#1E8449>+</color> isTurnCompleted(): boolean
-    <color:#1E8449>+</color> hasRemainingChoices(player: Player): boolean
-    <color:#1E8449>+</color> canChooseFromUpperRow(player: Player): boolean
-    <color:#1E8449>+</color> canChooseFromLowerRow(player: Player): boolean
-    <color:#1E8449>+</color> consumeChoice(player: Player, row: CardRow): void
-    <color:#1E8449>+</color> resetForNewRound(): void
-    <color:#1E8449>+</color> resetForNextPlayer(player: Player): void
-    <color:#C0392B>-</color> consumeUpperChoice(player: Player): void
-    <color:#C0392B>-</color> consumeLowerChoice(player: Player): void
-    <color:#C0392B>-</color> hasRegisteredQuota(player: Player): boolean
-    <color:#C0392B>-</color> validatePlayer(player: Player): void
+    - phase: DraftTurnState
+    - remainingUpperChoicesByPlayer: Map<Player, Integer>
+    - remainingLowerChoicesByPlayer: Map<Player, Integer>
+    + PlayerDraftState()
+    + getPhase(): DraftTurnState
+    + registerDrawQuota(player: Player, upper: int, lower: int): void
+    + startCardSelection(player: Player): void
+    + isWaitingForCardSelection(): boolean
+    + isTurnCompleted(): boolean
+    + canChooseFromUpperRow(player: Player): boolean
+    + canChooseFromLowerRow(player: Player): boolean
+    + consumeChoice(player: Player, row: CardRow): void
+    + resetForNewRound(): void
+    + resetForNextPlayer(player: Player): void
   }
 
   class GamePayloadMapper <<mapper>> {
-    <color:#1F618D>~</color> {static} from(game: Game): GamePayload
-    <color:#1F618D>~</color> {static} toErrorPayload(code: String, message: String): ErrorPayload
-    <color:#C0392B>-</color> {static} toTurnOrderPayload(roundFlow: RoundFlow): TurnOrderPayload
-    <color:#C0392B>-</color> {static} toPlayerPayloads(players: List<Player>, game: Game): List<PlayerPayload>
-    <color:#C0392B>-</color> {static} toBoardPayload(board: Board): BoardPayload
+    ~ {static} from(game: Game): GamePayload
+    ~ {static} toErrorPayload(code: String, message: String): ErrorPayload
   }
 }
 note right of GamePayloadMapper : "package-private final class.\nAll methods are static."
@@ -295,130 +207,87 @@ note right of GamePayloadMapper : "package-private final class.\nAll methods are
 ' ─── PLAYER ────────────────────────────────────────────────────────────────
 package "player" {
   class Player <<model>> {
-    <color:#C0392B>-</color> nickname: String
-    <color:#C0392B>-</color> food: int
-    <color:#C0392B>-</color> prestigePoints: int
-    <color:#C0392B>-</color> totem: TotemColor
-    <color:#C0392B>-</color> tribe: Tribe
-    <color:#1E8449>+</color> Player(nickname: String, food: int, prestigePoints: int, totemColor: TotemColor)
-    <color:#1E8449>+</color> Player(nickname: String, food: int, prestigePoints: int, totemColor: TotemColor, tribe: Tribe)
-    <color:#1E8449>+</color> getNickname(): String
-    <color:#1E8449>+</color> gainFood(amount: int): void
-    <color:#1E8449>+</color> payFood(amount: int): void
-    <color:#1E8449>+</color> gainPrestigePoints(amount: int): void
-    <color:#1E8449>+</color> payPrestigePoints(amount: int): void
-    <color:#1E8449>+</color> getFood(): int
-    <color:#1E8449>+</color> getPrestigePoints(): int
-    <color:#1E8449>+</color> getTotem(): TotemColor
-    <color:#1E8449>+</color> getTribe(): Tribe
-    <color:#1E8449>+</color> initializeGameAttributes(): void
-    <color:#1E8449>+</color> getBuildingFoodDiscount(): int
+    - nickname: String
+    - food: int
+    - prestigePoints: int
+    - totem: TotemColor
+    - tribe: Tribe
+    + Player(nickname: String, food: int, prestigePoints: int, totemColor: TotemColor)
+    + Player(nickname: String, food: int, prestigePoints: int, totemColor: TotemColor, tribe: Tribe)
+    + getNickname(): String
+    + gainFood(amount: int): void
+    + payFood(amount: int): void
+    + gainPrestigePoints(amount: int): void
+    + payPrestigePoints(amount: int): void
+    + getFood(): int
+    + getPrestigePoints(): int
+    + getTotem(): TotemColor
+    + getTribe(): Tribe
+    + initializeGameAttributes(): void
+    + getBuildingFoodDiscount(): int
   }
 
   class Tribe <<model>> {
-    <color:#C0392B>-</color> characters: ArrayList<CharacterCard>
-    <color:#C0392B>-</color> buildings: ArrayList<BuildingCard>
-    <color:#1E8449>+</color> Tribe()
-    <color:#1E8449>+</color> Tribe(characters: List<CharacterCard>, buildings: List<BuildingCard>)
-    <color:#1E8449>+</color> addCharacter(c: CharacterCard): void
-    <color:#1E8449>+</color> addCharacter(c: CharacterCard, player: Player): void
-    <color:#1E8449>+</color> addBuilding(b: BuildingCard): void
-    <color:#1E8449>+</color> countHunters(): int
-    <color:#1E8449>+</color> countArtists(): int
-    <color:#1E8449>+</color> countGatherers(): int
-    <color:#1E8449>+</color> getShamansStars(): int
-    <color:#1E8449>+</color> getCharactersSize(): int
-    <color:#1E8449>+</color> getPrestigePointsForArtistsInFinalPhase(): int
-    <color:#1E8449>+</color> getPrestigePointsForInventorsInFinalPhase(): int
-    <color:#1E8449>+</color> getPrestigePointsForBuilderInFinalPhase(): int
-    <color:#1E8449>+</color> getTotalFoodDiscountFromBuilders(): int
-    <color:#1E8449>+</color> hasBuildingForShamanRitualProtection(): boolean
-    <color:#1E8449>+</color> hasBuildingForEndOfTurnFood(): boolean
-    <color:#1E8449>+</color> hasEndRoundExtraCardBuilding(): boolean
-    <color:#1E8449>+</color> hasWinMultiplier(): boolean
-    <color:#1E8449>+</color> getBuildings(): List<BuildingCard>
-    <color:#1E8449>+</color> getCharacters(): List<CharacterCard>
-    <color:#C0392B>-</color> hasBuildingWithBenefit(benefitType: BenefitType): boolean
-    <color:#C0392B>-</color> notifyHunterDraw(character: CharacterCard, player: Player): void
-    <color:#C0392B>-</color> notifyPostDrawBuildings(character: CharacterCard, player: Player): void
+    - characters: ArrayList<CharacterCard>
+    - buildings: ArrayList<BuildingCard>
+    + Tribe()
+    + Tribe(characters: List<CharacterCard>, buildings: List<BuildingCard>)
+    + addCharacter(c: CharacterCard): void
+    + addCharacter(c: CharacterCard, player: Player): void
+    + addBuilding(b: BuildingCard): void
+    + countHunters(): int
+    + countArtists(): int
+    + countGatherers(): int
+    + getShamansStars(): int
+    + getBuildings(): List<BuildingCard>
+    + getCharacters(): List<CharacterCard>
   }
 }
 
 ' ─── BOARD ─────────────────────────────────────────────────────────────────
 package "board" {
   class Board <<model>> {
-    <color:#C0392B>-</color> upperPile: UpperPile
-    <color:#C0392B>-</color> lowerPile: LowerPile
-    <color:#C0392B>-</color> offerPath: OfferPath
-    <color:#C0392B>-</color> tribeDeck: TribeDeck
-    <color:#C0392B>-</color> buildingDeck: BuildingDeck
-    <color:#C0392B>-</color> players: List<Player>
-    <color:#C0392B>-</color> numPlayer: int
-    <color:#1E8449>+</color> Board(tribeDeck: TribeDeck, buildingDeck: BuildingDeck, players: List<Player>)
-    <color:#1E8449>+</color> setupInitialRows(): void
-    <color:#1E8449>+</color> buildOfferPath(): void
-    <color:#1E8449>+</color> resolveLowerEvents(): void
-    <color:#1E8449>+</color> resolveAllEvents(): void
-    <color:#1E8449>+</color> resolveEventA(): void
-    <color:#1E8449>+</color> returnPlayerToStartingTile(player: Player): void
-    <color:#1E8449>+</color> movePlayerToLastStartingTile(player: Player): void
-    <color:#1E8449>+</color> resetBoardAfterRound(era: Era): boolean
-    <color:#1E8449>+</color> isSpaceAvailable(code: String): boolean
-    <color:#1E8449>+</color> placePlayerOnOfferSpace(player: Player, code: String): void
-    <color:#1E8449>+</color> getResolutionOrder(): List<Player>
-    <color:#1E8449>+</color> getNextRoundTurnOrder(): List<Player>
-    <color:#1E8449>+</color> shiftToLastStartingTile(): void
-    <color:#1E8449>+</color> returnNumberDrawableCard(player: Player): int[]
-    <color:#1E8449>+</color> getDraftableUpperCards(player: Player): List<Card>
-    <color:#1E8449>+</color> getDraftableLowerCards(player: Player): List<Card>
-    <color:#1E8449>+</color> getCardRow(card: Card): CardRow
-    <color:#1E8449>+</color> canPlayerDrawCard(player: Player, card: Card): boolean
-    <color:#1E8449>+</color> removeUpperCard(card: Card): void
-    <color:#1E8449>+</color> removeLowerCard(card: Card): void
-    <color:#1E8449>+</color> getUpperRowCards(): List<Card>
-    <color:#1E8449>+</color> getLowerRowCards(): List<Card>
-    <color:#1E8449>+</color> getAvailableOfferSpaces(): List<OfferSpace>
-    <color:#1E8449>+</color> getOfferSpaces(): List<OfferSpace>
-    <color:#1E8449>+</color> getStartingBlocks(): List<StartingBlock>
-    <color:#1E8449>+</color> getRemainingTribeDeckCards(): List<Card>
-    <color:#1E8449>+</color> getRemainingBuildingDeckCards(): List<Card>
-    <color:#1E8449>+</color> findCardById(cardId: int): Card
-    <color:#C0392B>-</color> shiftUpperToLower(): void
-    <color:#C0392B>-</color> moveUpperBuildingCardsToLowerRow(): void
-    <color:#C0392B>-</color> refillUpperTribeCards(era: Era): boolean
-    <color:#C0392B>-</color> refillUpperBuildingCards(newEra: Era): void
-    <color:#C0392B>-</color> getBuildingCountForEra(era: Era): int
+    - upperPile: UpperPile
+    - lowerPile: LowerPile
+    - offerPath: OfferPath
+    - tribeDeck: TribeDeck
+    - buildingDeck: BuildingDeck
+    - players: List<Player>
+    + Board(tribeDeck: TribeDeck, buildingDeck: BuildingDeck, players: List<Player>)
+    + setupInitialRows(): void
+    + buildOfferPath(): void
+    + resolveAllEvents(): void
+    + resetBoardAfterRound(era: Era): boolean
+    + isSpaceAvailable(code: String): boolean
+    + placePlayerOnOfferSpace(player: Player, code: String): void
+    + getResolutionOrder(): List<Player>
+    + getNextRoundTurnOrder(): List<Player>
+    + getDraftableUpperCards(player: Player): List<Card>
+    + getDraftableLowerCards(player: Player): List<Card>
+    + canPlayerDrawCard(player: Player, card: Card): boolean
+    + removeUpperCard(card: Card): void
+    + removeLowerCard(card: Card): void
+    + findCardById(cardId: int): Card
   }
 
   class UpperPile <<model>> {
-    <color:#C0392B>-</color> tribeCards: List<TribeCard>
-    <color:#C0392B>-</color> buildingCards: List<BuildingCard>
-    <color:#1E8449>+</color> UpperPile()
-    <color:#1E8449>+</color> addCard(card: Card): void
-    <color:#1E8449>+</color> removeAndReturnAllTribeCards(): List<TribeCard>
-    <color:#1E8449>+</color> removeAndReturnAllBuildingCards(): List<BuildingCard>
-    <color:#1E8449>+</color> removeCard(card: Card): void
-    <color:#1E8449>+</color> getTribeCardsSize(): int
-    <color:#1E8449>+</color> getAllCards(): List<Card>
-    <color:#1E8449>+</color> getTribeCards(): List<TribeCard>
-    <color:#1E8449>+</color> getBuildingCards(): List<BuildingCard>
+    - tribeCards: List<TribeCard>
+    - buildingCards: List<BuildingCard>
+    + UpperPile()
+    + addCard(card: Card): void
+    + removeCard(card: Card): void
+    + getAllCards(): List<Card>
   }
 
   class LowerPile <<model>> {
-    <color:#C0392B>-</color> tribeCards: List<TribeCard>
-    <color:#C0392B>-</color> buildingCards: List<BuildingCard>
-    <color:#1E8449>+</color> LowerPile()
-    <color:#1E8449>+</color> addCard(card: Card): void
-    <color:#1E8449>+</color> addTribeCards(cards: List<TribeCard>): void
-    <color:#1E8449>+</color> addBuildingCards(cards: List<BuildingCard>): void
-    <color:#1E8449>+</color> removeCard(card: Card): void
-    <color:#1E8449>+</color> discardLowerRow(): void
-    <color:#1E8449>+</color> discardLowerBuildings(): void
-    <color:#1E8449>+</color> resolveLowerRowEvents(players: ArrayList<Player>): void
-    <color:#1E8449>+</color> getTribeCardsSize(): int
-    <color:#1E8449>+</color> getAllCards(): List<Card>
-    <color:#1E8449>+</color> getTribeCards(): List<TribeCard>
-    <color:#1E8449>+</color> getBuildingCards(): List<BuildingCard>
+    - tribeCards: List<TribeCard>
+    - buildingCards: List<BuildingCard>
+    + LowerPile()
+    + addCard(card: Card): void
+    + removeCard(card: Card): void
+    + discardLowerRow(): void
+    + resolveLowerRowEvents(players: ArrayList<Player>): void
+    + getAllCards(): List<Card>
   }
 
   enum CardRow {
@@ -429,71 +298,50 @@ package "board" {
 
   package "offerpath" {
     class OfferPath <<model>> {
-      <color:#C0392B>-</color> startingTile: StartingTile
-      <color:#C0392B>-</color> offerSpaces: List<OfferSpace>
-      <color:#1E8449>+</color> OfferPath()
-      <color:#1E8449>+</color> setup(players: List<Player>): void
-      <color:#1E8449>+</color> returnPlayerToStartingTile(player: Player): void
-      <color:#1E8449>+</color> movePlayerToLastStartingTile(player: Player, from: int): void
-      <color:#1E8449>+</color> getPlayersInOrder(): List<Player>
-      <color:#1E8449>+</color> getNextRoundTurnOrder(): List<Player>
-      <color:#1E8449>+</color> resolveEventA(): void
-      <color:#1E8449>+</color> checkOfferSpace(code: String): boolean
-      <color:#1E8449>+</color> placePlayer(player: Player, code: String): void
-      <color:#1E8449>+</color> resolveActionForPlayer(player: Player): int[]
-      <color:#1E8449>+</color> getAvailableOfferSpaces(): List<OfferSpace>
-      <color:#1E8449>+</color> getOfferSpaces(): List<OfferSpace>
-      <color:#1E8449>+</color> getStartingTile(): StartingTile
-      <color:#C0392B>-</color> setupOfferSpaces(numPlayer: int): void
+      - startingTile: StartingTile
+      - offerSpaces: List<OfferSpace>
+      + OfferPath()
+      + setup(players: List<Player>): void
+      + getNextRoundTurnOrder(): List<Player>
+      + checkOfferSpace(code: String): boolean
+      + placePlayer(player: Player, code: String): void
+      + resolveActionForPlayer(player: Player): int[]
+      + getAvailableOfferSpaces(): List<OfferSpace>
     }
 
     class OfferSpace <<model>> {
-      <color:#C0392B>-</color> positionIndex: int
-      <color:#C0392B>-</color> code: String
-      <color:#C0392B>-</color> minPlayers: int
-      <color:#C0392B>-</color> foodBonus: int
-      <color:#C0392B>-</color> topRowCardsToTake: int
-      <color:#C0392B>-</color> bottomRowCardsToTake: int
-      <color:#C0392B>-</color> occupiedBy: Player
-      <color:#1E8449>+</color> OfferSpace(posIdx: int, code: String, min: int, food: int, top: int, bottom: int)
-      <color:#1E8449>+</color> isAvailable(): boolean
-      <color:#1E8449>+</color> occupy(player: Player): void
-      <color:#1E8449>+</color> clear(): void
-      <color:#1E8449>+</color> resolveImmediateAction(player: Player): void
-      <color:#1E8449>+</color> getOccupiedBy(): Player
-      <color:#1E8449>+</color> getPositionIndex(): int
-      <color:#1E8449>+</color> getCode(): String
-      <color:#1E8449>+</color> getMinPlayers(): int
-      <color:#1E8449>+</color> getFoodBonus(): int
-      <color:#1E8449>+</color> getTopRowCardsToTake(): int
-      <color:#1E8449>+</color> getBottomRowCardsToTake(): int
+      - positionIndex: int
+      - code: String
+      - minPlayers: int
+      - foodBonus: int
+      - topRowCardsToTake: int
+      - bottomRowCardsToTake: int
+      - occupiedBy: Player
+      + OfferSpace(posIdx: int, code: String, min: int, food: int, top: int, bottom: int)
+      + isAvailable(): boolean
+      + occupy(player: Player): void
+      + clear(): void
+      + resolveImmediateAction(player: Player): void
     }
 
     class StartingTile <<model>> {
-      <color:#C0392B>-</color> startingBlocks: List<StartingBlock>
-      <color:#1E8449>+</color> StartingTile()
-      <color:#1E8449>+</color> setup(players: List<Player>): void
-      <color:#1E8449>+</color> placePlayerOnNextAvailableBlock(player: Player): void
-      <color:#1E8449>+</color> placePlayerOnLastAvailableBlock(player: Player): void
-      <color:#1E8449>+</color> removePlayer(player: Player): void
-      <color:#1E8449>+</color> getNextRoundOrder(): List<Player>
-      <color:#1E8449>+</color> getStartingBlocks(): List<StartingBlock>
-      <color:#1E8449>+</color> getPlayersOrderedByStartingBlock(): List<Player>
+      - startingBlocks: List<StartingBlock>
+      + StartingTile()
+      + setup(players: List<Player>): void
+      + placePlayerOnNextAvailableBlock(player: Player): void
+      + removePlayer(player: Player): void
+      + getNextRoundOrder(): List<Player>
     }
 
     class StartingBlock <<model>> {
-      <color:#C0392B>-</color> position: int
-      <color:#C0392B>-</color> foodModifier: int
-      <color:#C0392B>-</color> prestigeModifier: int
-      <color:#C0392B>-</color> occupiedBy: Player
-      <color:#1E8449>+</color> StartingBlock(pos: int, food: int, prestige: int, player: Player)
-      <color:#1E8449>+</color> occupy(player: Player): void
-      <color:#1E8449>+</color> clear(): void
-      <color:#1E8449>+</color> resolveEffect(): void
-      <color:#1E8449>+</color> getOccupiedBy(): Player
-      <color:#1E8449>+</color> getFoodModifier(): int
-      <color:#1E8449>+</color> getPrestigeModifier(): int
-      <color:#1E8449>+</color> getPosition(): int
+      - position: int
+      - foodModifier: int
+      - prestigeModifier: int
+      - occupiedBy: Player
+      + StartingBlock(pos: int, food: int, prestige: int, player: Player)
+      + occupy(player: Player): void
+      + clear(): void
+      + resolveEffect(): void
     }
   }
 }
@@ -502,174 +350,170 @@ package "board" {
 package "cards" {
 
   interface CardAction {
-    <color:#1E8449>+</color> getEra(): Era
-    <color:#1E8449>+</color> isDrawable(player: Player): boolean
+    + getEra(): Era
+    + isDrawable(player: Player): boolean
   }
 
   abstract class Card <<model>> {
-    <color:#C0392B>-</color> id: int
-    <color:#C0392B>-</color> era: Era
-    <color:#1E8449>+</color> Card(id: int, era: Era)
-    <color:#1E8449>+</color> getId(): int
-    <color:#1E8449>+</color> getEra(): Era
-    <color:#1E8449>+</color> getCardType(): String
-    <color:#1E8449>+</color> setEra(era: Era): void
+    - id: int
+    - era: Era
+    + Card(id: int, era: Era)
+    + getId(): int
+    + getEra(): Era
+    + getCardType(): String
+    + setEra(era: Era): void
   }
 
   abstract class TribeCard <<model>> {
-    <color:#C0392B>-</color> type: TribeCardType
-    <color:#1E8449>+</color> TribeCard(id: int, era: Era, type: TribeCardType)
-    <color:#1E8449>+</color> getType(): TribeCardType
-    <color:#1E8449>+</color> getCardType(): String
+    - type: TribeCardType
+    + TribeCard(id: int, era: Era, type: TribeCardType)
+    + getType(): TribeCardType
+    + getCardType(): String
   }
 
   class BuildingCard <<model>> {
-    <color:#C0392B>-</color> foodCost: int
-    <color:#C0392B>-</color> prestigePoints: int
-    <color:#C0392B>-</color> benefitType: BenefitType
-    <color:#1E8449>+</color> BuildingCard(id: int, era: Era, fc: int, pp: int, type: BenefitType)
-    <color:#1E8449>+</color> isDrawable(player: Player): boolean
-    <color:#1E8449>+</color> applyEffect(player: Player): void
-    <color:#1E8449>+</color> getBenefitType(): BenefitType
-    <color:#1E8449>+</color> getFoodCost(): int
-    <color:#1E8449>+</color> getPrestigePoints(): int
-    <color:#1E8449>+</color> getCardType(): String
-    <color:#1E8449>+</color> getEffectiveFoodCost(player: Player): int
-    <color:#1E8449>+</color> payEffectiveCost(player: Player): void
-    <color:#1E8449>+</color> increaseFinalPrestigePoints(player: Player): void
+    - foodCost: int
+    - prestigePoints: int
+    - benefitType: BenefitType
+    + BuildingCard(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+    + isDrawable(player: Player): boolean
+    + applyEffect(player: Player): void
+    + getEffectiveFoodCost(player: Player): int
+    + payEffectiveCost(player: Player): void
+    + increaseFinalPrestigePoints(player: Player): void
   }
 
   abstract class Deck <<model>> {
-    <color:#C0392B>-</color> cards: ArrayList<Card>
-    <color:#1E8449>+</color> Deck(cards: ArrayList<Card>)
-    <color:#E67E22>#</color> Deck(cards: ArrayList<Card>, shuffle: boolean)
-    <color:#1E8449>+</color> draw(): Card
-    <color:#1E8449>+</color> isEmpty(): boolean
-    <color:#1E8449>+</color> shuffle(): void
+    - cards: ArrayList<Card>
+    + Deck(cards: ArrayList<Card>)
+    # Deck(cards: ArrayList<Card>, shuffle: boolean)
+    + draw(): Card
+    + isEmpty(): boolean
+    + shuffle(): void
   }
 
   class BuildingDeck <<model>> {
-    <color:#1E8449>+</color> BuildingDeck(cards: ArrayList<Card>)
-    <color:#1E8449>+</color> {static} fromOrderedCards(cards: ArrayList<Card>): BuildingDeck
+    + BuildingDeck(cards: ArrayList<Card>)
+    + {static} fromOrderedCards(cards: ArrayList<Card>): BuildingDeck
   }
 
   class TribeDeck <<model>> {
-    <color:#1E8449>+</color> TribeDeck(cards: ArrayList<Card>)
-    <color:#1E8449>+</color> {static} fromOrderedCards(cards: ArrayList<Card>): TribeDeck
+    + TribeDeck(cards: ArrayList<Card>)
+    + {static} fromOrderedCards(cards: ArrayList<Card>): TribeDeck
   }
 
   package "characters" {
     abstract class CharacterCard <<model>> {
-      <color:#1E8449>+</color> CharacterCard(id: int, era: Era, type: TribeCardType)
-      <color:#1E8449>+</color> isDrawable(player: Player): boolean
+      + CharacterCard(id: int, era: Era, type: TribeCardType)
+      + isDrawable(player: Player): boolean
     }
 
     class Artist <<model>> {
-      <color:#1E8449>+</color> Artist(id: int, era: Era, type: TribeCardType)
+      + Artist(id: int, era: Era, type: TribeCardType)
     }
     class Builder <<model>> {
-      <color:#1E8449>+</color> Builder(id: int, era: Era, type: TribeCardType)
+      + Builder(id: int, era: Era, type: TribeCardType)
     }
     class Gatherer <<model>> {
-      <color:#1E8449>+</color> Gatherer(id: int, era: Era, type: TribeCardType)
+      + Gatherer(id: int, era: Era, type: TribeCardType)
     }
     class Hunter <<model>> {
-      <color:#C0392B>-</color> hasEffect: boolean
-      <color:#1E8449>+</color> Hunter(id: int, era: Era, hasEffect: boolean, type: TribeCardType)
-      <color:#1E8449>+</color> getHasEffect(): boolean
-      <color:#1E8449>+</color> applyEffect(player: Player): void
+      - hasEffect: boolean
+      + Hunter(id: int, era: Era, hasEffect: boolean, type: TribeCardType)
+      + getHasEffect(): boolean
+      + applyEffect(player: Player): void
     }
     class Inventor <<model>> {
-      <color:#C0392B>-</color> inventionType: InventionType
-      <color:#1E8449>+</color> Inventor(id: int, era: Era, type: TribeCardType, invention: InventionType)
-      <color:#1E8449>+</color> getInventionType(): InventionType
+      - inventionType: InventionType
+      + Inventor(id: int, era: Era, type: TribeCardType, invention: InventionType)
+      + getInventionType(): InventionType
     }
     class Shaman <<model>> {
-      <color:#C0392B>-</color> stars: int
-      <color:#1E8449>+</color> Shaman(id: int, era: Era, type: TribeCardType, stars: int)
-      <color:#1E8449>+</color> getStars(): int
+      - stars: int
+      + Shaman(id: int, era: Era, type: TribeCardType, stars: int)
+      + getStars(): int
     }
   }
 
   package "buildings" {
     class BigPpReward <<model>> {
-      <color:#C0392B>-</color> ppReward: int
-      <color:#1E8449>+</color> BigPpReward(id: int, era: Era, fc: int, pp: int, type: BenefitType, reward: int)
-      <color:#1E8449>+</color> applyEffect(player: Player): void
+      - ppReward: int
+      + BigPpReward(id: int, era: Era, fc: int, pp: int, type: BenefitType, reward: int)
+      + applyEffect(player: Player): void
     }
     class CavePaintingBonus <<model>> {
-      <color:#C0392B>-</color> bonusFoodPerArtist: int
-      <color:#1E8449>+</color> CavePaintingBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType, bonus: int)
-      <color:#1E8449>+</color> applyBonusCavePaintingEvent(player: Player): void
-      <color:#1E8449>+</color> getBonusFoodPerArtist(): int
+      - bonusFoodPerArtist: int
+      + CavePaintingBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType, bonus: int)
+      + applyBonusCavePaintingEvent(player: Player): void
+      + getBonusFoodPerArtist(): int
     }
     class HunterBonus <<model>> {
-      <color:#C0392B>-</color> bonusFoodPerHunter: int
-      <color:#C0392B>-</color> bonusPpPerHunter: int
-      <color:#1E8449>+</color> HunterBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType, food: int, pp2: int)
-      <color:#1E8449>+</color> applyBonusHunterEvent(player: Player): void
-      <color:#1E8449>+</color> getBonusFoodPerHunter(): int
-      <color:#1E8449>+</color> getBonusPrestigePointsPerHunter(): int
+      - bonusFoodPerHunter: int
+      - bonusPpPerHunter: int
+      + HunterBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType, food: int, pp2: int)
+      + applyBonusHunterEvent(player: Player): void
+      + getBonusFoodPerHunter(): int
+      + getBonusPrestigePointsPerHunter(): int
     }
     class MultiplierForType <<model>> {
-      <color:#1E8449>+</color> MultiplierForType(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+      + MultiplierForType(id: int, era: Era, fc: int, pp: int, type: BenefitType)
     }
     class PairOfInventor <<model>> {
-      <color:#1E8449>+</color> PairOfInventor(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+      + PairOfInventor(id: int, era: Era, fc: int, pp: int, type: BenefitType)
     }
     class PrestigePointsForSet <<model>> {
-      <color:#1E8449>+</color> PrestigePointsForSet(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+      + PrestigePointsForSet(id: int, era: Era, fc: int, pp: int, type: BenefitType)
     }
     class SetForFood <<model>> {
-      <color:#1E8449>+</color> SetForFood(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+      + SetForFood(id: int, era: Era, fc: int, pp: int, type: BenefitType)
     }
     class ShamanStarsBonus <<model>> {
-      <color:#1E8449>+</color> ShamanStarsBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+      + ShamanStarsBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType)
     }
     class SustenanceDiscount <<model>> {
-      <color:#C0392B>-</color> discountAmount: int
-      <color:#C0392B>-</color> applicableTribeCardType: TribeCardType
-      <color:#1E8449>+</color> SustenanceDiscount(id: int, era: Era, fc: int, pp: int, type: BenefitType, discount: int, cardType: TribeCardType)
-      <color:#1E8449>+</color> getDiscountAmount(chars: List<CharacterCard>): int
-      <color:#1E8449>+</color> getDiscountAmount(): int
-      <color:#1E8449>+</color> getApplicableTribeCardType(): TribeCardType
+      - discountAmount: int
+      - applicableTribeCardType: TribeCardType
+      + SustenanceDiscount(id: int, era: Era, fc: int, pp: int, type: BenefitType, discount: int, cardType: TribeCardType)
+      + getDiscountAmount(chars: List<CharacterCard>): int
+      + getDiscountAmount(): int
+      + getApplicableTribeCardType(): TribeCardType
     }
   }
 
   package "events" {
     interface EventAction {
-      <color:#1E8449>+</color> applyEffect(players: ArrayList<Player>): void
+      + applyEffect(players: ArrayList<Player>): void
     }
 
     abstract class EventCard <<model>> {
-      <color:#1E8449>+</color> EventCard(id: int, era: Era, type: TribeCardType)
-      <color:#1E8449>+</color> isDrawable(player: Player): boolean
-      <color:#1E8449>+</color> getCompleteName(): String
+      + EventCard(id: int, era: Era, type: TribeCardType)
+      + isDrawable(player: Player): boolean
+      + getCompleteName(): String
     }
 
     class CavePaintingEventCard <<model>> {
-      <color:#1E8449>+</color> CavePaintingEventCard(id: int, era: Era, type: TribeCardType)
-      <color:#1E8449>+</color> getCompleteName(): String
-      <color:#1E8449>+</color> applyEffect(players: ArrayList<Player>): void
+      + CavePaintingEventCard(id: int, era: Era, type: TribeCardType)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
     }
     class HuntEventCard <<model>> {
-      <color:#C0392B>-</color> foodReward: int
-      <color:#C0392B>-</color> ppReward: int
-      <color:#1E8449>+</color> HuntEventCard(id: int, era: Era, type: TribeCardType, food: int, pp: int)
-      <color:#1E8449>+</color> getCompleteName(): String
-      <color:#1E8449>+</color> applyEffect(players: ArrayList<Player>): void
-      <color:#1E8449>+</color> getFoodReward(): int
-      <color:#1E8449>+</color> getPrestigePointsReward(): int
+      - foodReward: int
+      - ppReward: int
+      + HuntEventCard(id: int, era: Era, type: TribeCardType, food: int, pp: int)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
+      + getFoodReward(): int
+      + getPrestigePointsReward(): int
     }
     class ShamanRitualEventCard <<model>> {
-      <color:#1E8449>+</color> ShamanRitualEventCard(id: int, era: Era, type: TribeCardType)
-      <color:#1E8449>+</color> getCompleteName(): String
-      <color:#1E8449>+</color> applyEffect(players: ArrayList<Player>): void
+      + ShamanRitualEventCard(id: int, era: Era, type: TribeCardType)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
     }
     class SustenanceEventCard <<model>> {
-      <color:#1E8449>+</color> SustenanceEventCard(id: int, era: Era, type: TribeCardType)
-      <color:#1E8449>+</color> getCompleteName(): String
-      <color:#1E8449>+</color> applyEffect(players: ArrayList<Player>): void
+      + SustenanceEventCard(id: int, era: Era, type: TribeCardType)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
     }
   }
 }
@@ -681,8 +525,8 @@ package "enums" {
     second
     third
     --
-    <color:#1E8449>+</color> getIntegerEra(): int
-    <color:#1E8449>+</color> next(): Era
+    + getIntegerEra(): int
+    + next(): Era
   }
   enum GameStatus {
     SETUP
@@ -851,9 +695,9 @@ legend right
   ====
   <b>Visibilità metodi</b>
   ====
-  <color:#1E8449>+</color> public
-  <color:#C0392B>-</color> private
-  <color:#E67E22>#</color> protected
-  <color:#1F618D>~</color> package-private
+  + public
+  - private
+  # protected
+  ~ package-private
 endlegend
 @enduml

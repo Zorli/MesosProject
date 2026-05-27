@@ -49,183 +49,138 @@ skinparam linetype ortho
 
 ' ─── ENTRY POINT ───────────────────────────────────────────────────────────
 class LaunchClient {
-  <color:#1E8449>+</color> {static} main(args: String[]): void
-  <color:#C0392B>-</color> {static} chooseClientView(scanner: Scanner): ClientView
-  <color:#C0392B>-</color> {static} chooseServerProxy(scanner: Scanner, clientView: ClientView, environment: Map): ServerProxy
-  <color:#C0392B>-</color> {static} resolveServerHost(environment: Map): String
-  <color:#C0392B>-</color> {static} resolveTcpPort(environment: Map): int
-  <color:#C0392B>-</color> {static} resolveRmiPort(environment: Map): int
-  <color:#C0392B>-</color> {static} resolveClientRmiHost(environment: Map): String
-  <color:#C0392B>-</color> {static} startClient(clientView: ClientView, serverProxy: ServerProxy): void
-  <color:#C0392B>-</color> {static} loadEnvironmentFile(environmentFile: String): Map
+  + {static} main(args: String[]): void
 }
 
 ' ─── PROXY LAYER ───────────────────────────────────────────────────────────
 package "serverproxy" {
   interface ServerProxy {
-    <color:#1E8449>+</color> isConnected(): boolean
-    <color:#1E8449>+</color> authenticate(nickname: String): void
-    <color:#1E8449>+</color> listLobbies(): void
-    <color:#1E8449>+</color> createLobby(chosenCapacity: int): void
-    <color:#1E8449>+</color> joinLobby(lobbyId: int): void
-    <color:#1E8449>+</color> exitLobby(): void
-    <color:#1E8449>+</color> startLobby(): void
-    <color:#1E8449>+</color> moveTotem(tile: String): void
-    <color:#1E8449>+</color> chooseCard(cardId: int): void
-    <color:#1E8449>+</color> extraDraw(cardId: int): void
-    <color:#1E8449>+</color> close(): void
+    + isConnected(): boolean
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(chosenCapacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
   }
 
   class ServerProxyTCP <<service>> {
-    <color:#C0392B>-</color> socket: Socket
-    <color:#C0392B>-</color> writer: PrintWriter
-    <color:#C0392B>-</color> clientView: ClientView
-    <color:#C0392B>-</color> virtualServer: VirtualServerTCP
-    <color:#C0392B>-</color> virtualServerThread: Thread
-    <color:#1E8449>+</color> ServerProxyTCP(serverHost: String, port: int, clientView: ClientView)
-    <color:#1F618D>~</color> ServerProxyTCP(socket: Socket, clientView: ClientView)
-    <color:#1F618D>~</color> waitForVirtualServer(): void
-    <color:#1E8449>+</color> isConnected(): boolean
-    <color:#1E8449>+</color> sendPong(): void
-    <color:#1E8449>+</color> authenticate(nickname: String): void
-    <color:#1E8449>+</color> listLobbies(): void
-    <color:#1E8449>+</color> createLobby(chosenCapacity: int): void
-    <color:#1E8449>+</color> joinLobby(lobbyId: int): void
-    <color:#1E8449>+</color> exitLobby(): void
-    <color:#1E8449>+</color> startLobby(): void
-    <color:#1E8449>+</color> moveTotem(tile: String): void
-    <color:#1E8449>+</color> chooseCard(cardId: int): void
-    <color:#1E8449>+</color> extraDraw(cardId: int): void
-    <color:#1E8449>+</color> close(): void
-    <color:#1E8449>+</color> closeConnection(): void
-    <color:#C0392B>-</color> send(message: ClientMessage): void
-    <color:#C0392B>-</color> notifyLocalError(code: String, message: String): void
+    - socket: Socket
+    - clientView: ClientView
+    - virtualServer: VirtualServerTCP
+    + ServerProxyTCP(serverHost: String, port: int, clientView: ClientView)
+    + isConnected(): boolean
+    + sendPong(): void
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(chosenCapacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
   }
 
   class ServerProxyRMI <<service>> {
-    <color:#C0392B>-</color> serverStub: RmiServerService
-    <color:#C0392B>-</color> callbackReceiver: VirtualServerRMI
-    <color:#C0392B>-</color> connected: boolean
-    <color:#1E8449>+</color> ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView)
-    <color:#1F618D>~</color> ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView, exportCallback: boolean)
-    <color:#1E8449>+</color> isConnected(): boolean
-    <color:#1E8449>+</color> sendPong(): void
-    <color:#1E8449>+</color> authenticate(nickname: String): void
-    <color:#1E8449>+</color> listLobbies(): void
-    <color:#1E8449>+</color> createLobby(chosenCapacity: int): void
-    <color:#1E8449>+</color> joinLobby(lobbyId: int): void
-    <color:#1E8449>+</color> exitLobby(): void
-    <color:#1E8449>+</color> startLobby(): void
-    <color:#1E8449>+</color> moveTotem(tile: String): void
-    <color:#1E8449>+</color> chooseCard(cardId: int): void
-    <color:#1E8449>+</color> extraDraw(cardId: int): void
-    <color:#1E8449>+</color> close(): void
-    <color:#C0392B>-</color> send(message: ClientMessage): void
-    <color:#C0392B>-</color> handleDisconnection(e: RemoteException): void
-    <color:#C0392B>-</color> notifyLocalError(code: String, message: String): void
-    <color:#C0392B>-</color> ensureConnected(): boolean
+    - serverStub: RmiServerService
+    - callbackReceiver: VirtualServerRMI
+    + ServerProxyRMI(connectionService: RmiConnectionService, clientView: ClientView)
+    + isConnected(): boolean
+    + sendPong(): void
+    + authenticate(nickname: String): void
+    + listLobbies(): void
+    + createLobby(chosenCapacity: int): void
+    + joinLobby(lobbyId: int): void
+    + exitLobby(): void
+    + startLobby(): void
+    + moveTotem(tile: String): void
+    + chooseCard(cardId: int): void
+    + extraDraw(cardId: int): void
+    + close(): void
   }
 }
 
 ' ─── VIRTUAL SERVER LAYER ──────────────────────────────────────────────────
 package "virtualserver" {
   interface VirtualServer {
-    <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-    <color:#1E8449>+</color> handlePing(): void
-    <color:#1E8449>+</color> close(): void
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+    + close(): void
   }
 
   class VirtualServerTCP <<service>> {
-    <color:#C0392B>-</color> socket: Socket
-    <color:#C0392B>-</color> serverProxy: ServerProxyTCP
-    <color:#C0392B>-</color> closeRequestedByClient: boolean
-    <color:#C0392B>-</color> messageRouter: MessageRouter
-    <color:#1E8449>+</color> VirtualServerTCP(socket: Socket, clientView: ClientView, serverProxy: ServerProxyTCP)
-    <color:#1E8449>+</color> run(): void
-    <color:#1E8449>+</color> requestCloseByClient(): void
-    <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-    <color:#1E8449>+</color> handlePing(): void
-    <color:#1E8449>+</color> close(): void
-    <color:#C0392B>-</color> isCloseRequestedByClient(): boolean
-    <color:#C0392B>-</color> readServerMessages(reader: BufferedReader): void
-    <color:#C0392B>-</color> handleServerMessage(serializedMessage: String): void
-    <color:#C0392B>-</color> buildServerMessage(type: ServerMessageType, payload: JsonElement): ServerMessage
-    <color:#C0392B>-</color> handleError(code: String, message: String): void
-    <color:#C0392B>-</color> handleError(payload: ErrorPayload): void
+    - socket: Socket
+    - serverProxy: ServerProxyTCP
+    - messageRouter: MessageRouter
+    + VirtualServerTCP(socket: Socket, clientView: ClientView, serverProxy: ServerProxyTCP)
+    + run(): void
+    + requestCloseByClient(): void
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+    + close(): void
   }
 
   class VirtualServerRMI <<service>> {
-    <color:#C0392B>-</color> messageRouter: MessageRouter
-    <color:#C0392B>-</color> exported: boolean
-    <color:#C0392B>-</color> serverProxy: ServerProxyRMI
-    <color:#1E8449>+</color> VirtualServerRMI(clientView: ClientView)
-    <color:#1F618D>~</color> VirtualServerRMI(clientView: ClientView, exported: boolean)
-    <color:#1E8449>+</color> handleMessage(message: ServerMessage): void
-    <color:#1E8449>+</color> handlePing(): void
-    <color:#1E8449>+</color> attachServerProxy(serverProxy: ServerProxyRMI): void
-    <color:#1E8449>+</color> close(): void
+    - messageRouter: MessageRouter
+    - serverProxy: ServerProxyRMI
+    + VirtualServerRMI(clientView: ClientView)
+    + handleMessage(message: ServerMessage): void
+    + handlePing(): void
+    + attachServerProxy(serverProxy: ServerProxyRMI): void
+    + close(): void
   }
 }
 
 ' ─── VIEW LAYER ────────────────────────────────────────────────────────────
 package "view" {
   interface ClientView {
-    <color:#1E8449>+</color> showError(payload: ErrorPayload): void
-    <color:#1E8449>+</color> showAuthenticationResult(payload: AuthenticationResultPayload): void
-    <color:#1E8449>+</color> showLobbyUpdate(payload: LobbyUpdatePayload): void
-    <color:#1E8449>+</color> showLobbyList(payload: LobbyListPayload): void
-    <color:#1E8449>+</color> showGameUpdate(payload: GamePayload): void
-    <color:#1E8449>+</color> {default} showFinalGameResult(payload: GamePayload): void
+    + showError(payload: ErrorPayload): void
+    + showAuthenticationResult(payload: AuthenticationResultPayload): void
+    + showLobbyUpdate(payload: LobbyUpdatePayload): void
+    + showLobbyList(payload: LobbyListPayload): void
+    + showGameUpdate(payload: GamePayload): void
+    + {default} showFinalGameResult(payload: GamePayload): void
   }
 
   class MessageRouter <<service>> {
-    <color:#C0392B>-</color> clientView: ClientView
-    <color:#1E8449>+</color> MessageRouter(clientView: ClientView)
-    <color:#1E8449>+</color> routeMessage(message: ServerMessage): void
-    <color:#C0392B>-</color> routeGameUpdate(payload: GamePayload): void
+    - clientView: ClientView
+    + MessageRouter(clientView: ClientView)
+    + routeMessage(message: ServerMessage): void
   }
 
   package "tui" {
     class TuiView <<view>> {
-      <color:#C0392B>-</color> scanner: Scanner
-      <color:#C0392B>-</color> out: PrintStream
-      <color:#C0392B>-</color> commandParser: TuiCommandParser
-      <color:#C0392B>-</color> payloadRenderer: TuiPayloadRenderer
-      <color:#C0392B>-</color> lastGamePayload: GamePayload
-      <color:#C0392B>-</color> localNickname: String
-      <color:#C0392B>-</color> serverProxy: ServerProxy
-      <color:#1E8449>+</color> TuiView()
-      <color:#1E8449>+</color> TuiView(scanner: Scanner, out: PrintStream)
-      <color:#1E8449>+</color> attachServerProxy(proxy: ServerProxy): void
-      <color:#1E8449>+</color> start(): void
-      <color:#1E8449>+</color> showError(payload: ErrorPayload): void
-      <color:#1E8449>+</color> showAuthenticationResult(payload: AuthenticationResultPayload): void
-      <color:#1E8449>+</color> showLobbyUpdate(payload: LobbyUpdatePayload): void
-      <color:#1E8449>+</color> showLobbyList(payload: LobbyListPayload): void
-      <color:#1E8449>+</color> showGameUpdate(payload: GamePayload): void
-      <color:#1E8449>+</color> showFinalGameResult(payload: GamePayload): void
-      <color:#C0392B>-</color> handleInputLine(line: String): boolean
-      <color:#C0392B>-</color> executeCommand(command: TuiCommand): boolean
-      <color:#C0392B>-</color> closeServerProxy(): void
-      <color:#C0392B>-</color> renderHelp(): void
-      <color:#C0392B>-</color> render(message: String): void
-      <color:#C0392B>-</color> renderPrompt(): void
-      <color:#C0392B>-</color> printPrompt(): void
+      - commandParser: TuiCommandParser
+      - payloadRenderer: TuiPayloadRenderer
+      - serverProxy: ServerProxy
+      + TuiView()
+      + attachServerProxy(proxy: ServerProxy): void
+      + start(): void
+      + showError(payload: ErrorPayload): void
+      + showAuthenticationResult(payload: AuthenticationResultPayload): void
+      + showLobbyUpdate(payload: LobbyUpdatePayload): void
+      + showLobbyList(payload: LobbyListPayload): void
+      + showGameUpdate(payload: GamePayload): void
+      + showFinalGameResult(payload: GamePayload): void
     }
 
     class TuiCommandParser <<mapper>> {
-      <color:#1F618D>~</color> parse(line: String): TuiCommand
-      <color:#C0392B>-</color> {static} splitLineIntoWords(line: String): String[]
-      <color:#C0392B>-</color> {static} parseType(keyword: String): TuiCommandType
+      ~ parse(line: String): TuiCommand
     }
 
     class TuiCommand {
-      <color:#C0392B>-</color> type: TuiCommandType
-      <color:#C0392B>-</color> argument: String
-      <color:#1F618D>~</color> TuiCommand(type: TuiCommandType, argument: String)
-      <color:#1F618D>~</color> type(): TuiCommandType
-      <color:#1F618D>~</color> argument(): String
-      <color:#1F618D>~</color> intArgument(): int
+      - type: TuiCommandType
+      - argument: String
+      ~ TuiCommand(type: TuiCommandType, argument: String)
+      ~ type(): TuiCommandType
+      ~ argument(): String
+      ~ intArgument(): int
     }
 
     enum TuiCommandType {
@@ -240,50 +195,30 @@ package "view" {
       CHOOSE_CARD
       EXTRA_DRAW
       QUIT
-      --
-      <color:#C0392B>-</color> usage: String
-      <color:#C0392B>-</color> argumentRequired: boolean
-      <color:#C0392B>-</color> integerArgument: boolean
-      <color:#1F618D>~</color> usage(): String
-      <color:#1F618D>~</color> argumentRequired(): boolean
-      <color:#1F618D>~</color> integerArgument(): boolean
     }
 
     class TuiPayloadRenderer <<mapper>> {
-      <color:#1F618D>~</color> renderError(payload: ErrorPayload, lastGamePayload: GamePayload, localNickname: String): String
-      <color:#1F618D>~</color> renderAuthenticationResult(payload: AuthenticationResultPayload): String
-      <color:#1F618D>~</color> renderLobbyUpdate(payload: LobbyUpdatePayload): String
-      <color:#1F618D>~</color> renderLobbyList(payload: LobbyListPayload): String
-      <color:#1F618D>~</color> renderGame(payload: GamePayload, localNickname: String): String
-      <color:#1F618D>~</color> renderFinalGameResult(payload: GamePayload): String
-      <color:#C0392B>-</color> {static} appendPlayers(builder: StringBuilder, players: List): void
-      <color:#C0392B>-</color> {static} appendBoard(builder: StringBuilder, board: BoardPayload): void
-      <color:#C0392B>-</color> {static} formatCards(cards: List): String
-      <color:#C0392B>-</color> {static} formatOfferSpaces(offerSpaces: List): String
-      <color:#C0392B>-</color> {static} formatStartingBlocks(startingBlocks: List): String
-      <color:#C0392B>-</color> {static} formatModifier(value: int): String
-      <color:#C0392B>-</color> {static} valueOrDash(value: Object): String
+      ~ renderError(payload: ErrorPayload, lastGamePayload: GamePayload, localNickname: String): String
+      ~ renderAuthenticationResult(payload: AuthenticationResultPayload): String
+      ~ renderLobbyUpdate(payload: LobbyUpdatePayload): String
+      ~ renderLobbyList(payload: LobbyListPayload): String
+      ~ renderGame(payload: GamePayload, localNickname: String): String
+      ~ renderFinalGameResult(payload: GamePayload): String
     }
   }
 
   package "gui" {
     class GUIView <<view>> {
-      <color:#C0392B>-</color> serverProxy: ServerProxy
-      <color:#C0392B>-</color> nickname: String
-      <color:#C0392B>-</color> lastGamePayload: GamePayload
-      <color:#C0392B>-</color> lastLobbyListPayload: LobbyListPayload
-      <color:#C0392B>-</color> lastLobbyUpdatePayload: LobbyUpdatePayload
-      <color:#C0392B>-</color> {static} FXML_RESOURCE: String
-      <color:#C0392B>-</color> {static} CSS_RESOURCE: String
-      <color:#1E8449>+</color> attachServerProxy(proxy: ServerProxy): void
-      <color:#1E8449>+</color> start(): void
-      <color:#1E8449>+</color> start(stage: Stage): void
-      <color:#C0392B>-</color> initialize(): void
-      <color:#1E8449>+</color> showError(payload: ErrorPayload): void
-      <color:#1E8449>+</color> showAuthenticationResult(payload: AuthenticationResultPayload): void
-      <color:#1E8449>+</color> showLobbyUpdate(payload: LobbyUpdatePayload): void
-      <color:#1E8449>+</color> showLobbyList(payload: LobbyListPayload): void
-      <color:#1E8449>+</color> showGameUpdate(payload: GamePayload): void
+      - serverProxy: ServerProxy
+      - nickname: String
+      + attachServerProxy(proxy: ServerProxy): void
+      + start(): void
+      + start(stage: Stage): void
+      + showError(payload: ErrorPayload): void
+      + showAuthenticationResult(payload: AuthenticationResultPayload): void
+      + showLobbyUpdate(payload: LobbyUpdatePayload): void
+      + showLobbyList(payload: LobbyListPayload): void
+      + showGameUpdate(payload: GamePayload): void
     }
   }
 }
@@ -341,9 +276,9 @@ legend right
   ====
   <b>Visibilità metodi</b>
   ====
-  <color:#1E8449>+</color> public
-  <color:#C0392B>-</color> private
-  <color:#E67E22>#</color> protected
-  <color:#1F618D>~</color> package-private
+  + public
+  - private
+  # protected
+  ~ package-private
 endlegend
 @enduml
