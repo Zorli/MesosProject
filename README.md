@@ -419,7 +419,8 @@ while ((message = reader.readLine()) != null) {
 
 La chiamata a `readLine()` rimane in attesa finché non arriva una riga completa.
 Se la connessione viene chiusa dall'altro lato, `readLine()` restituisce `null` e il ciclo termina.
-Per questo la lettura non può stare nello stesso flusso che gestisce l'interazione dell'utente.
+Propriò perchè ci sono metodi bloccanti, nasce la necessità di usare thread per gestire il ciclo
+di raccolta dei messaggi in entrata.
 
 La scrittura, invece, avviene solo quando c'è effettivamente un messaggio da inviare:
 
@@ -430,8 +431,8 @@ writer.println(serializedMessage);
 Non serve quindi un thread dedicato alla scrittura, il codice scrive sulla socket nel momento in cui deve 
 inviare un comando o una notifica.
 
-A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`.
-Prima viene aperta la `ServerSocket`, poi l'acceptor viene avviato su un thread dedicato:
+A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`, che apre la `ServerSocket`
+e viene avviato su un thread dedicato:
 
 ```java
 ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
@@ -440,23 +441,18 @@ Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
 acceptorThread.start();
 ```
 
-Dentro `ConnectionAcceptor`, il server rimane in attesa di nuovi client tramite `accept()`:
+Il compito del `ConnectionAcceptor` è accettare nuove connessioni e creare una `VirtualViewTCP`
+per ogni client collegato:
 
 ```java
-while (this.running) {
-    Socket clientSocket = this.serverSocket.accept();
-    VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router);
-    Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
-    virtualViewThread.start();
-}
+Socket clientSocket = this.serverSocket.accept();
+VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router);
+Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
+virtualViewThread.start();
 ```
 
-`accept()` è bloccante: il thread resta fermo finché un client non apre una connessione.
-Quando un client si collega, il server riceve una nuova socket dedicata a quel client e crea una `VirtualViewTCP`.
-
-Sul client, invece, `ServerProxyTCP` apre direttamente una socket verso indirizzo e porta del server.
-Da quella socket ricava il canale di uscita per mandare comandi e crea un `VirtualServerTCP` per leggere
-i messaggi in arrivo dal server:
+Sul client, `ServerProxyTCP` apre la socket verso il server, prepara il writer per i messaggi in uscita
+e avvia un `VirtualServerTCP` per gestire i messaggi in ingresso:
 
 ```java
 this.socket = new Socket(serverHost, port);
@@ -466,20 +462,30 @@ this.virtualServerThread = new Thread(this.virtualServer, "mesos-client-server-m
 this.virtualServerThread.start();
 ```
 
-Questa scelta riprende il modello di server TCP multi-thread: il thread principale del listener accetta
-nuove connessioni, mentre ogni `VirtualViewTCP` gestisce la comunicazione con uno specifico client.
-La `VirtualViewTCP` legge i messaggi in arrivo dal client, li fa deserializzare e
-li inoltra al router applicativo; quando deve inviare un messaggio al client, usa la stessa socket in uscita.
+Dentro `VirtualServerTCP`, invece, viene preparato il reader sulla stessa socket e parte il ciclo di lettura
+dei messaggi provenienti dal server:
+
+```java
+BufferedReader reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+
+while (this.running && (serializedMessage = reader.readLine()) != null) {
+    this.handleMessage(serializedMessage);
+}
+```
+Questo è il punto concreto in cui il thread del `VirtualServerTCP` resta in ascolto dei messaggi server -> client.
+
+
+![flusso TCP](assets/immages/FlussoTCP.png)
+
+
 
 Quindi il flusso concreto TCP è:
 - il server crea un `ConnectionAcceptor`
-- `ConnectionAcceptor` apre una `ServerSocket`
-- il thread del server rimane bloccato su `accept()`
-- il client crea una `Socket` verso il server
-- `accept()` restituisce una socket dedicata a quel client
-- il server crea una `VirtualViewTCP` per quella connessione
-- il client usa `ServerProxyTCP` per scrivere sulla socket
-- il client usa `VirtualServerTCP` per leggere dalla stessa socket
+- il `ConnectionAcceptor` apre la `ServerSocket`
+- quando arriva un client, viene creata una `VirtualViewTCP`
+- ogni `VirtualViewTCP` gira su un thread dedicato alla comunicazione con quel client
+- il client usa `ServerProxyTCP` per inviare messaggi al server
+- il client usa `VirtualServerTCP` per restare in ascolto dei messaggi provenienti dal server
 
 #### GSON
 GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
@@ -667,7 +673,7 @@ al `MessageRouter` della user interface:
 ```java
 this.messageRouter.routeMessage(message);
 ```
-
+![FlussoRMI.png](assets/immages/FlussoRMI.png)
 Quindi il flusso concreto è:
 - il server registra `RmiConnectionEntryPoint` nel registry come `MesosServer`
 - il client fa lookup e ottiene lo stub `RmiConnectionService`
@@ -677,9 +683,6 @@ Quindi il flusso concreto è:
 - il client riceve lo stub `RmiServerService` della propria sessione
 - client -> server: `ServerProxyRMI` chiama `VirtualViewRMI`
 - server -> client: `VirtualViewRMI` chiama `VirtualServerRMI`
-
-
-
 
 
 ## Architettura del Client
