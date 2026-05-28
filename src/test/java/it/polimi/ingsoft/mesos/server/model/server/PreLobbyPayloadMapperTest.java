@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.server.model.server;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
@@ -30,7 +31,7 @@ class PreLobbyPayloadMapperTest {
         lobby = new Lobby(1, "Alice", 3);
         lobby.addPlayer("Bob", new it.polimi.ingsoft.mesos.server.virtualview.Listener() {
             @Override
-            public void notifyUpdate(Object payload) {}
+            public void notifyUpdate(ServerPayload payload) {}
         });
     }
 

@@ -8,6 +8,8 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.game.GameActionExecutor;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -52,7 +54,7 @@ class GameActionExecutorTest {
 
         executor.execute(game::changeVersion);
 
-        assertEquals(List.of("game-payload"), game.sentPayloads);
+        assertEquals(List.of(game.gamePayload), game.sentPayloads);
         assertEquals(List.of(), game.sentErrors);
     }
 
@@ -71,7 +73,7 @@ class GameActionExecutorTest {
             game.changeVersion();
         });
 
-        assertEquals(List.of("game-payload"), game.sentPayloads);
+        assertEquals(List.of(game.gamePayload), game.sentPayloads);
     }
 
     /**
@@ -113,7 +115,8 @@ class GameActionExecutorTest {
      */
     private static class RecordingGame extends Game {
         private long version;
-        private final List<Object> sentPayloads = new ArrayList<>();
+        private final ServerPayload gamePayload = new ErrorPayload("TEST", "game-payload");
+        private final List<ServerPayload> sentPayloads = new ArrayList<>();
         private final List<String> sentErrors = new ArrayList<>();
 
         RecordingGame() {
@@ -134,12 +137,12 @@ class GameActionExecutorTest {
         }
 
         @Override
-        public Object buildPayload() {
-            return "game-payload";
+        public ServerPayload buildPayload() {
+            return this.gamePayload;
         }
 
         @Override
-        public void notifyListeners(Object payload) {
+        public void notifyListeners(ServerPayload payload) {
             this.sentPayloads.add(payload);
         }
 

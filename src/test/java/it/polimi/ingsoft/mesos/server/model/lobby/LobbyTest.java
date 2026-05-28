@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
@@ -357,7 +358,7 @@ class LobbyTest {
         final List<Object> receivedPayloads = new ArrayList<>();
 
         @Override
-        public void notifyUpdate(Object payload) {
+        public void notifyUpdate(ServerPayload payload) {
             receivedPayloads.add(payload);
         }
     }

@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.controller.lobby;
 
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.LobbyPayloadMapper;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,7 @@ class LobbyPayloadMapperTest {
         lobby = new Lobby(1, "Alice", 3);
         lobby.addPlayer("Bob", new it.polimi.ingsoft.mesos.server.virtualview.Listener() {
             @Override
-            public void notifyUpdate(Object payload) {}
+            public void notifyUpdate(ServerPayload payload) {}
         });
     }
 

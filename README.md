@@ -1,102 +1,162 @@
 # Mesos 
-Progetto prova finale per l'esame di Ingegneria del Software.
+//TODO : Questa introduzione va fatta meglio, inoltre va letta la mail sulla compliance del readme
+Progetto prova finale per l'esame di Ingegneria del Software 2026.
 Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java, in modo da poter
 giocare con altri player, ognuno dal proprio device, collegandosi a un server.
-È possibile giocare sia da interfaccia testuale che grafica. La versione qui implementata ha inoltre le seguenti
+È possibile giocare sia da interfaccia testuale che grafica.
+La versione qui implementata ha inoltre le seguenti
 feature aggiuntive:
 - Supporto partite parallele sullo stesso server
 - Resilienza alle disconnessioni da parte dei client
 
 ## Configurazione, Compilazione e Avvio
 
-In questa sezione viene spiegato come configurare l'ambiente, compilare il progetto in un archivio JAR ed eseguirlo (sia Server che Client) da riga di comando.
+In questa sezione viene spiegato come configurare la rete, e poi come avviare server e client usando
+i JAR già compilati presenti nella cartella `deliverables`.
 
-### 1. Trovare l'indirizzo IP locale
-Se si desidera giocare in modalità multiplayer su una rete locale (LAN o hotspot), è necessario conoscere l'indirizzo IP del computer su cui gira il Server. Di seguito i comandi per trovarlo a seconda del sistema operativo:
+### 1. Recuperare gli indirizzi IP locali
+Se server e client vengono eseguiti sulla stessa macchina, si può usare `localhost`.
+Se invece si vuole giocare in rete locale, ad esempio con più computer collegati alla stessa rete Wi-Fi
+o allo stesso hotspot, bisogna recuperare:
+- l'indirizzo IP della macchina su cui viene avviato il server
+- l'indirizzo IP della macchina su cui viene avviato il client, necessario solo se si sceglie RMI
+
+Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema operativo:
 
 * **macOS**:
   ```bash
   ipconfig getifaddr en0
   ```
-  *(Se si è connessi via Wi-Fi; se connessi via cavo o altra interfaccia, verificare con `ifconfig`)*
+  Se si è connessi con una interfaccia diversa dal Wi-Fi, verificare l'indirizzo con `ifconfig`.
 * **Linux**:
   ```bash
   ip route get 1.1.1.1 | awk '{print $7}'
   ```
-  *(In alternativa, eseguire `ip a` o `hostname -I`)*
+  In alternativa, eseguire `ip a` o `hostname -I`.
 * **Windows**:
-  Eseguire nel prompt dei comandi (cmd) o PowerShell:
   ```cmd
   ipconfig
   ```
-  Cercare la voce `Indirizzo IPv4` (es. `192.168.1.XX` o `172.20.10.XX`).
+  Cercare la voce `Indirizzo IPv4`, ad esempio `192.168.1.56`.
 
----
 
-### 2. Configurazione di Rete (.env)
-Il progetto utilizza due file di configurazione locali nella root del progetto per mappare porte e host:
+### 2. Permessi firewall
+Se server e client non sono sulla stessa macchina, il sistema operativo può bloccare le connessioni anche
+quando IP e porte sono corretti.
+
+Sulla macchina che esegue il server bisogna permettere a Java di ricevere connessioni in entrata e di usare
+connessioni in uscita. A seconda di come viene avviato il progetto, il programma da autorizzare può comparire
+come `java`, `javaw`, `JavaVM` oppure `IntelliJ IDEA`.
+
+Questo vale su macOS, Windows e Linux:
+- il server deve poter accettare connessioni TCP sulla porta `MESOS_TCP_PORT`;
+- il server deve poter pubblicare e servire RMI sulla porta `MESOS_RMI_PORT`;
+- con RMI, anche il client deve poter ricevere la callback del server, quindi può essere necessario autorizzare
+  Java o IntelliJ anche sulla macchina client.
+
+Se il firewall chiede se consentire l'accesso alla rete, bisogna permetterlo almeno per la rete locale usata
+per giocare. In caso contrario il client può non riuscire a connettersi, oppure RMI può collegarsi ma non
+riuscire a consegnare le risposte.
+
+### 3. Avvio usando parametri da terminale
+Il codice non legge argomenti posizionali passati al `main`, quindi la configurazione da terminale
+deve essere passata come proprietà Java, cioè con `-D` prima di `-jar`.
+Queste proprietà sovrascrivono i valori presenti nei file `.env`.
+
+Il server avvia sempre sia TCP che RMI, mentre il client chiede da terminale quale interfaccia usare
+e quale protocollo di rete usare.
+
+#### Server
+```bash
+java \
+  -DMESOS_TCP_PORT=12345 \
+  -DMESOS_RMI_PORT=1099 \
+  -DMESOS_SERVER_RMI_HOST=<IP_SERVER> \
+  -jar deliverables/mesos-server.jar
+```
+
+`MESOS_TCP_PORT` è la porta usata per TCP.
+`MESOS_RMI_PORT` è la porta usata dal registry RMI.
+`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce nello stub del server: se si gioca in locale
+può essere `localhost`, se invece i client sono su altre macchine deve essere l'IP locale del server.
+
+#### Client
+Per il client bisogna usare il JAR adatto al sistema operativo:
+- `mesos-client-mac-aarch64.jar` per macOS Apple Silicon
+- `mesos-client-mac-x64.jar` per macOS Intel
+- `mesos-client-linux-x64.jar` per Linux x64
+- `mesos-client-windows-x64.jar` per Windows x64
+
+Esempio:
+```bash
+java \
+  -DMESOS_SERVER_HOST=<IP_SERVER> \
+  -DMESOS_TCP_PORT=12345 \
+  -DMESOS_RMI_PORT=1099 \
+  -DMESOS_CLIENT_RMI_HOST=<IP_CLIENT> \
+  -jar deliverables/mesos-client-mac-aarch64.jar
+```
+
+`MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
+`MESOS_CLIENT_RMI_HOST` serve solo per RMI, perchè in quel caso anche il server deve poter richiamare
+il client tramite callback. Se si sceglie TCP, questo valore viene ignorato.
+
+Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, si può avviare
+il server con:
+
+```bash
+java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-server.jar
+```
+
+e il client con:
+
+```bash
+java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/mesos-client-mac-aarch64.jar
+```
+
+
+
+### 4. Configurazione tramite file `.env`
+In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
+I file vengono cercati nella directory da cui viene lanciato il comando, quindi per usare quelli già presenti
+in `deliverables` bisogna prima spostarsi in quella cartella:
+
+```bash
+cd deliverables
+```
 
 #### Server (`server.env`)
 ```env
 MESOS_TCP_PORT=12345
 MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=localhost
+MESOS_SERVER_RMI_HOST=<IP_SERVER>
 ```
-* Se il server deve essere raggiungibile da altri dispositivi nella stessa rete, imposta `MESOS_SERVER_RMI_HOST` con l'IP locale del server trovato al punto 1 (es. `192.168.1.56`).
 
 #### Client (`client.env`)
 ```env
-MESOS_SERVER_HOST=localhost
+MESOS_SERVER_HOST=<IP_SERVER>
 MESOS_TCP_PORT=12345
 MESOS_RMI_PORT=1099
-MESOS_CLIENT_RMI_HOST=localhost
+MESOS_CLIENT_RMI_HOST=<IP_CLIENT>
 ```
-* `MESOS_SERVER_HOST`: Impostare l'IP del Server (se diverso da `localhost`).
-* `MESOS_CLIENT_RMI_HOST`: Impostare l'IP del Client locale (necessario solo per RMI a causa delle callback server-to-client).
 
----
-
-### 3. Compilazione del progetto
-Per compilare il codice ed esportare il file JAR comprensivo di tutte le dipendenze esterne (es. JavaFX, Gson, ControlsFX) necessarie per l'esecuzione, utilizzare Maven wrapper (`mvnw`):
+Poi si possono avviare i JAR senza passare altre proprietà:
 
 ```bash
-./mvnw clean package dependency:copy-dependencies -DskipTests
+java -jar mesos-server.jar
 ```
-*Su Windows (Prompt dei comandi), usare `mvnw.cmd` o `mvn`:*
-```cmd
-mvnw.cmd clean package dependency:copy-dependencies -DskipTests
+
+```bash
+java -jar mesos-client-mac-aarch64.jar
 ```
-Questo comando genererà:
-* Il JAR principale in `target/mesos-1.0-SNAPSHOT.jar`.
-* Tutte le librerie esterne di dipendenza nella cartella `target/dependency/`.
 
----
+Le righe vuote, le righe che iniziano con `#` e le righe che non hanno forma `KEY=value`
+vengono ignorate. Se un valore non viene specificato, il codice usa i default: `localhost`
+per l'indirizzo del server visto dal client, porta TCP `12345` e porta RMI `1099`.
 
-### 4. Avvio dell'Applicazione
 
-#### Esecuzione tramite file JAR
-Una volta compilato il progetto con successo, è possibile lanciare l'applicazione tramite Java sfruttando i moduli del Java Module System (`--module-path`):
 
-* **Avvio del Server**:
-  ```bash
-  java --module-path target/mesos-1.0-SNAPSHOT.jar:target/dependency --module it.polimi.ingsoft.mesos/it.polimi.ingsoft.mesos.server.LaunchServer
-  ```
-* **Avvio del Client**:
-  ```bash
-  java --module-path target/mesos-1.0-SNAPSHOT.jar:target/dependency --module it.polimi.ingsoft.mesos/it.polimi.ingsoft.mesos.client.LaunchClient
-  ```
 
-#### Esecuzione diretta tramite Maven (Sviluppo)
-In alternativa, durante la fase di sviluppo, è possibile compilare ed eseguire i moduli al volo senza generare i JAR:
-
-* **Avvio del Server**:
-  ```bash
-  ./mvnw exec:java -Dexec.mainClass="it.polimi.ingsoft.mesos.server.LaunchServer"
-  ```
-* **Avvio del Client**:
-  ```bash
-  ./mvnw exec:java
-  ```
 
 ---
 
@@ -125,7 +185,7 @@ punto di vista il Model non conosce la view, poichè viene applicato il pattern 
 ha riferimenti alla view sotto forma di interfacce listener.
 Di seguito uno schema illustrato del pattern:
 
-![MVC.png](assets/MVC.png)
+![MVC.png](assets/immages/MVC.png)
 
 L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
 1) La view contatta il controller a seguito dell'input utente
@@ -168,7 +228,7 @@ riferimento al client remoto e offre il punto unico attraverso cui inviargli not
 
 Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
-![project-architecture.png](assets/DistributedMVC.png)
+![project-architecture.png](assets/immages/DistributedMVC.png)
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
@@ -259,8 +319,9 @@ Ad esempio, un comando client -> server ha questa forma logica:
 }
 ```
 
-Il campo `type` è necessario perché il campo `payload` è generico: prima si legge il tipo del messaggio,
-poi si sceglie la classe concreta con cui deserializzare il payload.
+Il campo `type` è necessario perché il campo `payload` è tipizzato sull'interfaccia della direzione
+(`ClientPayload` o `ServerPayload`): prima si legge il tipo del messaggio, poi si sceglie la classe
+concreta con cui deserializzare il payload.
 Nel caso RMI il problema della deserializzazione JSON non esiste, perché gli oggetti vengono passati
 direttamente tramite invocazione remota.
 Tuttavia vengono riutilizzati gli stessi payload, così TCP e RMI mantengono lo stesso contratto dati
@@ -328,7 +389,8 @@ nelle invocazioni remote.
 
 ### Protocollo TCP
 TCP è un protocollo di trasporto a basso livello che permette a due processi di comunicare tramite socket.
-Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato da un indirizzo IP e da una porta.
+Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato 
+da un indirizzo IP e da una porta.
 Una connessione TCP è quindi identificata dalla coppia di endpoint coinvolti, cioè endpoint client ed endpoint server.
 
 Nel modello client-server, il server apre una `ServerSocket` su una porta e rimane in attesa di connessioni 
@@ -357,7 +419,8 @@ while ((message = reader.readLine()) != null) {
 
 La chiamata a `readLine()` rimane in attesa finché non arriva una riga completa.
 Se la connessione viene chiusa dall'altro lato, `readLine()` restituisce `null` e il ciclo termina.
-Per questo la lettura non può stare nello stesso flusso che gestisce l'interazione dell'utente.
+Propriò perchè ci sono metodi bloccanti, nasce la necessità di usare thread per gestire il ciclo
+di raccolta dei messaggi in entrata.
 
 La scrittura, invece, avviene solo quando c'è effettivamente un messaggio da inviare:
 
@@ -368,15 +431,62 @@ writer.println(serializedMessage);
 Non serve quindi un thread dedicato alla scrittura, il codice scrive sulla socket nel momento in cui deve 
 inviare un comando o una notifica.
 
-Sul client, `ServerProxyTCP` apre la socket, gestisce la scrittura dei comandi verso il server e avvia 
-un `VirtualServerTCP` in un thread separato per leggere i messaggi provenienti dal server.
-Sul server, `ConnectionAcceptor` mantiene aperta la `ServerSocket`, accetta nuove connessioni 
-e crea una `VirtualViewTCP` dedicata per ogni client connesso.
+A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`, che apre la `ServerSocket`
+e viene avviato su un thread dedicato:
 
-Questa scelta riprende il modello di server TCP multi-thread: il thread principale del listener accetta 
-nuove connessioni, mentre ogni `VirtualViewTCP` gestisce la comunicazione con uno specifico client.
-La `VirtualViewTCP` legge i messaggi in arrivo dal client, li fa deserializzare e 
-li inoltra al router applicativo; quando deve inviare un messaggio al client, usa la stessa socket in uscita.
+```java
+ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
+acceptor.start();
+Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
+acceptorThread.start();
+```
+
+Il compito del `ConnectionAcceptor` è accettare nuove connessioni e creare una `VirtualViewTCP`
+per ogni client collegato:
+
+```java
+Socket clientSocket = this.serverSocket.accept();
+VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router);
+Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
+virtualViewThread.start();
+```
+
+Sul client, `ServerProxyTCP` apre la socket verso il server, prepara il writer per i messaggi in uscita
+e avvia un `VirtualServerTCP` per gestire i messaggi in ingresso:
+
+```java
+this.socket = new Socket(serverHost, port);
+this.writer = new PrintWriter(this.socket.getOutputStream(), true);
+this.virtualServer = new VirtualServerTCP(this.socket, clientView, this);
+this.virtualServerThread = new Thread(this.virtualServer, "mesos-client-server-message-receiver");
+this.virtualServerThread.start();
+```
+
+Dentro `VirtualServerTCP`, invece, viene preparato il reader sulla stessa socket e parte il ciclo di lettura
+dei messaggi provenienti dal server:
+
+```java
+BufferedReader reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+
+while (this.running && (serializedMessage = reader.readLine()) != null) {
+    this.handleMessage(serializedMessage);
+}
+```
+Questo è il punto concreto in cui il thread del `VirtualServerTCP` resta in ascolto dei messaggi server -> client.
+
+
+![flusso TCP](assets/immages/FlussoTCP.png)
+
+
+
+Quindi il flusso concreto TCP è:
+- il server crea un `ConnectionAcceptor`
+- il `ConnectionAcceptor` apre la `ServerSocket`
+- quando arriva un client, viene creata una `VirtualViewTCP`
+- ogni `VirtualViewTCP` gira su un thread dedicato alla comunicazione con quel client
+- il client usa `ServerProxyTCP` per inviare messaggi al server
+- il client usa `VirtualServerTCP` per restare in ascolto dei messaggi provenienti dal server
+
 #### GSON
 GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
 Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo sotto 
@@ -395,54 +505,184 @@ Un messaggio client -> server serializzato in JSON ha quindi questa forma:
   }
 }
 ```
-O più in generale direttamente dalla classe ServerMessage abbiamo:
+Il wrapper client -> server è quindi:
 ```java
-public class ServerMessage implements Serializable {
-    public final ServerMessageType type;
-    public final Object payload;
+public class ClientMessage implements Serializable {
+    public final ClientMessageType type;
+    public final ClientPayload payload;
 
-    public ServerMessage(ServerMessageType type, Object payload) {
+    public ClientMessage(ClientMessageType type, ClientPayload payload) {
         this.type = Objects.requireNonNull(type, "type cannot be null");
         this.payload = payload;
     }
 }
 ```
-Quindi ci aspettiamo di poter inferire il payload in arrivo direttamente leggendo il campo type e chiedendo a GSON di 
-deserializzare quella data classe.
+
+Il wrapper server -> client è equivalente, ma usa i tipi della direzione opposta:
+```java
+public class ServerMessage implements Serializable {
+    public final ServerMessageType type;
+    public final ServerPayload payload;
+
+    public ServerMessage(ServerMessageType type, ServerPayload payload) {
+        this.type = Objects.requireNonNull(type, "type cannot be null");
+        this.payload = payload;
+    }
+}
+```
+Il campo payload è quindi vincolato all'interfaccia corretta della direzione del messaggio.
+Quando arriva un messaggio, però, bisogna comunque capire quale payload concreto contiene.
+Per farlo il codice legge prima il campo `type` e poi chiede a GSON di deserializzare il `payload`
+usando la classe corrispondente.
 
 La serializzazione avviene con:
+
 ```java
-GSON.toJson(message)
+ClientMessage message = new ClientMessage(ClientMessageType.AUTHENTICATE, new AuthenticationPayload("tom"));
+String serializedMessage = GSON.toJson(message);
 ```
 
-La deserializzazione avviene con:
+In generale invece la deserializzazione avviene con:
 ```java
 GSON.fromJson(json, ClasseDaCreare.class)
 ```
-
-Nei punti in cui il codice deve prima capire il tipo del messaggio, il JSON viene letto come `JsonObject`.
-Questo permette di leggere prima il campo `type` e poi scegliere la classe corretta del payload:
+Il motivo per cui il wrapper deve contenere il type, cosi come già detto, è dovuto al fatto che quando in
+TCP viene ricevuta la stringa in JSON non si sa a priori che classe concreta fra le varie esistenti di tipo payload
+andare a ricreare, pertanto è qui che entra in gioco il type. Il type ci fornisce il tipo di payload, cosi possiamo
+chidedere a GSON di deserializzare quella stringa GSON e ricostruire proprio una determinata classe.
+Ad esempio si puo vedere questo processo nel CommandHandler sul server.
+Qui il messaggio viene prima letto come `JsonObject`, così il codice può leggere il `type` prima di
+deserializzare il `payload`:
 ```java
-JsonObject message = GSON.fromJson(line, JsonObject.class);
-String type = message.get("type").getAsString();
-JsonObject payload = message.getAsJsonObject("payload");
+JsonObject root = GSON.fromJson(rawMessage, JsonObject.class);
+ClientMessageType type = ClientMessageType.valueOf(root.get("type").getAsString());
+JsonElement payloadElement = root.get("payload");
+
+ClientPayload payload = switch (type) {
+    case AUTHENTICATE -> GSON.fromJson(payloadElement, AuthenticationPayload.class);
+    case CREATE_LOBBY -> GSON.fromJson(payloadElement, CreateLobbyPayload.class);
+    case MOVE_TOTEM -> GSON.fromJson(payloadElement, MoveTotemPayload.class);
+    // altri type mappati sulle rispettive classi di payload
+};
 ```
 
-Questo è importante perché il campo `payload` nel wrapper `ClientMessage`/`ServerMessage` è generico.
-GSON può serializzarlo facilmente, ma quando deve deserializzarlo deve sapere quale classe concreta usare.
-Per questo il codice legge prima il `type` e poi associa quel tipo alla classe di payload corretta.
-
-
-
-
-Per RMI invece la situazione è più semplice, poiche il remote method invocation si occupa di tutto il meccanismo di comunicazione, 
-è sufficiente implementare le interfacce e registrare gli stub, inoltre RMI gestisce in automatico la serializzazione degli oggetti, 
-quindi non è necessario gestire i dettagli di basso livello.
-Non serve quindi un ciclo esplicito di lettura sulla socket, perchè la ricezione dei messaggi avviene tramite invocazione
-dei metodi remoti esposti dagli stub.
+Il punto è che il campo `payload` di `ClientMessage` non è dichiarato come `AuthenticationPayload`
+o `MoveTotemPayload`, ma come `ClientPayload`.
+Questa informazione è sufficiente per il contratto Java, ma non basta a GSON per ricostruire l'oggetto
+concreto quando riceve una stringa JSON.
+Per questo il `type` fa da discriminante: prima viene letto il tipo del messaggio, poi in base a quel tipo
+viene scelta la classe concreta con cui deserializzare il payload.
 
 ### Protocollo RMI
+RMI (Remote Method Invocation) è un'astrazione fornita da Java per semplificare la programmazione distribuita.
+L'idea di fondo è permettere a una JVM di invocare metodi su oggetti che si trovano in un'altra JVM,
+con una sintassi uguale a quella di una normale chiamata a metodo.
+RMI quindi nasconde al codice applicativo la gestione diretta delle socket e della serializzazione:
+il programmatore non deve scrivere manualmente byte su uno stream, come avviene in TCP,
+ma invoca un metodo su un oggetto che rappresenta l'oggetto remoto.
+Nel caso classico client-server, l'oggetto remoto si trova sul server e il client lo usa tramite uno stub.
+Lo stub è un proxy locale: implementa la stessa interfaccia remota dell'oggetto server e inoltra la chiamata
+attraverso la rete.
+Lato server, RMI riceve la chiamata, la deserializza e la fa arrivare all'oggetto remoto concreto.
+Quindi la rete non sparisce davvero: viene solo nascosta dietro il meccanismo degli stub e delle interfacce remote.
+Per questo i metodi remoti devono dichiarare `RemoteException`, perché una chiamata che sembra locale
+può comunque fallire per motivi di rete (è anche il motivo per il quale abbiamo dovuto duplicare le interfacce di rete 
+come già spiegato sopra).
 
+![RMI.png](assets/immages/HighLevelRMI.png)
+
+A livello operativo, il primo oggetto remoto pubblicato dal server è `RmiConnectionEntryPoint`.
+Questo oggetto implementa `RmiConnectionService` e viene registrato nel registry RMI con il nome 
+`MesosServer`.
+
+```java
+RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router);
+LocateRegistry.createRegistry(port);
+Registry registry = LocateRegistry.getRegistry(port);
+registry.rebind("MesosServer", rmiEntryPoint);
+```
+
+Il registry permette al client di ottenere lo stub dell'entry point remoto usando il nome `MesosServer`.
+
+Sul client, infatti, il primo passo è il lookup:
+
+```java
+String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
+RmiConnectionService connectionService =
+        (RmiConnectionService) Naming.lookup(registryUrl);
+```
+
+A questo punto il client possiede uno stub di tipo `RmiConnectionService`.
+Questo stub espone il metodo `connect(...)`, che serve ad aprire una connessione logica con il server.
+
+Prima di chiamare `connect(...)`, però, il client crea il proprio callback RMI, cioè `VirtualServerRMI`.
+Questo oggetto rappresenta il punto di ingresso lato client per i messaggi server -> client.
+
+```java
+this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback);
+this.serverStub = connectionService.connect(this.callbackReceiver);
+this.callbackReceiver.attachServerProxy(this);
+```
+
+La chiamata a `connect(...)` arriva sul server dentro `RmiConnectionEntryPoint`.
+Il server riceve il callback del client e crea una `VirtualViewRMI` dedicata a quella connessione:
+
+```java
+public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
+    return new VirtualViewRMI(this.serverController, clientCallback, this.router);
+}
+```
+
+La `VirtualViewRMI` è quindi la sessione remota del singolo client lato server.
+Quando viene creata, registra una nuova connessione nel `ServerController` e conserva il callback del client:
+
+```java
+this.clientCallback = clientCallback;
+this.sessionId = this.serverController.registerConnection(this);
+```
+
+Il valore ritornato da `connect(...)` è uno stub di tipo `RmiServerService`.
+Da quel momento il client non usa più il registry per inviare comandi:
+usa direttamente lo stub della propria sessione remota.
+
+```java
+this.serverStub.handleClientMessage(message);
+```
+
+Sul server, la chiamata arriva in `VirtualViewRMI.handleClientMessage(...)`.
+Qui il messaggio viene ricevuto come oggetto Java, non come stringa JSON, e viene inoltrato al router applicativo:
+
+```java
+ClientPayload payload = clientMessage.payload;
+this.router.routeMessage(this.sessionId, payload);
+```
+
+Il flusso inverso funziona usando il callback passato dal client.
+Quando il server deve notificare un aggiornamento, `VirtualViewRMI` invoca un metodo sul callback remoto
+`RmiClientService`:
+
+```java
+this.clientCallback.handleMessage(
+        new ServerMessage(ServerMessageType.AUTHENTICATION_RESULT, authenticationResultPayload)
+);
+```
+
+Sul client questa chiamata arriva in `VirtualServerRMI.handleMessage(...)`, che inoltra il messaggio
+al `MessageRouter` della user interface:
+
+```java
+this.messageRouter.routeMessage(message);
+```
+![FlussoRMI.png](assets/immages/FlussoRMI.png)
+Quindi il flusso concreto è:
+- il server registra `RmiConnectionEntryPoint` nel registry come `MesosServer`
+- il client fa lookup e ottiene lo stub `RmiConnectionService`
+- il client esporta `VirtualServerRMI` come callback
+- il client chiama `connect(callback)`
+- il server crea una `VirtualViewRMI` dedicata
+- il client riceve lo stub `RmiServerService` della propria sessione
+- client -> server: `ServerProxyRMI` chiama `VirtualViewRMI`
+- server -> client: `VirtualViewRMI` chiama `VirtualServerRMI`
 
 
 ## Architettura del Client
@@ -454,7 +694,7 @@ per poter avviare il client. In particolare a gestire la user interface è un og
 Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view. 
 Il modo in cui vengono mostrate le informazioni dipende dalla 
 UI scelta. Di seguito una immagine della architettura del client, che renderà più chiaro il discorso:
-![client_architecture.png](assets/client-architecture.png)
+![client_architecture.png](assets/immages/client-architecture.png)
 
 I blocchi principali dell'architettura client sono:
 - `ClientView`: è l'interfaccia che rappresenta i metodi per modificare la view del client
@@ -490,5 +730,3 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ## Architettura del Server
-### Session Registry 
-

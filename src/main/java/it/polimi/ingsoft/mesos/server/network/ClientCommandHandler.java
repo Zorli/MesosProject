@@ -16,17 +16,64 @@ import it.polimi.ingsoft.mesos.server.virtualview.VirtualViewTCP;
 import java.io.PrintStream;
 import java.util.Objects;
 
+/**
+ * Converts one raw TCP line received from a client into a typed client command.
+ * <p>
+ * This class is part of the server-side TCP boundary, but it does not manage
+ * the socket. {@link VirtualViewTCP} reads raw text lines from the connection
+ * and passes each line here. This handler only understands the JSON protocol:
+ * it validates the common message envelope, deserializes the payload required
+ * by the declared {@link ClientMessageType}, and gives the resulting command
+ * back to the virtual view as a {@link ClientMessage}.
+ * <p>
+ * The handler deliberately does not execute lobby or game logic. After parsing,
+ * normal commands are forwarded to {@link VirtualViewTCP#handleClientMessage(ClientMessage)}.
+ * The only command handled directly here is {@link ClientMessageType#PONG},
+ * because it belongs to the connection keep-alive protocol and must update the
+ * connection state instead of reaching the application controllers.
+ * <p>
+ * In the TCP protocol every client message must contain both {@code type} and
+ * {@code payload}. This also applies to {@code PONG}: the payload may be empty,
+ * but the envelope is still expected to contain it so that all client messages
+ * keep the same shape.
+ */
 public class ClientCommandHandler {
     private static final Gson GSON = new GsonBuilder().create();
 
     private final PrintStream out;
     private final VirtualViewTCP virtualView;
 
+    /**
+     * Creates a command handler bound to one TCP virtual view.
+     *
+     * @param out stream used for server-side diagnostic messages
+     * @param virtualView virtual view that owns the client session and receives
+     *                    the parsed command
+     * @throws NullPointerException if {@code out} or {@code virtualView} is null
+     */
     public ClientCommandHandler(PrintStream out, VirtualViewTCP virtualView) {
         this.out = Objects.requireNonNull(out, "out cannot be null");
         this.virtualView = Objects.requireNonNull(virtualView, "virtualView cannot be null");
     }
 
+    /**
+     * Parses and dispatches one raw client message.
+     * <p>
+     * The input must be a JSON object with a {@code type} field matching a
+     * {@link ClientMessageType} value and a non-null {@code payload} field. The
+     * declared type selects the concrete {@link ClientPayload} class used for
+     * deserialization.
+     * <p>
+     * For regular commands, the method builds a {@link ClientMessage} and passes
+     * it to the associated {@link VirtualViewTCP}. For {@code PONG}, it updates
+     * the keep-alive state directly through {@link VirtualViewTCP#pong}.
+     *
+     * @param rawMessage JSON line received from the TCP socket
+     * @throws IllegalArgumentException if the JSON envelope, message type, or
+     *                                  payload is malformed
+     * @throws UnsupportedOperationException if the message type is valid but not
+     *                                       supported by this TCP deserializer
+     */
     public void handle(String rawMessage) {
         JsonObject root;
         try {
@@ -70,6 +117,23 @@ public class ClientCommandHandler {
         this.virtualView.handleClientMessage(clientMessage);
     }
 
+    /**
+     * Converts the JSON payload into the concrete payload class required by the
+     * already validated message type.
+     * <p>
+     * This method centralizes the TCP deserialization table: each
+     * {@link ClientMessageType} accepted by the TCP protocol is mapped to the
+     * corresponding {@link ClientPayload} implementation used by controllers and
+     * model-facing server code.
+     *
+     * @param type message type declared in the client envelope
+     * @param payloadElement JSON payload associated with the message type
+     * @return payload object matching the declared client command
+     * @throws IllegalArgumentException if the payload cannot be deserialized into
+     *                                  the expected class
+     * @throws UnsupportedOperationException if the type is valid but has no TCP
+     *                                       payload mapping here
+     */
     private ClientPayload deserializePayload(ClientMessageType type, JsonElement payloadElement) {
         try {
             return switch (type) {

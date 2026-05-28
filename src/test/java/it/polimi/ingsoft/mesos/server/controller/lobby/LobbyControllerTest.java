@@ -12,6 +12,7 @@ import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.StartLobbyPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
@@ -306,7 +307,7 @@ class LobbyControllerTest {
         final List<Object> receivedPayloads = new ArrayList<>();
 
         @Override
-        public void notifyUpdate(Object payload) {
+        public void notifyUpdate(ServerPayload payload) {
             receivedPayloads.add(payload);
         }
 

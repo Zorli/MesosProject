@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.game.game;
 
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGameStatusException;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 
 /**
  * Executes public actions of {@link Game}.
@@ -70,7 +71,7 @@ public class GameActionExecutor {
         long currentVersion = this.game.getStateVersion();
 
         if (currentVersion != previousVersion) {
-            Object payload = this.game.buildPayload();
+            ServerPayload payload = this.game.buildPayload();
             this.game.notifyListeners(payload);
         }
     }

@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
-import it.polimi.ingsoft.mesos.server.virtualview.RmiConnectionEntryPoint;
+import it.polimi.ingsoft.mesos.server.network.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.IOException;

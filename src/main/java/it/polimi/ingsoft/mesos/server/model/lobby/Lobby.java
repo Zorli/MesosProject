@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.lobby;
 
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 
 import java.util.ArrayList;
@@ -170,7 +171,7 @@ public class Lobby {
      * @param leavingListener the connection of the player leaving (receives a direct unicast confirmation)
      */
     public void notifyPlayerLeft(String nickname, Listener leavingListener) {
-        Object payload = this.payloadMapper.lobbyLeft(nickname, this, this.id);
+        ServerPayload payload = this.payloadMapper.lobbyLeft(nickname, this, this.id);
         if (leavingListener != null) {
             leavingListener.notifyUpdate(payload);
         }
@@ -279,7 +280,7 @@ public class Lobby {
     /**
      * Sends a serializable payload to all registered listeners.
      */
-    private void notifyListeners(Object payload) {
+    private void notifyListeners(ServerPayload payload) {
         List<Listener> currentListeners = List.copyOf(this.listeners);
         for (Listener listener : currentListeners) {
             listener.notifyUpdate(payload);

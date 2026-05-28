@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.model.game.game;
 
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidConnectionState;
 import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
 import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
@@ -396,7 +397,7 @@ public class Game {
      *
      * @return payload representing the current game state
      */
-    public Object buildPayload() {
+    public ServerPayload buildPayload() {
         return GamePayloadMapper.from(this);
     }
 
@@ -409,7 +410,7 @@ public class Game {
      *
      * @param payload payload to send
      */
-    public void notifyListeners(Object payload) {
+    public void notifyListeners(ServerPayload payload) {
         List<Listener> currentListeners = new ArrayList<>(this.listeners);
 
         for (Listener listener : currentListeners) {

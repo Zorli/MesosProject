@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
 import it.polimi.ingsoft.mesos.server.network.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
+import it.polimi.ingsoft.mesos.server.network.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
@@ -11,6 +12,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.*;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.*;
@@ -59,11 +61,12 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     @Override
     public void handleClientMessage(ClientMessage clientMessage) throws RemoteException {
         try {
-            if (clientMessage == null || !(clientMessage.payload instanceof ClientPayload payload)) {
+            if (clientMessage == null || clientMessage.payload == null) {
                 this.sendError(new IllegalArgumentException("Malformed message"));
                 return;
             }
 
+            ClientPayload payload = clientMessage.payload;
             this.out.println("[RMI] Received " + this.describePayload(payload) + " from " + this.describeSession());
             this.router.routeMessage(this.sessionId, payload);
         } catch (RuntimeException exception) {
@@ -77,7 +80,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     @Override
-    public void notifyUpdate(Object payload) {
+    public void notifyUpdate(ServerPayload payload) {
         try {
             if (payload instanceof GamePayload gamePayload) {
                 this.clientCallback.handleMessage(new ServerMessage(ServerMessageType.GAME_UPDATE, gamePayload));
