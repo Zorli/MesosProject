@@ -4,8 +4,8 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
-rm -rf deliverables/jar
 mkdir -p deliverables/jar
+find deliverables/jar -maxdepth 1 -type f -name "*.jar" -delete
 
 echo "Building Linux x64 client fat JAR..."
 ./mvnw -Pclient-jar \
