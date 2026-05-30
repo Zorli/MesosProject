@@ -26,10 +26,6 @@ public class ServerModel {
     private final ServerSessionRegistry sessions;
     /** Data mapper to convert internal models/events into serializable network payloads. */
     private final PreLobbyPayloadMapper payloadMapper;
-
-    /** Global map of active listeners (virtual views) indexed by session ID. */
-    private final Map<String, Listener> globalListeners = new ConcurrentHashMap<>();
-
     /**
      * Constructs a new ServerModel.
      *
@@ -39,26 +35,6 @@ public class ServerModel {
         this.sessions = sessions;
         this.payloadMapper = new PreLobbyPayloadMapper();
     }
-
-    /**
-     * Registers a global network listener (virtual view) for a newly connected session.
-     *
-     * @param sessionId the unique identifier of the client session
-     * @param listener the listener interface used to push updates to the client
-     */
-    public void addGlobalListener(String sessionId, Listener listener) {
-        this.globalListeners.put(sessionId, listener);
-    }
-
-    /**
-     * Unregisters the global listener associated with the specified session.
-     *
-     * @param sessionId the unique identifier of the client session
-     */
-    public void removeGlobalListener(String sessionId) {
-        this.globalListeners.remove(sessionId);
-    }
-
     /**
      * Sends a targeted error payload to the listener associated with the specified session.
      *
@@ -67,7 +43,7 @@ public class ServerModel {
      * @param message a descriptive error message explaining the failure
      */
     private void sendUnicastError(String sessionId, String errorType, String message) {
-        Listener listener = this.globalListeners.get(sessionId);
+        Listener listener = this.sessions.getListenerOf(sessionId);
         if (listener != null) {
             listener.notifyUpdate(new ErrorPayload(errorType, message));
         }
@@ -105,18 +81,17 @@ public class ServerModel {
      *
      * @param sessionId the unique identifier of the client session
      * @param nickname the nickname chosen by the user
-     * @param clientView the network listener interface representing the client's view
      * @return {@code true} if the authentication succeeded, {@code false} otherwise
      */
-    public boolean authenticate(String sessionId, String nickname, Listener clientView) {
+    public boolean authenticate(String sessionId, String nickname) {
+        Listener listener = this.sessions.getListenerOf(sessionId);
         try {
             this.sessions.authenticate(sessionId, nickname);
-
-            clientView.notifyUpdate(this.payloadMapper.authenticated(nickname));
+            listener.notifyUpdate(this.payloadMapper.authenticated(nickname));
             return true;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            clientView.notifyUpdate(new ErrorPayload("AUTH_ERROR", e.getMessage()));
+            listener.notifyUpdate(new ErrorPayload("AUTH_ERROR", e.getMessage()));
             return false;
         }
     }
@@ -125,15 +100,15 @@ public class ServerModel {
      * Retrieves the list of currently open/joinable lobbies and pushes it to the client.
      *
      * @param sessionId the unique identifier of the requesting client session
-     * @param clientView the network listener interface representing the client's view
      */
-    public void listOpenLobbies(String sessionId, Listener clientView) {
+    public void listOpenLobbies(String sessionId) {
+        Listener listener = this.sessions.getListenerOf(sessionId);
         try {
             List<Lobby> openLobbies = this.sessions.getOpenLobbies();
-            clientView.notifyUpdate(this.payloadMapper.lobbyList(openLobbies));
+            listener.notifyUpdate(this.payloadMapper.lobbyList(openLobbies));
 
         } catch (Exception e) {
-            clientView.notifyUpdate(new ErrorPayload("LIST_OPEN_ERROR", e.getMessage()));
+           listener.notifyUpdate(new ErrorPayload("LIST_OPEN_ERROR", e.getMessage()));
         }
     }
 
@@ -146,22 +121,22 @@ public class ServerModel {
      *
      * @param sessionId the unique identifier of the client session requesting creation
      * @param chosenCapacity the maximum player capacity of the new lobby
-     * @param clientView the network listener interface representing the host client's view
      * @return the newly created {@link Lobby} instance, or {@code null} if creation failed
      */
-    public Lobby createLobby(String sessionId, int chosenCapacity, Listener clientView) {
+    public Lobby createLobby(String sessionId, int chosenCapacity) {
+        Listener listener = this.sessions.getListenerOf(sessionId);
         try {
             this.ensureSessionCanEnterLobby(sessionId);
             String nickname = this.requireNickname(sessionId);
             Lobby lobby = this.sessions.createLobbyModel(nickname, chosenCapacity);
 
-            lobby.addListener(clientView);
-            clientView.notifyUpdate(this.payloadMapper.lobbyCreated(nickname, lobby));
+            lobby.addListener(listener);
+            listener.notifyUpdate(this.payloadMapper.lobbyCreated(nickname, lobby));
 
             return lobby;
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            clientView.notifyUpdate(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
+            listener.notifyUpdate(new ErrorPayload("CREATE_LOBBY_ERROR", e.getMessage()));
             return null;
         }
     }
@@ -179,11 +154,11 @@ public class ServerModel {
      * </ul>
      *
      * @param sessionId the unique identifier of the client session attempting to join
-     * @param clientView the network listener interface representing the client's view
      * @param lobbyId the identifier of the target lobby to join
      * @return {@code true} if all validation checks pass, {@code false} otherwise (triggers an error payload unicast)
      */
-    public boolean joinLobbyValidation(String sessionId, Listener clientView, int lobbyId) {
+    public boolean joinLobbyValidation(String sessionId, int lobbyId) {
+        Listener listener = this.sessions.getListenerOf(sessionId);
         try {
             if (this.sessions.lobbyIdOf(sessionId) != null) {
                 throw new IllegalStateException("Already in a lobby.");
@@ -199,8 +174,7 @@ public class ServerModel {
             }
             return true;
         } catch (Exception e) {
-            // UNICAST DI ERRORE DAL MODEL (MVC Puro)
-            clientView.notifyUpdate(new ErrorPayload("JOIN_ERROR" , e.getMessage()));
+            listener.notifyUpdate(new ErrorPayload("JOIN_ERROR" , e.getMessage()));
             return false;
         }
     }

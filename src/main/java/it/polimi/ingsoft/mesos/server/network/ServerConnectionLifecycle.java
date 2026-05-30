@@ -25,15 +25,13 @@ import java.util.Objects;
  * disconnection to the proper controller by enqueueing a
  * {@link SystemDisconnectCommand}. This keeps phase-specific cleanup inside the
  * controller that owns that phase.
- * <p>
- * The service also keeps the pre-lobby notification path aligned with the
- * connection lifecycle. Connections that implement {@link Listener} are added to
- * the global listener map in {@link ServerModel} when they register and removed
- * when they disconnect.
  */
 public class ServerConnectionLifecycle {
     private final ServerSessionRegistry sessions;
-    private final ServerModel serverModel;
+    /**
+     * Background scheduler task monitoring ping/pong connection timeouts.
+     */
+    private final PingPongRoutine pingPongRoutine;
 
     /**
      * Creates a lifecycle service backed by the shared session registry and
@@ -41,13 +39,12 @@ public class ServerConnectionLifecycle {
      *
      * @param sessions registry containing session state, phase, controllers, and
      *                 network connections
-     * @param serverModel model that stores global listeners used before a client
-     *                    enters a specific lobby or game
      * @throws NullPointerException if {@code sessions} or {@code serverModel} is null
      */
-    public ServerConnectionLifecycle(ServerSessionRegistry sessions, ServerModel serverModel) {
+    public ServerConnectionLifecycle(ServerSessionRegistry sessions) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
-        this.serverModel = Objects.requireNonNull(serverModel, "serverModel cannot be null");
+        this.pingPongRoutine = new PingPongRoutine(this.sessions, this);
+        this.pingPongRoutine.start();
     }
 
     /**
@@ -63,11 +60,7 @@ public class ServerConnectionLifecycle {
      * @throws NullPointerException if {@code connection} is null
      */
     public String registerConnection(ClientConnection connection) {
-        String sessionId = this.sessions.registerConnection(connection);
-        if (connection instanceof Listener listener) {
-            this.serverModel.addGlobalListener(sessionId, listener);
-        }
-        return sessionId;
+        return this.sessions.registerConnection(connection);
     }
 
     /**
@@ -96,7 +89,6 @@ public class ServerConnectionLifecycle {
      * @param sessionId session to disconnect
      */
     public void disconnectSession(String sessionId) {
-        this.serverModel.removeGlobalListener(sessionId);
 
         ServerSessionRegistry.SessionSnapshot snapshot;
         try {
@@ -138,5 +130,9 @@ public class ServerConnectionLifecycle {
             this.disconnectSession(sessionId);
         } catch (Exception ignored) {
         }
+    }
+    //helper per stampa inutile
+    public ServerSessionRegistry getSessions() {
+        return this.sessions;
     }
 }

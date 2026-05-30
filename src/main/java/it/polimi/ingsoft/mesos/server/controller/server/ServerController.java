@@ -44,16 +44,6 @@ public class ServerController implements Runnable {
     private final GameFactory gameFactory;
 
     /**
-     * Handler manager managing client connection and disconnection lifecycles.
-     */
-    private final ServerConnectionLifecycle connectionLifecycle;
-
-    /**
-     * Background scheduler task monitoring ping/pong connection timeouts.
-     */
-    private final PingPongRoutine pingPongRoutine;
-
-    /**
      * Thread-safe blocking queue holding commands to be processed sequentially.
      */
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
@@ -71,10 +61,6 @@ public class ServerController implements Runnable {
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
 
         this.serverModel = new ServerModel(this.sessions);
-
-        this.connectionLifecycle = new ServerConnectionLifecycle(this.sessions, this.serverModel);
-        this.pingPongRoutine = new PingPongRoutine(this.sessions, this.connectionLifecycle);
-        this.pingPongRoutine.start();
     }
 
     /**
@@ -150,8 +136,7 @@ public class ServerController implements Runnable {
      * @param nickname  the chosen nickname
      */
     private void authenticate(String sessionId, String nickname) {
-        Listener clientView = this.sessions.getListenerOf(sessionId);
-        if (!this.serverModel.authenticate(sessionId, nickname, clientView)) {
+        if (!this.serverModel.authenticate(sessionId, nickname)) {
             return;
         }
         Integer gameId = this.sessions.reconnectGameIdOf(nickname);
@@ -172,8 +157,7 @@ public class ServerController implements Runnable {
      * @param sessionId the session ID of the client requesting the list
      */
     private void listOpenLobbies(String sessionId) {
-        Listener clientView = this.sessions.getListenerOf(sessionId);
-        this.serverModel.listOpenLobbies(sessionId, clientView);
+        this.serverModel.listOpenLobbies(sessionId);
     }
 
     /**
@@ -184,8 +168,7 @@ public class ServerController implements Runnable {
      * @param chosenCapacity the maximum player capacity of the lobby
      */
     private void createLobby(String sessionId, int chosenCapacity) {
-        Listener clientView = this.sessions.getListenerOf(sessionId);
-        Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity, clientView);
+        Lobby lobby = this.serverModel.createLobby(sessionId, chosenCapacity);
         if (lobby != null) {
             this.sessions.enterLobby(sessionId, lobby.getId());
 
@@ -208,8 +191,7 @@ public class ServerController implements Runnable {
      * @param lobbyId   the ID of the target lobby
      */
     private void joinLobby(String sessionId, int lobbyId) {
-        Listener clientView = this.sessions.getListenerOf(sessionId);
-        if (!this.serverModel.joinLobbyValidation(sessionId, clientView, lobbyId)) {
+        if (!this.serverModel.joinLobbyValidation(sessionId, lobbyId)) {
             return;
         }
         LobbyController target = this.sessions.getLobbyController(lobbyId);
@@ -220,33 +202,33 @@ public class ServerController implements Runnable {
         target.enqueueMessage(new SystemJoinCommand(sessionId));
     }
 
-    /**
-     * Registers a new client connection, assigning it a unique session ID.
-     *
-     * @param connection the ClientConnection representing the client
-     * @return the generated unique session ID
-     */
-    public String registerConnection(ClientConnection connection) {
-        return this.connectionLifecycle.registerConnection(connection);
-    }
+//    /**
+//     * Registers a new client connection, assigning it a unique session ID.
+//     *
+//     * @param connection the ClientConnection representing the client
+//     * @return the generated unique session ID
+//     */
+//    public String registerConnection(ClientConnection connection) {
+//        return this.connectionLifecycle.registerConnection(connection);
+//    }
 
-    /**
-     * Records a pong response received from the client to keep their session active.
-     *
-     * @param sessionId the session ID of the client responding to ping
-     */
-    public void recordPong(String sessionId) {
-        this.connectionLifecycle.recordPong(sessionId);
-    }
+//    /**
+//     * Records a pong response received from the client to keep their session active.
+//     *
+//     * @param sessionId the session ID of the client responding to ping
+//     */
+//    public void recordPong(String sessionId) {
+//        this.connectionLifecycle.recordPong(sessionId);
+//    }
 
-    /**
-     * Disconnects a client session and cleans up its registry states and references.
-     *
-     * @param sessionId the session ID of the client being disconnected
-     */
-    public void disconnectSession(String sessionId) {
-        this.connectionLifecycle.disconnectSession(sessionId);
-    }
+//    /**
+//     * Disconnects a client session and cleans up its registry states and references.
+//     *
+//     * @param sessionId the session ID of the client being disconnected
+//     */
+//    public void disconnectSession(String sessionId) {
+//        this.connectionLifecycle.disconnectSession(sessionId);
+//    }
 
     /**
      * Reports a phase execution error to the client session.

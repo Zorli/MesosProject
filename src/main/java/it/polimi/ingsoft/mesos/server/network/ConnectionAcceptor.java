@@ -23,7 +23,7 @@ import java.util.Objects;
  */
 public class ConnectionAcceptor implements Runnable{
     private final int port;
-    private final ServerController serverController;
+    private final ServerConnectionLifecycle serverConnectionLifecycle;
     private ServerSocket serverSocket;
     private final MessageRouter router;
     private volatile boolean running;
@@ -33,7 +33,7 @@ public class ConnectionAcceptor implements Runnable{
      *
      * @param port TCP port to bind; {@code 0} lets the operating system choose
      *             an available port
-     * @param serverController controller used by created virtual views to
+     * @param serverConnectionLifecycle connection manager used by created virtual views to
      *                         register sessions
      * @param router router used by created virtual views to dispatch client
      *               payloads to the correct server phase
@@ -42,12 +42,12 @@ public class ConnectionAcceptor implements Runnable{
      * @throws NullPointerException if {@code serverController} or {@code router}
      *                              is null
      */
-    public ConnectionAcceptor(int port, ServerController serverController, MessageRouter router) {
+    public ConnectionAcceptor(int port, ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router) {
         if (port < 0 || port > 65_535) {
             throw new IllegalArgumentException("Port must be between 0 and 65535");
         }
         this.port = port;
-        this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
+        this.serverConnectionLifecycle = serverConnectionLifecycle;
         this.router = Objects.requireNonNull(router, "router cannot be null");
     }
 
@@ -90,7 +90,7 @@ public class ConnectionAcceptor implements Runnable{
         while (this.running) {
             try {
                 Socket clientSocket = this.serverSocket.accept();
-                VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router );
+                VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverConnectionLifecycle, this.router );
                 Thread virtualViewThread = new Thread(
                         virtualView,
                         "mesos-virtual-view-" + clientSocket.getPort()

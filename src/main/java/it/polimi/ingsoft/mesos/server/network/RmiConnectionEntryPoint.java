@@ -28,21 +28,21 @@ import java.rmi.server.UnicastRemoteObject;
  * virtual view receives client payloads.
  */
 public class RmiConnectionEntryPoint extends UnicastRemoteObject implements RmiConnectionService {
-    private final ServerController serverController;
+    private final ServerConnectionLifecycle serverConnectionLifecycle;
     private final MessageRouter router;
 
     /**
      * Creates the remote RMI entry point.
      *
-     * @param serverController controller shared by the per-client RMI virtual
+     * @param serverConnectionLifecycle manager shared by the per-client RMI virtual
      *                         views for session lifecycle operations
      * @param router router shared by the per-client RMI virtual views for
      *               client payload dispatch
      * @throws RemoteException if the remote object cannot be exported
      */
-    public RmiConnectionEntryPoint(ServerController serverController, MessageRouter router) throws RemoteException {
+    public RmiConnectionEntryPoint(ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router) throws RemoteException {
         super();
-        this.serverController = serverController;
+        this.serverConnectionLifecycle = serverConnectionLifecycle;
         this.router = router;
     }
 
@@ -61,6 +61,6 @@ public class RmiConnectionEntryPoint extends UnicastRemoteObject implements RmiC
      */
     @Override
     public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-        return new VirtualViewRMI(this.serverController, clientCallback, this.router);
+        return new VirtualViewRMI(this.serverConnectionLifecycle, clientCallback, this.router);
     }
 }

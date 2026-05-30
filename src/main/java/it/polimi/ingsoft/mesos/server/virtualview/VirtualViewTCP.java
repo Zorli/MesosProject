@@ -3,10 +3,7 @@ package it.polimi.ingsoft.mesos.server.virtualview;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
-import it.polimi.ingsoft.mesos.server.network.ClientCommandHandler;
-import it.polimi.ingsoft.mesos.server.network.ClientConnection;
-import it.polimi.ingsoft.mesos.server.network.MessageRouter;
-import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
+import it.polimi.ingsoft.mesos.server.network.*;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
@@ -60,7 +57,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     private static final Gson GSON = new GsonBuilder().create();
 
     private final Socket clientSocket;
-    private final ServerController serverController;
+    private final ServerConnectionLifecycle serverConnectionLifecycle;
     private final PrintStream out;
     private final PrintWriter writer;
     private final String sessionId;
@@ -73,12 +70,12 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * messages.
      *
      * @param clientSocket accepted socket connected to one TCP client
-     * @param serverController server controller used to register and update the
+     * @param serverConnectionLifecycle server maager used to register and update the
      *                         session
      * @param router router used to dispatch parsed client payloads
      */
-    public VirtualViewTCP(Socket clientSocket, ServerController serverController, MessageRouter router) {
-        this(clientSocket, serverController, router, System.out);
+    public VirtualViewTCP(Socket clientSocket, ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router) {
+        this(clientSocket, serverConnectionLifecycle, router, System.out);
     }
 
     /**
@@ -90,7 +87,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * messages.
      *
      * @param clientSocket accepted socket connected to one TCP client
-     * @param serverController server controller used for session registration,
+     * @param serverConnectionLifecycle server manager used for session registration,
      *                         pong recording, and disconnection
      * @param router router used to send parsed client payloads to the correct
      *               server phase
@@ -100,9 +97,9 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * @throws IllegalStateException if the output writer cannot be opened on the
      *                               client socket
      */
-    public VirtualViewTCP(Socket clientSocket, ServerController serverController,MessageRouter router, PrintStream out) {
+    public VirtualViewTCP(Socket clientSocket, ServerConnectionLifecycle serverConnectionLifecycle,MessageRouter router, PrintStream out) {
         this.clientSocket = Objects.requireNonNull(clientSocket, "clientSocket cannot be null");
-        this.serverController = Objects.requireNonNull(serverController, "serverController cannot be null");
+        this.serverConnectionLifecycle = Objects.requireNonNull(serverConnectionLifecycle, "serverConnectionLifecycle cannot be null");
         this.router = router;
         this.out = Objects.requireNonNull(out, "out cannot be null");
         try {
@@ -113,7 +110,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot open TCP virtual view writer", exception);
         }
-        this.sessionId = this.serverController.registerConnection(this);
+        this.sessionId = this.serverConnectionLifecycle.registerConnection(this);
         this.commandHandler = new ClientCommandHandler(this.out, this);
     }
 
@@ -199,7 +196,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * @return authenticated nickname, or {@code unauthenticated-client}
      */
     public String describeSession() {
-        String nickname = this.serverController.getSessionRegistry().nicknameOf(this.sessionId);
+        String nickname = this.serverConnectionLifecycle.getSessions().nicknameOf(this.sessionId);
         if (nickname != null && !nickname.isBlank()) {
             return nickname;
         }
@@ -285,7 +282,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
             this.sendError(new IllegalArgumentException("Malformed payload"));
             return;
         }
-        this.serverController.recordPong(this.sessionId);
+        this.serverConnectionLifecycle.recordPong(this.sessionId);
     }
 
 
@@ -320,7 +317,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
             return;
         }
         this.cleanupDone = true;
-        this.serverController.disconnectSession(this.sessionId);
+        this.serverConnectionLifecycle.disconnectSession(this.sessionId);
         if (!this.clientSocket.isClosed()) {
             this.clientSocket.close();
         }
