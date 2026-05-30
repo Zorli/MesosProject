@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.network.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.network.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.RmiConnectionEntryPoint;
+import it.polimi.ingsoft.mesos.server.network.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.IOException;
@@ -59,7 +60,7 @@ public final class LaunchServer {
             // A. Shared Registry (Yellow Pages)
             ServerSessionRegistry sessions = new ServerSessionRegistry();
 
-            // B. Core Controllers
+            // B. Core Controller
             ServerController serverController = new ServerController(
                     DefaultGameFactory.getInstance(),
                     sessions
@@ -71,6 +72,11 @@ public final class LaunchServer {
             // C. The globally shared Message Router
             MessageRouter router = new MessageRouter(sessions, serverController);
 
+            // D. global Connection Life Cycle manager
+            ServerConnectionLifecycle serverConnectionLifecycle = new ServerConnectionLifecycle(
+                    sessions
+            );
+
             // ==========================================
             // 2. NETWORK LAYERS SETUP
             // ==========================================
@@ -78,11 +84,11 @@ public final class LaunchServer {
             // Start RMI (Passing the shared router and registry)
             int rmiPort = resolveRmiPort(environment);
             String serverRmiHost = resolveServerRmiHost(environment);
-            startRmiServer(serverController, router, rmiPort, serverRmiHost, out);
+            startRmiServer(serverConnectionLifecycle, router, rmiPort, serverRmiHost, out);
 
             // Start TCP (Passing the shared router and registry)
             int tcpPort = resolveTcpPort(environment);
-            ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
+            ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverConnectionLifecycle, router);
             acceptor.start();
             Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
             acceptorThread.start();
@@ -99,13 +105,13 @@ public final class LaunchServer {
         }
     }
 
-    private static void startRmiServer(ServerController controller, MessageRouter router, int port, String serverRmiHost, PrintStream out) throws Exception {
+    private static void startRmiServer(ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router, int port, String serverRmiHost, PrintStream out) throws Exception {
         if (serverRmiHost != null && !serverRmiHost.isBlank()) {
             System.setProperty("java.rmi.server.hostname", serverRmiHost);
         }
 
         // Pass dependencies down to the RMI entry point
-        RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(controller, router);
+        RmiConnectionService rmiEntryPoint = new RmiConnectionEntryPoint(serverConnectionLifecycle, router);
         LocateRegistry.createRegistry(port);
         Registry registry = LocateRegistry.getRegistry(port);
         registry.rebind("MesosServer", rmiEntryPoint);

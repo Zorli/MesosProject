@@ -1,10 +1,7 @@
 package it.polimi.ingsoft.mesos.server.virtualview;
 
 import it.polimi.ingsoft.mesos.server.controller.server.ServerController;
-import it.polimi.ingsoft.mesos.server.network.ClientConnection;
-import it.polimi.ingsoft.mesos.server.network.MessageRouter;
-import it.polimi.ingsoft.mesos.server.network.ProtocolErrorMapper;
-import it.polimi.ingsoft.mesos.server.network.RmiConnectionEntryPoint;
+import it.polimi.ingsoft.mesos.server.network.*;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiClientService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
@@ -35,22 +32,25 @@ import java.io.PrintStream;
  * outbound server updates back to the client via asynchronous RMI callbacks.
  */
 public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, ClientConnection, Listener {
-    private final ServerController serverController;
+    //non sensato
+    // private final ServerController serverController;
+    // più sensato
+    private final ServerConnectionLifecycle serverConnectionLifecycle;
     private final RmiClientService clientCallback;
     private final String sessionId;
     private final MessageRouter router;
     private final PrintStream out;
     private boolean cleanupDone;
 
-    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router) throws RemoteException {
-        this(serverController, clientCallback, router, System.out);
+    public VirtualViewRMI(ServerConnectionLifecycle serverConnectionLifecycle, RmiClientService clientCallback, MessageRouter router) throws RemoteException {
+        this(serverConnectionLifecycle, clientCallback, router, System.out);
     }
 
-    public VirtualViewRMI(ServerController serverController, RmiClientService clientCallback, MessageRouter router, PrintStream out) throws RemoteException {
+    public VirtualViewRMI(ServerConnectionLifecycle serverConnectionLifecycle, RmiClientService clientCallback, MessageRouter router, PrintStream out) throws RemoteException {
         super();
-        this.serverController = serverController;
+        this.serverConnectionLifecycle = serverConnectionLifecycle;
         this.clientCallback = clientCallback;
-        this.sessionId = this.serverController.registerConnection(this);
+        this.sessionId = this.serverConnectionLifecycle.registerConnection(this);
         this.router = router;
         this.out = out;
     }
@@ -121,7 +121,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             this.sendError(new IllegalArgumentException("Malformed payload"));
             return;
         }
-        this.serverController.recordPong(this.sessionId);
+        this.serverConnectionLifecycle.recordPong(this.sessionId);
     }
 
     private String describePayload(ClientPayload payload) {
@@ -132,7 +132,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
     }
 
     private String describeSession() {
-        String nickname = this.serverController.getSessionRegistry().nicknameOf(this.sessionId);
+        String nickname = this.serverConnectionLifecycle.getSessions().nicknameOf(this.sessionId);
         if (nickname != null && !nickname.isBlank()) {
             return nickname;
         }
@@ -150,7 +150,7 @@ public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerServ
             return;
         }
         this.cleanupDone = true;
-        this.serverController.disconnectSession(this.sessionId);
+        this.serverConnectionLifecycle.disconnectSession(this.sessionId);
         try {
             UnicastRemoteObject.unexportObject(this, true);
         } catch (NoSuchObjectException ignored) {

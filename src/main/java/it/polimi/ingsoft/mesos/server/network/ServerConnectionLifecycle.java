@@ -28,6 +28,10 @@ import java.util.Objects;
  */
 public class ServerConnectionLifecycle {
     private final ServerSessionRegistry sessions;
+    /**
+     * Background scheduler task monitoring ping/pong connection timeouts.
+     */
+    private final PingPongRoutine pingPongRoutine;
 
     /**
      * Creates a lifecycle service backed by the shared session registry and
@@ -39,6 +43,8 @@ public class ServerConnectionLifecycle {
      */
     public ServerConnectionLifecycle(ServerSessionRegistry sessions) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
+        this.pingPongRoutine = new PingPongRoutine(this.sessions, this);
+        this.pingPongRoutine.start();
     }
 
     /**
@@ -124,5 +130,9 @@ public class ServerConnectionLifecycle {
             this.disconnectSession(sessionId);
         } catch (Exception ignored) {
         }
+    }
+    //helper per stampa inutile
+    public ServerSessionRegistry getSessions() {
+        return this.sessions;
     }
 }
