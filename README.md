@@ -72,7 +72,7 @@ java \
   -DMESOS_TCP_PORT=12345 \
   -DMESOS_RMI_PORT=1099 \
   -DMESOS_SERVER_RMI_HOST=<IP_SERVER> \
-  -jar deliverables/mesos-server.jar
+  -jar deliverables/jar/mesos-server.jar
 ```
 
 `MESOS_TCP_PORT` è la porta usata per TCP.
@@ -94,7 +94,7 @@ java \
   -DMESOS_TCP_PORT=12345 \
   -DMESOS_RMI_PORT=1099 \
   -DMESOS_CLIENT_RMI_HOST=<IP_CLIENT> \
-  -jar deliverables/mesos-client-mac-aarch64.jar
+  -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
 `MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
