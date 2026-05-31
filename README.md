@@ -124,13 +124,13 @@ Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, 
 il server con:
 
 ```bash
-java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-server.jar
+java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/jar/mesos-server.jar
 ```
 
 e il client con:
 
 ```bash
-java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/mesos-client-mac-aarch64.jar
+java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
 
@@ -169,6 +169,20 @@ java -jar mesos-server.jar
 java -jar mesos-client-mac-aarch64.jar
 ```
 
+### Compilazione e Creazione dei JAR
+Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.
+
+Per compilare il progetto ed eseguire i test:
+```
+./mvnw clean test
+```
+
+Per generare i FAT JAR finali:
+```
+./assets/scripts/create-jar.sh
+```
+
+Lo script crea i JAR nella cartella: deliverables/jar
 
 ---
 
@@ -197,7 +211,7 @@ punto di vista il Model non conosce la view, poichè viene applicato il pattern 
 ha riferimenti alla view sotto forma di interfacce listener.
 Di seguito uno schema illustrato del pattern:
 
-![MVC.png](assets/immages/MVC.png)
+![MVC.png](assets/images/MVC.png)
 
 L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
 1) La view contatta il controller a seguito dell'input utente
@@ -240,7 +254,7 @@ riferimento al client remoto e offre il punto unico attraverso cui inviargli not
 
 Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
-![project-architecture.png](assets/immages/DistributedMVC.png)
+![project-architecture.png](assets/images/DistributedMVC.png)
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
@@ -487,7 +501,7 @@ while (this.running && (serializedMessage = reader.readLine()) != null) {
 Questo è il punto concreto in cui il thread del `VirtualServerTCP` resta in ascolto dei messaggi server -> client.
 
 
-![flusso TCP](assets/immages/FlussoTCP.png)
+![flusso TCP](assets/images/FlussoTCP.png)
 
 
 
@@ -601,7 +615,7 @@ Per questo i metodi remoti devono dichiarare `RemoteException`, perché una chia
 può comunque fallire per motivi di rete (è anche il motivo per il quale abbiamo dovuto duplicare le interfacce di rete 
 come già spiegato sopra).
 
-![RMI.png](assets/immages/HighLevelRMI.png)
+![RMI.png](assets/images/HighLevelRMI.png)
 
 A livello operativo, il primo oggetto remoto pubblicato dal server è `RmiConnectionEntryPoint`.
 Questo oggetto implementa `RmiConnectionService` e viene registrato nel registry RMI con il nome 
@@ -685,7 +699,7 @@ al `MessageRouter` della user interface:
 ```java
 this.messageRouter.routeMessage(message);
 ```
-![FlussoRMI.png](assets/immages/FlussoRMI.png)
+![FlussoRMI.png](assets/images/FlussoRMI.png)
 Quindi il flusso concreto è:
 - il server registra `RmiConnectionEntryPoint` nel registry come `MesosServer`
 - il client fa lookup e ottiene lo stub `RmiConnectionService`
@@ -706,7 +720,7 @@ per poter avviare il client. In particolare a gestire la user interface è un og
 Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view. 
 Il modo in cui vengono mostrate le informazioni dipende dalla 
 UI scelta. Di seguito una immagine della architettura del client, che renderà più chiaro il discorso:
-![client_architecture.png](assets/immages/client-architecture.png)
+![client_architecture.png](assets/images/client-architecture.png)
 
 I blocchi principali dell'architettura client sono:
 - `ClientView`: è l'interfaccia che rappresenta i metodi per modificare la view del client
@@ -761,4 +775,42 @@ Questa impostazione ci ha permesso quindi di ottenere una separazione della gest
 
 //TODO : Qui necessito di avere una vista chaira in exclaidrwa del server ad alto livello in cui si vedono le due virtualview che ricevono i messaggi, che implmentano lo stesso contratto logico e che loro si occupano solo di gestire la rete e i messaggi in entrata ed in uscita. A gestire lo smazzamento dei messaggi relativamente alla fase di gioco tramite message router, e far vedere che i controller ricevono messaggio mandano al model e model notifica rispsota tramite interfaccia listener.
 
-La classe che quindi si occupa di instradare il messaggio al controller corretto 
+La classe che quindi si occupa di instradare il messaggio al controller corretto è il message router.
+Tutti gli errori riguardanti il protocollo di comunicazione vengono gestiti da una classe in comune alla 
+VirtualViewal TCP ed RMI in modo da avere una uniformità di gestione degli errori. 
+
+Il router inoltra il messaggio di un dato User al relativo controller e model della fase in cui si trova.
+Ovvero per ogni User è sempre noto a runtime in quale delle tre fasi si trova, 
+e grazie a questa informazione si può fare riferimento ai relativi model e controller 
+per la validazione del messaggio arrivato.
+
+### Thread in gioco
+In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà 
+più chiaro il perchè di alcune decisioni tecniche prese. 
+All'avvio del server viene creato il thread su cui gira il `ConnectionAcceptor`,
+la classe che si occupa di accettare le richieste di connessione in ingresso sulla `ServerSocket`.
+Quando un client richiede una connessione sulla socket, viene creata una `VirtualViewTCP` che gira su un thread. 
+Questo è dovuto al fatto che la lettura continua della socket per TCP è bloccante,
+e necessito quindi di un thread. Nel caso RMI invece quello che succede all'avvio del server,
+è che viene caricato nel RMI registry la classe `RmiConnectionEntryPoint`, che funge da stub inizialmente, 
+per connettersi al server. Una volta che il client RMI ha richiesto la connessione tramite lo stub pubblicato
+nel RMI registry, viene creata una VirtualVIewRMI che non gira invece su un thread assestante ma è gestita 
+dall'infrastruttura di RMI. 
+
+Ogni controller del server gira su un thread assestante. Nel caso pre-lobby tale controller è singleton.
+Nel caso delle lobby si ha un controller ed un model per ogni lobby creata, lo stesso per i game.
+Il motivo di questa decisione verrà spiegato in un altra sezione. Il succo del discorso è che ci sono 
+molti thread, i quali potrebbero necessitare di leggere e scrivere informazioni caratteristiche dell'utente. 
+
+### Gestione delle informazioni
+A runtime come detto è necessario mantenere, leggere e scrivere informazioni per ogni User connesso al server. 
+In particolare ogni connessione verso il server viene identificata in maniera univoca da un session-id. 
+Tutte le informazione di un dato User che è connesso possono essere recuperate a partire dal session-id.
+Dal momento che abbiamo la necessità di avere queste informazioni centralizzate in un unico punto che 
+garantisca safety dal punto di vista della concorrenza, è stato creata la classe `SessionRegistry`
+che rappresenta quindi l'unico punto del server nella quale devono essere salvati i dati a runtime degli utenti.
+Questa classe è caratterizzata da mappe interne per la retention dei dati, e metodi thread-safe creati 
+appositamente per fare query sicure, evitando race-condition.
+
+
+

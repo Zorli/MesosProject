@@ -17,13 +17,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The absolute Source of Truth for every active session detail, active controller mapping,
  * and lobby models. This class acts as the centralized coordinator for network session states,
  * authentication mapping, game phases, and active orchestrators.
+ *
+ * <p>Concurrency policy: every access to the internal mutable state of this registry is protected
+ * by the intrinsic lock of this object through synchronized public methods. The registry protects
+ * its own maps and cross-map invariants, but it does not automatically make the returned mutable
+ * objects thread-safe after they have been returned to external code.</p>
  */
 public class ServerSessionRegistry {
     /**
@@ -66,18 +69,28 @@ public class ServerSessionRegistry {
 
     /**
      * Registry map linking active lobby IDs to their respective LobbyController instance.
+     *
+     * <p>This map is not intrinsically concurrent: it is protected by the registry monitor,
+     * consistently with the synchronization policy of the whole class.</p>
      */
-    private final Map<Integer, LobbyController> activeLobbyControllers = new ConcurrentHashMap<>();
+    private final Map<Integer, LobbyController> activeLobbyControllers = new HashMap<>();
 
     /**
      * Registry map linking active game IDs to their respective GameController instance.
+     *
+     * <p>This map is not intrinsically concurrent: it is protected by the registry monitor,
+     * consistently with the synchronization policy of the whole class.</p>
      */
-    private final Map<Integer, GameController> activeGames = new ConcurrentHashMap<>();
+    private final Map<Integer, GameController> activeGames = new HashMap<>();
 
     /**
-     * Atomic generator used to assign unique and sequential lobby IDs.
+     * Sequential generator used to assign unique lobby IDs.
+     *
+     * <p>This counter is protected by the same synchronized methods that protect the lobby model
+     * registry. It does not need to be atomic because all accesses happen while holding the registry
+     * monitor.</p>
      */
-    private final AtomicInteger nextLobbyId = new AtomicInteger(1);
+    private int nextLobbyId = 1;
 
     /**
      * Map storing all created Lobby models indexed by their lobby ID.
@@ -102,7 +115,7 @@ public class ServerSessionRegistry {
      * @return the created Lobby instance
      */
     public synchronized Lobby createLobbyModel(String hostNickname, int capacity) {
-        int lobbyId = this.nextLobbyId.getAndIncrement();
+        int lobbyId = this.nextLobbyId++;
         Lobby lobby = new Lobby(lobbyId, hostNickname, capacity);
         this.lobbyModels.put(lobby.getId(), lobby);
         return lobby;
@@ -121,7 +134,7 @@ public class ServerSessionRegistry {
             throw new IllegalArgumentException("Lobby already registered: " + lobby.getId());
         }
         this.lobbyModels.put(lobby.getId(), lobby);
-        this.nextLobbyId.updateAndGet(current -> Math.max(current, lobby.getId() + 1));
+        this.nextLobbyId = Math.max(this.nextLobbyId, lobby.getId() + 1);
     }
 
     /**
@@ -189,11 +202,15 @@ public class ServerSessionRegistry {
     /**
      * Registers a LobbyController for a specific lobby.
      *
+     * <p>The registration is protected by the registry monitor. This keeps controller mappings
+     * consistent with the rest of the registry state and avoids mixing synchronized maps with
+     * concurrent maps.</p>
+     *
      * @param lobbyId    the ID of the lobby
      * @param controller the controller instance handling lobby commands
      */
-    public void registerLobbyController(int lobbyId, LobbyController controller) {
-        this.activeLobbyControllers.put(lobbyId, Objects.requireNonNull(controller));
+    public synchronized void registerLobbyController(int lobbyId, LobbyController controller) {
+        this.activeLobbyControllers.put(lobbyId, Objects.requireNonNull(controller, "controller cannot be null"));
     }
 
     /**
@@ -201,7 +218,7 @@ public class ServerSessionRegistry {
      *
      * @param lobbyId the ID of the lobby to remove the controller for
      */
-    public void removeLobbyController(int lobbyId) {
+    public synchronized void removeLobbyController(int lobbyId) {
         this.activeLobbyControllers.remove(lobbyId);
     }
 
@@ -211,18 +228,22 @@ public class ServerSessionRegistry {
      * @param lobbyId the ID of the lobby
      * @return the LobbyController instance, or null if not found
      */
-    public LobbyController getLobbyController(int lobbyId) {
+    public synchronized LobbyController getLobbyController(int lobbyId) {
         return this.activeLobbyControllers.get(lobbyId);
     }
 
     /**
      * Registers a GameController orchestrator for a specific active game.
      *
+     * <p>The registration is protected by the registry monitor. This keeps controller mappings
+     * consistent with the rest of the registry state and avoids mixing synchronized maps with
+     * concurrent maps.</p>
+     *
      * @param gameId       the ID of the game
      * @param orchestrator the controller instance orchestrating game rules and commands
      */
-    public void registerGameOrchestrator(int gameId, GameController orchestrator) {
-        this.activeGames.put(gameId, Objects.requireNonNull(orchestrator));
+    public synchronized void registerGameOrchestrator(int gameId, GameController orchestrator) {
+        this.activeGames.put(gameId, Objects.requireNonNull(orchestrator, "orchestrator cannot be null"));
     }
 
     /**
@@ -230,7 +251,7 @@ public class ServerSessionRegistry {
      *
      * @param gameId the ID of the game to remove the orchestrator for
      */
-    public void removeGameOrchestrator(int gameId) {
+    public synchronized void removeGameOrchestrator(int gameId) {
         this.activeGames.remove(gameId);
     }
 
@@ -240,7 +261,7 @@ public class ServerSessionRegistry {
      * @param gameId the ID of the game
      * @return the GameController instance, or null if not found
      */
-    public GameController getGameOrchestrator(int gameId) {
+    public synchronized GameController getGameOrchestrator(int gameId) {
         return this.activeGames.get(gameId);
     }
 
@@ -285,8 +306,6 @@ public class ServerSessionRegistry {
         this.reconnectGameIdByNickname.put(nickname, gameId);
     }
 
-
-
     /**
      * Consumes the reconnect slot for an authenticated session.
      *
@@ -313,12 +332,13 @@ public class ServerSessionRegistry {
      * @param gameId game whose reconnect slots must be removed
      */
     public synchronized void removeReconnectSlotsForGame(int gameId) {
-        this.reconnectGameIdByNickname.values().removeIf(id -> Integer.valueOf(gameId).equals(id));
+        this.reconnectGameIdByNickname.values().removeIf(id -> Objects.equals(id, gameId));
     }
 
     /**
      * Removes the reconnect slot of one nickname.
      *
+     * @param nickname nickname whose reconnect slot must be removed
      */
     public synchronized void removeReconnectSlot(String nickname) {
         this.reconnectGameIdByNickname.remove(nickname);
@@ -593,6 +613,9 @@ public class ServerSessionRegistry {
     /**
      * Finds a session by ID and throws an exception if it does not exist.
      *
+     * <p>This method is intentionally not synchronized because it is private and is only called
+     * by public synchronized methods while the registry monitor is already held.</p>
+     *
      * @param sessionId the ID of the session
      * @return the SessionState instance
      * @throws IllegalStateException if the session ID is not registered
@@ -621,9 +644,6 @@ public class ServerSessionRegistry {
         );
     }
 
-    // ==========================================
-    // CLASSI INTERNE
-    // ==========================================
 
     /**
      * Represents the internal, mutable state of a registered user session.
@@ -669,12 +689,16 @@ public class ServerSessionRegistry {
     /**
      * Immutable snapshot representation of a session state, suitable for secure access and iterations.
      *
+     * <p>The snapshot object itself is immutable, but it contains references to objects such as
+     * User and ClientConnection. Their internal thread-safety depends on their own implementation
+     * and on the architectural confinement enforced by the server.</p>
+     *
      * @param sessionId  the unique session ID
      * @param connection the active network connection link
      * @param user       the user model (null if unauthenticated)
      * @param phase      the current session phase
-     * @param lobbyId    the lobby ID (null if not in lobby)
-     * @param gameId     the game ID (null if not in game)
+     * @param lobbyId    the lobby ID (null if in lobby)
+     * @param gameId     the game ID (null if in game)
      * @param lastPongAt the timestamp of the last recorded network pong
      * @param timedOut   true if the duration since last pong exceeds the threshold timeout limit
      */
