@@ -750,3 +750,15 @@ Il server è stato progettato sin dal principio per poter gestire più partite i
 
 Quindi l'idea è stata quella di avere rispettivamente un controller ed un model che gestiscano le rispettive fasi logiche, ovvero si occupano di validare e gestire la logica del loro specifico dominio. 
 
+Come già spiegato, per poter nascondere ai vari model e controller il fatto che la view non si trova sul server,
+è stata introdotta l'interfaccia `VirtualView` che dovrebbe rappresentare uno stub della view sul server.
+Questo stub nasconde la rete, quindi si ha che per i messaggi in entrata questa classe si occupa di gestire la raccolta e la ricostruzione del messaggio, senza conoscere a chi è destinato tale messaggio, che vedremo essere 
+gestito da un router, che sa a chi inoltrare il messaggio. 
+Invece per i messaggi in uscita la view viene contattata dai model tramite interfaccia `Listener` per poter 
+contattare il reale client, senza pero far conoscere ai model la rete.
+
+Questa impostazione ci ha permesso quindi di ottenere una separazione della gestione di logica di dominio, relativa alle tre fasi, e una agnosticità dei controller e dei model al fatto che per contattare il client si attraversi una connessione internet(viene quindi anche nascosto il protocollo concreto di rete utilizzato).
+
+//TODO : Qui necessito di avere una vista chaira in exclaidrwa del server ad alto livello in cui si vedono le due virtualview che ricevono i messaggi, che implmentano lo stesso contratto logico e che loro si occupano solo di gestire la rete e i messaggi in entrata ed in uscita. A gestire lo smazzamento dei messaggi relativamente alla fase di gioco tramite message router, e far vedere che i controller ricevono messaggio mandano al model e model notifica rispsota tramite interfaccia listener.
+
+La classe che quindi si occupa di instradare il messaggio al controller corretto 

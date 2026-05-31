@@ -1,5 +1,7 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby;
 
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.ListLobbiesPayload;
+
 import java.io.Serializable;
 import java.util.List;
 

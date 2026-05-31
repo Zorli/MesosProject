@@ -7,6 +7,7 @@ import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.factory.GameFactory;
+import it.polimi.ingsoft.mesos.server.network.connectionHandling.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.server.network.interfaces.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.PingPongRoutine;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
@@ -42,6 +43,7 @@ class PreLobbyControllerTest {
     private ServerSessionRegistry registry;
     private PreLobbyController controller;
     private Thread controllerThread;
+    private ServerConnectionLifecycle  connectionLifecycle;
     private MockGameFactory gameFactory;
 
     private static Game createMockGame(int gameId) {
@@ -57,6 +59,7 @@ class PreLobbyControllerTest {
         registry = new ServerSessionRegistry();
         gameFactory = new MockGameFactory();
         controller = new PreLobbyController(gameFactory, registry);
+        connectionLifecycle = new ServerConnectionLifecycle(registry);
         controllerThread = new Thread(controller, "PreLobbyController-TestThread");
         controllerThread.start();
     }
@@ -68,9 +71,9 @@ class PreLobbyControllerTest {
         controllerThread.join(1000);
 
         // Reflection stop for the PingPong scheduled executor to prevent resource leaks
-        Field field = PreLobbyController.class.getDeclaredField("pingPongRoutine");
+        Field field = ServerConnectionLifecycle.class.getDeclaredField("pingPongRoutine");
         field.setAccessible(true);
-        PingPongRoutine routine = (PingPongRoutine) field.get(controller);
+        PingPongRoutine routine = (PingPongRoutine) field.get(connectionLifecycle);
         if (routine != null) {
             routine.stop();
         }
@@ -83,7 +86,7 @@ class PreLobbyControllerTest {
     @Test
     void testAuthenticationProcessing() throws Exception {
         MockListener connection = new MockListener();
-        String sid = controller.registerConnection(connection);
+        String sid = connectionLifecycle.registerConnection(connection);
 
         AuthenticationPayload payload = new AuthenticationPayload("Alice");
         controller.enqueueMessage(new ClientPayloadCommand(sid, payload));
@@ -106,12 +109,12 @@ class PreLobbyControllerTest {
     void testLobbyOrchestrationFlow() throws Exception {
         // Authenticate Alice
         MockListener aliceConn = new MockListener();
-        String aliceSid = controller.registerConnection(aliceConn);
+        String aliceSid = connectionLifecycle.registerConnection(aliceConn);
         controller.enqueueMessage(new ClientPayloadCommand(aliceSid, new AuthenticationPayload("Alice")));
 
         // Authenticate Bob
         MockListener bobConn = new MockListener();
-        String bobSid = controller.registerConnection(bobConn);
+        String bobSid = connectionLifecycle.registerConnection(bobConn);
         controller.enqueueMessage(new ClientPayloadCommand(bobSid, new AuthenticationPayload("Bob")));
 
         TimeUnit.MILLISECONDS.sleep(100);
@@ -147,7 +150,7 @@ class PreLobbyControllerTest {
     @Test
     void testInvalidCommandTypeReportsPhaseError() throws Exception {
         MockListener conn = new MockListener();
-        String sid = controller.registerConnection(conn);
+        String sid = connectionLifecycle.registerConnection(conn);
 
         // Send a dummy command that is not a ClientPayloadCommand
         QueuedCommand dummyCmd = new QueuedCommand() {
@@ -173,7 +176,7 @@ class PreLobbyControllerTest {
     @Test
     void testUnexpectedPayloadTriggersPhaseError() throws Exception {
         MockListener conn = new MockListener();
-        String sid = controller.registerConnection(conn);
+        String sid = connectionLifecycle.registerConnection(conn);
 
         ClientPayload unexpectedPayload = new ClientPayload() {};
         controller.enqueueMessage(new ClientPayloadCommand(sid, unexpectedPayload));
@@ -192,7 +195,7 @@ class PreLobbyControllerTest {
     @Test
     void testJoinNonExistentLobbyReportsError() throws Exception {
         MockListener conn = new MockListener();
-        String sid = controller.registerConnection(conn);
+        String sid = connectionLifecycle.registerConnection(conn);
         controller.enqueueMessage(new ClientPayloadCommand(sid, new AuthenticationPayload("Charlie")));
         TimeUnit.MILLISECONDS.sleep(50);
 
@@ -217,7 +220,7 @@ class PreLobbyControllerTest {
         registry.unregister(oldSid);
 
         MockListener conn = new MockListener();
-        String sid = controller.registerConnection(conn);
+        String sid = connectionLifecycle.registerConnection(conn);
 
         // Mock game orchestrator in registry
         MockGameController mockGameCtrl = new MockGameController(5, registry);
@@ -242,12 +245,12 @@ class PreLobbyControllerTest {
         MockListener conn = new MockListener();
         
         // Register
-        String sid = controller.registerConnection(conn);
+        String sid = connectionLifecycle.registerConnection(conn);
         assertNotNull(sid);
         assertTrue(registry.snapshots().stream().anyMatch(s -> s.sessionId().equals(sid)));
 
         // Record Pong
-        assertDoesNotThrow(() -> controller.recordPong(sid));
+        assertDoesNotThrow(() -> connectionLifecycle.recordPong(sid));
 
         // Report Phase Error
         controller.reportPhaseError(sid);
@@ -257,7 +260,7 @@ class PreLobbyControllerTest {
         assertEquals("PHASE_ERROR", ((ErrorPayload) err).code);
 
         // Disconnect
-        controller.disconnectSession(sid);
+        connectionLifecycle.disconnectSession(sid);
         assertTrue(registry.snapshots().stream().noneMatch(s -> s.sessionId().equals(sid)));
     }
 

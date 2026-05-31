@@ -16,7 +16,7 @@ import java.util.Objects;
  * It operates using an Observer Pattern (via {@link Listener} registration) to notify connected clients of
  * updates, similar to the pattern found in the main {@code Game} model.
  *
- * <p><strong>Domain Rules & Transitions:</strong>
+ * <p><strong>Domain Rules &amp; Transitions:</strong>
  * <ul>
  *   <li>The lobby capacity must be between {@link #MIN_PLAYERS} and {@link #MAX_PLAYERS}.</li>
  *   <li>The player who creates the lobby is designated as the initial host ({@link #hostNickname}).</li>

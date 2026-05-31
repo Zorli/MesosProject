@@ -22,7 +22,7 @@ import java.util.Objects;
  * Controller responsible for managing a single active {@link Lobby} instance and processing
  * all network/system commands relating to it.
  *
- * <p><strong>Threading & Design:</strong>
+ *  <p><strong>Threading &amp; Design:</strong>
  * <ul>
  *   <li>Implements {@link Runnable} and executes inside its own dedicated worker thread (named {@code Lobby-ID-Worker}).</li>
  *   <li>Uses a threat-safe command queue ({@link BlockingQueue}) to receive commands asynchronously.</li>

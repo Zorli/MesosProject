@@ -42,18 +42,28 @@ class UpperPileTest {
      * card type untouched.
      */
     @Test
-    void addCard_And_removeCard_RouteToCorrectLists() {
+    void addCard_ShouldRouteCardsToCorrectInternalLists() {
+        upperPile.addCard(tribeCard1);
+        upperPile.addCard(buildingCard1);
+
+        List<BuildingCard> buildings = upperPile.removeAndReturnAllBuildingCards();
+        var tribes = upperPile.removeAndReturnAllTribeCards();
+
+        assertEquals(List.of(buildingCard1), buildings);
+        assertEquals(List.of(tribeCard1), tribes);
+    }
+    @Test
+    void removeCard_WhenRemovingTribeCard_ShouldLeaveBuildingCardsUntouched() {
         upperPile.addCard(tribeCard1);
         upperPile.addCard(buildingCard1);
 
         upperPile.removeCard(tribeCard1);
 
-        List<BuildingCard> remainingBuildings = upperPile.removeAndReturnAllBuildingCards();
-        List<Gatherer> remainingTribes = (List<Gatherer>)(List<?>) upperPile.removeAndReturnAllTribeCards();
+        List<BuildingCard> buildings = upperPile.removeAndReturnAllBuildingCards();
+        var tribes = upperPile.removeAndReturnAllTribeCards();
 
-        assertEquals(1, remainingBuildings.size(), "Building should still be in place");
-        assertEquals(buildingCard1, remainingBuildings.get(0));
-        assertTrue(remainingTribes.isEmpty(), "Tribe card should have been removed correctly");
+        assertEquals(List.of(buildingCard1), buildings);
+        assertTrue(tribes.isEmpty());
     }
 
     /**
