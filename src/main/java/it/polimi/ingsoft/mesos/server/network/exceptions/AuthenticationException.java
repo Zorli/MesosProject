@@ -6,7 +6,7 @@ package it.polimi.ingsoft.mesos.server.network.exceptions;
  * <p>
  * It represents a rejected authentication attempt before the client can be
  * treated as an authenticated player. The exception carries the reason that can
- * later be mapped to an error response by the server-side protocol handling
+ * later be mapped to an error response by the preLobby-side protocol handling
  * code.
  */
 public class AuthenticationException extends RuntimeException {

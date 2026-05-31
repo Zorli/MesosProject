@@ -20,7 +20,7 @@
     opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.game to com.google.gson;
     opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby to com.google.gson;
     opens it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby to com.google.gson;
-      exports it.polimi.ingsoft.mesos.server.virtualview to java.rmi;
+      exports it.polimi.ingsoft.mesos.server.network.interfaces to java.rmi;
       exports it.polimi.ingsoft.mesos.client.virtualserver to java.rmi;
       exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver;
       exports it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection;
@@ -43,10 +43,14 @@
       exports it.polimi.ingsoft.mesos.server.model.game.player;
       exports it.polimi.ingsoft.mesos.server.model.lobby;
       exports it.polimi.ingsoft.mesos.server.model.lobby.enums;
-      exports it.polimi.ingsoft.mesos.server.model.server;
+      exports it.polimi.ingsoft.mesos.server.model.preLobby;
       exports it.polimi.ingsoft.mesos.shared.messages;
       opens it.polimi.ingsoft.mesos.shared.messages to com.google.gson;
       exports it.polimi.ingsoft.mesos.client.serverproxy to java.rmi;
       exports it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces to java.rmi;
-      exports it.polimi.ingsoft.mesos.server.network to java.rmi;
+      opens it.polimi.ingsoft.mesos.server.helper to com.google.gson;
+      exports it.polimi.ingsoft.mesos.server.helper;
+      exports it.polimi.ingsoft.mesos.server.network.tcp to java.rmi;
+      exports it.polimi.ingsoft.mesos.server.network.connectionHandling to java.rmi;
+      exports it.polimi.ingsoft.mesos.server.network.rmi to java.rmi;
   }

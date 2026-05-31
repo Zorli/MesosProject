@@ -25,7 +25,7 @@ import java.util.function.Supplier;
  *
  * <p>This class is a collaborator of {@link GUIView}: it holds the JavaFX nodes
  * that belong to the login/lobby/lobby-form pages and translates the lobby
- * payloads received from the server into UI updates. Navigation between pages
+ * payloads received from the preLobby into UI updates. Navigation between pages
  * stays on {@link GUIView}; this renderer only manipulates the lobby labels,
  * the lobby list container and the action buttons.</p>
  */
@@ -114,7 +114,7 @@ final class LobbyRenderer {
     }
 
     /**
-     * Applies a lobby update from the server: refreshes the status message,
+     * Applies a lobby update from the preLobby: refreshes the status message,
      * updates the snapshot of the current lobby and enables or disables the
      * lobby action buttons accordingly.
      */

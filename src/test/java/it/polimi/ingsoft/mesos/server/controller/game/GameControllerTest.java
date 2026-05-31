@@ -5,7 +5,7 @@ import it.polimi.ingsoft.mesos.server.controller.command.SystemCloseGameCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemSetupMatchCommand;
-import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.game.board.Board;
 import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingDeck;
 import it.polimi.ingsoft.mesos.server.model.game.cards.Card;
@@ -14,8 +14,8 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
-import it.polimi.ingsoft.mesos.server.network.ClientConnection;
-import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.server.network.interfaces.ClientConnection;
+import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.GameClientPayload;
@@ -239,7 +239,7 @@ class GameControllerTest {
     }
 
     /**
-     * A server-side close command must close the model and then run the same
+     * A preLobby-side close command must close the model and then run the same
      * cleanup used for a normally finished match: mark the controller as
      * closing, remove routing from the registry, and clear reconnect references.
      */

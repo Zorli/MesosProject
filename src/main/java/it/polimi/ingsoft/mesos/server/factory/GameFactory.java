@@ -6,7 +6,7 @@ import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import java.util.List;
 
 /**
- * Contract for components that bootstrap a full server-side game instance from
+ * Contract for components that bootstrap a full preLobby-side game instance from
  * the list of players that joined a match.
  */
 public interface GameFactory {

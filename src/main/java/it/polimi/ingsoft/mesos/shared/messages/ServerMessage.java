@@ -7,13 +7,13 @@ import java.util.Objects;
 
 /**
  * Represents a wrapper container for any application-level messages
- * sent from the server to a client.
+ * sent from the preLobby to a client.
  * <p>
  * Each message contains a {@link ServerMessageType} indicating the nature
- * of the update, and a server payload representing the specific state or result.
+ * of the update, and a preLobby payload representing the specific state or result.
  */
 public class ServerMessage implements Serializable {
-    /** The type classification of the server message. */
+    /** The type classification of the preLobby message. */
     public final ServerMessageType type;
 
     /** The actual payload containing data specific to the message type. */

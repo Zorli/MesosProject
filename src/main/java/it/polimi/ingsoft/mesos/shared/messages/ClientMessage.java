@@ -7,9 +7,9 @@ import java.util.Objects;
 
 /**
  * Represents a wrapper container for any application-level messages
- * sent from the client to the server.
+ * sent from the client to the preLobby.
  * <p>
- * Each message specifies a {@link ClientMessageType} indicating how the server
+ * Each message specifies a {@link ClientMessageType} indicating how the preLobby
  * should interpret and route the client payload.
  */
 public class ClientMessage implements Serializable {

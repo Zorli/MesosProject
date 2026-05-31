@@ -1,18 +1,37 @@
 # Mesos 
-//TODO : Questa introduzione va fatta meglio, inoltre va letta la mail sulla compliance del readme
-Progetto prova finale per l'esame di Ingegneria del Software 2026.
-Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java, in modo da poter
-giocare con altri player, ognuno dal proprio device, collegandosi a un server.
-È possibile giocare sia da interfaccia testuale che grafica.
-La versione qui implementata ha inoltre le seguenti
-feature aggiuntive:
-- Supporto partite parallele sullo stesso server
-- Resilienza alle disconnessioni da parte dei client
+
+Questo repository contiene l’implementazione Java del gioco da tavolo **Mesos**, sviluppata come prova finale del progetto di Ingegneria del Software 2025-2026 al Politecnico di Milano. 
+
+Il progetto è stato svolto dal gruppo GC3, composto dai seguenti membri:
+- Vaccari Tommaso
+- Viggiano Luca 
+- Zanatta Tommaso 
+- Zorloni Fabio
+
+
+L’applicazione è stata progettata come sistema distribuito client-server secondo il pattern Model-View-Controller. Il server mantiene il modello di gioco, gestisce la logica applicativa e coordina le partite; i client permettono ai giocatori di interagire con il gioco attraverso interfaccia testuale o interfaccia grafica JavaFX.
+
+## Requisiti implementati
+
+Rispetto alla tabella di valutazione fornita insieme alla specifica, il progetto implementa:
+
+**Regole Complete + TUI + GUI + RMI + Socket + 2 Funzionalità Avanzate**
+
+In particolare sono stati implementati:
+
+- **Regole Complete**: il gioco supporta le regole complete di Mesos(non quelle avanzate)
+- **TUI**: il client può essere avviato con interfaccia testuale.
+- **GUI**: il client può essere avviato con interfaccia grafica JavaFX.
+- **Socket TCP**: client e server possono comunicare tramite protocollo TCP.
+- **Java RMI**: client e server possono comunicare tramite Java Remote Method Invocation.
+- **Funzionalità Avanzata — Partite multiple**: il server può gestire più partite contemporaneamente.
+- **Funzionalità Avanzata — Resilienza alle disconnessioni**: un client disconnesso può riconnettersi e continuare la partita. Se un player si disconnette il suo turno viene saltato. Se rimane un solo player connesso parte un timer, al termine del quale l'unico giocatore rimasto connesso viene decretato vincitore.
+
 
 ## Configurazione, Compilazione e Avvio
 
 In questa sezione viene spiegato come configurare la rete, e poi come avviare server e client usando
-i JAR già compilati presenti nella cartella `deliverables`.
+i JAR già compilati presenti nella cartella `deliverables/jar`.
 
 ### 1. Recuperare gli indirizzi IP locali
 Se server e client vengono eseguiti sulla stessa macchina, si può usare `localhost`.
@@ -72,7 +91,7 @@ java \
   -DMESOS_TCP_PORT=12345 \
   -DMESOS_RMI_PORT=1099 \
   -DMESOS_SERVER_RMI_HOST=<IP_SERVER> \
-  -jar deliverables/jar/mesos-server.jar
+  -jar deliverables/jar/mesos-preLobby.jar
 ```
 
 `MESOS_TCP_PORT` è la porta usata per TCP.
@@ -105,7 +124,7 @@ Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, 
 il server con:
 
 ```bash
-java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-server.jar
+java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-preLobby.jar
 ```
 
 e il client con:
@@ -119,10 +138,10 @@ java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=10
 ### 4. Configurazione tramite file `.env`
 In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
 I file vengono cercati nella directory da cui viene lanciato il comando, quindi per usare quelli già presenti
-in `deliverables` bisogna prima spostarsi in quella cartella:
+in `deliverables/jar` bisogna prima spostarsi in quella cartella:
 
 ```bash
-cd deliverables
+cd deliverables/jar
 ```
 
 #### Server (`server.env`)
@@ -143,19 +162,12 @@ MESOS_CLIENT_RMI_HOST=<IP_CLIENT>
 Poi si possono avviare i JAR senza passare altre proprietà:
 
 ```bash
-java -jar mesos-server.jar
+java -jar mesos-preLobby.jar
 ```
 
 ```bash
 java -jar mesos-client-mac-aarch64.jar
 ```
-
-Le righe vuote, le righe che iniziano con `#` e le righe che non hanno forma `KEY=value`
-vengono ignorate. Se un valore non viene specificato, il codice usa i default: `localhost`
-per l'indirizzo del server visto dal client, porta TCP `12345` e porta RMI `1099`.
-
-
-
 
 
 ---
@@ -435,7 +447,7 @@ A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`, che ap
 e viene avviato su un thread dedicato:
 
 ```java
-ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
+ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, preLobbyController, router);
 acceptor.start();
 Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
 acceptorThread.start();
@@ -446,7 +458,7 @@ per ogni client collegato:
 
 ```java
 Socket clientSocket = this.serverSocket.accept();
-VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router);
+VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.preLobbyController, this.router);
 Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
 virtualViewThread.start();
 ```
@@ -629,7 +641,7 @@ Il server riceve il callback del client e crea una `VirtualViewRMI` dedicata a q
 
 ```java
 public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-    return new VirtualViewRMI(this.serverController, clientCallback, this.router);
+    return new VirtualViewRMI(this.preLobbyController, clientCallback, this.router);
 }
 ```
 
@@ -638,7 +650,7 @@ Quando viene creata, registra una nuova connessione nel `ServerController` e con
 
 ```java
 this.clientCallback = clientCallback;
-this.sessionId = this.serverController.registerConnection(this);
+this.sessionId = this.preLobbyController.registerConnection(this);
 ```
 
 Il valore ritornato da `connect(...)` è uno stub di tipo `RmiServerService`.
@@ -730,3 +742,11 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ## Architettura del Server
+In questa sezione vengono spiegate le scelte che sono state fatte per l'architettura del server.
+Il server è stato progettato sin dal principio per poter gestire più partite in contemporanea. Questo ha portato ad estendere la logica del modello MVC in maniera funzionale sui tre blocchi logici che caratterizzano le fasi di vita del gioco. Le fasi di vita caratterizzanti il gioco sono le seguenti:
+- fase di pre lobby: User non è autenticato, oppure è autenticato ma non si trova in nessuna lobby
+- fase di lobby: User è autenticato e si trova in una lobby 
+- fase di Game. User è in partita
+
+Quindi l'idea è stata quella di avere rispettivamente un controller ed un model che gestiscano le rispettive fasi logiche, ovvero si occupano di validare e gestire la logica del loro specifico dominio. 
+

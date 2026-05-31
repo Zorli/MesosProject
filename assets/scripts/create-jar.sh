@@ -37,7 +37,7 @@ echo "Building Windows x64 client fat JAR..."
 
 echo "Building server fat JAR..."
 ./mvnw -Pserver-jar \
-  -Dserver.jar.name=mesos-server \
+  -Dserver.jar.name=mesos-preLobby \
   -DskipTests \
   clean package
 
