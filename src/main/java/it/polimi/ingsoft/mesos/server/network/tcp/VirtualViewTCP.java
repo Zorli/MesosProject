@@ -30,19 +30,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
- * TCP implementation of the preLobby-side virtual view for one connected client.
+ * TCP implementation of the server-side virtual view for one connected client.
  * <p>
  * In the project architecture, a virtual view is the network boundary that hides
  * the transport protocol from controllers and models. This concrete class is
  * used for TCP clients: it owns the accepted client {@link Socket}, reads raw
  * JSON lines from it, sends JSON responses back to it, and exposes the same
- * preLobby-facing contracts used by the rest of the application.
+ * server-facing contracts used by the rest of the application.
  * <p>
  * Incoming traffic follows this path:
  * the TCP stream is read line by line in {@link #run()}, each raw line is
  * delegated to {@link ClientCommandHandler}, and the resulting client payload is
- * routed through {@link MessageRouter} together with the session id assigned by
- * the preLobby. The virtual view does not execute pre-lobby, lobby, or game
+ * routed through {@link MessageRouter} together with the assigned session id.
+ * The virtual view does not execute pre-lobby, lobby, or game
  * rules; it only attaches the network session to the command routing layer.
  * <p>
  * Outgoing traffic follows the opposite path:
@@ -54,7 +54,7 @@ import java.util.Objects;
  * The class also participates in the connection lifecycle. It implements
  * {@link ClientConnection} so the ping-pong routine can send pings and close the
  * connection, and it implements {@link VirtualView} so the command handler can
- * report client messages and pong replies back to the preLobby-side session logic.
+ * report client messages and pong replies back to the server-side session logic.
  */
 public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, Listener{
     private static final Gson GSON = new GsonBuilder().create();
@@ -73,7 +73,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * messages.
      *
      * @param clientSocket accepted socket connected to one TCP client
-     * @param serverConnectionLifecycle preLobby maager used to register and update the
+     * @param serverConnectionLifecycle manager used to register and update the
      *                         session
      * @param router router used to dispatch parsed client payloads
      */
@@ -90,10 +90,10 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * messages.
      *
      * @param clientSocket accepted socket connected to one TCP client
-     * @param serverConnectionLifecycle preLobby manager used for session registration,
+     * @param serverConnectionLifecycle manager used for session registration,
      *                         pong recording, and disconnection
      * @param router router used to send parsed client payloads to the correct
-     *               preLobby phase
+     *               server phase
      * @param out stream used for diagnostic TCP messages
      * @throws NullPointerException if {@code clientSocket},
      *                              {@code serverController}, or {@code out} is null
@@ -127,7 +127,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * client without stopping the loop immediately.
      * <p>
      * When the stream ends, the socket fails, or the thread exits the loop, the
-     * virtual view closes itself and triggers the normal preLobby disconnection
+     * virtual view closes itself and triggers the normal server disconnection
      * flow.
      */
     @Override
@@ -157,13 +157,13 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     }
 
     /**
-     * Sends one structured preLobby message to the TCP client.
+     * Sends one structured server message to the TCP client.
      * <p>
      * This is the low-level outgoing operation of the TCP virtual view: all
      * higher-level notifications are first converted to {@link ServerMessage}
      * objects, then serialized here as JSON and written as one line on the socket.
      *
-     * @param message preLobby message to serialize and send
+     * @param message server message to serialize and send
      * @throws NullPointerException if {@code message} is null
      */
     private void sendServerMessage(ServerMessage message) {//low level call
@@ -207,7 +207,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     }
 
     /**
-     * Routes a parsed client message into the preLobby command layer.
+     * Routes a parsed client message into the server command layer.
      * <p>
      * The message has already been validated and deserialized by
      * {@link ClientCommandHandler}. This method attaches the current session id
@@ -222,14 +222,14 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     }
 
     /**
-     * Sends a preLobby-side update to the TCP client.
+     * Sends a server-side update to the TCP client.
      * <p>
      * Models and controllers use the generic {@link ServerPayload} hierarchy,
      * while the network protocol requires a {@link ServerMessageType}. This method
-     * performs that mapping for every preLobby payload currently supported by the
+     * performs that mapping for every server payload currently supported by the
      * TCP protocol and writes the resulting message to the socket.
      *
-     * @param payload typed payload produced by preLobby-side model or controller
+     * @param payload typed payload produced by server-side model or controller
      *                logic
      */
     @Override
@@ -275,7 +275,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      * {@link it.polimi.ingsoft.mesos.shared.messages.ClientMessageType#PONG}
      * message. A non-null payload means the client respected the common TCP
      * message envelope, so the session timestamp can be refreshed through the
-     * preLobby controller.
+     * server connection lifecycle.
      *
      * @param payload pong payload parsed from the client message envelope
      */
@@ -292,7 +292,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     /**
      * Closes this client session without exposing checked I/O errors.
      * <p>
-     * This method is the virtual-view level close operation used by preLobby code
+     * This method is the virtual-view level close operation used by server code
      * that only needs to end the session. The actual idempotent cleanup is
      * performed by {@link #close()}.
      */
@@ -305,12 +305,12 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
     }
 
     /**
-     * Closes the TCP virtual view and starts preLobby-side session cleanup.
+     * Closes the TCP virtual view and starts server-side session cleanup.
      * <p>
      * The method is idempotent: only the first call disconnects the session from
-     * the preLobby controller and closes the socket. Later calls return immediately.
+     * the server connection lifecycle and closes the socket. Later calls return immediately.
      * This is important because the socket reader, timeout routine, and external
-     * preLobby code may all try to close the same connection.
+     * server code may all try to close the same connection.
      *
      * @throws IOException if closing the underlying socket fails
      */

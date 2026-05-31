@@ -4,19 +4,17 @@ import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
 import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.controller.preLobby.PreLobbyController;
 import it.polimi.ingsoft.mesos.server.network.interfaces.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 
 import java.util.Objects;
 
 /**
- * Handles the lifecycle of preLobby-side client sessions.
+ * Handles the lifecycle of server-side client sessions.
  * <p>
  * This class centralizes the operations that are about the connection itself:
  * registering a new session, recording keep-alive replies, reacting to timeouts,
- * and starting the correct disconnection flow. It is used by the
- * {@link PreLobbyController} for
+ * and starting the correct disconnection flow. It is used by virtual views for
  * normal connection operations and by {@link PingPongRoutine} when a session no
  * longer answers to ping messages.
  * <p>
@@ -36,7 +34,7 @@ public class ServerConnectionLifecycle {
 
     /**
      * Creates a lifecycle service backed by the shared session registry and
-     * pre-lobby preLobby model.
+     * server session registry.
      *
      * @param sessions registry containing session state, phase, controllers, and
      *                 network connections
@@ -52,7 +50,7 @@ public class ServerConnectionLifecycle {
      * Registers a newly accepted client connection and returns its session id.
      * <p>
      * The connection is stored in the session registry. If the same object can
-     * also receive preLobby updates through {@link Listener}, it is registered as a
+     * also receive server updates through {@link Listener}, it is registered as a
      * global listener so that pre-lobby errors and responses can be sent back to
      * the client.
      *
@@ -81,7 +79,7 @@ public class ServerConnectionLifecycle {
      * Starts the disconnection flow for a session.
      * <p>
      * The global listener is removed first, because after this point the session
-     * should no longer receive pre-lobby messages. The current phase is then read
+     * should no longer receive server messages. The current phase is then read
      * from the registry. Game and lobby sessions are not removed directly here:
      * a {@link SystemDisconnectCommand} is enqueued to the controller that owns
      * that phase, so the phase-specific model can decide how to clean up the

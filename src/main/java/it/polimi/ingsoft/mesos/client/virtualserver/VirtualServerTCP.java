@@ -28,8 +28,8 @@ import java.util.Objects;
  * In the client architecture, {@link ServerProxyTCP} and {@code VirtualServerTCP} share the same TCP socket
  * but own opposite communication directions:
  * <ul>
- *     <li>{@link ServerProxyTCP} writes client-to-preLobby commands, such as authentication or lobby actions;</li>
- *     <li>{@code VirtualServerTCP} reads preLobby-to-client messages, such as errors, lobby updates, game updates,
+ *     <li>{@link ServerProxyTCP} writes client-to-server commands, such as authentication or lobby actions;</li>
+ *     <li>{@code VirtualServerTCP} reads server-to-client messages, such as errors, lobby updates, game updates,
  *     and heartbeat pings.</li>
  * </ul>
  * <p>
@@ -38,8 +38,8 @@ import java.util.Objects;
  * it to the client view through {@link MessageRouter}.
  * <p>
  * It does not contain UI logic and it does not contain game logic. The UI-specific rendering belongs to
- * {@link ClientView}; the game rules belong to the preLobby. This class is only the TCP receiver and dispatcher
- * for messages that the preLobby sends to this client.
+ * {@link ClientView}; the game rules belong to the server. This class is only the TCP receiver and dispatcher
+ * for messages that the server sends to this client.
  * <p>
  * Connection shutdown has one important rule: if the client intentionally closes the connection, the receiver
  * must stop silently; if the connection ends without a client-side close request, the receiver reports a
@@ -58,7 +58,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
      * <p>
      * The socket is the same socket used by {@link ServerProxyTCP}. This object reads from the socket input
      * stream, while the proxy writes to the socket output stream. The {@code serverProxy} reference is needed
-     * for two lifecycle operations: sending a PONG when the preLobby sends PING, and closing the shared connection
+     * for two lifecycle operations: sending a PONG when the server sends PING, and closing the shared connection
      * when the receiver stops.
      *
      * @param socket      connected TCP socket shared with {@link ServerProxyTCP}
@@ -75,7 +75,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
      * Marks that the next socket closure is expected because it was requested by the client.
      * <p>
      * This method is called by {@link ServerProxyTCP#close()} before closing the socket. Without this flag, the
-     * receiver would interpret the end of the input stream as an unexpected preLobby-side disconnection and would
+     * receiver would interpret the end of the input stream as an unexpected server-side disconnection and would
      * show a {@code CONNECTION_CLOSED} error to the user.
      */
     public synchronized void requestCloseByClient() {
@@ -89,7 +89,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     /**
      * Runs the TCP receiving loop.
      * <p>
-     * The loop blocks on the socket input stream and reads preLobby messages line by line. Each line is expected
+     * The loop blocks on the socket input stream and reads server messages line by line. Each line is expected
      * to contain one serialized JSON {@link ServerMessage}. When the input stream ends, this method decides
      * whether the closure is normal or unexpected by checking {@link #requestCloseByClient()} state.
      * <p>
@@ -104,7 +104,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8))) {
             this.readServerMessages(reader);
             if (!this.isCloseRequestedByClient()) {
-                this.handleError("CONNECTION_CLOSED", "Connection closed by preLobby");
+                this.handleError("CONNECTION_CLOSED", "Connection closed by server");
             }
         } catch (IOException exception) {
             if (!this.isCloseRequestedByClient()) {
@@ -119,9 +119,9 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     }
 
     /**
-     * Reads all available preLobby messages from the socket input stream.
+     * Reads all available server messages from the socket input stream.
      * <p>
-     * TCP is a byte stream, so this client protocol uses line separation: every preLobby message must be written
+     * TCP is a byte stream, so this client protocol uses line separation: every server message must be written
      * as one JSON line. A {@code null} result from {@link BufferedReader#readLine()} means that the other side
      * closed the stream.
      *
@@ -137,7 +137,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     }
 
     /**
-     * Converts one serialized preLobby message into the correct client-side action.
+     * Converts one serialized server message into the correct client-side action.
      * <p>
      * Normal application messages are deserialized into a {@link ServerMessage} and passed to
      * {@link #handleMessage(ServerMessage)}. PING is handled separately because it is a connection heartbeat:
@@ -147,7 +147,7 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
      * reports {@code INVALID_SERVER_MESSAGE}. This keeps invalid network input visible to the client without
      * crashing the receiver thread.
      *
-     * @param serializedMessage one JSON line received from the preLobby
+     * @param serializedMessage one JSON line received from the server
      */
     private void handleServerMessage(String serializedMessage) {
         try {
@@ -168,14 +168,14 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     }
 
     /**
-     * Rebuilds the payload type expected for a preLobby message type.
+     * Rebuilds the payload type expected for a server message type.
      * <p>
      * Gson needs the concrete payload class to deserialize the generic {@code payload} JSON element. This method
      * is the explicit mapping between protocol message types and Java payload classes for the TCP receiver.
      *
-     * @param type    preLobby message type read from the JSON envelope
+     * @param type    server message type read from the JSON envelope
      * @param payload raw JSON payload contained in the envelope
-     * @return preLobby message with a typed Java payload
+     * @return server message with a typed Java payload
      */
     private ServerMessage buildServerMessage(ServerMessageType type, JsonElement payload) {
         switch (type) {
@@ -195,17 +195,17 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
                 GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
                 return new ServerMessage(type, gamePayload);
             default:
-                throw new IllegalArgumentException("Unsupported preLobby message type: " + type);
+                throw new IllegalArgumentException("Unsupported server message type: " + type);
         }
     }
 
     /**
-     * Routes one typed preLobby message to the client view layer.
+     * Routes one typed server message to the client view layer.
      * <p>
      * The routing decision is delegated to {@link MessageRouter}, so this class remains focused on networking
      * and protocol conversion.
      *
-     * @param message typed message received from the preLobby
+     * @param message typed message received from the server
      */
     @Override
     public void handleMessage(ServerMessage message) {
@@ -213,10 +213,10 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     }
 
     /**
-     * Handles the TCP heartbeat request sent by the preLobby.
+     * Handles the TCP heartbeat request sent by the server.
      * <p>
      * PING is not shown to the user. The receiver answers by asking {@link ServerProxyTCP} to send a PONG on
-     * the client-to-preLobby direction of the same connection.
+     * the client-to-server direction of the same connection.
      */
     @Override
     public void handlePing() {
@@ -230,10 +230,10 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
     }
 
     /**
-     * Routes a networking or protocol error to the client view using the same path as preLobby-side errors.
+     * Routes a networking or protocol error to the client view using the same path as server-side errors.
      * <p>
      * This keeps the UI contract simple: the view receives an {@link ErrorPayload} regardless of whether the
-     * error came from the preLobby or was generated locally by the client networking layer.
+     * error came from the server or was generated locally by the client networking layer.
      *
      * @param payload error payload to show to the client
      */

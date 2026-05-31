@@ -11,9 +11,9 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListP
 import java.util.Objects;
 
 /**
- * Routes preLobby messages to the correct client view method.
+ * Routes server messages to the correct client view method.
  *
- * <p>The virtual preLobby receives messages from the real preLobby. The transport
+ * <p>The virtual server receives messages from the real server. The transport
  * implementation can be TCP or RMI, but after a {@link ServerMessage} has been
  * received the rest of the client should not care about the transport anymore.
  * This class is the small adapter between the network-facing side of the client
@@ -36,13 +36,13 @@ public class MessageRouter {
     }
 
     /**
-     * Sends one preLobby message to the view method that matches its type.
+     * Sends one server message to the view method that matches its type.
      *
      * <p>{@link ServerMessageType#PING} is rejected because ping messages are
      * part of the connection keep-alive protocol. They are handled directly by
-     * the virtual preLobby and are not user-visible payloads.
+     * the virtual server and are not user-visible payloads.
      *
-     * @param message message received from the preLobby
+     * @param message message received from the server
      * @throws NullPointerException if {@code message} is {@code null}
      * @throws IllegalArgumentException if the message is a ping
      */
@@ -66,7 +66,7 @@ public class MessageRouter {
                 this.routeGameUpdate((GamePayload) message.payload);
                 break;
             case PING:
-                throw new IllegalArgumentException("PING must be handled by the virtual preLobby");
+                throw new IllegalArgumentException("PING must be handled by the virtual server");
         }
     }
 

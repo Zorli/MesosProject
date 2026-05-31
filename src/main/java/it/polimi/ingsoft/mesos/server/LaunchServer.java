@@ -20,17 +20,17 @@ import java.util.Map;
 
 
 /**
- * Entry point of the Mesos preLobby.
+ * Entry point of the Mesos server.
  *
- * <p>The preLobby starts both supported network protocols: TCP and RMI.
+ * <p>The server starts both supported network protocols: TCP and RMI.
  * Both protocols share the same {@link MessageRouter} and the same {@link ServerSessionRegistry},
  * so players using different protocols still enter the same lobby and game system.</p>
  *
- * <p>Network configuration is read only from {@code preLobby.env}. This keeps one
- * explicit source of truth for the ports and RMI address used by the preLobby.</p>
+ * <p>Network configuration is read only from {@code server.env}. This keeps one
+ * explicit source of truth for the ports and RMI address used by the server.</p>
  */
 public final class LaunchServer {
-    private static final String SERVER_ENV_FILE = "preLobby.env";
+    private static final String SERVER_ENV_FILE = "server.env";
     private static final int DEFAULT_TCP_PORT = 12345;
     private static final int DEFAULT_RMI_PORT = 1099;
 
@@ -43,7 +43,7 @@ public final class LaunchServer {
         }
     }
     /*
-    Architettura del preLobby:
+    Architettura del server:
     - Virtualview RMI/TCP: Gestione delle connessioni in entrata ed in uscita, si occupano del relativo protocollo di rete
       scambiandosi payload. Quello che la interfaces sa fare è ricevere e mandare in uscita payload, sul come instradarli
       internamente se ne occupa il relativo router
@@ -107,7 +107,7 @@ public final class LaunchServer {
 
     private static void startRmiServer(ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router, int port, String serverRmiHost, PrintStream out) throws Exception {
         if (serverRmiHost != null && !serverRmiHost.isBlank()) {
-            System.setProperty("java.rmi.preLobby.hostname", serverRmiHost);
+            System.setProperty("java.rmi.server.hostname", serverRmiHost);
         }
 
         // Pass dependencies down to the RMI entry point
@@ -163,7 +163,7 @@ public final class LaunchServer {
     /**
      * Loads a simple {@code KEY=value} environment file.
      *
-     * <p>The file is optional. If it is missing, the preLobby keeps its default values.
+     * <p>The file is optional. If it is missing, the server keeps its default values.
      * Empty lines, comment lines starting with {@code #}, and malformed lines are ignored.</p>
      */
     private static Map<String, String> loadEnvironmentFile(String environmentFile) {

@@ -1,6 +1,5 @@
 package it.polimi.ingsoft.mesos.server.network.rmi;
 
-import it.polimi.ingsoft.mesos.server.controller.preLobby.PreLobbyController;
 import it.polimi.ingsoft.mesos.server.helper.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.ProtocolErrorMapper;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.ServerConnectionLifecycle;
@@ -27,18 +26,15 @@ import java.io.PrintStream;
  * Dedicated RMI remote session for a single authenticated client.
  * <p>
  * Instances of this class are dynamically created by the {@link RmiConnectionEntryPoint}
- * upon successful login. This class acts as a private proxy for the client on the preLobby,
+ * upon successful login. This class acts as a private proxy for the client on the server,
  * maintaining their session id and holding the remote reference to their personal
  * callback receiver ({@link RmiClientService}).
  * <p>
- * It is responsible for intercepting inbound gameplay commands from the client,
- * delegating the domain logic to the central {@link PreLobbyController}, and dispatching
- * outbound preLobby updates back to the client via asynchronous RMI callbacks.
+ * It is responsible for intercepting inbound client commands,
+ * delegating routing to the central {@link MessageRouter}, and dispatching
+ * outbound server updates back to the client via asynchronous RMI callbacks.
  */
 public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, ClientConnection, Listener {
-    //non sensato
-    // private final PreLobbyController serverController;
-    // più sensato
     private final ServerConnectionLifecycle serverConnectionLifecycle;
     private final RmiClientService clientCallback;
     private final String sessionId;

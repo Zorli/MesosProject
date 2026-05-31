@@ -27,13 +27,13 @@ public class LaunchClient {
 
     // Architecture overview:
     // - ClientView: UI contract; exposes methods the network layer calls to show errors, lobbies, and game state.
-    // - ServerProxy: contract used by the UI controller to send commands to the preLobby (TCP and RMI implementations).
-    // - VirtualServer: contract used by the network layer to deliver preLobby messages to the client. Delegates
+    // - ServerProxy: contract used by the UI controller to send commands to the server (TCP and RMI implementations).
+    // - VirtualServer: contract used by the network layer to deliver server messages to the client. Delegates
     //   routing to MessageRouter rather than deciding which view method to call directly.
     // - MessageRouter: sits between VirtualServer and ClientView; reads the ServerMessage type and dispatches
     //   the correct view method, keeping VirtualServer focused on transport only.
     //
-    // Data flow: UI controller -> ServerProxy -> preLobby -> VirtualServer -> MessageRouter -> ClientView
+    // Data flow: UI controller -> ServerProxy -> server -> VirtualServer -> MessageRouter -> ClientView
 
     public static void main(String[] args) {
         Map<String, String> environment = loadEnvironmentFile(CLIENT_ENV_FILE);
@@ -81,7 +81,7 @@ public class LaunchClient {
                 }
                 if ("2".equals(choice)) {
                     if (clientRmiHost != null) {
-                        System.setProperty("java.rmi.preLobby.hostname", clientRmiHost);
+                        System.setProperty("java.rmi.server.hostname", clientRmiHost);
                     }
                     String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
                     RmiConnectionService connectionService = (RmiConnectionService) Naming.lookup(registryUrl);
@@ -89,7 +89,7 @@ public class LaunchClient {
                 }
                 System.out.println("Invalid network mode. Please enter 1 or 2.\n");
             } catch (Exception exception) {
-                System.out.println("Failed to connect to the preLobby: " + exception.getMessage());
+                System.out.println("Failed to connect to the server: " + exception.getMessage());
             }
         }
     }

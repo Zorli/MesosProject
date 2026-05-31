@@ -13,7 +13,7 @@ import java.util.List;
  * Data mapper class responsible for converting pre-lobby business objects and event
  * metadata into network-serializable payload objects.
  *
- * <p>This class acts as a translation layer between the preLobby model's internal states
+ * <p>This class acts as a translation layer between the server model's internal states
  * and the messages that are sent over the network to the clients. It separates serialization
  * concerns from domain and controller logic.
  */

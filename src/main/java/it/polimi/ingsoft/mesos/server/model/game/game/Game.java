@@ -15,10 +15,10 @@ import java.util.*;
 /**
  * Domain aggregate of one Mesos match.
  *
- * <p>{@code Game} is the preLobby-side model of a single match. It contains the
+ * <p>{@code Game} is the server-side model of a single match. It contains the
  * rules and the mutable domain state, but it does not decide which network
  * session is allowed to act. Session lookup, command ordering, and reconnection
- * routing are responsibilities of the game controller and of the preLobby session
+ * routing are responsibilities of the game controller and of the server session
  * registry.
  *
  * <p>This class owns the complete match state:
@@ -450,7 +450,7 @@ public class Game {
     }
 
     /**
-     * Closes the match from a preLobby-side lifecycle decision.
+     * Closes the match from a server-side lifecycle decision.
      *
      * <p>This is used when the controller decides that the match must end even
      * without a normal final-scoring transition, for example after the last

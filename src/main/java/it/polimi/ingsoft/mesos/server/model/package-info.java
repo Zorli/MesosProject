@@ -1,5 +1,5 @@
 /**
- * Provides the preLobby-side domain model for Mesos.
+ * Provides the server-side domain model for Mesos.
  *
  * <p>This package groups the core abstractions used to represent game state, boards, cards,
  * players, lobbies, orchestration services, and the factory components that build

@@ -1,6 +1,5 @@
 package it.polimi.ingsoft.mesos.server.network.tcp;
 
-import it.polimi.ingsoft.mesos.server.controller.preLobby.PreLobbyController;
 import it.polimi.ingsoft.mesos.server.helper.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.ServerConnectionLifecycle;
 
@@ -10,16 +9,16 @@ import java.net.Socket;
 import java.util.Objects;
 
 /**
- * Accepts TCP client connections for the preLobby.
+ * Accepts TCP client connections for the server.
  * <p>
- * This class is the TCP bootstrap point of the preLobby-side network layer. It
+ * This class is the TCP bootstrap point of the server-side network layer. It
  * owns the listening {@link ServerSocket}, accepts raw client sockets, and
  * creates one {@link VirtualViewTCP} for each accepted connection.
  * <p>
  * The acceptor does not parse client messages and does not execute application
  * commands. After a socket is accepted, the corresponding virtual view becomes
  * responsible for reading the TCP stream, registering the session through the
- * {@link PreLobbyController}, and routing client payloads through the shared
+ * {@link ServerConnectionLifecycle}, and routing client payloads through the shared
  * {@link MessageRouter}.
  */
 public class ConnectionAcceptor implements Runnable{
@@ -37,10 +36,10 @@ public class ConnectionAcceptor implements Runnable{
      * @param serverConnectionLifecycle connection manager used by created virtual views to
      *                         register sessions
      * @param router router used by created virtual views to dispatch client
-     *               payloads to the correct preLobby phase
+     *               payloads to the correct server phase
      * @throws IllegalArgumentException if {@code port} is outside the valid TCP
      *                                  port range
-     * @throws NullPointerException if {@code serverController} or {@code router}
+     * @throws NullPointerException if {@code serverConnectionLifecycle} or {@code router}
      *                              is null
      */
     public ConnectionAcceptor(int port, ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router) {
@@ -53,14 +52,14 @@ public class ConnectionAcceptor implements Runnable{
     }
 
     /**
-     * Opens the listening preLobby socket.
+     * Opens the listening server socket.
      * <p>
      * This method prepares the acceptor for {@link #run()}. It must be called
      * before the accept loop starts. If the configured port is {@code 0}, the
      * actual chosen port can be read with {@link #getPort()} after this method
      * returns.
      *
-     * @throws IOException if the preLobby socket cannot be opened
+     * @throws IOException if the server socket cannot be opened
      * @throws IllegalStateException if the acceptor is already running
      */
     public synchronized void start() throws IOException {
@@ -108,7 +107,7 @@ public class ConnectionAcceptor implements Runnable{
     /**
      * Returns the TCP port used by this acceptor.
      * <p>
-     * Before {@link #start()}, this is the configured port. After the preLobby
+     * Before {@link #start()}, this is the configured port. After the server
      * socket is opened, this is the actual local port bound by the operating
      * system.
      *

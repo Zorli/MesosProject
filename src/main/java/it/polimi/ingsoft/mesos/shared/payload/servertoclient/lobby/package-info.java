@@ -1,5 +1,5 @@
 /**
- * Contains preLobby updates about lobby events sent to clients.
+ * Contains server updates about lobby events sent to clients.
  *
  * <p>Includes notifications for player joins, departures, or game start triggers.
  */

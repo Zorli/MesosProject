@@ -461,7 +461,7 @@ A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`, che ap
 e viene avviato su un thread dedicato:
 
 ```java
-ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, preLobbyController, router);
+ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverConnectionLifecycle, router);
 acceptor.start();
 Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
 acceptorThread.start();
@@ -472,7 +472,7 @@ per ogni client collegato:
 
 ```java
 Socket clientSocket = this.serverSocket.accept();
-VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.preLobbyController, this.router);
+VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverConnectionLifecycle, this.router);
 Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
 virtualViewThread.start();
 ```
@@ -655,16 +655,17 @@ Il server riceve il callback del client e crea una `VirtualViewRMI` dedicata a q
 
 ```java
 public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-    return new VirtualViewRMI(this.preLobbyController, clientCallback, this.router);
+    return new VirtualViewRMI(this.serverConnectionLifecycle, clientCallback, this.router);
 }
 ```
 
 La `VirtualViewRMI` è quindi la sessione remota del singolo client lato server.
-Quando viene creata, registra una nuova connessione nel `ServerController` e conserva il callback del client:
+Quando viene creata, registra una nuova connessione tramite `ServerConnectionLifecycle` e conserva il callback del client:
 
 ```java
+this.serverConnectionLifecycle = serverConnectionLifecycle;
 this.clientCallback = clientCallback;
-this.sessionId = this.preLobbyController.registerConnection(this);
+this.sessionId = this.serverConnectionLifecycle.registerConnection(this);
 ```
 
 Il valore ritornato da `connect(...)` è uno stub di tipo `RmiServerService`.
@@ -792,8 +793,8 @@ Il router riceve:
 - il `sessionId` della connessione
 - il payload inviato dal client
 
-Il router non sceglie il controller a partire dal tipo concreto del payload.
-La scelta viene fatta a partire dallo stato runtime dell'utente: dato il `sessionId`, il `MessageRouter`
+Il router sceglie il controller a cui inoltrare il messaggio a partire dallo stato runtime
+dell'utente: dato il `sessionId`, il `MessageRouter`
 consulta il `ServerSessionRegistry`, recupera la fase corrente dell'utente e inoltra il comando
 al controller associato a quella fase.
 
@@ -882,6 +883,8 @@ ovvero `ServerConnectionLifeCycle`. Tale protocollo di heartbeat si appoggia sul
 già esistente tra client e server, è inoltre agnostico al tipo di protocollo a basso livello di comuncazione scelto, grazie
 al fatto che usiamo implementazioni concrete di VirtualView ServerProxy e VirtualServer, che ci nascondono 
 tutto il layer di rete. 
+Viene sfruttata interfaccia ClientConnection per il servizio di Ping verso il client sulla virtualview.
+Cosi la routine non conosce le virtualview ma vede solo delle clientConnection.
 
 #### Gestione disconnesione in pre Lobby
 
@@ -901,5 +904,3 @@ tutto il layer di rete.
 
 
 ### Game
-
-

@@ -27,7 +27,7 @@ public final class ProtocolErrorMapper {
      * payload that can be sent to the client.
      * <p>
      * Invalid client input is reported as {@code INVALID_MESSAGE}. Unexpected
-     * preLobby-side failures are hidden behind {@code INTERNAL_ERROR}, so clients
+     * server-side failures are hidden behind {@code INTERNAL_ERROR}, so clients
      * receive a stable protocol response instead of Java exception details.
      *
      * @param exception exception caught while processing a client message at the
@@ -41,6 +41,6 @@ public final class ProtocolErrorMapper {
         if (exception instanceof UnsupportedOperationException) {
             return new ErrorPayload("INVALID_MESSAGE", exception.getMessage());
         }
-        return new ErrorPayload("INTERNAL_ERROR", "Unexpected preLobby error");
+        return new ErrorPayload("INTERNAL_ERROR", "Unexpected server error");
     }
 }

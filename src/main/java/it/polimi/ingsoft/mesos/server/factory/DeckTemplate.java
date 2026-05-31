@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * <p>
  * The template stores suppliers instead of concrete card instances so that each
  * match receives independent objects, while the expensive JSON parsing happens
- * only once during preLobby lifetime.
+ * only once during server lifetime.
  */
 public final class DeckTemplate {
     private final List<TribeCardBlueprint> tribeCardBlueprints;

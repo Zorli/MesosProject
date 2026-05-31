@@ -6,7 +6,7 @@
  *   <li>{@link it.polimi.ingsoft.mesos.client.view.gui.GUIView} &mdash; the single
  *       JavaFX controller. It implements
  *       {@link it.polimi.ingsoft.mesos.client.view.ClientView} (the input side:
- *       payloads coming from the preLobby are rendered into nodes) and at the
+ *       payloads coming from the server are rendered into nodes) and at the
  *       same time owns the {@code @FXML}-injected fields and {@code @FXML}
  *       event handlers referenced by {@code gui.fxml} (the output side: user
  *       interactions are translated into commands sent through a
@@ -45,7 +45,7 @@
  *
  * <h2>Threading model</h2>
  * <p>JavaFX nodes can only be read or modified on the JavaFX Application
- * Thread. {@code GUIView} receives preLobby payloads from TCP and RMI networking
+ * Thread. {@code GUIView} receives server payloads from TCP and RMI networking
  * threads, so every {@link it.polimi.ingsoft.mesos.client.view.ClientView}
  * callback delegates its UI work through {@code runOnFx(Runnable)}, which
  * runs the work immediately when already on the FX thread and otherwise

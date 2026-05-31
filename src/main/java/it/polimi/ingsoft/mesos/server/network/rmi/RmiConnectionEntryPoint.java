@@ -10,9 +10,9 @@ import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 /**
- * RMI entry point published by the preLobby for incoming RMI clients.
+ * RMI entry point published by the server for incoming RMI clients.
  * <p>
- * This object is bound in the preLobby RMI registry and represents only the first
+ * This object is bound in the server RMI registry and represents only the first
  * step of the RMI connection protocol. A client looks it up, passes its own
  * {@link RmiClientService} callback, and receives a dedicated
  * {@link RmiServerService} session object in return.
@@ -21,7 +21,7 @@ import java.rmi.server.UnicastRemoteObject;
  * acceptor receives a socket and creates one {@link VirtualViewTCP};
  * this entry point receives a client callback and creates one
  * {@link VirtualViewRMI}. In both cases, the created virtual view becomes the
- * per-client network boundary used by the rest of the preLobby.
+ * per-client network boundary used by the rest of the server.
  * <p>
  * This class does not authenticate the player and does not route application
  * commands. Authentication is a later client command handled through the
@@ -48,16 +48,16 @@ public class RmiConnectionEntryPoint extends UnicastRemoteObject implements RmiC
     }
 
     /**
-     * Creates a dedicated RMI preLobby session for one client.
+     * Creates a dedicated RMI server session for one client.
      * <p>
-     * The client callback is the remote object that the preLobby will later use to
+     * The client callback is the remote object that the server will later use to
      * push messages and keep-alive pings back to that client. The returned
-     * {@link VirtualViewRMI} stores that callback, registers itself as a preLobby
+     * {@link VirtualViewRMI} stores that callback, registers itself as a server
      * connection, and becomes the object through which the client sends all later
      * commands.
      *
      * @param clientCallback remote callback exported by the connecting client
-     * @return dedicated RMI preLobby-side session for that client
+     * @return dedicated RMI server-side session for that client
      * @throws RemoteException if the remote session cannot be created or returned
      */
     @Override

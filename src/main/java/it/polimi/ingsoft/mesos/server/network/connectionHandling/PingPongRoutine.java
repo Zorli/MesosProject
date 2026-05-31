@@ -10,7 +10,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Periodic preLobby-side keep-alive routine for registered client connections.
+ * Periodic server-side keep-alive routine for registered client connections.
  * <p>
  * This class is part of the network lifecycle layer. It does not know lobby or
  * game rules: its only responsibility is to periodically inspect the connection
