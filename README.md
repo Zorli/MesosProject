@@ -91,7 +91,7 @@ java \
   -DMESOS_TCP_PORT=12345 \
   -DMESOS_RMI_PORT=1099 \
   -DMESOS_SERVER_RMI_HOST=<IP_SERVER> \
-  -jar deliverables/jar/mesos-preLobby.jar
+  -jar deliverables/jar/mesos-server.jar
 ```
 
 `MESOS_TCP_PORT` è la porta usata per TCP.
@@ -124,7 +124,7 @@ Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, 
 il server con:
 
 ```bash
-java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-preLobby.jar
+java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-server.jar
 ```
 
 e il client con:
@@ -162,7 +162,7 @@ MESOS_CLIENT_RMI_HOST=<IP_CLIENT>
 Poi si possono avviare i JAR senza passare altre proprietà:
 
 ```bash
-java -jar mesos-preLobby.jar
+java -jar mesos-server.jar
 ```
 
 ```bash
