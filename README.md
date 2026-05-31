@@ -812,5 +812,47 @@ che rappresenta quindi l'unico punto del server nella quale devono essere salvat
 Questa classe è caratterizzata da mappe interne per la retention dei dati, e metodi thread-safe creati 
 appositamente per fare query sicure, evitando race-condition.
 
+### Gestione delle disconnessioni
+In questa sezione viene spiegato ad alto livello quali sono le idee e i meccanismi dietro al funzionamento 
+della funzionalità avanzata resilienza alle disconnessioni. 
+Prima è però necessario discutere delle componenti tecniche che consentono a questa funzionalità di esistere.
+
+#### Ping Pong Routine
+Come detto abbiamo già la classe che ci consente di centralizzare le informazioni. Una di queste informazioni
+fondamentali che salviamo centralizzata è l'ultima risposta di heartbeat da ogni client.
+L'idea è quella di avere un protocollo di verifica che ci consenta di effettuare un assesment periodico 
+delle connessioni che sono effettivamente in vita. Questo ci consente di chiudere eventuali connessioni rimaste 
+aperte, ma che effettivamente sono appese, ovvero il client è crashato e non risponde più.
+Il tutto si basa su due messaggi scambiati tra client e server, ovvero messaggio di Ping da server verso client
+e messaggio di Pong in risposta dal client verso il server.
+Periodicamente con una routine apposita, vengono inviate a tutte le connessioni che risultano attualmente aperte
+un messaggio di PING. Nel frattempo si verifica anche se per una data connessione è scaduto il tempo di attesa
+massimo dall'ultimo PONG ricevuto. Se cosi fosse si procede a chiudere tale connessione. Il client quando riceve
+un PING risponde con un PONG. Tale PONG viene gestito da una classe che si occupa del lifecycle delle connessioni
+ovvero `ServerConnectionLifeCycle`. Tale protocollo di heartbeat si appoggia sull'infrastruttura di comunicazione
+già esistente tra client e server, è inoltre agnostico al tipo di protocollo a basso livello di comuncazione scelto, grazie
+al fatto che usiamo implementazioni concrete di VirtualView ServerProxy e VirtualServer, che ci nascondono 
+tutto il layer di rete. 
+
+#### Gestione disconnesione in pre Lobby
+
+#### Gestione disconessione in Lobby 
+
+
+#### Gestione disconnesione Game 
+
+
+### Layer di rete
+
+
+
+### Pre Lobby
+
+### Lobby 
+
+
+### Game
+
+
 
 
