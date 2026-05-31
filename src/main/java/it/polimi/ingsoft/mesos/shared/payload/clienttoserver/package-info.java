@@ -1,5 +1,5 @@
 /**
- * Contains abstract payload definitions sent from the client to the server.
+ * Contains abstract payload definitions sent from the client to the preLobby.
  *
  * <p>Serves as the base package for all network requests sent by clients.
  */

@@ -21,11 +21,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Converts server payloads into colored, framed text blocks for the TUI.
+ * Converts preLobby payloads into colored, framed text blocks for the TUI.
  *
  * <p>The renderer is stateless and pure: each method depends only on its
  * parameters. {@link TuiView} keeps one instance and calls it for every
- * incoming server payload.
+ * incoming preLobby payload.
  *
  * <p>Game state rendering uses a full-screen layout: an ANSI clear sequence is
  * emitted before the header so each update redraws a clean frame.
@@ -561,7 +561,7 @@ final class TuiPayloadRenderer {
         Map<String, String> totems = buildTotemMap(players);
         List<String> tiles = new ArrayList<>();
 
-        // The starting tile is one wide combined box (matches the server model:
+        // The starting tile is one wide combined box (matches the preLobby model:
         // a single StartingTile that owns ordered StartingBlock rows).
         boolean hasStarting = startingBlocks != null && !startingBlocks.isEmpty();
         String startingCombined = hasStarting

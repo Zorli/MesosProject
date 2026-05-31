@@ -106,7 +106,7 @@ public final class ParserJson {
     }
 
     /**
-     * Reads the JSON resource and converts it into the immutable deck template used by the server.
+     * Reads the JSON resource and converts it into the immutable deck template used by the preLobby.
      *
      * @return the parsed deck template
      */

@@ -1,18 +1,37 @@
 # Mesos 
-//TODO : Questa introduzione va fatta meglio, inoltre va letta la mail sulla compliance del readme
-Progetto prova finale per l'esame di Ingegneria del Software 2026.
-Lo scopo del progetto è quello di implementare il gioco da tavolo mesos in java, in modo da poter
-giocare con altri player, ognuno dal proprio device, collegandosi a un server.
-È possibile giocare sia da interfaccia testuale che grafica.
-La versione qui implementata ha inoltre le seguenti
-feature aggiuntive:
-- Supporto partite parallele sullo stesso server
-- Resilienza alle disconnessioni da parte dei client
+
+Questo repository contiene l’implementazione Java del gioco da tavolo **Mesos**, sviluppata come prova finale del progetto di Ingegneria del Software 2025-2026 al Politecnico di Milano. 
+
+Il progetto è stato svolto dal gruppo GC3, composto dai seguenti membri:
+- Vaccari Tommaso
+- Viggiano Luca 
+- Zanatta Tommaso 
+- Zorloni Fabio
+
+
+L’applicazione è stata progettata come sistema distribuito client-server secondo il pattern Model-View-Controller. Il server mantiene il modello di gioco, gestisce la logica applicativa e coordina le partite; i client permettono ai giocatori di interagire con il gioco attraverso interfaccia testuale o interfaccia grafica JavaFX.
+
+## Requisiti implementati
+
+Rispetto alla tabella di valutazione fornita insieme alla specifica, il progetto implementa:
+
+**Regole Complete + TUI + GUI + RMI + Socket + 2 Funzionalità Avanzate**
+
+In particolare sono stati implementati:
+
+- **Regole Complete**: il gioco supporta le regole complete di Mesos(non quelle avanzate)
+- **TUI**: il client può essere avviato con interfaccia testuale.
+- **GUI**: il client può essere avviato con interfaccia grafica JavaFX.
+- **Socket TCP**: client e server possono comunicare tramite protocollo TCP.
+- **Java RMI**: client e server possono comunicare tramite Java Remote Method Invocation.
+- **Funzionalità Avanzata — Partite multiple**: il server può gestire più partite contemporaneamente.
+- **Funzionalità Avanzata — Resilienza alle disconnessioni**: un client disconnesso può riconnettersi e continuare la partita. Se un player si disconnette il suo turno viene saltato. Se rimane un solo player connesso parte un timer, al termine del quale l'unico giocatore rimasto connesso viene decretato vincitore.
+
 
 ## Configurazione, Compilazione e Avvio
 
 In questa sezione viene spiegato come configurare la rete, e poi come avviare server e client usando
-i JAR già compilati presenti nella cartella `deliverables`.
+i JAR già compilati presenti nella cartella `deliverables/jar`.
 
 ### 1. Recuperare gli indirizzi IP locali
 Se server e client vengono eseguiti sulla stessa macchina, si può usare `localhost`.
@@ -105,13 +124,13 @@ Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, 
 il server con:
 
 ```bash
-java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/mesos-server.jar
+java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/jar/mesos-server.jar
 ```
 
 e il client con:
 
 ```bash
-java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/mesos-client-mac-aarch64.jar
+java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
 
@@ -119,10 +138,10 @@ java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=10
 ### 4. Configurazione tramite file `.env`
 In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
 I file vengono cercati nella directory da cui viene lanciato il comando, quindi per usare quelli già presenti
-in `deliverables` bisogna prima spostarsi in quella cartella:
+in `deliverables/jar` bisogna prima spostarsi in quella cartella:
 
 ```bash
-cd deliverables
+cd deliverables/jar
 ```
 
 #### Server (`server.env`)
@@ -150,13 +169,20 @@ java -jar mesos-server.jar
 java -jar mesos-client-mac-aarch64.jar
 ```
 
-Le righe vuote, le righe che iniziano con `#` e le righe che non hanno forma `KEY=value`
-vengono ignorate. Se un valore non viene specificato, il codice usa i default: `localhost`
-per l'indirizzo del server visto dal client, porta TCP `12345` e porta RMI `1099`.
+### Compilazione e Creazione dei JAR
+Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.
 
+Per compilare il progetto ed eseguire i test:
+```
+./mvnw clean test
+```
 
+Per generare i FAT JAR finali:
+```
+./assets/scripts/create-jar.sh
+```
 
-
+Lo script crea i JAR nella cartella: deliverables/jar
 
 ---
 
@@ -185,7 +211,7 @@ punto di vista il Model non conosce la view, poichè viene applicato il pattern 
 ha riferimenti alla view sotto forma di interfacce listener.
 Di seguito uno schema illustrato del pattern:
 
-![MVC.png](assets/immages/MVC.png)
+![MVC.png](assets/images/MVC.png)
 
 L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
 1) La view contatta il controller a seguito dell'input utente
@@ -228,7 +254,7 @@ riferimento al client remoto e offre il punto unico attraverso cui inviargli not
 
 Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
-![project-architecture.png](assets/immages/DistributedMVC.png)
+![project-architecture.png](assets/images/DistributedMVC.png)
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
@@ -435,7 +461,7 @@ A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`, che ap
 e viene avviato su un thread dedicato:
 
 ```java
-ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, serverController, router);
+ConnectionAcceptor acceptor = new ConnectionAcceptor(tcpPort, preLobbyController, router);
 acceptor.start();
 Thread acceptorThread = new Thread(acceptor, "mesos-connection-acceptor");
 acceptorThread.start();
@@ -446,7 +472,7 @@ per ogni client collegato:
 
 ```java
 Socket clientSocket = this.serverSocket.accept();
-VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverController, this.router);
+VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.preLobbyController, this.router);
 Thread virtualViewThread = new Thread(virtualView, "mesos-virtual-view-" + clientSocket.getPort());
 virtualViewThread.start();
 ```
@@ -475,7 +501,7 @@ while (this.running && (serializedMessage = reader.readLine()) != null) {
 Questo è il punto concreto in cui il thread del `VirtualServerTCP` resta in ascolto dei messaggi server -> client.
 
 
-![flusso TCP](assets/immages/FlussoTCP.png)
+![flusso TCP](assets/images/FlussoTCP.png)
 
 
 
@@ -589,7 +615,7 @@ Per questo i metodi remoti devono dichiarare `RemoteException`, perché una chia
 può comunque fallire per motivi di rete (è anche il motivo per il quale abbiamo dovuto duplicare le interfacce di rete 
 come già spiegato sopra).
 
-![RMI.png](assets/immages/HighLevelRMI.png)
+![RMI.png](assets/images/HighLevelRMI.png)
 
 A livello operativo, il primo oggetto remoto pubblicato dal server è `RmiConnectionEntryPoint`.
 Questo oggetto implementa `RmiConnectionService` e viene registrato nel registry RMI con il nome 
@@ -629,7 +655,7 @@ Il server riceve il callback del client e crea una `VirtualViewRMI` dedicata a q
 
 ```java
 public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
-    return new VirtualViewRMI(this.serverController, clientCallback, this.router);
+    return new VirtualViewRMI(this.preLobbyController, clientCallback, this.router);
 }
 ```
 
@@ -638,7 +664,7 @@ Quando viene creata, registra una nuova connessione nel `ServerController` e con
 
 ```java
 this.clientCallback = clientCallback;
-this.sessionId = this.serverController.registerConnection(this);
+this.sessionId = this.preLobbyController.registerConnection(this);
 ```
 
 Il valore ritornato da `connect(...)` è uno stub di tipo `RmiServerService`.
@@ -673,7 +699,7 @@ al `MessageRouter` della user interface:
 ```java
 this.messageRouter.routeMessage(message);
 ```
-![FlussoRMI.png](assets/immages/FlussoRMI.png)
+![FlussoRMI.png](assets/images/FlussoRMI.png)
 Quindi il flusso concreto è:
 - il server registra `RmiConnectionEntryPoint` nel registry come `MesosServer`
 - il client fa lookup e ottiene lo stub `RmiConnectionService`
@@ -694,7 +720,7 @@ per poter avviare il client. In particolare a gestire la user interface è un og
 Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view. 
 Il modo in cui vengono mostrate le informazioni dipende dalla 
 UI scelta. Di seguito una immagine della architettura del client, che renderà più chiaro il discorso:
-![client_architecture.png](assets/immages/client-architecture.png)
+![client_architecture.png](assets/images/client-architecture.png)
 
 I blocchi principali dell'architettura client sono:
 - `ClientView`: è l'interfaccia che rappresenta i metodi per modificare la view del client
@@ -730,3 +756,150 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ## Architettura del Server
+In questa sezione vengono spiegate le scelte principali fatte per l'architettura del server.
+
+Il server è stato progettato fin dall'inizio per gestire più partite contemporaneamente.
+Per questo motivo la logica applicativa non è stata concentrata in un unico controller/model,
+ma è stata divisa rispetto alle fasi principali in cui può trovarsi un utente:
+- pre-lobby: l'utente non è autenticato, oppure è autenticato ma non si trova in nessuna lobby
+- lobby: l'utente è autenticato e si trova in una lobby
+- game: l'utente si trova dentro una partita
+
+L'idea è quindi avere controller e model dedicati alle diverse fasi logiche.
+Ogni controller riceve i comandi degli utenti che si trovano nella fase che controlla e si occupa di validare
+e modificare lo stato del relativo model.
+
+Come già spiegato, però, il server non comunica direttamente con una user interface locale.
+La user interface si trova sul client, quindi sul server è stata introdotta l'interfaccia `VirtualView`.
+La `VirtualView` rappresenta lato server la user interface remota del client e nasconde al resto del server
+il protocollo concreto usato per comunicare con quel client.
+
+Le implementazioni concrete sono:
+- `VirtualViewTCP`, usata quando il client comunica tramite socket TCP
+- `VirtualViewRMI`, usata quando il client comunica tramite RMI
+
+Entrambe implementano lo stesso contratto logico.
+Questo permette al resto del server di lavorare sempre contro lo stesso concetto di view remota,
+senza sapere se dietro quella connessione ci sia TCP o RMI.
+
+In ingresso, la `VirtualView` riceve un messaggio proveniente dal client, ricostruisce il payload applicativo
+e lo inoltra al `MessageRouter`.
+La `VirtualView` conosce la connessione da cui arriva il messaggio tramite `sessionId`, ma non decide
+quale controller debba gestire quel comando.
+
+Questa responsabilità è del `MessageRouter`.
+Il router riceve:
+- il `sessionId` della connessione
+- il payload inviato dal client
+
+Il router non sceglie il controller a partire dal tipo concreto del payload.
+La scelta viene fatta a partire dallo stato runtime dell'utente: dato il `sessionId`, il `MessageRouter`
+consulta il `ServerSessionRegistry`, recupera la fase corrente dell'utente e inoltra il comando
+al controller associato a quella fase.
+
+Quindi:
+- se l'utente è in pre-lobby, il comando viene inoltrato al `PreLobbyController`
+- se l'utente è in lobby, il comando viene inoltrato al controller della lobby corrispondente
+- se l'utente è in game, il comando viene inoltrato al controller della partita corrispondente
+
+Il payload viene interpretato solo dopo, dal controller che ha ricevuto il comando.
+Questo è importante perché il layer di rete e il router non contengono logica applicativa:
+si limitano a consegnare il comando al punto corretto del server in base allo stato della sessione.
+
+In uscita, invece, i model non conoscono direttamente le `VirtualView`.
+Quando devono notificare un aggiornamento verso il client, vedono solo il contratto `Listener`.
+
+Le `VirtualView` implementano `Listener`, quindi possono essere registrate come destinatari degli aggiornamenti
+prodotti dai model.
+Dal punto di vista del model, però, non esiste una `VirtualViewTCP` o una `VirtualViewRMI`:
+esiste solo un oggetto che implementa `Listener` e che quindi sa ricevere una notifica.
+
+Questo mantiene il model indipendente sia dalla rete sia dal tipo concreto di view remota.
+Il model produce l'aggiornamento e invoca il contratto `Listener`; sarà poi la `VirtualView` concreta
+a trasformare quell'aggiornamento in un messaggio da inviare al client.
+
+In questo modo il server mantiene separate tre responsabilità:
+- la rete viene gestita dalle implementazioni concrete di `VirtualView`
+- lo smistamento dei messaggi viene gestito dal `MessageRouter`
+- la logica di dominio viene gestita dai controller e dai model delle varie fasi
+
+Questa separazione è importante perché consente al server di restare indipendente dal protocollo di rete.
+Una volta che un messaggio è arrivato dentro il server come payload applicativo, il resto della logica
+non deve più sapere se quel messaggio è arrivato tramite TCP o tramite RMI.
+
+//TODO: aggiungere qui un diagramma Excalidraw del server ad alto livello:
+// - `VirtualViewTCP` e `VirtualViewRMI` implementano lo stesso contratto logico
+// - le `VirtualView` gestiscono rete, messaggi in ingresso e messaggi in uscita
+// - il `MessageRouter` smista i messaggi in base alla fase salvata nel `ServerSessionRegistry`
+// - i controller ricevono il comando, aggiornano il model e il model notifica tramite `Listener`
+
+### Thread in gioco
+In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà 
+più chiaro il perchè di alcune decisioni tecniche prese. 
+All'avvio del server viene creato il thread su cui gira il `ConnectionAcceptor`,
+la classe che si occupa di accettare le richieste di connessione in ingresso sulla `ServerSocket`.
+Quando un client richiede una connessione sulla socket, viene creata una `VirtualViewTCP` che gira su un thread. 
+Questo è dovuto al fatto che la lettura continua della socket per TCP è bloccante,
+e necessito quindi di un thread. Nel caso RMI invece quello che succede all'avvio del server,
+è che viene caricato nel RMI registry la classe `RmiConnectionEntryPoint`, che funge da stub inizialmente, 
+per connettersi al server. Una volta che il client RMI ha richiesto la connessione tramite lo stub pubblicato
+nel RMI registry, viene creata una VirtualVIewRMI che non gira invece su un thread assestante ma è gestita 
+dall'infrastruttura di RMI. 
+
+Ogni controller del server gira su un thread assestante. Nel caso pre-lobby tale controller è singleton.
+Nel caso delle lobby si ha un controller ed un model per ogni lobby creata, lo stesso per i game.
+Il motivo di questa decisione verrà spiegato in un altra sezione. Il succo del discorso è che ci sono 
+molti thread, i quali potrebbero necessitare di leggere e scrivere informazioni caratteristiche dell'utente. 
+
+### Gestione delle informazioni
+A runtime come detto è necessario mantenere, leggere e scrivere informazioni per ogni User connesso al server. 
+In particolare ogni connessione verso il server viene identificata in maniera univoca da un session-id. 
+Tutte le informazione di un dato User che è connesso possono essere recuperate a partire dal session-id.
+Dal momento che abbiamo la necessità di avere queste informazioni centralizzate in un unico punto che 
+garantisca safety dal punto di vista della concorrenza, è stato creata la classe `SessionRegistry`
+che rappresenta quindi l'unico punto del server nella quale devono essere salvati i dati a runtime degli utenti.
+Questa classe è caratterizzata da mappe interne per la retention dei dati, e metodi thread-safe creati 
+appositamente per fare query sicure, evitando race-condition.
+
+### Gestione delle disconnessioni
+In questa sezione viene spiegato ad alto livello quali sono le idee e i meccanismi dietro al funzionamento 
+della funzionalità avanzata resilienza alle disconnessioni. 
+Prima è però necessario discutere delle componenti tecniche che consentono a questa funzionalità di esistere.
+
+#### Ping Pong Routine
+Come detto abbiamo già la classe che ci consente di centralizzare le informazioni. Una di queste informazioni
+fondamentali che salviamo centralizzata è l'ultima risposta di heartbeat da ogni client.
+L'idea è quella di avere un protocollo di verifica che ci consenta di effettuare un assesment periodico 
+delle connessioni che sono effettivamente in vita. Questo ci consente di chiudere eventuali connessioni rimaste 
+aperte, ma che effettivamente sono appese, ovvero il client è crashato e non risponde più.
+Il tutto si basa su due messaggi scambiati tra client e server, ovvero messaggio di Ping da server verso client
+e messaggio di Pong in risposta dal client verso il server.
+Periodicamente con una routine apposita, vengono inviate a tutte le connessioni che risultano attualmente aperte
+un messaggio di PING. Nel frattempo si verifica anche se per una data connessione è scaduto il tempo di attesa
+massimo dall'ultimo PONG ricevuto. Se cosi fosse si procede a chiudere tale connessione. Il client quando riceve
+un PING risponde con un PONG. Tale PONG viene gestito da una classe che si occupa del lifecycle delle connessioni
+ovvero `ServerConnectionLifeCycle`. Tale protocollo di heartbeat si appoggia sull'infrastruttura di comunicazione
+già esistente tra client e server, è inoltre agnostico al tipo di protocollo a basso livello di comuncazione scelto, grazie
+al fatto che usiamo implementazioni concrete di VirtualView ServerProxy e VirtualServer, che ci nascondono 
+tutto il layer di rete. 
+
+#### Gestione disconnesione in pre Lobby
+
+#### Gestione disconessione in Lobby 
+
+
+#### Gestione disconnesione Game 
+
+
+### Layer di rete
+
+
+
+### Pre Lobby
+
+### Lobby 
+
+
+### Game
+
+

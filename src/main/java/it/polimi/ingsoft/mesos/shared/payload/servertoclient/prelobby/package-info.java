@@ -1,5 +1,5 @@
 /**
- * Contains server responses for pre-lobby requests.
+ * Contains preLobby responses for pre-lobby requests.
  *
  * <p>Includes authentication results and the lists/summaries of active lobbies.
  */

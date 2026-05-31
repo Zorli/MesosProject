@@ -13,21 +13,21 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.Objects;
 
 /**
- * RMI implementation of the server-to-client communication path.
+ * RMI implementation of the preLobby-to-client communication path.
  * <p>
  * In the RMI client architecture, {@link ServerProxyRMI} and {@code VirtualServerRMI} own the two opposite
  * directions of the same logical connection:
  * <ul>
- *     <li>{@link ServerProxyRMI} calls the remote server session to send client commands;</li>
- *     <li>{@code VirtualServerRMI} is exported as a remote callback object so the server can call the client
+ *     <li>{@link ServerProxyRMI} calls the remote preLobby session to send client commands;</li>
+ *     <li>{@code VirtualServerRMI} is exported as a remote callback object so the preLobby can call the client
  *     back with updates.</li>
  * </ul>
  * <p>
- * This class is the RMI equivalent of {@link VirtualServerTCP}. TCP receives server messages by reading a socket;
- * RMI receives server messages because the server invokes methods on this exported callback object.
+ * This class is the RMI equivalent of {@link VirtualServerTCP}. TCP receives preLobby messages by reading a socket;
+ * RMI receives preLobby messages because the preLobby invokes methods on this exported callback object.
  * <p>
  * The class does not contain UI logic or game logic. It receives already-built {@link ServerMessage} objects from
- * the server and delegates routing to {@link MessageRouter}, which then calls the appropriate {@link ClientView}
+ * the preLobby and delegates routing to {@link MessageRouter}, which then calls the appropriate {@link ClientView}
  * method.
  */
 public class VirtualServerRMI implements RmiClientService {
@@ -37,12 +37,12 @@ public class VirtualServerRMI implements RmiClientService {
     private ServerProxyRMI serverProxy;
 
     /**
-     * Creates and exports the client callback object used by the RMI server.
+     * Creates and exports the client callback object used by the RMI preLobby.
      * <p>
      * Exporting makes this object reachable from another JVM through Java RMI. After the object is exported, the
-     * server can call {@link #handleMessage(ServerMessage)} and {@link #handlePing()} remotely.
+     * preLobby can call {@link #handleMessage(ServerMessage)} and {@link #handlePing()} remotely.
      *
-     * @param clientView view contract used to display server updates on the client
+     * @param clientView view contract used to display preLobby updates on the client
      * @throws RemoteException if the callback object cannot be exported
      */
     public VirtualServerRMI(ClientView clientView) throws RemoteException {
@@ -55,7 +55,7 @@ public class VirtualServerRMI implements RmiClientService {
      * Used code exports the object. Tests can pass {@code false} to avoid opening a real RMI export while
      * still exercising the routing behavior.
      *
-     * @param clientView view contract used to display server updates on the client
+     * @param clientView view contract used to display preLobby updates on the client
      * @param exported   whether this object must be exported through {@link UnicastRemoteObject}
      * @throws RemoteException if export is requested and fails
      */
@@ -68,13 +68,13 @@ public class VirtualServerRMI implements RmiClientService {
     }
 
     /**
-     * Receives one server-to-client message through the RMI callback.
+     * Receives one preLobby-to-client message through the RMI callback.
      * <p>
      * Application messages are routed to the view through {@link MessageRouter}. PING is handled separately
      * because it belongs to the connection heartbeat protocol and must produce a PONG response through
      * {@link ServerProxyRMI}, not a UI update.
      *
-     * @param message message sent by the remote server
+     * @param message message sent by the remote preLobby
      */
     public void handleMessage(ServerMessage message) {
         if (message.type == ServerMessageType.PING) {
@@ -86,22 +86,22 @@ public class VirtualServerRMI implements RmiClientService {
     }
 
     /**
-     * Connects this server-to-client callback with the matching client-to-server proxy.
+     * Connects this preLobby-to-client callback with the matching client-to-preLobby proxy.
      * <p>
-     * The reference is needed only for heartbeat handling: when the server sends a PING callback, this object
-     * answers by asking {@link ServerProxyRMI} to send PONG to the remote server session.
+     * The reference is needed only for heartbeat handling: when the preLobby sends a PING callback, this object
+     * answers by asking {@link ServerProxyRMI} to send PONG to the remote preLobby session.
      *
-     * @param serverProxy proxy connected to the same RMI server session
+     * @param serverProxy proxy connected to the same RMI preLobby session
      */
     public void attachServerProxy(ServerProxyRMI serverProxy) {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
     }
 
     /**
-     * Handles the RMI heartbeat request sent by the server.
+     * Handles the RMI heartbeat request sent by the preLobby.
      * <p>
      * PING is not shown to the user. The callback answers by using the attached {@link ServerProxyRMI} to send
-     * PONG on the client-to-server direction of the RMI session.
+     * PONG on the client-to-preLobby direction of the RMI session.
      *
      * @throws IllegalStateException if the callback has not yet been attached to its proxy
      */

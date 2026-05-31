@@ -3,11 +3,11 @@ package it.polimi.ingsoft.mesos.server.controller.game;
 
 import it.polimi.ingsoft.mesos.server.controller.command.*;
 import it.polimi.ingsoft.mesos.server.controller.game.enums.GameCommandType;
-import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
-import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 /**
  * Single-threaded controller of one running match.
  *
- * <p>{@code GameController} is the boundary between the server networking layer
+ * <p>{@code GameController} is the boundary between the preLobby networking layer
  * and the {@link Game} domain aggregate. The network layer can receive messages
  * from multiple client connections and from timeout routines, but the game model
  * must be modified in one deterministic order. For this reason every game
@@ -96,7 +96,7 @@ public class GameController implements Runnable  {
      *
      * @param game game aggregate controlled by this instance
      * @param hostNickname nickname of the player who started the match
-     * @param sessions shared server session registry
+     * @param sessions shared preLobby session registry
      */
     public GameController(Game game,
                           String hostNickname,
@@ -155,7 +155,7 @@ public class GameController implements Runnable  {
      * Adds a command to the game queue.
      *
      * <p>This method can be called by networking threads, timeout routines, and
-     * server lifecycle code. The command is not executed by the caller thread:
+     * preLobby lifecycle code. The command is not executed by the caller thread:
      * it will be executed later by the controller thread running {@link #run()}.
      *
      * @param command command to process in game order
@@ -239,7 +239,7 @@ public class GameController implements Runnable  {
     /**
      * Performs match setup.
      *
-     * <p>Setup is enqueued by the server lifecycle when a lobby becomes a game.
+     * <p>Setup is enqueued by the preLobby lifecycle when a lobby becomes a game.
      * The controller delegates the actual setup rules to {@link Game#setup()} and
      * then checks whether the match immediately reached a terminal state.
      */
@@ -249,7 +249,7 @@ public class GameController implements Runnable  {
     }
 
     /**
-     * Closes the match because of a server-side lifecycle decision.
+     * Closes the match because of a preLobby-side lifecycle decision.
      *
      * <p>This is used for forced closure, not for a normal player command.
      */
@@ -359,7 +359,7 @@ public class GameController implements Runnable  {
      * Applies a queued game disconnect command.
      *
      * <p>A game disconnect is different from a normal client payload. It is
-     * produced by server lifecycle code, but the old game session remains
+     * produced by preLobby lifecycle code, but the old game session remains
      * registered until this method runs. This is the invariant that lets the
      * command carry only the session id: listener and player are still resolved
      * from the registry at the moment the disconnect is applied.
@@ -467,7 +467,7 @@ public class GameController implements Runnable  {
     }
 
     /**
-     * Removes this finished game from the server routing structures.
+     * Removes this finished game from the preLobby routing structures.
      *
      * <p>The method leaves every still-registered session from this game, removes
      * the game controller from the registry, and deletes reconnect slots for this

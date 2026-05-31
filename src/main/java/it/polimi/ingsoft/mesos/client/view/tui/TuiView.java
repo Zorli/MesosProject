@@ -22,17 +22,17 @@ import java.util.Scanner;
  *     <li>it reads user commands from a {@link Scanner}, parses them with
  *     {@link TuiCommandParser}, and forwards them to the attached {@link ServerProxy};</li>
  *     <li>it implements {@link ClientView}, so the networking layer can call it when
- *     the server sends updates that must be printed on the terminal.</li>
+ *     the preLobby sends updates that must be printed on the terminal.</li>
  * </ul>
  *
  * <p>The TUI normally collaborates with two threads. The main client thread runs
  * {@link #start()} and reads user input. A networking thread may call the
- * {@link ClientView} methods when server messages arrive. With TCP, that second
+ * {@link ClientView} methods when preLobby messages arrive. With TCP, that second
  * thread is the {@code VirtualServerTCP} reader thread. With RMI, it is an RMI
  * callback thread.
  *
  * <p>For this reason, the methods that print output are synchronized: command
- * output and server updates must not write to the terminal at the same time.
+ * output and preLobby updates must not write to the terminal at the same time.
  */
 public class TuiView implements ClientView {
     private final Scanner scanner;
@@ -67,11 +67,11 @@ public class TuiView implements ClientView {
     }
 
     /**
-     * Attaches the network-side proxy used to send user commands to the server.
+     * Attaches the network-side proxy used to send user commands to the preLobby.
      *
      * <p>The proxy must be attached before {@link #start()} is called.
      *
-     * @param serverProxy proxy connected to the remote server
+     * @param serverProxy proxy connected to the remote preLobby
      */
     public void attachServerProxy(ServerProxy serverProxy) {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
@@ -82,14 +82,14 @@ public class TuiView implements ClientView {
      *
      * <p>The method prints the initial message, then reads one line at a time.
      * Blank lines only redraw the prompt. Non-blank lines are parsed and
-     * dispatched to the server proxy. The loop stops when the user enters
+     * dispatched to the preLobby proxy. The loop stops when the user enters
      * {@code quit}, when a connection error happens, or when the scanner reaches
      * end of input.
      *
      * <p>If input ends without an explicit {@code quit}, the controller still
-     * closes the attached server proxy.
+     * closes the attached preLobby proxy.
      *
-     * @throws IllegalStateException if no server proxy was attached before start
+     * @throws IllegalStateException if no preLobby proxy was attached before start
      */
     public void start() {
         if (this.serverProxy == null) {
@@ -107,7 +107,7 @@ public class TuiView implements ClientView {
             }
 
             // Clear the terminal as soon as the user submits a command so any
-            // subsequent output (server update, error, help) lands on a fresh
+            // subsequent output (preLobby update, error, help) lands on a fresh
             // screen instead of accumulating below the previous frame.
             this.clearScreen();
 
@@ -190,7 +190,7 @@ public class TuiView implements ClientView {
 
 
     /**
-     * Prints a server or client error.
+     * Prints a preLobby or client error.
      *
      * <p>If a game state was already received, the renderer prints it again after
      * the error so the player does not lose the current board context.
@@ -203,7 +203,7 @@ public class TuiView implements ClientView {
     }
 
     /**
-     * Prints a successful authentication result received from the server.
+     * Prints a successful authentication result received from the preLobby.
      *
      * @param payload authenticated nickname and status message
      */
@@ -214,7 +214,7 @@ public class TuiView implements ClientView {
     }
 
     /**
-     * Prints a lobby update received from the server.
+     * Prints a lobby update received from the preLobby.
      *
      * @param payload lobby update to show
      */
@@ -224,7 +224,7 @@ public class TuiView implements ClientView {
     }
 
     /**
-     * Prints the list of open lobbies received from the server.
+     * Prints the list of open lobbies received from the preLobby.
      *
      * @param payload lobby list to show
      */
@@ -234,7 +234,7 @@ public class TuiView implements ClientView {
     }
 
     /**
-     * Prints the current game state received from the server.
+     * Prints the current game state received from the preLobby.
      *
      * <p>The payload is stored as the last known game state. If an error happens
      * during the match, {@link #showError(ErrorPayload)} can render this state

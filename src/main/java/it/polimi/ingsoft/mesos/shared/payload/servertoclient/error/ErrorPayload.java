@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.shared.payload.servertoclient.error;
 
 import java.io.Serializable;
 /**
- * Payload sent by the server to report an application or validation error to the client.
+ * Payload sent by the preLobby to report an application or validation error to the client.
  * <p>
  * This contains a standardized error code along with a human-readable message description.
  */

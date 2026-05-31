@@ -1,22 +1,17 @@
 package it.polimi.ingsoft.mesos.server.controller.lobby;
 
 import it.polimi.ingsoft.mesos.server.controller.command.*;
-import it.polimi.ingsoft.mesos.server.controller.server.enums.PreLobbyCommandType;
 import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.enums.LobbyCommandType;
-import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
-import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
-import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.AuthenticationPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.CreateLobbyPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.JoinLobbyPayload;
 
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -27,7 +22,7 @@ import java.util.Objects;
  * Controller responsible for managing a single active {@link Lobby} instance and processing
  * all network/system commands relating to it.
  *
- * <p><strong>Threading & Design:</strong>
+ *  <p><strong>Threading &amp; Design:</strong>
  * <ul>
  *   <li>Implements {@link Runnable} and executes inside its own dedicated worker thread (named {@code Lobby-ID-Worker}).</li>
  *   <li>Uses a threat-safe command queue ({@link BlockingQueue}) to receive commands asynchronously.</li>
@@ -52,7 +47,7 @@ public class LobbyController implements Runnable {
 
     /** The domain model representing the lobby state. */
     private final Lobby lobby;
-    /** The global server registry storing session states and controller routes. */
+    /** The global preLobby registry storing session states and controller routes. */
     private final ServerSessionRegistry sessions;
     /** The factory used to instantiate new {@link Game} matches. */
     private final GameFactory gameFactory;

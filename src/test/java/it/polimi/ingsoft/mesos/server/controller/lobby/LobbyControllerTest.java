@@ -4,11 +4,12 @@ import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.QueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
-import it.polimi.ingsoft.mesos.server.controller.server.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.factory.DefaultGameFactory;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
-import it.polimi.ingsoft.mesos.server.virtualview.Listener;
+import it.polimi.ingsoft.mesos.server.network.interfaces.ClientConnection;
+import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.ExitLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.StartLobbyPayload;
@@ -303,7 +304,7 @@ class LobbyControllerTest {
     /**
      * Mock class for client connection and listener observer.
      */
-    private static class MockClientConnection implements Listener, it.polimi.ingsoft.mesos.server.network.ClientConnection {
+    private static class MockClientConnection implements Listener, ClientConnection {
         final List<Object> receivedPayloads = new ArrayList<>();
 
         @Override

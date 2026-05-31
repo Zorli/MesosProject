@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>{@code GUIView} now keeps only the controller responsibilities: FXML field
  * ownership, FXML event handlers, the {@link ClientView} callbacks, the JavaFX
- * lifecycle, page navigation and server-call dispatch. The bulk of the rendering
+ * lifecycle, page navigation and preLobby-call dispatch. The bulk of the rendering
  * work is delegated to three collaborators:</p>
  * <ul>
  *     <li>{@link LobbyRenderer} for the lobby pages and the current-lobby snapshot.</li>
@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * </ul>
  *
  * <p>All JavaFX nodes must be read or modified on the JavaFX Application Thread.
- * Button handlers are already executed on that thread, but server updates can arrive
+ * Button handlers are already executed on that thread, but preLobby updates can arrive
  * from TCP or RMI networking threads. For this reason every public {@link ClientView}
  * update method delegates UI work through {@link #runOnFx(Runnable)}.</p>
  */
@@ -76,11 +76,11 @@ public class GUIView implements ClientView {
      * Runtime state owned by the controller. State that belongs only to lobby
      * or turn flows has moved into the collaborators created in initialize().
      */
-    /** Network proxy used to communicate with the remote server. */
+    /** Network proxy used to communicate with the remote preLobby. */
     private ServerProxy serverProxy;
     /** Current player's nickname, defaults to "Guest". */
     private String nickname = "Guest";
-    /** Last game payload received from the server. */
+    /** Last game payload received from the preLobby. */
     private GamePayload lastGamePayload;
     /** Transition timer used to delay redirection after a successful login. */
     private PauseTransition authRedirectDelay;
@@ -117,7 +117,7 @@ public class GUIView implements ClientView {
     @FXML private TextField nicknameField;
     /** Button clicked to submit the nickname and log in. */
     @FXML private Button loginButton;
-    /** Status line displaying login validation errors or server messages. */
+    /** Status line displaying login validation errors or preLobby messages. */
     @FXML private Label loginStatusLabel;
     /** Right-aligned pill displaying the authenticated nickname. */
     @FXML private Label sessionNicknameLabel;
@@ -183,7 +183,7 @@ public class GUIView implements ClientView {
     // ---------------------------------------------------------------------
 
     /**
-     * Attaches the network proxy used by the GUI to send commands to the server.
+     * Attaches the network proxy used by the GUI to send commands to the preLobby.
      */
     public void attachServerProxy(ServerProxy serverProxy) {
         this.serverProxy = Objects.requireNonNull(serverProxy, "serverProxy cannot be null");
@@ -470,7 +470,7 @@ public class GUIView implements ClientView {
             this.lastGamePayload = payload;
             if (payload == null) {
                 this.matchTitleLabel.setText("Match");
-                this.matchMetaLabel.setText("Waiting for server");
+                this.matchMetaLabel.setText("Waiting for preLobby");
                 this.turnLabel.setText("No match update received");
                 this.boardRenderer.renderGameSkeleton();
                 this.showPage(this.gamePage);
@@ -614,7 +614,7 @@ public class GUIView implements ClientView {
     }
 
     /**
-     * Executes a server command and converts local GUI-side failures into visible errors.
+     * Executes a preLobby command and converts local GUI-side failures into visible errors.
      * Package-private so the renderer collaborators can dispatch through it.
      */
     void callServer(Runnable call) {

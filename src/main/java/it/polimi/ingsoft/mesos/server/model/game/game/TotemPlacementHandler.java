@@ -96,6 +96,9 @@ public class TotemPlacementHandler {
      * @param tileCode code of the target offer space, for example {@code "A"}
      */
     public void moveTotem(Player player, String tileCode) {
+        if(! (tileCode == null)) {
+            tileCode = tileCode.toUpperCase();
+        }
         this.validateMoveTotemRequest(player, tileCode);
         this.placeTotemAndRegisterDrawQuota(player, tileCode);
         this.advanceAfterTotemPlacement();

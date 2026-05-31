@@ -26,13 +26,13 @@ import java.rmi.RemoteException;
 /**
  * RMI implementation of the {@link ServerProxy} contract.
  * <p>
- * This class is the client-side remote proxy used by the user interface to send commands to the server.
+ * This class is the client-side remote proxy used by the user interface to send commands to the preLobby.
  * The UI talks to the {@link ServerProxy} interface, so it does not need to know whether the concrete
  * connection is implemented with TCP or RMI.
  * <p>
  * In the RMI implementation, outgoing user commands are sent by calling methods on the remote
- * {@link RmiServerService} stub returned by the connection service. Incoming server messages travel in the
- * opposite direction through {@link VirtualServerRMI}, which is passed to the server as the client callback.
+ * {@link RmiServerService} stub returned by the connection service. Incoming preLobby messages travel in the
+ * opposite direction through {@link VirtualServerRMI}, which is passed to the preLobby as the client callback.
  * <p>
  * This class owns the outbound direction and the connection state. If a remote call fails, the proxy marks
  * itself as disconnected and reports a local connection error to the client view through the callback receiver.
@@ -43,11 +43,11 @@ public class ServerProxyRMI implements ServerProxy {
     private boolean connected;
 
     /**
-     * Opens an RMI connection to the server and exports the client callback used for incoming messages.
+     * Opens an RMI connection to the preLobby and exports the client callback used for incoming messages.
      *
      * @param connectionService remote service used to create the client session
-     * @param clientView        view contract used to show server updates and local connection errors
-     * @throws RemoteException if the callback cannot be exported or the server cannot create the session
+     * @param clientView        view contract used to show preLobby updates and local connection errors
+     * @throws RemoteException if the callback cannot be exported or the preLobby cannot create the session
      */
     public ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView) throws RemoteException {
         this(connectionService, clientView, true);
@@ -60,9 +60,9 @@ public class ServerProxyRMI implements ServerProxy {
      * still exercising the same client-side proxy logic.
      *
      * @param connectionService remote service used to create the client session
-     * @param clientView        view contract used to show server updates and local connection errors
+     * @param clientView        view contract used to show preLobby updates and local connection errors
      * @param exportCallback    {@code true} to export the callback for real RMI usage, {@code false} for tests
-     * @throws RemoteException if the callback cannot be exported or the server cannot create the session
+     * @throws RemoteException if the callback cannot be exported or the preLobby cannot create the session
      */
     ServerProxyRMI(RmiConnectionService connectionService, ClientView clientView, boolean exportCallback) throws RemoteException {
         this.callbackReceiver = new VirtualServerRMI(clientView, exportCallback);
@@ -74,7 +74,7 @@ public class ServerProxyRMI implements ServerProxy {
     /**
      * Returns whether this proxy currently considers the RMI session usable for outgoing messages.
      *
-     * @return {@code true} if the proxy has an active server stub, {@code false} after a close or remote failure
+     * @return {@code true} if the proxy has an active preLobby stub, {@code false} after a close or remote failure
      */
     @Override
     public boolean isConnected() {
@@ -82,12 +82,12 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     /**
-     * Sends one already-built client message to the remote server.
+     * Sends one already-built client message to the remote preLobby.
      * <p>
      * This is the low-level sending primitive used by all public command methods except {@link #sendPong()},
      * because PONG replies use a dedicated remote method on {@link RmiServerService}.
      *
-     * @param message application-level message to send to the server
+     * @param message application-level message to send to the preLobby
      */
     private void send(ClientMessage message) {
         if (!this.ensureConnected()) {
@@ -102,7 +102,7 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     /**
-     * Sends the nickname chosen by the user to authenticate the client on the server.
+     * Sends the nickname chosen by the user to authenticate the client on the preLobby.
      *
      * @param nickname nickname chosen by the user
      */
@@ -114,7 +114,7 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     /**
-     * Requests the list of lobbies currently available on the server.
+     * Requests the list of lobbies currently available on the preLobby.
      */
     @Override
     public void listLobbies() {
@@ -204,9 +204,9 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     /**
-     * Sends a PONG message to the server.
+     * Sends a PONG message to the preLobby.
      * <p>
-     * This method is called by {@link VirtualServerRMI} when a PING message is received from the server.
+     * This method is called by {@link VirtualServerRMI} when a PING message is received from the preLobby.
      * It is part of the RMI connection keep-alive flow, not a command entered directly by the user.
      */
     public void sendPong() {
@@ -225,7 +225,7 @@ public class ServerProxyRMI implements ServerProxy {
     /**
      * Marks the proxy as disconnected after a failed remote call and reports the failure locally.
      *
-     * @param e remote failure raised by the RMI server stub
+     * @param e remote failure raised by the RMI preLobby stub
      */
     private void handleDisconnection(RemoteException e) {
         this.connected = false;
@@ -235,7 +235,7 @@ public class ServerProxyRMI implements ServerProxy {
     /**
      * Closes the RMI session owned by this proxy.
      * <p>
-     * The remote session is closed first when a server stub exists. The local callback receiver is closed in
+     * The remote session is closed first when a preLobby stub exists. The local callback receiver is closed in
      * the {@code finally} block so that local callback resources are released even if the remote close fails.
      *
      * @throws IOException if the remote session or the local callback receiver cannot be closed
@@ -254,9 +254,9 @@ public class ServerProxyRMI implements ServerProxy {
     }
 
     /**
-     * Sends a local connection error to the client view through the same callback receiver used for server messages.
+     * Sends a local connection error to the client view through the same callback receiver used for preLobby messages.
      * <p>
-     * These errors are generated by the client networking layer itself, not received from the server.
+     * These errors are generated by the client networking layer itself, not received from the preLobby.
      *
      * @param code    machine-readable error code
      * @param message human-readable error message
@@ -271,7 +271,7 @@ public class ServerProxyRMI implements ServerProxy {
      * Checks whether a command can still be sent.
      * <p>
      * If the proxy is already disconnected, this method reports a local connection error and tells the caller
-     * to stop before touching the remote server stub.
+     * to stop before touching the remote preLobby stub.
      *
      * @return {@code true} if a command can be sent, {@code false} if the proxy is disconnected
      */

@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Payload sent by the server to notify players in a lobby of any state changes.
+ * Payload sent by the preLobby to notify players in a lobby of any state changes.
  * <p>
  * This contains the event type, target nicknames, message alerts, updated member list,
  * lobby capacity, and current host details.

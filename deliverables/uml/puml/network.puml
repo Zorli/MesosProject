@@ -169,11 +169,11 @@ package "Server" {
   together {
     class VirtualViewTCP <<service>> {
       - clientSocket: Socket
-      - serverController: ServerController
+      - preLobbyController: ServerController
       - sessionId: String
       - router: MessageRouter
       - commandHandler: ClientCommandHandler
-      + VirtualViewTCP(clientSocket: Socket, serverController: ServerController, router: MessageRouter)
+      + VirtualViewTCP(clientSocket: Socket, preLobbyController: ServerController, router: MessageRouter)
       + run(): void
       + handleClientMessage(clientMessage: ClientMessage): void
       + pong(payload: PongPayload): void
@@ -184,11 +184,11 @@ package "Server" {
     }
 
     class VirtualViewRMI <<service>> {
-      - serverController: ServerController
+      - preLobbyController: ServerController
       - clientCallback: RmiClientService
       - sessionId: String
       - router: MessageRouter
-      + VirtualViewRMI(serverController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
+      + VirtualViewRMI(preLobbyController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
       + handleClientMessage(clientMessage: ClientMessage): void
       + pong(payload: PongPayload): void
       + closeSession(): void
@@ -202,17 +202,17 @@ package "Server" {
   together {
     class ConnectionAcceptor <<service>> {
       - port: int
-      - serverController: ServerController
+      - preLobbyController: ServerController
       - router: MessageRouter
-      + ConnectionAcceptor(port: int, serverController: ServerController, router: MessageRouter)
+      + ConnectionAcceptor(port: int, preLobbyController: ServerController, router: MessageRouter)
       + start(): void
       + run(): void
     }
 
     class RmiConnectionEntryPoint <<service>> {
-      - serverController: ServerController
+      - preLobbyController: ServerController
       - router: MessageRouter
-      + RmiConnectionEntryPoint(serverController: ServerController, router: MessageRouter)
+      + RmiConnectionEntryPoint(preLobbyController: ServerController, router: MessageRouter)
       + connect(clientCallback: RmiClientService): RmiServerService
     }
   }
@@ -227,8 +227,8 @@ package "Server" {
 
     class MessageRouter <<service>> {
       - registry: ServerSessionRegistry
-      - serverController: ServerController
-      + MessageRouter(registry: ServerSessionRegistry, serverController: ServerController)
+      - preLobbyController: ServerController
+      + MessageRouter(registry: ServerSessionRegistry, preLobbyController: ServerController)
       + routeMessage(sessionId: String, payload: ClientPayload): void
     }
 

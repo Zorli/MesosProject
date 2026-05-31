@@ -78,8 +78,11 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <release>21</release>
+                    <showWarnings>true</showWarnings>
+                    <compilerArgs>
+                        <arg>-Xlint:unchecked</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
 
@@ -377,6 +380,45 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>client-linux-x64</id>
+            <properties>
+                <javafx.platform>linux</javafx.platform>
+                <client.jar.name>mesos-client-linux-x64</client.jar.name>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>client-mac-x64</id>
+            <properties>
+                <javafx.platform>mac</javafx.platform>
+                <client.jar.name>mesos-client-mac-x64</client.jar.name>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>client-mac-aarch64</id>
+            <properties>
+                <javafx.platform>mac-aarch64</javafx.platform>
+                <client.jar.name>mesos-client-mac-aarch64</client.jar.name>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>client-windows-x64</id>
+            <properties>
+                <javafx.platform>win</javafx.platform>
+                <client.jar.name>mesos-client-windows-x64</client.jar.name>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>server-release</id>
+            <properties>
+                <server.jar.name>mesos-server</server.jar.name>
+            </properties>
+        </profile>
     </profiles>
+
 
 </project>
