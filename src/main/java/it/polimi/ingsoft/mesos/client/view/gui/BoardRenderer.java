@@ -128,7 +128,7 @@ final class BoardRenderer {
         container.getChildren().clear();
         List<CardPayload> safeCards = cards == null ? List.of() : cards;
         if (safeCards.isEmpty()) {
-            container.getChildren().add(emptyState("Empty market", "Waiting for preLobby."));
+            container.getChildren().add(emptyState("Empty market", "Waiting for server."));
             return;
         }
         boolean rowEnabled = this.canChooseFromRow.test(row);

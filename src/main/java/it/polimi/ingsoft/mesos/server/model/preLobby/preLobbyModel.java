@@ -8,7 +8,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import java.util.List;
 
 /**
- * Entry point for the preLobby's pre-lobby business logic and session coordination.
+ * Entry point for the server's pre-lobby business logic and session coordination.
  *
  * <p>This model class handles client requests before they transition into a specific
  * lobby or match controller. It coordinates user authentication, lobby list queries,
@@ -26,7 +26,7 @@ public class preLobbyModel {
     /**
      * Constructs a new preLobbyModel.
      *
-     * @param sessions the centralized preLobby session registry
+     * @param sessions the centralized server session registry
      */
     public preLobbyModel(ServerSessionRegistry sessions) {
         this.sessions = sessions;

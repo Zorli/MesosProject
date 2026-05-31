@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.server.controller.command;
 /**
  * Internal queue command used to move an authenticated session into a lobby.
  *
- * <p>The command is produced by preLobby-side routing logic after validation has
+ * <p>The command is produced by server-side routing logic after validation has
  * selected the target controller. It carries only the {@code sessionId}. The
  * receiving controller resolves listener and nickname from
  * {@code ServerSessionRegistry}, so the queue does not carry duplicated runtime

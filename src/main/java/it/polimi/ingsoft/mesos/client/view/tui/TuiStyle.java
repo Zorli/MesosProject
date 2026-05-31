@@ -58,7 +58,7 @@ final class TuiStyle {
     /**
      * Returns the ANSI color associated with a totem color name.
      *
-     * <p>Totem colors come from the preLobby as upper-case strings: RED, BLUE,
+     * <p>Totem colors come from the server as upper-case strings: RED, BLUE,
      * WHITE, YELLOW, BLACK. Unknown or null values fall back to gray.
      */
     static String forTotem(String totemColor) {

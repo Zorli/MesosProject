@@ -7,19 +7,19 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.PongPayl
  * Server-side contract for a virtual view that receives client commands.
  * <p>
  * A virtual view is the boundary object that represents one connected client
- * inside the preLobby. It hides the concrete transport from the preLobby logic: TCP,
+ * inside the server. It hides the concrete transport from the server logic: TCP,
  * RMI, or any other protocol can receive a client command in a different way,
- * but the preLobby only needs a structured {@link ClientMessage}, a way to record
+ * but the server only needs a structured {@link ClientMessage}, a way to record
  * pong replies, and a way to close the session.
  * <p>
  * This interface describes the inbound side of a virtual view, from client to
- * preLobby. The outbound side, from preLobby to client, is represented separately by
- * {@link Listener}, which receives preLobby payloads and sends them through the
+ * server. The outbound side, from server to client, is represented separately by
+ * {@link Listener}, which receives server payloads and sends them through the
  * concrete transport.
  */
 public interface VirtualView {
     /**
-     * Passes a structured client message from the transport layer to the preLobby.
+     * Passes a structured client message from the transport layer to the server.
      * <p>
      * Implementations normally attach their session id and delegate the payload
      * to the routing layer, so the command reaches the correct pre-lobby, lobby,
@@ -35,7 +35,7 @@ public interface VirtualView {
      * <p>
      * The pong belongs to the connection keep-alive protocol, not to game logic.
      * Implementations use it to refresh the session activity timestamp through
-     * the preLobby connection lifecycle.
+     * the server connection lifecycle.
      *
      * @param payload pong payload received from the client message envelope
      */
@@ -46,7 +46,7 @@ public interface VirtualView {
      * <p>
      * The interface does not prescribe how the concrete transport is closed.
      * Implementations are responsible for performing their own cleanup and for
-     * triggering the preLobby-side disconnection flow.
+     * triggering the server-side disconnection flow.
      */
     void closeSession();
 }

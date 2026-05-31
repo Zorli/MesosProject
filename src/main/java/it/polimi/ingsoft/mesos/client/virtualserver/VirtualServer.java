@@ -5,24 +5,24 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import java.io.IOException;
 
 /**
- * Client-side abstraction for the preLobby-to-client communication path.
+ * Client-side abstraction for the server-to-client communication path.
  * <p>
  * In the client architecture, {@code ServerProxy} and {@code VirtualServer} represent the two opposite
  * directions of the network connection:
  * <ul>
- *     <li>{@code ServerProxy}: client-to-preLobby path, used by controllers to send user commands;</li>
- *     <li>{@code VirtualServer}: preLobby-to-client path, used to receive preLobby messages and forward them
+ *     <li>{@code ServerProxy}: client-to-server path, used by controllers to send user commands;</li>
+ *     <li>{@code VirtualServer}: server-to-client path, used to receive server messages and forward them
  *     to the local client view.</li>
  * </ul>
  * <p>
  * The name "VirtualServer" means that, from the client point of view, this object behaves like a local
- * endpoint representing the real preLobby. It does not contain game logic. Its responsibility is to receive
+ * endpoint representing the real server. It does not contain game logic. Its responsibility is to receive
  * messages from the transport layer, translate transport-specific events when needed, and route the resulting
- * preLobby messages toward the UI.
+ * server messages toward the UI.
  * <p>
  * In the TCP transport, {@link VirtualServerTCP} implements this interface and runs in a background thread
  * that continuously reads JSON messages from the socket. In the RMI transport, {@link VirtualServerRMI}
- * plays the same architectural role through remote callbacks exposed to the preLobby.
+ * plays the same architectural role through remote callbacks exposed to the server.
  * <p>
  * Implementations must keep this class of objects focused on networking and message dispatching. User
  * commands belong to {@code ServerProxy}; rendering and user interaction belong to {@code ClientView}.
@@ -30,21 +30,21 @@ import java.io.IOException;
 public interface VirtualServer extends AutoCloseable {
 
     /**
-     * Handles one preLobby-to-client application message.
+     * Handles one server-to-client application message.
      * <p>
-     * Typical messages include lobby updates, lobby lists, game updates, and preLobby-side errors. The
+     * Typical messages include lobby updates, lobby lists, game updates, and server-side errors. The
      * implementation should route the message to the client-side view layer, usually through the shared
      * client message router.
      *
-     * @param message message received from the preLobby
+     * @param message message received from the server
      */
     void handleMessage(ServerMessage message);
 
     /**
-     * Handles a preLobby keep-alive PING.
+     * Handles a server keep-alive PING.
      * <p>
      * The expected behavior is to ask the matching {@code ServerProxy} to send a PONG back through the
-     * client-to-preLobby channel. This keeps the heartbeat protocol out of the UI and inside the networking
+     * client-to-server channel. This keeps the heartbeat protocol out of the UI and inside the networking
      * layer.
      */
     void handlePing();

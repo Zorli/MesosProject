@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.shared.messages;
 
 /**
- * Defines the set of possible message types that a client can send to the preLobby.
+ * Defines the set of possible message types that a client can send to the server.
  * <p>
  * These types match the different client commands and network requests sent during
  * connection, pre-lobby, lobby, and active game phases.
@@ -9,7 +9,7 @@ package it.polimi.ingsoft.mesos.shared.messages;
 public enum ClientMessageType {
     /** Request to authenticate/log in a player using a nickname. */
     AUTHENTICATE,
-    /** Request to list all currently open/active lobbies on the preLobby. */
+    /** Request to list all currently open/active lobbies on the server. */
     LIST_LOBBIES,
     /** Request to create a new game lobby with a specified max player count. */
     CREATE_LOBBY,

@@ -1,7 +1,7 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby;
 import java.io.Serializable;
 /**
- * Represents a simplified snapshot/summary of a single lobby room on the preLobby.
+ * Represents a simplified snapshot/summary of a single lobby room on the server.
  * <p>
  * This is used to display the list of joinable rooms to players in the pre-lobby.
  */

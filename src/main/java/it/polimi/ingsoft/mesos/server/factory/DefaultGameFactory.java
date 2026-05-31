@@ -23,7 +23,7 @@ public class DefaultGameFactory implements GameFactory {
     }
 
     /**
-     * Returns the shared factory used by the preLobby to start new matches.
+     * Returns the shared factory used by the server to start new matches.
      *
      * @return the singleton game factory instance
      */

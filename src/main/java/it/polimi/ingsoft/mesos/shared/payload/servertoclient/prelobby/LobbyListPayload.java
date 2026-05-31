@@ -6,7 +6,7 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Payload sent by the preLobby containing the list of all open lobbies.
+ * Payload sent by the server containing the list of all open lobbies.
  * <p>
  * This is sent as a reply to a {@link ListLobbiesPayload} request.
  */

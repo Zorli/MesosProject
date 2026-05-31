@@ -22,7 +22,7 @@ public class PlayerPayload implements Serializable {
     /** The player's tribe containing all drafted character and building cards. */
     public final TribePayload tribe;
 
-    /** Flag indicating whether the player is currently connected to the preLobby. */
+    /** Flag indicating whether the player is currently connected to the server. */
     public final boolean isConnected;
 
     /**

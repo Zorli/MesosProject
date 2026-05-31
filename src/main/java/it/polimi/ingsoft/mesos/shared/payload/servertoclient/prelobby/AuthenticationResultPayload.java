@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby;
 import java.io.Serializable;
 
 /**
- * Payload sent by the preLobby to inform a client of the result of their login attempt.
+ * Payload sent by the server to inform a client of the result of their login attempt.
  * <p>
  * If authentication succeeds, the assigned player nickname is returned.
  * Otherwise, the payload contains details of the failure message.

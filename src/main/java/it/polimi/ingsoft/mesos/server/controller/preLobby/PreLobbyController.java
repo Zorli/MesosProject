@@ -18,7 +18,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * The central coordinator for the pre-lobby phase of the preLobby.
+ * The central coordinator for the pre-lobby phase of the server.
  * It manages a blocking command queue, processes user authentication,
  * orchestrates the creation and joining of game lobbies, and monitors
  * client connections using a dedicated ping-pong check routine.
@@ -61,7 +61,7 @@ public class PreLobbyController implements Runnable {
     }
 
     /**
-     * Retrieves the preLobby session registry.
+     * Retrieves the server session registry.
      *
      * @return the ServerSessionRegistry reference
      */
@@ -70,7 +70,7 @@ public class PreLobbyController implements Runnable {
     }
 
     /**
-     * Enqueues a command to be processed by the preLobby controller run loop.
+     * Enqueues a command to be processed by the server controller run loop.
      *
      * @param command the QueuedCommand to add to the processing queue
      */

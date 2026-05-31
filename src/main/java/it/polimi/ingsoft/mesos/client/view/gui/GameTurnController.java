@@ -14,11 +14,11 @@ import java.util.function.Supplier;
 
 /**
  * Owns the local game-turn state and the rules that decide whether a click on
- * a market card or an offer-path tile is legal before the next preLobby update
+ * a market card or an offer-path tile is legal before the next server update
  * arrives.
  *
- * <p>The preLobby is authoritative, but the GUI keeps a small local counter to
- * avoid letting the same player click too many cards in a row. When the preLobby
+ * <p>The server game state is authoritative, but the GUI keeps a small local counter to
+ * avoid letting the same player click too many cards in a row. When the server
  * rejects an action with an error the controller rolls back the optimistic
  * counter via {@link #rollbackPendingDraftChoice()}.</p>
  */
@@ -134,7 +134,7 @@ final class GameTurnController {
                 && this.isRoundPhase(PHASE_PLACING_TOTEMS);
     }
 
-    /** Resets local card-pick counters when the preLobby advances to a new draft turn. */
+    /** Resets local card-pick counters when the server advances to a new draft turn. */
     void updateLocalDraftTurn(GamePayload payload) {
         String newKey = draftTurnKey(payload);
         if (!Objects.equals(this.localDraftTurnKey, newKey)) {
@@ -149,7 +149,7 @@ final class GameTurnController {
         this.pendingDraftRow = null;
     }
 
-    /** Undoes the last optimistic card-choice counter after a preLobby error. */
+    /** Undoes the last optimistic card-choice counter after a server error. */
     void rollbackPendingDraftChoice() {
         if (this.pendingDraftRow == null) {
             return;
@@ -223,7 +223,7 @@ final class GameTurnController {
     // Internal helpers
     // ---------------------------------------------------------------------
 
-    /** Records a local card choice before the preLobby confirmation arrives. */
+    /** Records a local card choice before the server confirmation arrives. */
     private void registerLocalCardChoice(String row) {
         if (ROW_UPPER.equals(row)) {
             this.localUpperChoicesUsed++;

@@ -28,7 +28,7 @@ import java.util.List;
 /**
  * Converts the internal game model into payload objects sent to clients.
  *
- * <p>The preLobby model contains rich Java objects such as {@link Game},
+ * <p>The server model contains rich Java objects such as {@link Game},
  * {@link Board}, {@link Player}, and card instances. Clients must not receive
  * those model objects directly. They receive simple serializable payloads that
  * describe the visible state of the match.

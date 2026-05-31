@@ -3,7 +3,7 @@ package it.polimi.ingsoft.mesos.client.serverproxy;
 import java.io.IOException;
 
 /**
- * Client-side contract used by the user interface to send commands to the preLobby.
+ * Client-side contract used by the user interface to send commands to the server.
  * <p>
  * The UI must not know if the client is connected through TCP or RMI. For this reason
  * both {@code ServerProxyTCP} and {@code ServerProxyRMI} implement this interface and
@@ -12,15 +12,15 @@ import java.io.IOException;
  * This interface represents the outgoing direction of the client architecture:
  *
  * <pre>
- * UI controller -> ServerProxy -> preLobby
+ * UI controller -> ServerProxy -> server
  * </pre>
  *
  * The opposite direction is handled by {@code VirtualServer}, which receives messages
- * coming from the preLobby and forwards them to the client view.
+ * coming from the server and forwards them to the client view.
  */
 public interface ServerProxy extends AutoCloseable {
     /**
-     * Returns whether the proxy currently considers the connection to the preLobby active.
+     * Returns whether the proxy currently considers the connection to the server active.
      *
      * @return {@code true} if the proxy is connected, {@code false} otherwise
      */

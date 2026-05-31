@@ -47,7 +47,7 @@ public class LobbyController implements Runnable {
 
     /** The domain model representing the lobby state. */
     private final Lobby lobby;
-    /** The global preLobby registry storing session states and controller routes. */
+    /** The global server registry storing session states and controller routes. */
     private final ServerSessionRegistry sessions;
     /** The factory used to instantiate new {@link Game} matches. */
     private final GameFactory gameFactory;

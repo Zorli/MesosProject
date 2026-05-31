@@ -3,8 +3,8 @@ package it.polimi.ingsoft.mesos.server.model.preLobby;
 import java.util.Objects;
 
 /**
- * Represents a user connected to the preLobby.
- * Connection ownership is tracked by the preLobby session registry, not by this class.
+ * Represents a user connected to the server.
+ * Connection ownership is tracked by the server session registry, not by this class.
  */
 public class User {
     private final String nickname;

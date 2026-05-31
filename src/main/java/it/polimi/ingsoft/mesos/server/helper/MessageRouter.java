@@ -10,7 +10,7 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
  * Routes deserialized client payloads to the controller that owns the current
  * session phase.
  * <p>
- * This class is the preLobby-side dispatcher between the transport boundary and
+ * This class is the server-side dispatcher between the transport boundary and
  * the application controllers. TCP and RMI virtual views both produce the same
  * information after decoding a client request: the session id that sent the
  * request and a typed {@link ClientPayload}. The router uses the session id to
@@ -29,7 +29,7 @@ public class MessageRouter {
     private final PreLobbyController preLobbyController;
 
     /**
-     * Creates a router backed by the shared session registry and root preLobby
+     * Creates a router backed by the shared session registry and root pre-lobby
      * controller.
      *
      * @param registry registry used to read the session phase and phase-specific
@@ -52,7 +52,7 @@ public class MessageRouter {
      * a phase error is reported to the client.
      *
      * @param sessionId session that sent the payload
-     * @param payload deserialized client-to-preLobby payload
+     * @param payload deserialized client-to-server payload
      * @throws RuntimeException if the session id is not registered in the session
      *                          registry
      */

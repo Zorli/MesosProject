@@ -18,7 +18,7 @@ import java.util.Objects;
 /**
  * Converts one raw TCP line received from a client into a typed client command.
  * <p>
- * This class is part of the preLobby-side TCP boundary, but it does not manage
+ * This class is part of the server-side TCP boundary, but it does not manage
  * the socket. {@link VirtualViewTCP} reads raw text lines from the connection
  * and passes each line here. This handler only understands the JSON protocol:
  * it validates the common message envelope, deserializes the payload required
@@ -45,7 +45,7 @@ public class ClientCommandHandler {
     /**
      * Creates a command handler bound to one TCP virtual view.
      *
-     * @param out stream used for preLobby-side diagnostic messages
+     * @param out stream used for server-side diagnostic messages
      * @param virtualView virtual view that owns the client session and receives
      *                    the parsed command
      * @throws NullPointerException if {@code out} or {@code virtualView} is null
@@ -123,7 +123,7 @@ public class ClientCommandHandler {
      * This method centralizes the TCP deserialization table: each
      * {@link ClientMessageType} accepted by the TCP protocol is mapped to the
      * corresponding {@link ClientPayload} implementation used by controllers and
-     * model-facing preLobby code.
+     * model-facing server code.
      *
      * @param type message type declared in the client envelope
      * @param payloadElement JSON payload associated with the message type

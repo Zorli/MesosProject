@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.List;
 //Upper class of the payload
 /**
- * Represents the complete game state payload broadcasted by the preLobby.
+ * Represents the complete game state payload broadcasted by the server.
  * <p>
  * This functions as a full state update containing the current game ID, game status,
  * era index, turn order sequence, active player turn phase, players' status,
