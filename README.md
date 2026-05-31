@@ -756,33 +756,82 @@ Quindi riassumendo il flusso dei messaggi è il seguente:
 - In entrata: server -> VirtualServer -> MessageRouter -> ClientView
 
 ## Architettura del Server
-In questa sezione vengono spiegate le scelte che sono state fatte per l'architettura del server.
-Il server è stato progettato sin dal principio per poter gestire più partite in contemporanea. Questo ha portato ad estendere la logica del modello MVC in maniera funzionale sui tre blocchi logici che caratterizzano le fasi di vita del gioco. Le fasi di vita caratterizzanti il gioco sono le seguenti:
-- fase di pre lobby: User non è autenticato, oppure è autenticato ma non si trova in nessuna lobby
-- fase di lobby: User è autenticato e si trova in una lobby 
-- fase di Game. User è in partita
+In questa sezione vengono spiegate le scelte principali fatte per l'architettura del server.
 
-Quindi l'idea è stata quella di avere rispettivamente un controller ed un model che gestiscano le rispettive fasi logiche, ovvero si occupano di validare e gestire la logica del loro specifico dominio. 
+Il server è stato progettato fin dall'inizio per gestire più partite contemporaneamente.
+Per questo motivo la logica applicativa non è stata concentrata in un unico controller/model,
+ma è stata divisa rispetto alle fasi principali in cui può trovarsi un utente:
+- pre-lobby: l'utente non è autenticato, oppure è autenticato ma non si trova in nessuna lobby
+- lobby: l'utente è autenticato e si trova in una lobby
+- game: l'utente si trova dentro una partita
 
-Come già spiegato, per poter nascondere ai vari model e controller il fatto che la view non si trova sul server,
-è stata introdotta l'interfaccia `VirtualView` che dovrebbe rappresentare uno stub della view sul server.
-Questo stub nasconde la rete, quindi si ha che per i messaggi in entrata questa classe si occupa di gestire la raccolta e la ricostruzione del messaggio, senza conoscere a chi è destinato tale messaggio, che vedremo essere 
-gestito da un router, che sa a chi inoltrare il messaggio. 
-Invece per i messaggi in uscita la view viene contattata dai model tramite interfaccia `Listener` per poter 
-contattare il reale client, senza pero far conoscere ai model la rete.
+L'idea è quindi avere controller e model dedicati alle diverse fasi logiche.
+Ogni controller riceve i comandi degli utenti che si trovano nella fase che controlla e si occupa di validare
+e modificare lo stato del relativo model.
 
-Questa impostazione ci ha permesso quindi di ottenere una separazione della gestione di logica di dominio, relativa alle tre fasi, e una agnosticità dei controller e dei model al fatto che per contattare il client si attraversi una connessione internet(viene quindi anche nascosto il protocollo concreto di rete utilizzato).
+Come già spiegato, però, il server non comunica direttamente con una user interface locale.
+La user interface si trova sul client, quindi sul server è stata introdotta l'interfaccia `VirtualView`.
+La `VirtualView` rappresenta lato server la user interface remota del client e nasconde al resto del server
+il protocollo concreto usato per comunicare con quel client.
 
-//TODO : Qui necessito di avere una vista chaira in exclaidrwa del server ad alto livello in cui si vedono le due virtualview che ricevono i messaggi, che implmentano lo stesso contratto logico e che loro si occupano solo di gestire la rete e i messaggi in entrata ed in uscita. A gestire lo smazzamento dei messaggi relativamente alla fase di gioco tramite message router, e far vedere che i controller ricevono messaggio mandano al model e model notifica rispsota tramite interfaccia listener.
+Le implementazioni concrete sono:
+- `VirtualViewTCP`, usata quando il client comunica tramite socket TCP
+- `VirtualViewRMI`, usata quando il client comunica tramite RMI
 
-La classe che quindi si occupa di instradare il messaggio al controller corretto è il message router.
-Tutti gli errori riguardanti il protocollo di comunicazione vengono gestiti da una classe in comune alla 
-VirtualViewal TCP ed RMI in modo da avere una uniformità di gestione degli errori. 
+Entrambe implementano lo stesso contratto logico.
+Questo permette al resto del server di lavorare sempre contro lo stesso concetto di view remota,
+senza sapere se dietro quella connessione ci sia TCP o RMI.
 
-Il router inoltra il messaggio di un dato User al relativo controller e model della fase in cui si trova.
-Ovvero per ogni User è sempre noto a runtime in quale delle tre fasi si trova, 
-e grazie a questa informazione si può fare riferimento ai relativi model e controller 
-per la validazione del messaggio arrivato.
+In ingresso, la `VirtualView` riceve un messaggio proveniente dal client, ricostruisce il payload applicativo
+e lo inoltra al `MessageRouter`.
+La `VirtualView` conosce la connessione da cui arriva il messaggio tramite `sessionId`, ma non decide
+quale controller debba gestire quel comando.
+
+Questa responsabilità è del `MessageRouter`.
+Il router riceve:
+- il `sessionId` della connessione
+- il payload inviato dal client
+
+Il router non sceglie il controller a partire dal tipo concreto del payload.
+La scelta viene fatta a partire dallo stato runtime dell'utente: dato il `sessionId`, il `MessageRouter`
+consulta il `ServerSessionRegistry`, recupera la fase corrente dell'utente e inoltra il comando
+al controller associato a quella fase.
+
+Quindi:
+- se l'utente è in pre-lobby, il comando viene inoltrato al `PreLobbyController`
+- se l'utente è in lobby, il comando viene inoltrato al controller della lobby corrispondente
+- se l'utente è in game, il comando viene inoltrato al controller della partita corrispondente
+
+Il payload viene interpretato solo dopo, dal controller che ha ricevuto il comando.
+Questo è importante perché il layer di rete e il router non contengono logica applicativa:
+si limitano a consegnare il comando al punto corretto del server in base allo stato della sessione.
+
+In uscita, invece, i model non conoscono direttamente le `VirtualView`.
+Quando devono notificare un aggiornamento verso il client, vedono solo il contratto `Listener`.
+
+Le `VirtualView` implementano `Listener`, quindi possono essere registrate come destinatari degli aggiornamenti
+prodotti dai model.
+Dal punto di vista del model, però, non esiste una `VirtualViewTCP` o una `VirtualViewRMI`:
+esiste solo un oggetto che implementa `Listener` e che quindi sa ricevere una notifica.
+
+Questo mantiene il model indipendente sia dalla rete sia dal tipo concreto di view remota.
+Il model produce l'aggiornamento e invoca il contratto `Listener`; sarà poi la `VirtualView` concreta
+a trasformare quell'aggiornamento in un messaggio da inviare al client.
+
+In questo modo il server mantiene separate tre responsabilità:
+- la rete viene gestita dalle implementazioni concrete di `VirtualView`
+- lo smistamento dei messaggi viene gestito dal `MessageRouter`
+- la logica di dominio viene gestita dai controller e dai model delle varie fasi
+
+Questa separazione è importante perché consente al server di restare indipendente dal protocollo di rete.
+Una volta che un messaggio è arrivato dentro il server come payload applicativo, il resto della logica
+non deve più sapere se quel messaggio è arrivato tramite TCP o tramite RMI.
+
+//TODO: aggiungere qui un diagramma Excalidraw del server ad alto livello:
+// - `VirtualViewTCP` e `VirtualViewRMI` implementano lo stesso contratto logico
+// - le `VirtualView` gestiscono rete, messaggi in ingresso e messaggi in uscita
+// - il `MessageRouter` smista i messaggi in base alla fase salvata nel `ServerSessionRegistry`
+// - i controller ricevono il comando, aggiornano il model e il model notifica tramite `Listener`
 
 ### Thread in gioco
 In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà 
@@ -852,7 +901,5 @@ tutto il layer di rete.
 
 
 ### Game
-
-
 
 
