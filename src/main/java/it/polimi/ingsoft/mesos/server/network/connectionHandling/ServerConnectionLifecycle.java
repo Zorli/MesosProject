@@ -130,7 +130,7 @@ public class ServerConnectionLifecycle {
         } catch (Exception ignored) {
         }
     }
-    //helper per stampa inutile
+
     public ServerSessionRegistry getSessions() {
         return this.sessions;
     }
