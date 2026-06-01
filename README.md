@@ -1,15 +1,18 @@
-# Mesos 
+# Mesos
 
-Questo repository contiene l’implementazione Java del gioco da tavolo **Mesos**, sviluppata come prova finale del progetto di Ingegneria del Software 2025-2026 al Politecnico di Milano. 
+Questo repository contiene l’implementazione Java del gioco da tavolo **Mesos**, sviluppata come prova finale del progetto di Ingegneria del Software 2025-2026 al Politecnico di Milano.
 
 Il progetto è stato svolto dal gruppo GC3, composto dai seguenti membri:
 - Vaccari Tommaso
-- Viggiano Luca 
-- Zanatta Tommaso 
+- Viggiano Luca
+- Zanatta Tommaso
 - Zorloni Fabio
 
 
-L’applicazione è stata progettata come sistema distribuito client-server secondo il pattern Model-View-Controller. Il server mantiene il modello di gioco, gestisce la logica applicativa e coordina le partite; i client permettono ai giocatori di interagire con il gioco attraverso interfaccia testuale o interfaccia grafica JavaFX.
+L’applicazione è stata progettata come sistema distribuito client-server secondo il pattern Model-View-Controller.
+Il server mantiene il modello di gioco, gestisce la logica applicativa e coordina le partite;
+i client permettono ai giocatori di interagire con il gioco attraverso interfaccia testuale
+o interfaccia grafica JavaFX.
 
 ## Requisiti implementati
 
@@ -19,13 +22,15 @@ Rispetto alla tabella di valutazione fornita insieme alla specifica, il progetto
 
 In particolare sono stati implementati:
 
-- **Regole Complete**: il gioco supporta le regole complete di Mesos(non quelle avanzate)
+- **Regole Complete**: il gioco supporta le regole complete di Mesos (non quelle avanzate).
 - **TUI**: il client può essere avviato con interfaccia testuale.
 - **GUI**: il client può essere avviato con interfaccia grafica JavaFX.
 - **Socket TCP**: client e server possono comunicare tramite protocollo TCP.
 - **Java RMI**: client e server possono comunicare tramite Java Remote Method Invocation.
 - **Funzionalità Avanzata — Partite multiple**: il server può gestire più partite contemporaneamente.
-- **Funzionalità Avanzata — Resilienza alle disconnessioni**: un client disconnesso può riconnettersi e continuare la partita. Se un player si disconnette il suo turno viene saltato. Se rimane un solo player connesso parte un timer, al termine del quale l'unico giocatore rimasto connesso viene decretato vincitore.
+- **Funzionalità Avanzata — Resilienza alle disconnessioni**: un client disconnesso può riconnettersi e
+continuare la partita. Se un player si disconnette il suo turno viene saltato. Se rimane un solo player connesso
+parte un timer, al termine del quale l'unico giocatore rimasto connesso viene decretato vincitore.
 
 
 ## Configurazione, Compilazione e Avvio
@@ -46,7 +51,7 @@ Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema 
   ```bash
   ipconfig getifaddr en0
   ```
-  Se si è connessi con una interfaccia diversa dal Wi-Fi, verificare l'indirizzo con `ifconfig`.
+  Se si è connessi con un'interfaccia diversa dal Wi-Fi, verificare l'indirizzo con `ifconfig`.
 * **Linux**:
   ```bash
   ip route get 1.1.1.1 | awk '{print $7}'
@@ -117,7 +122,7 @@ java \
 ```
 
 `MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
-`MESOS_CLIENT_RMI_HOST` serve solo per RMI, perchè in quel caso anche il server deve poter richiamare
+`MESOS_CLIENT_RMI_HOST` serve solo per RMI, perché in quel caso anche il server deve poter richiamare
 il client tramite callback. Se si sceglie TCP, questo valore viene ignorato.
 
 Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, si può avviare
@@ -187,70 +192,65 @@ Lo script crea i JAR nella cartella: deliverables/jar
 ---
 
 ## Architettura del progetto
-In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative 
+In questa sezione viene spiegata l'architettura ad alto livello del progetto, poi nelle relative
 sottosezioni verranno spiegati in dettaglio i pattern applicati e i dettagli implementativi.
 
-Il design pattern principale del progetto è quello del[Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc),
-ovvero una versione del  MVC in cui la View si trova su una altra macchina rispetto al Controller 
+Il design pattern principale del progetto è quello del [Model View Controller distribuito](https://github.com/T-vaccari/javafx-distributed-mvc),
+ovvero una versione del MVC in cui la View si trova su un'altra macchina rispetto al Controller
 e al Model.
 
-Ricordiamo il pattern MVC classico è un Pattern architetturale che separa il modello dei dati 
-di una applicazione(model) dalla
-rappresentazione grafica (view) e dalla logica di controllo (controller). 
+Ricordiamo che il pattern MVC classico è un pattern architetturale che separa il modello dei dati
+di un'applicazione (model) dalla rappresentazione grafica (view) e dalla logica di controllo (controller).
 L'idea è quella di avere la View che si occupa della logica di presentazione delle informazioni
-e di raccogliere input dall'utente, il controller invece si occupa 
-di coordinare il Model,
-per gestire le richieste dell'utente. Infine il Model si occupa di mantenere lo stato e la logica 
-di dominio. 
-In generale esistono diverse varianti del MVC non distribuito, che hanno alcune differenza su come 
-la view interagisce con gli altri due componenti, in particolare qui è stata implementata 
+e di raccogliere input dall'utente, il controller invece si occupa
+di coordinare il Model per gestire le richieste dell'utente.
+Infine il Model si occupa di mantenere lo stato e la logica
+di dominio.
+In generale esistono diverse varianti del MVC non distribuito, che hanno alcune differenze su come
+la view interagisce con gli altri due componenti. In particolare qui è stata implementata
 la versione nella quale
-la view viene notificata dal Model a seguito di un update, la view non conosce quindi il Model, 
-e sotto un certo
-punto di vista il Model non conosce la view, poichè viene applicato il pattern observer, ovvero il model
+la view viene notificata dal Model a seguito di un update, la view non conosce quindi il Model,
+e sotto un certo punto di vista il Model non conosce la view, poiché viene applicato il pattern observer, ovvero il model
 ha riferimenti alla view sotto forma di interfacce listener.
 Di seguito uno schema illustrato del pattern:
 
 ![MVC.png](assets/images/MVC.png)
 
-L'user interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
-1) La view contatta il controller a seguito dell'input utente
-2) Il controller fa una prima validazione della richiesta, e sa, in base alla richiesta ricevuta, 
-che cosa
-richiedere al model. Qui si può fare una prima distinzione tra controller thin e fat, 
+L'utente interagisce con la View, immaginiamo che richieda un servizio, il flusso è il seguente:
+1. La view contatta il controller a seguito dell'input utente
+2. Il controller fa una prima validazione della richiesta, e sa, in base alla richiesta ricevuta, che cosa
+richiedere al model. Qui si può fare una prima distinzione tra controller thin e fat,
 a seconda di quanta logica di dominio
-viene spostata all'interno del controler. In generale in questa implementazione abbiamo sempre
-optato per avere controller thin. 
+viene spostata all'interno del controller. In generale in questa implementazione abbiamo sempre
+optato per avere controller thin.
 Il controller dopo aver validato la richiesta, richiede il servizio effettivo al model, che di conseguenza
 reagisce e aggiorna il suo stato interno.
-3) Dopo che il modello ha modificato il proprio stato interno e ha applicato la logica di dominio, 
-deve notificare le relative virtual view.  Possono essercene più di una, dato che più utenti 
-possono utilizzare lo stesso modello. Nella nostra applicazione del pattern abbiamo scelto 
+3. Dopo che il modello ha modificato il proprio stato interno e ha applicato la logica di dominio,
+deve notificare le relative virtual view. Possono essercene più di una, dato che più utenti
+possono utilizzare lo stesso modello. Nella nostra applicazione del pattern abbiamo scelto
 di non permettere al modello di conoscere direttamente le view, ma di avere invece iscritti dei listener,
-che poi di fatto sono concretizzati dalle virtualview.
+che poi di fatto sono concretizzati dalle virtual view.
 
-L'idea adesso è quella di prendere il pattern classico ed adattarlo ad un contesto nel quale la 
-view si trova sulla macchina dell'utente, invece il model ed il controller si trovano sul server. 
-E' quindi necessario aggiungere un layer di rete per il trasporto delle informazioni, nascondendo però
-ai blocchi del pattern il fatto che di mezzo ci sia la rete. Ovvero per ottenere una architettura il quanto
-più pulità possibile la rete deve essere nascosta, non deve essere parte integrante di questo modello.
-Per nascondere la presenza della rete sono stati introdotti contratti comuni, che rappresentano 
+L'idea adesso è quella di prendere il pattern classico ed adattarlo ad un contesto nel quale la
+view si trova sulla macchina dell'utente, invece il model ed il controller si trovano sul server.
+È quindi necessario aggiungere un layer di rete per il trasporto delle informazioni, nascondendo però
+ai blocchi del pattern il fatto che di mezzo ci sia la rete. Ovvero per ottenere un'architettura quanto
+più pulita possibile la rete deve essere nascosta, non deve essere parte integrante di questo modello.
+Per nascondere la presenza della rete sono stati introdotti contratti comuni, che rappresentano
 localmente gli oggetti remoti con cui ciascun lato deve interagire.
-Sul client, la user interface non comunica direttamente con la rete, ma usa un `ServerProxy`, 
-che rappresenta il server remoto ed espone i servizi applicativi richiedibili dal client. Ovvero 
-è stato applicato il remote proxy pattern.
-Sempre sul client, il `VirtualServer` rappresenta il canale attraverso cui arrivano 
+Sul client, la user interface non comunica direttamente con la rete, ma usa un `ServerProxy`,
+che rappresenta il server remoto ed espone i servizi applicativi richiedibili dal client.
+In questo senso è stato applicato il remote proxy pattern.
+Sempre sul client, il `VirtualServer` rappresenta il canale attraverso cui arrivano
 i messaggi dal server verso l'interfaccia utente locale. Espone infatti i servizi che il server può
 richiedere sul client.
-Sul server, la `VirtualView` rappresenta invece l'interfaccia utente remota del client: 
-riceve i comandi provenienti dal
-client e permette al server di notificare aggiornamenti verso quel client. Espone i servizi che 
+Sul server, la `VirtualView` rappresenta invece l'interfaccia utente remota del client:
+riceve i comandi provenienti dal client e permette al server di notificare aggiornamenti verso quel client.
+Espone i servizi che
 il client può richiedere al server.
-Non è stato introdotto un `ServerProxy` simmetrico lato server, perché il server non deve invocare 
-una varietà di
-servizi applicativi sul client. In quel verso della comunicazione è sufficiente la `VirtualView`,
-che mantiene il
-riferimento al client remoto e offre il punto unico attraverso cui inviargli notifiche.
+Non è stato introdotto un `ServerProxy` simmetrico lato server, perché il server non deve invocare
+una varietà di servizi applicativi sul client. In quel verso della comunicazione è sufficiente la `VirtualView`,
+che mantiene il riferimento al client remoto e offre il punto unico attraverso cui inviargli notifiche.
 
 Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
@@ -258,7 +258,7 @@ Per chiarire meglio l'architettura può essere utile questo schema illustrato:
 
 ## Protocollo di comunicazione
 L'implementazione supporta due protocolli di comunicazione, TCP ed RMI.
-Per mantenere coerente l'architettura e le funzionalità tra i due protocolli, sono stati definiti contratti comuni 
+Per mantenere coerente l'architettura e le funzionalità tra i due protocolli, sono stati definiti contratti comuni
 per la comunicazione tra client e server.
 
 In particolare sono stati fissati i seguenti contratti:
@@ -266,16 +266,16 @@ In particolare sono stati fissati i seguenti contratti:
 - Servizi che il server espone al client per ricevere comandi client -> server: interfaccia `VirtualView`
 - Messaggi che vengono scambiati via rete tramite questi servizi
 
-Questi contratti derivano direttamente dalla scelta di adottare un MVC distribuito: poiché interfaccia utente, 
+Questi contratti derivano direttamente dalla scelta di adottare un MVC distribuito: poiché interfaccia utente,
 controller e model non si trovano nello stesso processo, alcune interazioni
 devono necessariamente attraversare la rete.
-Per evitare che il protocollo di rete entri nella logica applicativa, tali interazioni sono state espresse 
+Per evitare che il protocollo di rete entri nella logica applicativa, tali interazioni sono state espresse
 tramite interfacce comuni.
-Ogni implementazione di rete, TCP o RMI, deve quindi offrire gli stessi servizi, 
+Ogni implementazione di rete, TCP o RMI, deve quindi offrire gli stessi servizi,
 così da mantenere invariato il comportamento funzionale del sistema indipendentemente dal protocollo scelto.
 
 
-Gli stessi contratti hanno quindi un doppio ruolo: a livello architetturale realizzano il MVC distribuito, 
+Gli stessi contratti hanno quindi un doppio ruolo: a livello architetturale realizzano il MVC distribuito,
 mentre a livello implementativo definiscono il comportamento che TCP e RMI
 devono offrire in modo equivalente.
 
@@ -284,25 +284,25 @@ in modo da poterli implementare sia con TCP che con RMI.
 
 A livello di codice questo introduce una differenza tecnica tra i due protocolli.
 Nel caso TCP le interfacce possono essere normali interfacce Java, usate direttamente dalle classi concrete.
-Nel caso RMI, invece, le interfacce remote devono estendere `Remote`, devono essere visibili sia al client 
+Nel caso RMI, invece, le interfacce remote devono estendere `Remote`, devono essere visibili sia al client
 che al server e i loro metodi devono dichiarare `RemoteException`.
 
 Per questo motivo i contratti logici descritti sopra hanno una controparte specifica per RMI nel package shared:
 - `VirtualServer` e `RmiClientService` rappresentano il contratto logico server -> client
 - `VirtualView` e `RmiServerService` rappresentano il contratto logico client -> server
 
-Queste interfacce non sono identiche a livello tecnico, ma devono rimanere allineate a livello funzionale: 
+Queste interfacce non sono identiche a livello tecnico, ma devono rimanere allineate a livello funzionale:
 ogni servizio disponibile in TCP deve avere il corrispondente servizio anche in
 RMI.
 
-RMI richiede inoltre un ulteriore contratto, `RmiConnectionService`, usato dal client per aprire 
-la connessione iniziale e ottenere lo stub della propria sessione server-side
+RMI richiede inoltre un ulteriore contratto, `RmiConnectionService`, usato dal client per aprire
+la connessione iniziale e ottenere lo stub della propria sessione server-side.
 
 ### Messaggi e Payload usati dal protocollo
 Come già detto per comunicare via rete è stato necessario fissare i contratti dei messaggi scambiati, in modo tale
-da poter implementare sia TCP che RMI in modo coerente. In particolare si è cercato di mantenere 
+da poter implementare sia TCP che RMI in modo coerente. In particolare si è cercato di mantenere
 i payload il più possibile
-semplici e snelli in modo da ridurre la quantità di dati scambiati e riuscire ad avere 
+semplici e snelli in modo da ridurre la quantità di dati scambiati e riuscire ad avere
 una gestione semplice sia nella serializzazione JSON con GSON, sia nel passaggio degli oggetti tramite RMI.
 
 Per comodità abbiamo suddiviso in maniera gerarchica i payload rispetto alla fase di gioco a cui fanno riferimento,
@@ -312,8 +312,8 @@ ovvero:
 - in-game: payload usati per la fase di gioco
 
 Abbiamo inoltre la suddivisione rispetto al senso di comunicazione, ovvero:
-- client -> server: payload usati per i messaggi inviati dal client al server(package `clienttoserver`)
-- server -> client: payload usati per i messaggi inviati dal server al client(package `servertoclient`)
+- client -> server: payload usati per i messaggi inviati dal client al server (package `clienttoserver`)
+- server -> client: payload usati per i messaggi inviati dal server al client (package `servertoclient`)
 
 Nel codice bisogna distinguere tra messaggio e payload.
 Il payload contiene i dati applicativi veri e propri: ad esempio il nickname scelto dal client,
@@ -378,7 +378,7 @@ Fra i payload che implementano `GameClientPayload` abbiamo:
 - `ExtraDrawPayload`, che contiene l'id della carta scelta per la pescata extra
 
 Infine, fra i payload di connessione abbiamo `PongPayload`, che implementa `ConnectionClientPayload`
-e viene usato per rispondere al ping del server(spiegato in una sezione successiva)
+e viene usato per rispondere al ping del server (spiegato in una sezione successiva)
 
 Per quanto riguarda invece i payload che vengono inviati dal server al client, anche qui bisogna distinguere
 tra messaggio e payload: `ServerMessage` rappresenta il messaggio inviato dal server al client ed è composto
@@ -415,26 +415,26 @@ nelle invocazioni remote.
 
 ### Protocollo TCP
 TCP è un protocollo di trasporto a basso livello che permette a due processi di comunicare tramite socket.
-Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato 
+Una socket rappresenta un endpoint di una comunicazione bidirezionale: ogni endpoint è identificato
 da un indirizzo IP e da una porta.
 Una connessione TCP è quindi identificata dalla coppia di endpoint coinvolti, cioè endpoint client ed endpoint server.
 
-Nel modello client-server, il server apre una `ServerSocket` su una porta e rimane in attesa di connessioni 
+Nel modello client-server, il server apre una `ServerSocket` su una porta e rimane in attesa di connessioni
 tramite `accept()`.
-Quando un client si collega creando una `Socket` verso quell'indirizzo e quella porta, il server riceve una 
+Quando un client si collega creando una `Socket` verso quell'indirizzo e quella porta, il server riceve una
 nuova socket dedicata a quella connessione.
-Da quel momento client e server comunicano usando gli stream associati alla socket: un input stream 
+Da quel momento client e server comunicano usando gli stream associati alla socket: un input stream
 per leggere e un output stream per scrivere.
 
-Dal punto di vista delle socket i dati sono uno stream continuo di byte: è quindi responsabilità dell'applicazione 
+Dal punto di vista delle socket i dati sono uno stream continuo di byte: è quindi responsabilità dell'applicazione
 stabilire come separare un messaggio dal successivo.
-Nel nostro caso è stato definito un semplice protocollo applicativo sopra TCP, ogni messaggio viene 
+Nel nostro caso è stato definito un semplice protocollo applicativo sopra TCP, ogni messaggio viene
 serializzato in JSON e scritto sulla socket come una singola riga di testo.
-Dall'altro lato il messaggio viene letto con `readLine()`, quindi una riga corrisponde 
+Dall'altro lato il messaggio viene letto con `readLine()`, quindi una riga corrisponde
 a un messaggio applicativo completo.
 
 La socket è full-duplex: la stessa connessione permette lettura e scrittura in entrambi i versi.
-Nel codice, però, la lettura deve restare sempre attiva ed è bloccante; per questo viene eseguita 
+Nel codice, però, la lettura deve restare sempre attiva ed è bloccante; per questo viene eseguita
 in un thread dedicato.
 
 ```java
@@ -445,7 +445,7 @@ while ((message = reader.readLine()) != null) {
 
 La chiamata a `readLine()` rimane in attesa finché non arriva una riga completa.
 Se la connessione viene chiusa dall'altro lato, `readLine()` restituisce `null` e il ciclo termina.
-Propriò perchè ci sono metodi bloccanti, nasce la necessità di usare thread per gestire il ciclo
+Proprio perché ci sono metodi bloccanti, nasce la necessità di usare thread per gestire il ciclo
 di raccolta dei messaggi in entrata.
 
 La scrittura, invece, avviene solo quando c'è effettivamente un messaggio da inviare:
@@ -454,7 +454,7 @@ La scrittura, invece, avviene solo quando c'è effettivamente un messaggio da in
 writer.println(serializedMessage);
 ```
 
-Non serve quindi un thread dedicato alla scrittura, il codice scrive sulla socket nel momento in cui deve 
+Non serve quindi un thread dedicato alla scrittura, il codice scrive sulla socket nel momento in cui deve
 inviare un comando o una notifica.
 
 A livello operativo, sul server TCP viene creato un `ConnectionAcceptor`, che apre la `ServerSocket`
@@ -515,7 +515,7 @@ Quindi il flusso concreto TCP è:
 
 #### GSON
 GSON è la libreria usata per trasformare oggetti Java in stringhe JSON e stringhe JSON in oggetti Java.
-Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo sotto 
+Nel protocollo TCP questo passaggio è necessario perché sulla socket viaggiano righe di testo sotto
 forma di byte, non oggetti Java.
 
 Quando il client invia un comando, `ServerProxyTCP` crea un `ClientMessage`, composto da:
@@ -568,15 +568,15 @@ ClientMessage message = new ClientMessage(ClientMessageType.AUTHENTICATE, new Au
 String serializedMessage = GSON.toJson(message);
 ```
 
-In generale invece la deserializzazione avviene con:
+In generale, invece, la deserializzazione avviene con:
 ```java
 GSON.fromJson(json, ClasseDaCreare.class)
 ```
-Il motivo per cui il wrapper deve contenere il type, cosi come già detto, è dovuto al fatto che quando in
-TCP viene ricevuta la stringa in JSON non si sa a priori che classe concreta fra le varie esistenti di tipo payload
-andare a ricreare, pertanto è qui che entra in gioco il type. Il type ci fornisce il tipo di payload, cosi possiamo
-chidedere a GSON di deserializzare quella stringa GSON e ricostruire proprio una determinata classe.
-Ad esempio si puo vedere questo processo nel CommandHandler sul server.
+Il motivo per cui il wrapper deve contenere il type, così come già detto, è dovuto al fatto che quando in
+TCP viene ricevuta una stringa JSON non si sa a priori quale classe concreta di payload ricostruire.
+Pertanto è qui che entra in gioco il type: ci fornisce il tipo di payload, così possiamo chiedere a GSON
+di deserializzare quella stringa JSON e ricostruire proprio una determinata classe.
+Ad esempio si può vedere questo processo nel CommandHandler sul server.
 Qui il messaggio viene prima letto come `JsonObject`, così il codice può leggere il `type` prima di
 deserializzare il `payload`:
 ```java
@@ -612,13 +612,13 @@ attraverso la rete.
 Lato server, RMI riceve la chiamata, la deserializza e la fa arrivare all'oggetto remoto concreto.
 Quindi la rete non sparisce davvero: viene solo nascosta dietro il meccanismo degli stub e delle interfacce remote.
 Per questo i metodi remoti devono dichiarare `RemoteException`, perché una chiamata che sembra locale
-può comunque fallire per motivi di rete (è anche il motivo per il quale abbiamo dovuto duplicare le interfacce di rete 
+può comunque fallire per motivi di rete (è anche il motivo per il quale abbiamo dovuto duplicare le interfacce di rete
 come già spiegato sopra).
 
 ![RMI.png](assets/images/HighLevelRMI.png)
 
 A livello operativo, il primo oggetto remoto pubblicato dal server è `RmiConnectionEntryPoint`.
-Questo oggetto implementa `RmiConnectionService` e viene registrato nel registry RMI con il nome 
+Questo oggetto implementa `RmiConnectionService` e viene registrato nel registry RMI con il nome
 `MesosServer`.
 
 ```java
@@ -714,43 +714,51 @@ Quindi il flusso concreto è:
 
 ## Architettura del Client
 Ricordiamo che il client deve poter scegliere sia la tipologia di user interface (che può essere di tipo
-testuale o grafica) sia la tipologia di protocollo di rete (che può essere TCP o RMI). 
+testuale o grafica) sia la tipologia di protocollo di rete (che può essere TCP o RMI).
 Il punto di avvio del client è la classe `LaunchClient` che si occupa di leggere da riga di comando
-prima la scelta della UI e poi la scelta del protocollo di rete, in base a queste scelte istanzia i blocchi necessari 
+prima la scelta della UI e poi la scelta del protocollo di rete, in base a queste scelte istanzia i blocchi necessari
 per poter avviare il client. In particolare a gestire la user interface è un oggetto controller.
-Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view. 
-Il modo in cui vengono mostrate le informazioni dipende dalla 
-UI scelta. Di seguito una immagine della architettura del client, che renderà più chiaro il discorso:
+Tale oggetto si occupa di gestire le richieste dell'utente e aggiornare la view.
+Il modo in cui vengono mostrate le informazioni dipende dalla UI scelta.
+Di seguito un'immagine dell'architettura del client, che renderà più chiaro il discorso:
 ![client_architecture.png](assets/images/client-architecture.png)
 
 I blocchi principali dell'architettura client sono:
 - `ClientView`: è l'interfaccia che rappresenta i metodi per modificare la view del client
 - `ServerProxy`: è l'interfaccia che rappresenta il proxy per comunicare con il server
 - `VirtualServer`: è l'interfaccia che rappresenta il punto di ingresso per i messaggi provenienti dal server
-- `MessageRouter`: è la classe che si occupa di instradare i messaggi ricevuti dal server alla view, in base al type del messaggio
+- `MessageRouter`: è la classe che si occupa di instradare i messaggi ricevuti dal server alla view,
+  in base al type del messaggio
 Chiaramente non sono tutti gli oggetti che vengono creati, ma sono i principali oggetti per capire come
 è stato strutturato il client.
 
 Queste interfacce e classi esistono principalmente per rendere facilmente interscambiabili a livello di logica
-il servizio di rete e il servizio di UI. In particolare andando nel dettaglio, il significato delle interfacce è il seguente:
-- Lato User Interface indipendentemente che sia testuale o grafica, deve sapere come poter 
-comunicare con il server su richiesta dell'utente, indipendentemente che poi il messaggio viaggi 
-via TCP o RMI. Per questo è stato creato il contratto `ServerProxy`, che espone i metodi che il client può usare per mandare messaggi
-via rete al server.
-- Lato rete il server deve sapere come recapitare i messaggi al client, indipendentemente che ci sia TCP o RMI come protocollo,
-esiste quindi il contratto `VirtualServer`, che espone i metodi che il server può usare per notificare il client, indipendentemente da come questi messaggi arrivano.
+il servizio di rete e il servizio di UI. In particolare andando nel dettaglio, il significato delle interfacce
+è il seguente:
+- Lato user interface indipendentemente che sia testuale o grafica, deve sapere come poter
+comunicare con il server su richiesta dell'utente, indipendentemente che poi il messaggio viaggi
+via TCP o RMI. Per questo è stato creato il contratto `ServerProxy`, che espone i metodi che il client può usare
+per mandare messaggi via rete al server.
+- Lato rete il server deve sapere come recapitare i messaggi al client, indipendentemente che ci sia TCP o RMI
+come protocollo.
+Esiste quindi il contratto `VirtualServer`, che espone i metodi che il server può usare per notificare il client,
+indipendentemente da come questi messaggi arrivano.
 - Lato `VirtualServer`, una volta ricevuto il messaggio bisogna sapere quale metodo chiamare sulla view per poterlo
-mostrare all'utente. Poiché ogni messaggio necessita di essere mostrato e gestito in una certa maniera, la logica di scelta del metodo è stata
+mostrare all'utente. Poiché ogni messaggio necessita di essere mostrato e gestito in una certa maniera, la logica
+di scelta del metodo è stata
 centralizzata in `MessageRouter`, che in base al tipo di payload sceglie quale metodo del contratto `ClientView` chiamare.
 Usato sia da TCP che da RMI.
 - Lato `messageRouter` deve poter sapere come chiamare il servizio di update della view per mostrare un dato pacchetto,
-indipendentemente dal tipo concreto di UI che si trova dall'altra parte. Per questo motivo sono stati fissati i servizi per poter mostrare
-al client un dato messaggio nell'interfaccia `ClientView`. 
+indipendentemente dal tipo concreto di UI che si trova dall'altra parte. Per questo motivo sono stati fissati i
+servizi per poter mostrare al client un dato messaggio nell'interfaccia `ClientView`.
 
 Le implementazioni concrete seguono direttamente queste astrazioni:
-- `ServerProxyTCP` e `ServerProxyRMI` implementano `ServerProxy`, quindi espongono alla UI gli stessi metodi per comunicare con il server, cambiando solo il protocollo usato.
-- `VirtualServerTCP` e `VirtualServerRMI` rappresentano i due modi in cui il client riceve messaggi dal server. Entrambi ricevono un `ServerMessage` e lo passano al `MessageRouter`.
-- `TuiView` e `GUIView` implementano `ClientView`, quindi il `MessageRouter` può aggiornare la view senza sapere se l'utente sta usando TUI o GUI.
+- `ServerProxyTCP` e `ServerProxyRMI` implementano `ServerProxy`, quindi espongono alla UI gli stessi metodi per
+comunicare con il server, cambiando solo il protocollo usato.
+- `VirtualServerTCP` e `VirtualServerRMI` rappresentano i due modi in cui il client riceve messaggi dal server.
+Entrambi ricevono un `ServerMessage` e lo passano al `MessageRouter`.
+- `TuiView` e `GUIView` implementano `ClientView`, quindi il `MessageRouter` può aggiornare la view senza sapere
+se l'utente sta usando TUI o GUI.
 
 Quindi riassumendo il flusso dei messaggi è il seguente:
 - In uscita: controller UI -> ServerProxy -> server
@@ -835,72 +843,402 @@ non deve più sapere se quel messaggio è arrivato tramite TCP o tramite RMI.
 // - i controller ricevono il comando, aggiornano il model e il model notifica tramite `Listener`
 
 ### Thread in gioco
-In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà 
-più chiaro il perchè di alcune decisioni tecniche prese. 
+In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà
+più chiaro il perché di alcune decisioni tecniche prese.
 All'avvio del server viene creato il thread su cui gira il `ConnectionAcceptor`,
 la classe che si occupa di accettare le richieste di connessione in ingresso sulla `ServerSocket`.
-Quando un client richiede una connessione sulla socket, viene creata una `VirtualViewTCP` che gira su un thread. 
+Quando un client richiede una connessione sulla socket, viene creata una `VirtualViewTCP` che gira su un thread.
 Questo è dovuto al fatto che la lettura continua della socket per TCP è bloccante,
-e necessito quindi di un thread. Nel caso RMI invece quello che succede all'avvio del server,
-è che viene caricato nel RMI registry la classe `RmiConnectionEntryPoint`, che funge da stub inizialmente, 
-per connettersi al server. Una volta che il client RMI ha richiesto la connessione tramite lo stub pubblicato
-nel RMI registry, viene creata una VirtualVIewRMI che non gira invece su un thread assestante ma è gestita 
-dall'infrastruttura di RMI. 
+e serve quindi un thread dedicato.
+Nel caso RMI invece all'avvio del server viene creato un oggetto remoto `RmiConnectionEntryPoint`
+e viene pubblicato nel registry con il nome `MesosServer`.
+Il client esegue il lookup sul registry e ottiene uno stub verso questo entry point.
+Una volta che il client RMI ha richiesto la connessione tramite `connect(...)`, viene creata una
+`VirtualViewRMI` dedicata a quella connessione, che non gira su un thread creato manualmente dal nostro codice,
+ma viene gestita dall'infrastruttura di RMI.
 
-Ogni controller del server gira su un thread assestante. Nel caso pre-lobby tale controller è singleton.
+Ogni controller del server gira su un thread a sé stante. Nel caso pre-lobby tale controller è singleton.
 Nel caso delle lobby si ha un controller ed un model per ogni lobby creata, lo stesso per i game.
-Il motivo di questa decisione verrà spiegato in un altra sezione. Il succo del discorso è che ci sono 
-molti thread, i quali potrebbero necessitare di leggere e scrivere informazioni caratteristiche dell'utente. 
+Il motivo di questa decisione verrà spiegato in un'altra sezione. Il succo del discorso è che ci sono
+molti thread, i quali potrebbero necessitare di leggere e scrivere informazioni caratteristiche dell'utente.
 
 ### Gestione delle informazioni
-A runtime come detto è necessario mantenere, leggere e scrivere informazioni per ogni User connesso al server. 
-In particolare ogni connessione verso il server viene identificata in maniera univoca da un session-id. 
-Tutte le informazione di un dato User che è connesso possono essere recuperate a partire dal session-id.
-Dal momento che abbiamo la necessità di avere queste informazioni centralizzate in un unico punto che 
-garantisca safety dal punto di vista della concorrenza, è stato creata la classe `SessionRegistry`
-che rappresenta quindi l'unico punto del server nella quale devono essere salvati i dati a runtime degli utenti.
-Questa classe è caratterizzata da mappe interne per la retention dei dati, e metodi thread-safe creati 
+A runtime come detto è necessario mantenere, leggere e scrivere informazioni per ogni user connesso al server.
+In particolare ogni connessione verso il server viene identificata in maniera univoca da un session-id.
+Tutte le informazioni di un dato user connesso possono essere recuperate a partire dal session-id.
+Dal momento che abbiamo la necessità di avere queste informazioni centralizzate in un unico punto che
+garantisca safety dal punto di vista della concorrenza, è stata creata la classe `ServerSessionRegistry`
+che rappresenta quindi l'unico punto del server nel quale devono essere salvati i dati a runtime degli utenti.
+Questa classe è caratterizzata da mappe interne per la retention dei dati, e metodi thread-safe creati
 appositamente per fare query sicure, evitando race-condition.
 
 ### Gestione delle disconnessioni
-In questa sezione viene spiegato ad alto livello quali sono le idee e i meccanismi dietro al funzionamento 
-della funzionalità avanzata resilienza alle disconnessioni. 
+In questa sezione viene spiegato ad alto livello quali sono le idee e i meccanismi dietro al funzionamento
+della funzionalità avanzata resilienza alle disconnessioni.
 Prima è però necessario discutere delle componenti tecniche che consentono a questa funzionalità di esistere.
 
 #### Ping Pong Routine
 Come detto abbiamo già la classe che ci consente di centralizzare le informazioni. Una di queste informazioni
 fondamentali che salviamo centralizzata è l'ultima risposta di heartbeat da ogni client.
-L'idea è quella di avere un protocollo di verifica che ci consenta di effettuare un assesment periodico 
-delle connessioni che sono effettivamente in vita. Questo ci consente di chiudere eventuali connessioni rimaste 
+L'idea è quella di avere un protocollo di verifica che ci consenta di effettuare un assessment periodico
+delle connessioni che sono effettivamente in vita. Questo ci consente di chiudere eventuali connessioni rimaste
 aperte, ma che effettivamente sono appese, ovvero il client è crashato e non risponde più.
 Il tutto si basa su due messaggi scambiati tra client e server, ovvero messaggio di Ping da server verso client
 e messaggio di Pong in risposta dal client verso il server.
 Periodicamente con una routine apposita, vengono inviate a tutte le connessioni che risultano attualmente aperte
 un messaggio di PING. Nel frattempo si verifica anche se per una data connessione è scaduto il tempo di attesa
-massimo dall'ultimo PONG ricevuto. Se cosi fosse si procede a chiudere tale connessione. Il client quando riceve
+massimo dall'ultimo PONG ricevuto. Se così fosse si procede a chiudere tale connessione. Il client quando riceve
 un PING risponde con un PONG. Tale PONG viene gestito da una classe che si occupa del lifecycle delle connessioni
-ovvero `ServerConnectionLifeCycle`. Tale protocollo di heartbeat si appoggia sull'infrastruttura di comunicazione
-già esistente tra client e server, è inoltre agnostico al tipo di protocollo a basso livello di comuncazione scelto, grazie
-al fatto che usiamo implementazioni concrete di VirtualView ServerProxy e VirtualServer, che ci nascondono 
-tutto il layer di rete. 
-Viene sfruttata interfaccia ClientConnection per il servizio di Ping verso il client sulla virtualview.
-Cosi la routine non conosce le virtualview ma vede solo delle clientConnection.
+ovvero `ServerConnectionLifecycle`. Tale protocollo di heartbeat si appoggia sull'infrastruttura di comunicazione
+già esistente tra client e server, ed è inoltre agnostico al tipo di protocollo a basso livello di comunicazione scelto,
+grazie al fatto che usiamo implementazioni concrete di `VirtualView`, `ServerProxy` e `VirtualServer`, che ci nascondono
+tutto il layer di rete.
+La `PingPongRoutine` sfrutta l'interfaccia `ClientConnection` per inviare il PING verso il client.
+In questo modo la routine non conosce le implementazioni concrete delle virtual view, ma vede solo delle
+`ClientConnection`.
+L'effettivo timeout di una sessione viene rilevato dalla `PingPongRoutine`, che durante il check periodico
+verifica se una connessione ha un ultimo PONG troppo datato.
+A quel punto richiede l'intervento della classe `ServerConnectionLifecycle`, che come primo passo chiude
+in maniera pulita quella connessione.
+Successivamente `ServerConnectionLifecycle` si occupa di aggiornare gli stati interni coerentemente con la fase
+in cui si trovava il player, intervenendo sia sul `ServerSessionRegistry` sia sui controller e model specifici
+di quella fase.
+Per lobby e game la sessione non viene rimossa subito dal `ServerSessionRegistry`.
+Il comando interno `SystemDisconnectCommand` trasporta solo il `sessionId`; il controller della fase usa poi
+quel session-id per recuperare dal registry le informazioni ancora necessarie alla cleanup.
+Solo dopo aver aggiornato model e stato della fase, la sessione viene unregisterata.
 
-#### Gestione disconnesione in pre Lobby
+#### Gestione disconnessione in Pre Lobby
+Se un utente si disconnette mentre si trova in fase di pre-lobby, `ServerConnectionLifecycle` non deve demandare
+la cleanup ad un controller specifico.
+In questa fase infatti l'utente non appartiene ancora ad una lobby o ad un game, quindi non esiste uno stato
+di fase da aggiornare dentro un model dedicato.
+Per questo motivo il lifecycle chiama direttamente `ServerSessionRegistry.unregister(sessionId)`.
+Se la sessione era autenticata, il registry rimuove anche l'associazione tra nickname e session-id, liberando
+quel nickname per una futura autenticazione.
 
-#### Gestione disconessione in Lobby 
+#### Gestione disconnessione in Lobby
+Se un utente si disconnette mentre si trova in lobby, `ServerConnectionLifecycle` non modifica direttamente
+lo stato della lobby, ma recupera il `LobbyController` associato alla lobby in cui si trova la sessione
+e gli invia un comando interno `SystemDisconnectCommand`.
 
+Il `LobbyController` processa il comando nella propria queue e chiama `disconnectUser(...)`.
+A questo punto recupera nickname e listener della sessione dal `ServerSessionRegistry`, rimuove il player
+dal model `Lobby` tramite `removePlayer(...)` e notifica gli altri client con `notifyPlayerLeft(...)`.
+La logica specifica della lobby rimane quindi nel model: se il player disconnesso era host, `Lobby`
+assegna l'host al primo player rimasto; se invece la lobby diventa vuota, lo stato passa a `CLOSED`.
+In quel caso il controller rimuove dal `ServerSessionRegistry` sia il controller sia il model della lobby
+e infine unregistera la sessione disconnessa.
 
-#### Gestione disconnesione Game 
+#### Gestione disconnessione Game
+Se un utente si disconnette mentre si trova in game, `ServerConnectionLifecycle` recupera il `GameController`
+associato al game della sessione e gli invia un comando interno `SystemDisconnectCommand`.
+Anche in questo caso il comando trasporta solo il session-id, perché la sessione rimane ancora registrata
+finché il controller non ha completato la gestione della disconnessione.
+
+Il `GameController` processa il comando nella propria queue e risolve dal `ServerSessionRegistry` sia il listener
+della sessione sia il `Player` associato.
+Come primo passo rimuove il listener dal model `Game`, così quel client non riceve più aggiornamenti.
+Poi delega al model tramite `game.disconnectedPlayer(player)`.
+
+La logica di dominio resta nel model `Game`: il player viene marcato come non connesso nella mappa
+`connectedPlayers`, poi il comportamento cambia in base alla fase corrente del round.
+
+Durante la fase `PLACING_TOTEMS` viene usato `TotemPlacementHandler`.
+Se il player aveva già piazzato il totem, non viene modificata la sua posizione sul board.
+Se invece era il player corrente e quindi avrebbe dovuto piazzare il totem in quel momento, il suo turno viene
+saltato e il cursore passa al prossimo player connesso.
+Se il player non era ancora arrivato al proprio turno, non viene fatto nulla subito: il player rimane sulla
+starting tile e verrà saltato quando il cursore raggiungerà il suo turno, se sarà ancora disconnesso.
+
+Il caso tra piazzamento totem e pescaggio carte viene gestito quando parte la fase `PLAYER_DRAWS`.
+In quel momento viene costruito l'ordine di risoluzione dell'offer path.
+Se un player ha piazzato il totem, si disconnette, ma si riconnette prima del suo turno di draft,
+può pescare normalmente.
+Se invece è ancora disconnesso quando arriva il suo turno di draft, il suo turno viene chiuso senza pescare:
+viene spostato sulla starting tile e vengono azzerate le sue quote di pescaggio.
+
+Durante la fase `PLAYER_DRAWS` viene usato `CardDraftHandler`.
+Se si disconnette il player corrente, `skipDisconnectedPlayer(...)` chiude immediatamente il suo turno,
+lo riporta sulla starting tile e azzera le sue scelte rimanenti.
+Poi `advanceToNextDrawablePlayerOrEndStandardDraft()` cerca il prossimo player connesso che possa davvero pescare,
+oppure chiude la fase di draft standard se non ce ne sono altri.
+Se invece si disconnette un player che non è quello corrente, il board non viene modificato subito:
+verrà gestito quando il cursore arriverà a quel player.
+
+Durante la fase `EXTRA_DRAWS`, se si disconnette il player che avrebbe diritto alla pescata extra,
+la pescata opzionale viene saltata e il round passa alla fase `RESOLVING_EFFECTS`.
+Alla fine della gestione specifica, `Game` chiama `passiveRoundPhaseHandler.advancePassivePhases()`,
+così la partita non rimane bloccata su una fase automatica o su un player non più connesso.
+
+Dopo che il model ha accettato la disconnessione, il controller verifica se la partita è terminata.
+Se non rimane nessun player connesso, il model porta il game a stato `FINISHED` e il controller esegue la cleanup
+del game tramite `checkGameEndAndCleanup()`.
+Se invece la partita non è finita, il controller registra nel `ServerSessionRegistry` uno slot di riconnessione
+con `recordGameDisconnection(...)`, fa uscire la vecchia sessione dal game e poi la unregistera.
+Se rimane un solo player connesso, viene inoltre avviato il timer dell'ultimo player tramite `startLastPlayerTimer()`.
+Se un altro player si riconnette in tempo, `reConnectedPlayer(...)` cancella il timer tramite `cancelLastPlayerTimer()`.
+Se invece nessuno rientra prima della scadenza, il timer inserisce in queue un `SystemCloseGameCommand` e la partita
+viene chiusa.
 
 
 ### Layer di rete
+Il layer di rete lato server ha il compito di nascondere il protocollo concreto al resto dell'applicazione.
+I controller e i model non devono sapere se il client è collegato via TCP o via RMI: vedono una connessione
+attraverso contratti comuni.
+
+Il concetto centrale è la `VirtualView`.
+A livello architetturale rappresenta la view remota del client dentro il server: è l'oggetto che permette
+al server di trattare il client come se fosse una view locale.
+In ingresso rappresenta il punto in cui arrivano i comandi client -> server; in uscita implementa anche
+`Listener`, quindi può ricevere update dai model e mandarli al client.
+In questo modo il model notifica un `Listener`, non una socket o uno stub RMI.
+
+Le implementazioni concrete sono `VirtualViewTCP` e `VirtualViewRMI`.
+Entrambe fanno tre cose:
+- registrano una nuova sessione nel `ServerSessionRegistry` tramite `ServerConnectionLifecycle`
+- ricevono messaggi dal client, ricostruiscono un payload applicativo e lo passano al `MessageRouter`
+- ricevono payload server -> client e li inviano al client usando il protocollo concreto
+
+Il `MessageRouter` è il punto di separazione tra rete e logica applicativa.
+La virtual view gli passa solo `sessionId` e `ClientPayload`.
+Il router consulta il `ServerSessionRegistry`, capisce in che fase si trova quella sessione
+e inserisce il comando nella queue del controller corretto: `PreLobbyController`, `LobbyController`
+o `GameController`.
+
+#### TCP
+Nel caso TCP il server parte da `ConnectionAcceptor`.
+Questa classe apre una `ServerSocket`, rimane nel ciclo di `accept()` e per ogni nuova socket crea una
+`VirtualViewTCP` dedicata.
+La `VirtualViewTCP` viene poi avviata su un thread separato, perché deve restare in lettura bloccante
+sulla socket del client.
+
+```java
+Socket clientSocket = this.serverSocket.accept();
+VirtualViewTCP virtualView = new VirtualViewTCP(clientSocket, this.serverConnectionLifecycle, this.router);
+Thread virtualViewThread = new Thread(virtualView);
+virtualViewThread.start();
+```
+
+Dentro `VirtualViewTCP` vengono preparati i canali della socket.
+Il `PrintWriter` viene usato per i messaggi server -> client, mentre il `BufferedReader` viene usato nel
+loop di lettura dei messaggi client -> server.
+
+```java
+while ((rawMessage = reader.readLine()) != null) {
+    this.commandHandler.handle(rawMessage);
+}
+```
+
+La classe `ClientCommandHandler` è l'helper specifico di TCP che prende una riga JSON, legge il campo `type`,
+deserializza il payload corretto e ricostruisce un `ClientMessage`.
+Se il messaggio è un `PONG`, non viene mandato ai controller applicativi, ma viene usato per aggiornare
+il lifecycle della connessione.
+Per tutti gli altri messaggi viene chiamato `VirtualViewTCP.handleClientMessage(...)`, che inoltra il payload
+al `MessageRouter`.
+
+In uscita il flusso è opposto.
+Il model produce un `ServerPayload`, spesso costruito tramite mapper specifici della fase
+come `PreLobbyPayloadMapper`, `LobbyPayloadMapper` o `GamePayloadMapper`.
+La `VirtualViewTCP` riceve quel payload tramite `notifyUpdate(...)`, lo incapsula in un `ServerMessage`
+con il relativo `ServerMessageType`, lo serializza con GSON e lo scrive sulla socket.
+
+#### RMI
+Nel caso RMI il primo oggetto remoto esposto dal server è `RmiConnectionEntryPoint`.
+Questo oggetto implementa `RmiConnectionService` e viene pubblicato nel registry con il nome `MesosServer`.
+Il client fa lookup di `MesosServer`, ottiene lo stub dell'entry point e chiama `connect(...)`,
+passando il proprio callback RMI.
+
+```java
+public RmiServerService connect(RmiClientService clientCallback) throws RemoteException {
+    return new VirtualViewRMI(this.serverConnectionLifecycle, clientCallback, this.router);
+}
+```
+
+Questa chiamata crea una `VirtualViewRMI` dedicata a quel client.
+La `VirtualViewRMI` è l'equivalente RMI della `VirtualViewTCP`: registra una sessione, conserva il callback
+del client e diventa lo stub server-side che il client userà per inviare i comandi successivi.
+
+In ingresso, quando il client invoca un metodo remoto sullo stub, arriva un `ClientMessage` già ricostruito
+da RMI.
+La `VirtualViewRMI` controlla che il messaggio sia valido e poi passa il payload al `MessageRouter`.
+Non deve fare parsing JSON e non deve gestire manualmente una socket, perché quel lavoro è nascosto
+dall'infrastruttura RMI.
+
+In uscita, invece, la `VirtualViewRMI` usa il callback remoto `RmiClientService`.
+Quando riceve un `ServerPayload` tramite `notifyUpdate(...)`, lo incapsula in un `ServerMessage` e chiama
+`clientCallback.handleMessage(...)`.
+Quindi anche qui il model vede solo un `Listener`, mentre il dettaglio RMI rimane confinato nella virtual view.
+
+#### Helpers
+Gli helper principali del layer rete sono quelli che permettono di mantenere indipendente il resto del server
+dal protocollo concreto.
+
+`ClientConnection` è il contratto minimo per una connessione client registrata.
+Espone le operazioni di lifecycle, in particolare `sendPing()` e `close()`.
+Sia `VirtualViewTCP` sia `VirtualViewRMI` implementano questa interfaccia: la `PingPongRoutine`
+può quindi inviare ping e chiudere connessioni senza sapere se dietro ci sia TCP o RMI.
+
+`ServerConnectionLifecycle` centralizza la gestione della vita delle connessioni.
+Quando una virtual view viene creata, si registra tramite `registerConnection(...)` e ottiene un `sessionId`.
+Quando arriva un PONG, la virtual view chiama `recordPong(...)`.
+Quando una connessione deve essere chiusa, il lifecycle legge la fase corrente dal `ServerSessionRegistry`
+e decide se unregisterare direttamente la sessione o inviare un `SystemDisconnectCommand`
+al controller di lobby/game corretto.
+
+`PingPongRoutine` è la routine periodica di heartbeat.
+Ogni intervallo legge gli snapshot delle sessioni dal `ServerSessionRegistry`.
+Se una sessione non è scaduta, invia un ping tramite `ClientConnection.sendPing()`.
+Se invece una sessione è scaduta, chiama `ServerConnectionLifecycle.handleConnectionTimeout(...)`,
+che chiude la connessione e avvia il flusso di disconnessione coerente con la fase dell'utente.
+
+`ProtocolErrorMapper` viene usato al confine del layer di rete.
+Se TCP o RMI intercettano un messaggio malformato o un errore prima che il comando arrivi ai controller,
+l'eccezione viene trasformata in un `ErrorPayload`.
+Gli errori applicativi veri e propri restano invece responsabilità dei controller e dei model.
 
 
+### Gestione Multi Partita
+La gestione multi partita si basa su una idea semplice: ogni fase applicativa importante ha un controller
+che gira su un proprio thread e processa i comandi tramite una queue.
+In questo modo i messaggi possono arrivare da thread diversi, ad esempio thread TCP, callback RMI,
+routine di timeout o altri controller, ma la logica di una singola fase viene comunque eseguita in ordine
+da un solo thread.
+Il thread del controller diventa quindi il punto unico di serializzazione dei comandi per quella fase,
+proteggendo il relativo model da accessi concorrenti diretti.
+
+Il contratto comune dei messaggi interni ai controller è `QueuedCommand`.
+Ogni controller espone `enqueueMessage(...)`, che aggiunge un comando alla propria `BlockingQueue`.
+Il metodo `run()` del controller rimane poi in attesa con `commandQueue.take()` e processa un comando alla volta.
+
+```java
+QueuedCommand cmd = this.commandQueue.take();
+```
+
+Dentro queste queue non finiscono solo messaggi arrivati dalla rete.
+I messaggi client -> server vengono wrappati in `ClientPayloadCommand`: contengono il `sessionId`
+e il `ClientPayload` ricostruito dal layer di rete.
+Esistono però anche comandi interni generati dal server, come `SystemJoinCommand`, `SystemDisconnectCommand`,
+`SystemSetupMatchCommand` e `SystemCloseGameCommand`.
+Questi non rappresentano richieste dirette del client, ma eventi che il server deve far processare
+al controller corretto nello stesso ordine degli altri comandi.
+
+Il `MessageRouter` è il punto in cui i messaggi provenienti dalla rete entrano in questo sistema.
+Riceve dalla virtual view il `sessionId` e il payload, legge dal `ServerSessionRegistry` la fase corrente
+della sessione e inserisce un `ClientPayloadCommand` nella queue del controller corretto.
+Se la sessione è in pre-lobby usa il `PreLobbyController`; se è in lobby recupera il `LobbyController`
+della lobby specifica; se è in game recupera il `GameController` della partita specifica.
+
+Questa struttura viene applicata alle tre fasi principali del server: pre-lobby, lobby e game.
+La pre-lobby è globale, mentre lobby e game hanno controller e model dedicati per ogni istanza creata.
+Nelle sezioni successive viene spiegato il ruolo concreto di ciascuna fase e come vengono spostate
+le sessioni da una fase all'altra.
 
 ### Pre Lobby
+La pre-lobby è la fase globale del server, cioè quella in cui si trovano gli utenti appena connessi
+prima di entrare in una lobby o in una partita.
+Per questo motivo esiste un solo `PreLobbyController`, creato all'avvio del server.
+Il controller possiede una queue di comandi e delega la logica applicativa al `preLobbyModel`.
 
-### Lobby 
+I comandi gestiti in questa fase sono quelli definiti da `PreLobbyCommandType`:
+autenticazione, lista lobby, creazione lobby e join lobby.
+Il controller riceve un `ClientPayloadCommand`, estrae il payload e sceglie il metodo corretto in base
+al tipo di payload.
+Se il payload non è ammesso in pre-lobby, viene notificato un phase error al client.
 
+L'autenticazione viene gestita dal model tramite `authenticate(...)`.
+Il model registra il nickname nel `ServerSessionRegistry` e notifica al client un
+`AuthenticationResultPayload`.
+Se il nickname non è valido o è già occupato, viene inviato un `ErrorPayload`.
+Dopo una autenticazione riuscita, il controller controlla anche se quel nickname ha uno slot di riconnessione
+verso una partita: se esiste e il game è ancora aperto, inserisce un `SystemJoinCommand` nella queue
+del relativo `GameController`.
+
+La lista lobby viene ottenuta dal `ServerSessionRegistry` tramite `getOpenLobbies()`.
+Il model costruisce poi il payload di risposta con `PreLobbyPayloadMapper`, così il client riceve solo
+una rappresentazione leggera delle lobby disponibili.
+
+La creazione di una lobby parte sempre dalla pre-lobby.
+Il model valida che la sessione sia autenticata e non sia già in una lobby, poi crea il model `Lobby`
+tramite il registry.
+Il controller completa la parte architetturale: porta la sessione in fase lobby con `enterLobby(...)`,
+crea un `LobbyController`, lo registra nel `ServerSessionRegistry` e avvia il thread dedicato alla lobby.
+
+Il join ad una lobby esistente è diviso in due passi.
+Prima il `preLobbyModel` valida che la lobby esista, sia joinable e che l'utente possa entrare.
+Poi il `PreLobbyController` recupera il `LobbyController` target e gli manda un `SystemJoinCommand`.
+In questo modo la modifica effettiva della lobby non avviene nel thread della pre-lobby,
+ma nel thread del controller che possiede quella lobby.
+
+### Lobby
+La lobby è una fase applicativa specifica: ogni lobby aperta ha un proprio model `Lobby`
+e un proprio `LobbyController`.
+Il controller gira su un thread dedicato e serializza tutti i comandi che riguardano quella lobby.
+Questo evita che più client modifichino contemporaneamente lo stesso model di lobby.
+
+Il `LobbyController` riceve due tipi principali di comandi.
+I comandi client arrivano come `ClientPayloadCommand` e vengono interpretati tramite `LobbyCommandType`:
+uscita dalla lobby e start della lobby.
+I comandi interni, invece, arrivano dal server: `SystemJoinCommand` quando un utente deve entrare
+e `SystemDisconnectCommand` quando una sessione della lobby si disconnette.
+
+Quando arriva un `SystemJoinCommand`, il controller recupera nickname e listener dal `ServerSessionRegistry`,
+li passa al model `Lobby` tramite `addPlayer(...)`, poi aggiorna il registry con `enterLobby(...)`.
+Se l'inserimento riesce, il model notifica tutti i listener con `notifyPlayerJoined(...)`.
+
+Quando un utente esce volontariamente dalla lobby, il controller chiama `lobby.removePlayer(...)`,
+riporta la sessione in pre-lobby con `leaveLobby(...)` e notifica gli altri client con `notifyPlayerLeft(...)`.
+Se la lobby diventa vuota, il controller rimuove dal registry sia il `LobbyController`
+sia il model `Lobby`.
+La disconnessione segue una logica simile, ma alla fine la sessione viene unregisterata dal registry
+perché non è più una sessione attiva.
+
+Lo start della lobby può essere richiesto solo dall'host.
+La validazione è nel model `Lobby`, tramite `startMatch(...)`.
+Se la lobby può partire, il controller crea i `Player` a partire dagli utenti della lobby tramite
+`LobbyPlayerFactory`, crea il model `Game` tramite `GameFactory` e crea un `GameController`
+dedicato alla partita.
+
+Il passaggio lobby -> game aggiorna anche il `ServerSessionRegistry`.
+Tutte le sessioni della lobby vengono spostate in fase game con `enterGame(...)`;
+i listener vengono rimossi dalla lobby e aggiunti al game.
+Il nuovo `GameController` viene registrato nel registry, mentre controller e model della lobby vengono rimossi.
+Infine viene avviato il thread del game e, dopo un breve countdown, viene inserito in queue
+un `SystemSetupMatchCommand` per inizializzare la partita.
 
 ### Game
+Il game è la fase in cui viene gestita una singola partita.
+Ogni partita ha un proprio model `Game` e un proprio `GameController`, registrato nel `ServerSessionRegistry`
+come orchestrator del game.
+Anche qui il controller gira su un thread dedicato e diventa il punto unico di serializzazione
+delle modifiche al model della partita.
+
+Il `GameController` riceve comandi client e comandi interni.
+I comandi client arrivano come payload di gioco e vengono classificati tramite `GameCommandType`:
+`MOVE_TOTEM`, `CHOOSE_CARD` ed `EXTRA_DRAW`.
+Prima di chiamare il model, il controller risolve il `Player` associato alla sessione usando il registry.
+Poi delega la logica effettiva al model `Game`, chiamando `moveTotem(...)`, `chooseCard(...)`
+o `extraDrawn(...)`.
+
+I comandi interni servono invece a gestire il lifecycle della partita.
+`SystemSetupMatchCommand` fa partire il setup iniziale del game.
+`SystemDisconnectCommand` gestisce la disconnessione di un player.
+`SystemJoinCommand` viene usato per la riconnessione di un player già autenticato.
+`SystemCloseGameCommand` chiude forzatamente la partita, ad esempio quando scade il timer dell'ultimo player.
+Anche questi eventi passano dalla stessa queue, quindi non modificano mai il model da thread esterni.
+
+Il model `Game` contiene la logica di dominio della partita.
+Il controller non decide le regole del round: fa solo da orchestratore tra messaggi, sessioni e model.
+Quando il model cambia stato, notifica i listener registrati, cioè le virtual view dei client ancora connessi.
+I payload inviati ai client vengono costruiti usando `GamePayloadMapper`, così la rete riceve una
+rappresentazione del game adatta al trasferimento, non direttamente gli oggetti interni del model.
+
+Dopo ogni comando applicativo o interno rilevante, il controller chiama `checkGameEndAndCleanup()`.
+Se il game è arrivato a stato `FINISHED`, il controller imposta il game come closing, cancella eventuali timer,
+sposta fuori dal game le sessioni ancora registrate, rimuove il `GameController` dal registry
+e cancella gli slot di riconnessione associati a quella partita.
+
+La riconnessione è gestita sempre tramite la queue del `GameController`.
+Quando un player si riconnette, il controller consuma lo slot di riconnessione dal `ServerSessionRegistry`,
+riporta la nuova sessione dentro il game, aggiunge il nuovo listener al model e marca il player come connesso.
+Se dopo la riconnessione non rimane più un solo player connesso, viene cancellato il timer dell'ultimo player.
