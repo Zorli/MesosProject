@@ -836,11 +836,7 @@ Questa separazione è importante perché consente al server di restare indipende
 Una volta che un messaggio è arrivato dentro il server come payload applicativo, il resto della logica
 non deve più sapere se quel messaggio è arrivato tramite TCP o tramite RMI.
 
-//TODO: aggiungere qui un diagramma Excalidraw del server ad alto livello:
-// - `VirtualViewTCP` e `VirtualViewRMI` implementano lo stesso contratto logico
-// - le `VirtualView` gestiscono rete, messaggi in ingresso e messaggi in uscita
-// - il `MessageRouter` smista i messaggi in base alla fase salvata nel `ServerSessionRegistry`
-// - i controller ricevono il comando, aggiornano il model e il model notifica tramite `Listener`
+![AllServer.png](assets/images/AllServer.png)
 
 ### Thread in gioco
 In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà
