@@ -585,9 +585,9 @@ public class GUIView implements ClientView {
         this.selectedCardLabel.setText("The board will appear as soon as the first update arrives.");
     }
 
-    /** Converts the zero-based era value from the payload to the one-based value shown in the UI. */
+    /** Returns the era value already normalized by the server payload. */
     private static int displayEra(int currentEra) {
-        return currentEra + 1;
+        return currentEra;
     }
 
     /**
