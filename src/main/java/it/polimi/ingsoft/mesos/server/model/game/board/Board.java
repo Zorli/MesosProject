@@ -8,7 +8,6 @@ import it.polimi.ingsoft.mesos.server.model.game.cards.characters.CharacterCard;
 import it.polimi.ingsoft.mesos.server.model.game.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.game.cards.events.SustenanceEventCard;
 import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
-import it.polimi.ingsoft.mesos.server.model.game.game.exception.CardNotPresentException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 
 import java.util.ArrayList;
@@ -335,6 +334,10 @@ public class Board {
      */
     public CardRow getCardRow(Card card) {
 
+        if (card == null) {
+            return CardRow.NOT_PRESENT;
+        }
+
         if (this.getUpperRowCards().contains(card)) {
             return CardRow.UPPER;
         }
@@ -482,6 +485,6 @@ public class Board {
                 return card;
             }
         }
-        throw new CardNotPresentException(cardId);
+        return null;
     }
 }
