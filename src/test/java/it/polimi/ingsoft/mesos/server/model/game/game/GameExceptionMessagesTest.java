@@ -40,7 +40,7 @@ class GameExceptionMessagesTest {
         Player alice = player("Alice");
         Hunter hunter = new Hunter(7, Era.first, false, TribeCardType.HUNTER);
 
-        assertEquals("Requested card is not present on the board: 7", new CardNotPresentException(hunter).getMessage());
+        assertEquals("Requested card is not present on the board: 7", new CardNotPresentException(7).getMessage());
         assertEquals("Requested card is not present on the board: null", new CardNotPresentException(null).getMessage());
         assertEquals("Card 7 is not drawable by player Alice", new CardNotDrawableException(alice, hunter).getMessage());
         assertEquals("Card null is not drawable by player unknown", new CardNotDrawableException(null, null).getMessage());

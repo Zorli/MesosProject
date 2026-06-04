@@ -4,8 +4,6 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
-import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnStatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
@@ -487,17 +485,11 @@ public class GUIView implements ClientView {
                 this.showPage(this.gamePage);
                 return;
             }
-            //Recupero da gamepayload il turnstqate pyaload, controllo la fase
-            // se è di extradraw rendo il bottone visible else, invisibile
-            TurnStatePayload turnStatePayload = payload.turnState;
-            Boolean toShow = Boolean.FALSE;
+            boolean showSkipExtraDrawButton = payload.turnOrder != null
+                    && "EXTRA_DRAWS".equals(payload.turnOrder.currentRoundPhase);
 
-            if (turnStatePayload != null && turnStatePayload.phase.equals("EXTRA_DRAW"))   {
-                toShow =  Boolean.TRUE;
-            }
-
-            this.SkipExtraDrawButton.setVisible(toShow);
-            this.SkipExtraDrawButton.setManaged(toShow);
+            this.SkipExtraDrawButton.setVisible(showSkipExtraDrawButton);
+            this.SkipExtraDrawButton.setManaged(showSkipExtraDrawButton);
 
             this.gameTurnController.updateLocalDraftTurn(payload);
             this.gameTurnController.clearPendingDraftRow();
