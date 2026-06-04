@@ -481,10 +481,10 @@ public class GUIView implements ClientView {
                 this.matchTitleLabel.setText("Match");
                 this.matchMetaLabel.setText("Waiting for server");
                 this.turnLabel.setText("No match update received");
-                this.boardRenderer.renderGameSkeleton();
-                this.showPage(this.gamePage);
-                return;
-            }
+            this.boardRenderer.renderGameSkeleton();
+            this.showPage(this.gamePage);
+            return;
+        }
             boolean showSkipExtraDrawButton = payload.turnOrder != null
                     && "EXTRA_DRAWS".equals(payload.turnOrder.currentRoundPhase);
 
