@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayl
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.SkipExtraDrawPayload;
 
 /**
  * Supported player commands that can be dispatched to a running game.
@@ -22,7 +23,9 @@ public enum GameCommandType {
     /**
      * Command for placing or moving a player's totem.
      */
-    MOVE_TOTEM;
+    MOVE_TOTEM,
+
+    SKIP_EXTRA_DRAW;
 
     /**
      * Maps an incoming game payload to the command handled by the game controller.
@@ -38,6 +41,7 @@ public enum GameCommandType {
             case ChooseCardPayload ignored -> CHOOSE_CARD;
             case ExtraDrawPayload ignored -> EXTRA_DRAW;
             case MoveTotemPayload ignored -> MOVE_TOTEM;
+            case SkipExtraDrawPayload ignored ->SKIP_EXTRA_DRAW;
             default -> throw new IllegalArgumentException("Unexpected game payload: " + payload);
         };
     }

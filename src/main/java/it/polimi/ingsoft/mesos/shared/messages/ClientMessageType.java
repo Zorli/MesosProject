@@ -26,5 +26,6 @@ public enum ClientMessageType {
     /** Request to perform an extra draw action during game. */
     EXTRA_DRAW,
     /** Keep-alive response confirming the client connection is active. */
-    PONG
+    PONG,
+    SKIP_EXTRA_DRAW
 }

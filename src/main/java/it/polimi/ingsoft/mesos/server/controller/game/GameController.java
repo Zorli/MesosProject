@@ -228,6 +228,9 @@ public class GameController implements Runnable  {
                         ExtraDrawPayload p = (ExtraDrawPayload) payload;
                         this.extraDrawn(player, p.cardId);
                     }
+                    case SKIP_EXTRA_DRAW -> {
+                        this.SkipExtraDrawn(player);
+                    }
                 }
 
             } catch (InterruptedException e) {
@@ -322,6 +325,11 @@ public class GameController implements Runnable  {
      */
     private void extraDrawn(Player player, int cardId) {
         this.game.extraDrawn(player, cardId);
+
+        this.checkGameEndAndCleanup();
+    }
+    private void SkipExtraDrawn(Player player) {
+        this.game.SkipExtraDrawn(player);
 
         this.checkGameEndAndCleanup();
     }

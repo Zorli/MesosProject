@@ -131,6 +131,7 @@
                             <Label fx:id="matchTitleLabel" text="Match" styleClass="section-title"/>
                             <Label fx:id="matchMetaLabel" text="Era - / status -" styleClass="section-subtitle"/>
                         </VBox>
+                        <Button fx:id="SkipExtraDrawButton" text="Skip Extra Draw" visible="false" onAction="#skipExtraDraw" styleClass="danger-button"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <HBox alignment="CENTER" spacing="8">
                             <Label text="General info:" styleClass="muted"/>

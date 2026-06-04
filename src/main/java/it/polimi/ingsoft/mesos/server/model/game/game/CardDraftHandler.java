@@ -144,6 +144,12 @@ public class CardDraftHandler {
         this.goToResolvingEffects();
         this.game.markStateChanged();
     }
+    public void SkipExtraDrawn(Player player) {
+
+        this.validateExtraDrawRequest(player);
+        this.goToResolvingEffects();
+        this.game.markStateChanged();
+    }
 
     /**
      * Checks the game-level preconditions for a standard card draw.
@@ -237,7 +243,7 @@ public class CardDraftHandler {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow == CardRow.NOT_PRESENT) {
-            throw new CardNotPresentException(card);
+            throw new CardNotPresentException(card.getId());
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
@@ -270,7 +276,7 @@ public class CardDraftHandler {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow != CardRow.UPPER) {
-            throw new CardNotPresentException(card);
+            throw new CardNotPresentException(card.getId());
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {

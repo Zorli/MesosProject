@@ -16,10 +16,7 @@ import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import it.polimi.ingsoft.mesos.server.network.interfaces.ClientConnection;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ChooseCardPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.ExtraDrawPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.GameClientPayload;
-import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import org.junit.jupiter.api.Test;
@@ -113,11 +110,12 @@ class GameControllerTest {
         controller.enqueueMessage(new ClientPayloadCommand(sessionId, new MoveTotemPayload("B")));
         controller.enqueueMessage(new ClientPayloadCommand(sessionId, new ChooseCardPayload(7)));
         controller.enqueueMessage(new ClientPayloadCommand(sessionId, new ExtraDrawPayload(9)));
+        controller.enqueueMessage(new ClientPayloadCommand(sessionId, new SkipExtraDrawPayload()));
 
-        await(() -> game.actions.size() == 3);
+        await(() -> game.actions.size() == 4);
         stop(worker);
 
-        assertEquals(List.of("moveTotem:Alice:B", "chooseCard:Alice:7", "extraDrawn:Alice:9"), game.actions);
+        assertEquals(List.of("moveTotem:Alice:B", "chooseCard:Alice:7", "extraDrawn:Alice:9", "SkipExtraDrawn:Alice"), game.actions);
     }
 
     /**
@@ -398,6 +396,11 @@ class GameControllerTest {
         @Override
         public void extraDrawn(Player player, int cardId) {
             this.actions.add("extraDrawn:" + player.getNickname() + ":" + cardId);
+        }
+
+        @Override
+        public void SkipExtraDrawn(Player player){
+            this.actions.add("SkipExtraDrawn:" + player.getNickname());
         }
 
         /**

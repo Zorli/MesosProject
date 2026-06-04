@@ -168,6 +168,9 @@ public class TuiView implements ClientView {
             case EXTRA_DRAW -> {
                 this.serverProxy.extraDraw(command.intArgument());
             }
+            case SKIP_EXTRA_DRAW -> {
+                this.serverProxy.skipExtraDraw();
+            }
             case QUIT -> {
                 this.serverProxy.close();
                 this.render(this.payloadRenderer.renderFarewell());

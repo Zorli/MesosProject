@@ -145,6 +145,7 @@ public class ClientCommandHandler {
                 case MOVE_TOTEM   -> GSON.fromJson(payloadElement, MoveTotemPayload.class);
                 case CHOOSE_CARD  -> GSON.fromJson(payloadElement, ChooseCardPayload.class);
                 case EXTRA_DRAW   -> GSON.fromJson(payloadElement, ExtraDrawPayload.class);
+                case SKIP_EXTRA_DRAW -> GSON.fromJson(payloadElement, SkipExtraDrawPayload.class);
                 default -> throw new UnsupportedOperationException("Unsupported client message type: " + type);
             };
         } catch (RuntimeException exception) {

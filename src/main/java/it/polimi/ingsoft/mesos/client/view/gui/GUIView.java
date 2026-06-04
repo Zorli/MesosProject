@@ -4,6 +4,8 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnStatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
@@ -177,6 +179,10 @@ public class GUIView implements ClientView {
     @FXML private VBox finalRankingContainer;
     /** ScrollPane wrapper around the lobby list. */
     @FXML private ScrollPane lobbyScrollPane;
+
+
+    @FXML private Button SkipExtraDrawButton;
+
 
     // ---------------------------------------------------------------------
     // JavaFX lifecycle and window management
@@ -381,6 +387,11 @@ public class GUIView implements ClientView {
         this.requestLobbyList();
     }
 
+    @FXML
+    private void skipExtraDraw(){
+        this.callServer(() -> this.serverProxy.skipExtraDraw());
+    }
+
     // ---------------------------------------------------------------------
     // ClientView callbacks
     // ---------------------------------------------------------------------
@@ -476,6 +487,18 @@ public class GUIView implements ClientView {
                 this.showPage(this.gamePage);
                 return;
             }
+            //Recupero da gamepayload il turnstqate pyaload, controllo la fase
+            // se è di extradraw rendo il bottone visible else, invisibile
+            TurnStatePayload turnStatePayload = payload.turnState;
+            Boolean toShow = Boolean.FALSE;
+
+            if (turnStatePayload != null && turnStatePayload.phase.equals("EXTRA_DRAW"))   {
+                toShow =  Boolean.TRUE;
+            }
+
+            this.SkipExtraDrawButton.setVisible(toShow);
+            this.SkipExtraDrawButton.setManaged(toShow);
+
             this.gameTurnController.updateLocalDraftTurn(payload);
             this.gameTurnController.clearPendingDraftRow();
             this.matchTitleLabel.setText("Match #" + payload.id);
