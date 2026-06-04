@@ -228,6 +228,22 @@ class CardDraftHandlerTest {
         assertEquals(RoundPhase.RESOLVING_EFFECTS, context.roundFlow().getCurrentRoundPhase());
     }
 
+    @Test
+    void SkipextraDrawDrawsUpperCardAndMovesToResolvingEffects() {
+        Player alice = playerWithExtraDraw("Alice", TotemColor.RED);
+        TestContext context = context(List.of(alice));
+        Hunter hunter = hunter(12);
+        context.board().upperCards.add(hunter);
+        context.roundFlow().setCurrentPhaseOrder(List.of(alice));
+        context.roundFlow().setCurrentRoundPhase(RoundPhase.EXTRA_DRAWS);
+
+        context.handler().SkipExtraDrawn(alice);
+
+        assertTrue(context.board().upperCards.contains(hunter));
+        assertEquals(0, alice.getTribe().getCharactersSize());
+        assertEquals(RoundPhase.RESOLVING_EFFECTS, context.roundFlow().getCurrentRoundPhase());
+    }
+
     /**
      * Extra draw only accepts upper-row cards.
      */

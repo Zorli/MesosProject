@@ -11,8 +11,8 @@ public class CardNotPresentException extends IllegalStateException {
      *
      * @param card card requested by the player
      */
-    public CardNotPresentException(Card card) {
-        super(buildMessage(card));
+    public CardNotPresentException(Integer cardId) {
+        super(buildMessage(cardId));
     }
 
     /**
@@ -21,7 +21,7 @@ public class CardNotPresentException extends IllegalStateException {
      * @param card requested card reference, possibly {@code null}
      * @return formatted exception message
      */
-    private static String buildMessage(Card card) {
-        return "Requested card is not present on the board: " + (card == null ? "null" : card.getId());
+    private static String buildMessage(Integer cardId) {
+        return "Requested card is not present on the board: " + (cardId == null ? "null" : cardId);
     }
 }

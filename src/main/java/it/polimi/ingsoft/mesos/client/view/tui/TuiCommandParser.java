@@ -98,6 +98,7 @@ final class TuiCommandParser {
             case "move-totem", "mt" -> TuiCommandType.MOVE_TOTEM;
             case "choose-card", "cc" -> TuiCommandType.CHOOSE_CARD;
             case "extra-draw", "ed" -> TuiCommandType.EXTRA_DRAW;
+            case "skip-extra-draw", "sed" -> TuiCommandType.SKIP_EXTRA_DRAW;
             case "quit", "exit", "q" -> TuiCommandType.QUIT;
             default -> throw new IllegalArgumentException("Unknown command. Type 'help'.");
         };
