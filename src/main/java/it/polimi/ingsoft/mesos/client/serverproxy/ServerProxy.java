@@ -83,6 +83,9 @@ public interface ServerProxy extends AutoCloseable {
      */
     void extraDraw(int cardId);
 
+
+    void skipExtraDraw();
+
     /**
      * Closes the resources owned by the concrete proxy implementation.
      *

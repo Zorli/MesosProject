@@ -178,6 +178,10 @@ public class GUIView implements ClientView {
     /** ScrollPane wrapper around the lobby list. */
     @FXML private ScrollPane lobbyScrollPane;
 
+
+    @FXML private Button SkipExtraDrawButton;
+
+
     // ---------------------------------------------------------------------
     // JavaFX lifecycle and window management
     // ---------------------------------------------------------------------
@@ -381,6 +385,11 @@ public class GUIView implements ClientView {
         this.requestLobbyList();
     }
 
+    @FXML
+    private void skipExtraDraw(){
+        this.callServer(() -> this.serverProxy.skipExtraDraw());
+    }
+
     // ---------------------------------------------------------------------
     // ClientView callbacks
     // ---------------------------------------------------------------------
@@ -476,6 +485,12 @@ public class GUIView implements ClientView {
                 this.showPage(this.gamePage);
                 return;
             }
+            boolean showSkipExtraDrawButton = payload.turnOrder != null
+                    && "EXTRA_DRAWS".equals(payload.turnOrder.currentRoundPhase);
+
+            this.SkipExtraDrawButton.setVisible(showSkipExtraDrawButton);
+            this.SkipExtraDrawButton.setManaged(showSkipExtraDrawButton);
+
             this.gameTurnController.updateLocalDraftTurn(payload);
             this.gameTurnController.clearPendingDraftRow();
             this.matchTitleLabel.setText("Match #" + payload.id);
@@ -585,9 +600,9 @@ public class GUIView implements ClientView {
         this.selectedCardLabel.setText("The board will appear as soon as the first update arrives.");
     }
 
-    /** Converts the zero-based era value from the payload to the one-based value shown in the UI. */
+    /** Returns the era value already normalized by the server payload. */
     private static int displayEra(int currentEra) {
-        return currentEra + 1;
+        return currentEra;
     }
 
     /**

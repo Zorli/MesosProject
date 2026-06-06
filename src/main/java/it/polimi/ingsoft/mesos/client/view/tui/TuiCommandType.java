@@ -16,6 +16,7 @@ package it.polimi.ingsoft.mesos.client.view.tui;
  * They are mapped to these command types by {@link TuiCommandParser}.
  */
 enum TuiCommandType {
+    SKIP_EXTRA_DRAW("skip-extra-draw",false,false),
     HELP("help", false, false),
     AUTH("auth <nickname>", true, false),
     LIST_LOBBIES("list-lobbies", false, false),
@@ -27,6 +28,7 @@ enum TuiCommandType {
     CHOOSE_CARD("choose-card <card-id>", true, true),
     EXTRA_DRAW("extra-draw <card-id>", true, true),
     QUIT("quit", false, false);
+
 
     private final String usage;
     private final boolean argumentRequired;

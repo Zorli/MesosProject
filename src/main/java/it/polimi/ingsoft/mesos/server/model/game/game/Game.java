@@ -392,6 +392,14 @@ public class Game {
         });
     }
 
+    public void SkipExtraDrawn(Player player) {
+        this.actionExecutor.execute(() -> {
+            this.onlyOneConnected();
+            this.cardDraftHandler.SkipExtraDrawn(player);
+            this.passiveRoundPhaseHandler.advancePassivePhases();
+        });
+    }
+
     /**
      * Builds the current game payload.
      *

@@ -354,6 +354,10 @@ public class Board {
      */
     public CardRow getCardRow(Card card) {
 
+        if (card == null) {
+            return CardRow.NOT_PRESENT;
+        }
+
         if (this.getUpperRowCards().contains(card)) {
             return CardRow.UPPER;
         }

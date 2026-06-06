@@ -19,6 +19,7 @@ import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.MoveTotemPaylo
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection.PongPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.lobby.StartLobbyPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.SkipExtraDrawPayload;
 
 import java.io.IOException;
 import java.rmi.RemoteException;
@@ -201,6 +202,13 @@ public class ServerProxyRMI implements ServerProxy {
         ExtraDrawPayload payload = new ExtraDrawPayload(cardId);
         ClientMessage message = new ClientMessage(ClientMessageType.EXTRA_DRAW, payload);
         this.send(message);
+    }
+
+    @Override
+    public void skipExtraDraw() {
+        SkipExtraDrawPayload payload = new SkipExtraDrawPayload();
+        ClientMessage clientMessage = new ClientMessage(ClientMessageType.SKIP_EXTRA_DRAW, payload);
+        this.send(clientMessage);
     }
 
     /**

@@ -1,11 +1,16 @@
 package it.polimi.ingsoft.mesos.server.model.game.game;
 
 import it.polimi.ingsoft.mesos.server.factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.model.game.cards.BuildingCard;
+import it.polimi.ingsoft.mesos.server.model.game.enums.BenefitType;
+import it.polimi.ingsoft.mesos.server.model.game.enums.Era;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import org.junit.jupiter.api.Test;
 
@@ -94,6 +99,27 @@ class GamePayloadMapperTest {
                 .orElseThrow()
                 .isConnected);
     }
+
+    @Test
+    void testPayloadMapperOnBuildingCard() {
+        Player alice = player("Tom", TotemColor.RED);
+        Player bob = player("Bob", TotemColor.BLUE);
+        Game game = game(alice,bob);
+        BuildingCard buildingCard = new BuildingCard(1, Era.first, 3, 2,BenefitType.EVENT_BONUS_SUSTENANCE_DISCOUNT_FOR_TYPE);
+        game.getPlayers().get(0).getTribe().addBuilding(buildingCard);
+
+
+        GamePayload payload = (GamePayload )game.buildPayload();
+
+       CardPayload cardPayload = payload.players.get(0).tribe.buildings.get(0);
+
+       assertEquals("BUILDING", cardPayload.type);
+       assertEquals(1, cardPayload.id);
+       assertEquals(1, cardPayload.era);
+       assertEquals(3, cardPayload.buildingCost);
+       assertEquals(2, cardPayload.buildingPrestigePoints);
+    }
+
 
     /**
      * Error payloads preserve the code and message chosen by the caller.

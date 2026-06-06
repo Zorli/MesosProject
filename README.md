@@ -360,25 +360,8 @@ I payload veri e propri implementano invece l'interfaccia `ClientPayload`, che r
 di base per i dati inviati dal client al server.
 
 `ClientPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
-`PreLobbyClientPayload`, `LobbyClientPayload`, `GameClientPayload` e `ConnectionClientPayload`.
 
-Fra i payload che implementano `PreLobbyClientPayload` abbiamo:
-- `AuthenticationPayload`, che contiene il nickname scelto dal client
-- `CreateLobbyPayload`, che contiene la dimensione scelta per la lobby
-- `JoinLobbyPayload`, che contiene l'id della lobby a cui unirsi
-- `ListLobbiesPayload`, che non contiene campi e serve solo a richiedere la lista delle lobby
-
-Fra i payload che implementano `LobbyClientPayload` abbiamo:
-- `StartLobbyPayload`, usato per richiedere l'avvio della lobby
-- `ExitLobbyPayload`, usato per uscire dalla lobby
-
-Fra i payload che implementano `GameClientPayload` abbiamo:
-- `MoveTotemPayload`, che contiene la tile su cui spostare il totem
-- `ChooseCardPayload`, che contiene l'id della carta scelta
-- `ExtraDrawPayload`, che contiene l'id della carta scelta per la pescata extra
-
-Infine, fra i payload di connessione abbiamo `PongPayload`, che implementa `ConnectionClientPayload`
-e viene usato per rispondere al ping del server (spiegato in una sezione successiva)
+![Client Payloads](assets/images/clientPayload.png)
 
 Per quanto riguarda invece i payload che vengono inviati dal server al client, anche qui bisogna distinguere
 tra messaggio e payload: `ServerMessage` rappresenta il messaggio inviato dal server al client ed è composto
@@ -387,22 +370,8 @@ I payload veri e propri implementano l'interfaccia `ServerPayload`, che rapprese
 per i dati inviati dal server al client.
 
 `ServerPayload` viene poi specializzato dalle sotto interfacce relative alle varie fasi di comunicazione:
-`PreLobbyServerPayload`, `LobbyServerPayload`, `GameServerPayload` ed `ErrorServerPayload`.
 
-Fra i payload che implementano `PreLobbyServerPayload` abbiamo:
-- `AuthenticationResultPayload`, che contiene il risultato della fase di autenticazione
-- `LobbyListPayload`, che contiene la lista delle lobby disponibili tramite oggetti `LobbySummaryPayload`
-
-Fra i payload che implementano `LobbyServerPayload` abbiamo:
-- `LobbyUpdatePayload`, che rappresenta un aggiornamento della fase di lobby, ad esempio autenticazione,
-  creazione lobby, join, uscita o avvio della partita
-
-Fra i payload che implementano `GameServerPayload` abbiamo:
-- `GamePayload`, che rappresenta lo stato della partita inviato al client, contenente stato del gioco,
-  era corrente, ordine dei turni, stato del turno, giocatori e board
-
-Fra i payload di errore abbiamo:
-- `ErrorPayload`, che contiene codice e messaggio dell'errore
+![Server Payloads](assets/images/serverPayload.png)
 
 Alcuni payload, come `LobbySummaryPayload`, `BoardPayload`, `PlayerPayload`, `CardPayload`,
 `OfferSpacePayload`, `StartingBlockPayload`, `TribePayload`, `TurnOrderPayload` e `TurnStatePayload`,
@@ -836,11 +805,7 @@ Questa separazione è importante perché consente al server di restare indipende
 Una volta che un messaggio è arrivato dentro il server come payload applicativo, il resto della logica
 non deve più sapere se quel messaggio è arrivato tramite TCP o tramite RMI.
 
-//TODO: aggiungere qui un diagramma Excalidraw del server ad alto livello:
-// - `VirtualViewTCP` e `VirtualViewRMI` implementano lo stesso contratto logico
-// - le `VirtualView` gestiscono rete, messaggi in ingresso e messaggi in uscita
-// - il `MessageRouter` smista i messaggi in base alla fase salvata nel `ServerSessionRegistry`
-// - i controller ricevono il comando, aggiornano il model e il model notifica tramite `Listener`
+![AllServer.png](assets/images/AllServer.png)
 
 ### Thread in gioco
 In questa sezione viene fatto un recap dei thread in gioco sul server. Questo renderà

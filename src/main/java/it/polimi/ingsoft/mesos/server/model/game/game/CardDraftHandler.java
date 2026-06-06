@@ -114,12 +114,11 @@ public class CardDraftHandler {
      * @param cardId identifier of the selected card
      */
     public void chooseCard(Player player, int cardId) {
-        Card card = this.board.findCardById(cardId);
-
         this.validateChooseCardRequest(player);
         this.startCardSelectionIfNeeded(player);
 
-        CardRow cardRow = this.validateAndRemoveChosenCard(player, card);
+        Card card = this.board.findCardById(cardId);
+        CardRow cardRow = this.validateAndRemoveChosenCard(player, card, cardId);
         this.applyChosenCardToPlayer(player, card);
         this.playerDraftState.consumeChoice(player, cardRow);
 
@@ -144,11 +143,17 @@ public class CardDraftHandler {
      * @param cardId identifier of the selected card
      */
     public void extraDrawn(Player player, int cardId) {
+        this.validateExtraDrawRequest(player);
+
         Card card = this.board.findCardById(cardId);
+        this.validateAndRemoveExtraDrawCard(player, card, cardId);
+        this.applyChosenCardToPlayer(player, card);
+        this.goToResolvingEffects();
+        this.game.markStateChanged();
+    }
+    public void SkipExtraDrawn(Player player) {
 
         this.validateExtraDrawRequest(player);
-        this.validateAndRemoveExtraDrawCard(player, card);
-        this.applyChosenCardToPlayer(player, card);
         this.goToResolvingEffects();
         this.game.markStateChanged();
     }
@@ -241,11 +246,11 @@ public class CardDraftHandler {
      * @param card selected card object found by id
      * @return row from which the card was removed
      */
-    private CardRow validateAndRemoveChosenCard(Player player, Card card) {
+    private CardRow validateAndRemoveChosenCard(Player player, Card card, int cardId) {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow == CardRow.NOT_PRESENT) {
-            throw new CardNotPresentException(card);
+            throw new CardNotPresentException(cardId);
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
@@ -274,11 +279,11 @@ public class CardDraftHandler {
      * @param player player choosing the card
      * @param card selected card object found by id
      */
-    private void validateAndRemoveExtraDrawCard(Player player, Card card) {
+    private void validateAndRemoveExtraDrawCard(Player player, Card card, int cardId) {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow != CardRow.UPPER) {
-            throw new CardNotPresentException(card);
+            throw new CardNotPresentException(cardId);
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
