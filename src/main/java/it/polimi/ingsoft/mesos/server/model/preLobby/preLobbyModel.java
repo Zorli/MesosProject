@@ -53,7 +53,7 @@ public class preLobbyModel {
      * @param sessionId the unique identifier of the client session
      */
     public void reportPhaseError(String sessionId) {
-        this.sendUnicastError(sessionId, "PHASE_ERROR", "Action non permitted in this phase.");
+        this.sendUnicastError(sessionId, "PHASE_ERROR", "Action not permitted in this phase.");
     }
 
     /**
@@ -162,7 +162,7 @@ public class preLobbyModel {
             }
             String nickname = this.requireNickname(sessionId);
             Lobby lobby = this.sessions.getLobbyModel(lobbyId)
-                    .orElseThrow(() -> new IllegalArgumentException("La lobby richiesta non esiste."));
+                    .orElseThrow(() -> new IllegalArgumentException("The requested lobby does not exist."));
             if (this.sessions.isPlayerInAnyLobby(nickname) && !lobby.hasPlayer(nickname)) {
                 throw new IllegalArgumentException("Your nickname is already in a lobby.");
             }

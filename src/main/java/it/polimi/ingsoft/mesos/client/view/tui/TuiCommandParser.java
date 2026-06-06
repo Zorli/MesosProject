@@ -87,7 +87,7 @@ final class TuiCommandParser {
      */
     private static TuiCommandType parseType(String keyword) {
         String s = keyword.toLowerCase();
-        return switch (keyword) {
+        return switch (s) {
             case "help", "h" -> TuiCommandType.HELP;
             case "auth", "a" -> TuiCommandType.AUTH;
             case "list-lobbies", "lobbies", "ll" -> TuiCommandType.LIST_LOBBIES;
