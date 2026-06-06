@@ -72,9 +72,21 @@ package "lobby" {
     - sessions: ServerSessionRegistry
     - gameFactory: GameFactory
     - lobbyPlayerFactory: LobbyPlayerFactory
+    - commandQueue: BlockingQueue<QueuedCommand>
     + LobbyController(lobby: Lobby, sessions: ServerSessionRegistry, gameFactory: GameFactory)
     + enqueueMessage(cmd: QueuedCommand): void
     + run(): void
+    - joinUser(sessionId: String): void
+    - exitLobby(sessionId: String): void
+    - disconnectUser(sessionId: String): void
+    - shouldDisposeEmptyLobby(): boolean
+    - startLobby(sessionId: String): void
+    - startNewMatch(): GameController
+    - startGameWorker(orchestrator: GameController): void
+    - attachLobbySessionsToGame(orchestrator: GameController): void
+    - completeLobbyTransition(orchestrator: GameController): void
+    - startMatchCountdown(orchestrator: GameController): void
+    - reportPhaseError(sessionId: String): void
   }
 
   class Lobby <<model>> {
@@ -85,6 +97,7 @@ package "lobby" {
     - players: List<String>
     - hostNickname: String
     - status: LobbyStatus
+    - listeners: List<Listener>
     - payloadMapper: LobbyPayloadMapper
     + Lobby(id: int, hostNickname: String, capacity: int)
     + addListener(listener: Listener): void
@@ -93,11 +106,18 @@ package "lobby" {
     + addPlayer(nickname: String, requesterView: Listener): boolean
     + removePlayer(nickname: String, requesterView: Listener): boolean
     + reportPhaseError(target: Listener): void
+    + notifyPlayerJoined(nickname: String): void
+    + notifyPlayerLeft(nickname: String, leavingListener: Listener): void
+    + notifyMatchStarted(nickname: String, target: Listener): void
     + clearListeners(): void
     + getId(): int
     + getHostNickname(): String
     + getPlayers(): List<String>
+    + getChosenCapacity(): int
     + getStatus(): LobbyStatus
+    + hasPlayer(nickname: String): boolean
+    + canBeJoinedBy(nickname: String): boolean
+    + isHost(nickname: String): boolean
     + canStart(): boolean
     + isFull(): boolean
     + isEmpty(): boolean
@@ -114,16 +134,18 @@ package "lobby" {
     + createPlayers(nicknames: List<String>): List<Player>
   }
 
-  interface GameFactory {
-    + createGame(players: List<Player>): Game
-    + createGame(gameId: int, players: List<Player>): Game
-  }
-
   enum LobbyStatus {
     WAITING
     READY
     STARTED
     CLOSED
+  }
+}
+
+package "factory" {
+  interface GameFactory {
+    + createGame(players: List<Player>): Game
+    + createGame(gameId: int, players: List<Player>): Game
   }
 }
 

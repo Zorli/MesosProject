@@ -63,35 +63,31 @@ package "shared" <<dep>> {
 ' ─── PRE-LOBBY DOMAIN ──────────────────────────────────────────────────────
 package "pre-lobby" {
 
-  class ServerController <<controller>> {
+  class PreLobbyController <<controller>> {
     - sessions: ServerSessionRegistry
-    - serverModel: ServerModel
+    - preLobbyModel: preLobbyModel
     - gameFactory: GameFactory
-    - connectionLifecycle: ServerConnectionLifecycle
-    - pingPongRoutine: PingPongRoutine
-    + ServerController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
+    + PreLobbyController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
     + getSessionRegistry(): ServerSessionRegistry
     + enqueueMessage(cmd: QueuedCommand): void
     + run(): void
-    + registerConnection(connection: ClientConnection): String
-    + recordPong(sessionId: String): void
-    + disconnectSession(sessionId: String): void
+    - authenticate(sessionId: String, nickname: String): void
+    - listOpenLobbies(sessionId: String): void
+    - createLobby(sessionId: String, chosenCapacity: int): void
+    - joinLobby(sessionId: String, lobbyId: int): void
     + reportPhaseError(sessionId: String): void
   }
 
-  class ServerModel {
+  class preLobbyModel {
     - sessions: ServerSessionRegistry
     - payloadMapper: PreLobbyPayloadMapper
-    - globalListeners: Map<String, Listener>
-    + ServerModel(sessions: ServerSessionRegistry)
-    + addGlobalListener(sessionId: String, listener: Listener): void
-    + removeGlobalListener(sessionId: String): void
+    + preLobbyModel(sessions: ServerSessionRegistry)
     + reportPhaseError(sessionId: String): void
     + reportJoinError(sessionId: String, message: String): void
-    + authenticate(sessionId: String, nickname: String, view: Listener): boolean
-    + listOpenLobbies(sessionId: String, view: Listener): void
-    + createLobby(sessionId: String, chosenCapacity: int, view: Listener): Lobby
-    + joinLobbyValidation(sessionId: String, view: Listener, lobbyId: int): boolean
+    + authenticate(sessionId: String, nickname: String): boolean
+    + listOpenLobbies(sessionId: String): void
+    + createLobby(sessionId: String, chosenCapacity: int): Lobby
+    + joinLobbyValidation(sessionId: String, lobbyId: int): boolean
   }
 
   class PreLobbyPayloadMapper <<mapper>> {
@@ -102,8 +98,8 @@ package "pre-lobby" {
 
   class ServerConnectionLifecycle <<service>> {
     - sessions: ServerSessionRegistry
-    - serverModel: ServerModel
-    + ServerConnectionLifecycle(sessions: ServerSessionRegistry, serverModel: ServerModel)
+    - pingPongRoutine: PingPongRoutine
+    + ServerConnectionLifecycle(sessions: ServerSessionRegistry)
     + registerConnection(connection: ClientConnection): String
     + recordPong(sessionId: String): void
     + disconnectSession(sessionId: String): void
@@ -122,25 +118,25 @@ package "pre-lobby" {
 ' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
 
 ' Controller owns its components
-ServerController *-- ServerModel              : owns
-ServerController *-- ServerConnectionLifecycle : owns
-ServerController *-- PingPongRoutine          : owns
+PreLobbyController *-- preLobbyModel              : owns
+
+' Connection Lifecycle owns Ping-Pong Routine
+ServerConnectionLifecycle *-- PingPongRoutine : owns
 
 ' Model owns mapper
-ServerModel *-- PreLobbyPayloadMapper : owns
+preLobbyModel *-- PreLobbyPayloadMapper : owns
 
 ' Controller uses shared registry
-ServerController ..> ServerSessionRegistry : uses 
+PreLobbyController ..> ServerSessionRegistry : uses 
 
 ' Model uses shared registry
-ServerModel ..> ServerSessionRegistry     : uses 
+preLobbyModel ..> ServerSessionRegistry     : uses 
 
 ' Lifecycle and ping uses shared registry
 ServerConnectionLifecycle ..> ServerSessionRegistry : uses 
 PingPongRoutine ..> ServerSessionRegistry           : uses 
 
 ' Internal dependencies within pre-lobby package
-ServerConnectionLifecycle ..> ServerModel           : uses 
 PingPongRoutine ..> ServerConnectionLifecycle       : uses 
 
 legend right
