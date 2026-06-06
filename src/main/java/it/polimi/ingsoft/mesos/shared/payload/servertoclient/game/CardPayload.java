@@ -150,6 +150,6 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload event(int id, String type, int era, String eventCompleteName) {
-        return new CardPayload(id, type, era, null, null, eventCompleteName, null, null, null,eventCompleteName,null);
+        return new CardPayload(id, type, era, null, null, null, null, null, null,eventCompleteName,null);
     }
 }
