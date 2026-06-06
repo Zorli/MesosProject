@@ -19,14 +19,30 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The absolute Source of Truth for every active session detail, active controller mapping,
- * and lobby models. This class acts as the centralized coordinator for network session states,
- * authentication mapping, game phases, and active orchestrators.
+ * In-memory store of server-side session and lobby state, backed by a set of plain {@link HashMap}s:
+ * <ul>
+ *   <li>{@code sessionsById}: session ID to its mutable {@link SessionState} (connection, optional
+ *       {@link User}, {@link Phase}, current lobby/game ID, last pong timestamp).</li>
+ *   <li>{@code sessionIdByNickname}: authenticated nickname to its session ID, used to enforce
+ *       nickname uniqueness and to look a session up by nickname.</li>
+ *   <li>{@code reconnectGameIdByNickname}: nickname of a disconnected player to the game ID it may
+ *       reconnect to (the reconnect slot).</li>
+ *   <li>{@code lobbyModels}: lobby ID to its {@link Lobby} model, with {@code nextLobbyId} handing
+ *       out sequential IDs.</li>
+ *   <li>{@code activeLobbyControllers} / {@code activeGames}: lobby/game ID to the
+ *       {@link LobbyController} / {@link GameController} currently handling it (the routing table
+ *       used to dispatch work to the right controller thread).</li>
+ * </ul>
  *
- * <p>Concurrency policy: every access to the internal mutable state of this registry is protected
- * by the intrinsic lock of this object through synchronized public methods. The registry protects
- * its own maps and cross-map invariants, but it does not automatically make the returned mutable
- * objects thread-safe after they have been returned to external code.</p>
+ * <p>It exposes operations to register and unregister connections, authenticate them to a nickname,
+ * move a session through the {@link Phase} state machine, manage reconnect slots, and look up the
+ * controller for a lobby or game. Read-heavy callers obtain {@link SessionSnapshot} copies rather
+ * than the live {@link SessionState}.</p>
+ *
+ * <p>All public methods are {@code synchronized} on this instance, so the maps and the invariants
+ * between them are mutated under a single lock. Returned objects ({@link Lobby}, {@link User},
+ * {@link ClientConnection}, controllers) are the live instances and are not made thread-safe by
+ * this class.</p>
  */
 public class ServerSessionRegistry {
     /**
@@ -196,7 +212,7 @@ public class ServerSessionRegistry {
     }
 
     // ==========================================
-    // REGISTRAZIONE CONTROLLER (Yellow Pages)
+    // CONTROLLER REGISTRATION (Yellow Pages)
     // ==========================================
 
     /**
@@ -266,7 +282,7 @@ public class ServerSessionRegistry {
     }
 
     // ==========================================
-    // GESTIONE CONNESSIONI E AUTENTICAZIONE
+    // CONNECTION AND AUTHENTICATION MANAGEMENT
     // ==========================================
 
     /**
@@ -371,7 +387,7 @@ public class ServerSessionRegistry {
     }
 
     // ==========================================
-    // TRANSIZIONI DI FASE MACCHINA A STATI
+    // PHASE STATE-MACHINE TRANSITIONS
     // ==========================================
 
     /**
@@ -489,7 +505,8 @@ public class ServerSessionRegistry {
      * Retrieves the User model associated with a session.
      *
      * @param sessionId the session ID to query
-     * @return the User model
+     * @return the User model, or null if the session is not authenticated
+     * @throws IllegalStateException if the session ID is not registered
      */
     public synchronized User userOf(String sessionId) {
         return this.requireSession(sessionId).user;
@@ -687,20 +704,20 @@ public class ServerSessionRegistry {
     }
 
     /**
-     * Immutable snapshot representation of a session state, suitable for secure access and iterations.
+     * Immutable copy of a {@link SessionState} taken under the registry lock, so callers can read or
+     * iterate without holding it.
      *
-     * <p>The snapshot object itself is immutable, but it contains references to objects such as
-     * User and ClientConnection. Their internal thread-safety depends on their own implementation
-     * and on the architectural confinement enforced by the server.</p>
+     * <p>The record itself is immutable, but the referenced {@link User} and {@link ClientConnection}
+     * are the live instances and are not copied.</p>
      *
      * @param sessionId  the unique session ID
      * @param connection the active network connection link
      * @param user       the user model (null if unauthenticated)
      * @param phase      the current session phase
-     * @param lobbyId    the lobby ID (null if in lobby)
-     * @param gameId     the game ID (null if in game)
+     * @param lobbyId    the lobby ID, or null if not in a lobby
+     * @param gameId     the game ID, or null if not in a game
      * @param lastPongAt the timestamp of the last recorded network pong
-     * @param timedOut   true if the duration since last pong exceeds the threshold timeout limit
+     * @param timedOut   true if the time since the last pong exceeds {@link #TIMEOUT_MILLIS}
      */
     public record SessionSnapshot(
             String sessionId,

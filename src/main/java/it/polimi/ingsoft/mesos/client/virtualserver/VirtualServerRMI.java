@@ -52,7 +52,7 @@ public class VirtualServerRMI implements RmiClientService {
     /**
      * Creates the client callback object, optionally exporting it through Java RMI.
      * <p>
-     * Used code exports the object. Tests can pass {@code false} to avoid opening a real RMI export while
+     * Production code exports the object. Tests can pass {@code false} to avoid opening a real RMI export while
      * still exercising the routing behavior.
      *
      * @param clientView view contract used to display server updates on the client

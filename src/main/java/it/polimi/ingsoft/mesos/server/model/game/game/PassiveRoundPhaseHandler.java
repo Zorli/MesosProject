@@ -126,13 +126,21 @@ public class PassiveRoundPhaseHandler {
      * handler asks {@link Game} to advance the era when the board reports that
      * a new era was reached.
      *
-     * <p>After the board reset, the round number increases, all standard draft
-     * quotas are cleared, and the round returns to totem placement.
+     * <p>It then reads the next-round turn order from the starting tile and
+     * removes the disconnected players located at the head of the list. Because
+     * the order reflects the starting-block positions, any disconnected players
+     * at the front are removed one by one and, for each,
+     * {@link Board#movePlayerToLastStartingTile(Player)} sends them to the last
+     * starting block so they re-enter the order in the worst next-round position.
+     * The loop stops at the first connected player (any subsequent disconnected
+     * players remain in the order). The loop relies on the invariant that at least
+     * one player is connected (otherwise this passive phase would never have been
+     * reached), so it always stops on the first connected player without running
+     * off the list.
      *
-     * <p>Before reading the next totem-placement order, the board prepares the
-     * starting tile for the new round. The active phase order is still filtered
-     * until a connected player is founded, the not connected one are moved to the
-     * last free starting block.
+     * <p>Finally the round number increases, all standard draft quotas are
+     * cleared, the round returns to totem placement, and the filtered order
+     * becomes the phase order for the new round.
      */
     private void resetBoardForNextRound() {
         boolean eraChanged = this.board.resetBoardAfterRound(this.game.getCurrentEra());
@@ -142,12 +150,12 @@ public class PassiveRoundPhaseHandler {
         }
         List<Player> nextRoundOrder = this.board.getNextRoundTurnOrder();
         int i = 0;
-        //Stesso invariante importante, almeno uno connesso per forza, altrimenti non si sarebbe arrivati a questa fase
+        // Same key invariant: at least one player must be connected, otherwise this phase would never have been reached.
         while(Boolean.FALSE.equals(this.game.getConnectedPlayers().get(nextRoundOrder.get(i))))
         {
             this.board.movePlayerToLastStartingTile(nextRoundOrder.get(i));
             nextRoundOrder.remove(i);
-            
+
         }
         this.roundFlow.advanceRoundNumber();
         this.playerDraftState.resetForNewRound();
@@ -160,9 +168,9 @@ public class PassiveRoundPhaseHandler {
      * Applies final scoring and marks the game as finished.
      *
      * <p>Each building can contribute final prestige points and may also apply a
-     * final effect. After all buildings are resolved, the tribe builder bonus is
-     * added. When all players have been scored, the game status becomes
-     * {@link GameStatus#FINISHED}.
+     * final effect. After all buildings are resolved, the tribe builder, artist,
+     * and inventor bonuses are added. When all players have been scored, the game
+     * status becomes {@link GameStatus#FINISHED}.
      */
     private void calculateFinalScore() {
         for (Player player : this.game.getPlayers()) {

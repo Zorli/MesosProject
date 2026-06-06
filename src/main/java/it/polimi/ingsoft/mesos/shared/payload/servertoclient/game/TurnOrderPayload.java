@@ -12,7 +12,7 @@ public class TurnOrderPayload implements Serializable {
     /** The current round number index. */
     public final int roundNumber;
 
-    /** The current active phase of the round (e.g. TOTEM_PLACEMENT, CARD_DRAFTING). */
+    /** The current active phase of the round, as a {@code RoundPhase} name (e.g. PLACING_TOTEMS, PLAYER_DRAWS, EXTRA_DRAWS). */
     public final String currentRoundPhase;
 
     /** The nickname of the player who must perform the next action. */

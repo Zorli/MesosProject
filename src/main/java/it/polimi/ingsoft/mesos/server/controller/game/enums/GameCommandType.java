@@ -32,6 +32,7 @@ public enum GameCommandType {
      *
      * @param payload payload received from the client
      * @return command type represented by the payload
+     * @throws IllegalArgumentException if the payload is null or its type is unrecognized
      */
     public static GameCommandType fromPayload(ClientPayload payload) {
         if (payload == null) {

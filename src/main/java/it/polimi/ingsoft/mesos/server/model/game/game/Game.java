@@ -218,7 +218,10 @@ public class Game {
     /**
      * Returns the players that belong to this match.
      *
-     * @return immutable list of players
+     * <p>The returned list is the match's live internal list, not a defensive copy;
+     * callers must treat it as read-only.
+     *
+     * @return the players participating in this match
      */
     public List<Player> getPlayers() {
         return this.players;

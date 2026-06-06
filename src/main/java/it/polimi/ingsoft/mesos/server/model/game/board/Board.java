@@ -17,9 +17,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Facade class representing the physical game board.
- * Manages the lifecycle of cards in the upper and lower piles, the offer path,
- * and the resolution of end-of-round board events.
+ * Facade over the physical game board, coordinating its card rows, decks, and offer path.
+ *
+ * <p>The board exposes two visible card rows: the {@link UpperPile} (upper row) holds the freshly
+ * drawn tribe and building cards, while the {@link LowerPile} (lower row) holds the cards that have
+ * shifted down from the upper row and is where lower-row events are resolved. New cards are drawn
+ * from the {@link TribeDeck} and {@link BuildingDeck}.
+ *
+ * <p>Player placement happens on the {@link OfferPath}, which owns the offer spaces and the starting
+ * tile where players wait between turns. At the end of a round the board shifts the upper row down to
+ * the lower row and refills the upper row from the decks, detecting era changes and re-stocking
+ * building cards accordingly. It also lets callers resolve board events and look up a visible card by
+ * its id via {@link #findCardById(int)}.
  */
 public class Board {
     private UpperPile upperPile;
@@ -143,16 +152,19 @@ public class Board {
      * @param player player to move
      */
     public void movePlayerToLastStartingTile(Player player) {
-        //qui da offerPath a startingTile -> 0
+        // offer path to starting tile -> 0
         this.offerPath.movePlayerToLastStartingTile(player,0);
     }
 
     /**
-     * Resets the visible rows after the round has ended and returns whether the refill triggered an
-     * era change.
+     * Advances the visible card rows for the next round.
+     *
+     * <p>Discards the lower row's tribe cards and shifts every tribe card from the upper row down to
+     * the lower row, then refills the upper row with new tribe cards drawn from the tribe deck.
+     * Offer-path placements and the starting tile are left untouched.
      *
      * @param currentEra era active before resetting the board
-     * @return {@code true} when the refill moved the game into a new era
+     * @return {@code true} when the refill drew a card from a new era, moving the game into it
      */
     public boolean resetBoardAfterRound(Era currentEra) {
         this.shiftUpperToLower();
@@ -160,11 +172,15 @@ public class Board {
     }
 
     /**
-     * Refills the upper row with new tribe cards up to the required amount.
-     * If a card from a new era is drawn, it triggers the era change logic.
+     * Refills the upper row with tribe cards drawn from the tribe deck until it holds
+     * {@code numPlayer + 4} of them, stopping early if the deck runs out.
      *
-     * @param currentEra The era currently being played before the refill.
-     * @return True if a card from a new era was drawn, false otherwise.
+     * <p>The first drawn card whose era differs from {@code currentEra} triggers an era change: the
+     * upper row's building cards are moved down to the lower row and the upper row is re-stocked with
+     * building cards for the new era. Each drawn tribe card is then added to the upper row.
+     *
+     * @param currentEra the era being played before the refill
+     * @return {@code true} if a card from a new era was drawn, {@code false} otherwise
      */
     private boolean refillUpperTribeCards(Era currentEra) {
         int cardsNeeded = (numPlayer + 4) - this.upperPile.getTribeCardsSize();
@@ -205,7 +221,8 @@ public class Board {
 
     /**
      * Calculates the required amount of building cards to draw based on the era and player count.
-     * it's based and harcoded form the game rules
+     * The counts are hardcoded from the game rules.
+     *
      * @param era The current era.
      * @return The number of building cards to draw.
      */
@@ -253,13 +270,16 @@ public class Board {
     }
 
     /**
-     * shift the player still on the starting tile to the bottom, the last as first became the first as last
-     * and it goes on freeing the firsts starting blocks. When a player is moved to a specific starting blocks
-     * (only the last one as the games work) the malus take effect
+     * Re-packs the players still on the starting tile towards its last blocks.
+     *
+     * <p>Players are taken in reverse turn order and each is moved to the last free starting block,
+     * which frees up the first blocks while preserving the relative order. Landing on a block resolves
+     * its effect, so the penalty (malus) attached to the final block is applied to whoever ends up
+     * there.
      */
     public void shiftToLastStartingTile()
     {
-        //in questo caso sono da starting tile a starting tile  -> 1
+        // starting tile to starting tile -> 1
         List <Player> PlayersToShift = this.offerPath.getStartingTile().getPlayersOrderedByStartingBlock();
         for (Player player : PlayersToShift.reversed()) {
             this.offerPath.movePlayerToLastStartingTile(player,1);
@@ -360,9 +380,9 @@ public class Board {
 
     /**
      * Resolves all event cards currently present on the board (both upper and lower rows).
-     * Events are resolved in chronological order based on their {@link Era} (oldest to newest).
-     * Ensures that any Sustenance Event is always resolved strictly after all
-     * regular events, also adhering to the chronological Era order if multiple are present.
+     * Events are resolved in two groups: first, all regular events sorted chronologically
+     * by their {@link Era} (oldest to newest), followed by all sustenance events also sorted
+     * chronologically by their {@link Era} (oldest to newest).
      */
     public void resolveAllEvents() {
         List<SustenanceEventCard> sustenanceEvents = new ArrayList<>();
@@ -472,7 +492,13 @@ public class Board {
     public List<StartingBlock> getStartingBlocks() {
         return this.offerPath.getStartingTile().getStartingBlocks();
     }
-    //partendo dalla cardId la mappa alla rispettiva carta sulla board
+    /**
+     * Looks up a visible card on the board by its id, searching the upper row first and then the
+     * lower row.
+     *
+     * @param cardId the id of the card to find
+     * @return the matching {@link Card}, or {@code null} if no visible card has that id
+     */
     public Card findCardById(int cardId) {
         for (Card card : this.getUpperRowCards()) {
             if (card.getId() == cardId) {

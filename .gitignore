@@ -35,4 +35,5 @@ data/
 
 # Generated Javadocs
 assets/api
+docs/api/
 deliverables/javadoc

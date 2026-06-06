@@ -80,11 +80,17 @@ public class OfferPath {
     }
 
     /**
-     * Moves the player from wherever it can be to the last free startingBlock
-     * @param player
+     * Removes the player from their current location and places them on the last
+     * available starting block (the lowest position in the next round's turn order).
+     *
+     * @param player the player to move to the last available starting block
+     * @param from origin of the player, used to know which location to clear before the move:
+     *             {@code 0} if the player is currently on an offer space (the occupied offer
+     *             space is cleared), {@code 1} if the player is currently on the starting tile
+     *             (the player is removed from their current starting block)
      */
     public void movePlayerToLastStartingTile(Player player, int from) {
-        //puliamo l'offerspace o lo startingBlock dove si trovava, from = 0 da offerpath, from = 1 da startingTile
+        // clear the offer space or starting block where the player was: from = 0 means offer path, from = 1 means starting tile
         if(from == 1)
         {
             this.startingTile.removePlayer(player);
@@ -166,11 +172,16 @@ public class OfferPath {
     }
 
     /**
-     * Retrieves the specific drafting rules for the specified player
-     * based on the space they currently occupy.
+     * Returns the drafting rules for the given player, read from the offer space they
+     * currently occupy. This method only reads and returns the values; it does not apply
+     * or resolve any effect.
      *
-     * @param player The player whose active turn is being resolved.
-     * @return An int[] containing the drafting rules: index 0 is the number of cards to draw from the upper row, and index 1 from the lower row.
+     * <p>If the player does not occupy any offer space, {@code {0, 0}} is returned as a
+     * safety fallback.
+     *
+     * @param player the player whose occupied offer space is inspected
+     * @return a two-element {@code int[]} where index 0 is the number of cards to draft from
+     *         the upper row and index 1 is the number of cards to draft from the lower row
      */
     public int[] resolveActionForPlayer(Player player) {
         return this.offerSpaces.stream()

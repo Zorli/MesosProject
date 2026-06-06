@@ -44,10 +44,18 @@ import java.util.List;
  * receives the player, because some character and building effects react
  * immediately when a character is drawn.
  *
- * <p>When a standard draft turn ends, the player returns from the offer path to
- * the starting tile. That placement contributes to the next round order. If a
- * player disconnects before their draft turn is resolved, this handler closes
- * that draft turn in the same way and returns the player to the starting tile.
+ * <p>When a standard draft turn ends, the player leaves the offer path for the
+ * starting tile, and that placement contributes to the next round order. The
+ * exact destination depends on why the turn ended:
+ * <ul>
+ *     <li>a <em>connected</em> player who drew, or who simply had no useful card
+ *     left to draft, returns to the <em>first</em> available starting block via
+ *     {@link Board#returnPlayerToStartingTile(Player)} (a normal completion);</li>
+ *     <li>a <em>disconnected</em> player has their draft turn force-closed and is
+ *     sent to the <em>last</em> available starting block via
+ *     {@link Board#movePlayerToLastStartingTile(Player)}, so they start the next
+ *     round in the worst position.</li>
+ * </ul>
  *
  * <p>The extra draw is different: the eligible player is already on the starting
  * tile because the standard draft is over. Drawing the extra card, or
@@ -337,13 +345,13 @@ public class CardDraftHandler {
     }
 
     /**
-     * Finishes the current player's standard draw turn.
+     * Finishes the current (connected) player's standard draw turn.
      *
-     * <p>When a player has no useful standard draw left, the player returns from
-     * the offer path to the starting tile. This placement on the starting tile
-     * contributes to the next round order. The player's consumed quotas are then
-     * cleared and the round flow moves to the next drawable player or to the
-     * next phase.
+     * <p>Called once the player has either used up their draw quota or has no
+     * useful standard draw left. The player returns from the offer path to the
+     * <em>first</em> available starting block, and this placement contributes to
+     * the next round order. The player's consumed quotas are then cleared and the
+     * round flow moves to the next drawable player or to the next phase.
      *
      * @param player player whose standard draw turn has ended
      */
@@ -356,14 +364,22 @@ public class CardDraftHandler {
     /**
      * Finds the next player who can perform a useful standard draw.
      *
-     * <p>A player is skipped when the player has no remaining quota that can be
-     * matched with a drawable card currently on the board. Skipped players still
-     * return to the starting tile, because their active round participation is
-     * over even if they could not choose a card.
-     *
-     * <p>A disconnected player is handled with the same physical cleanup: their
-     * draft turn is considered closed, they return to the starting tile, and the
-     * cursor continues looking for the next connected drawable player.
+     * <p>The cursor advances player by player, skipping two distinct kinds of
+     * player. The distinction matters because each is sent to a different
+     * starting block:
+     * <ul>
+     *     <li>a <em>disconnected</em> player is skipped first, regardless of
+     *     their quota. Their draft turn is force-closed by
+     *     {@link #skipDisconnectedPlayer(Player)}, which sends them to the
+     *     <em>last</em> starting block;</li>
+     *     <li>a <em>connected</em> player who has no remaining quota matching a
+     *     drawable board card is skipped by
+     *     {@link #skipPlayerWithoutUsefulDraw(Player)}, which returns them to the
+     *     <em>first</em> starting block. Their active participation is over even
+     *     though they could not choose a card.</li>
+     * </ul>
+     * In both cases the player's standard draw quota is cleared and the search
+     * continues with the next player.
      *
      * <p>If no further player can draw, the method transitions out of the
      * standard card-drafting phase.
@@ -395,6 +411,18 @@ public class CardDraftHandler {
     }
 
 
+    /**
+     * Closes the draft turn of a connected player who has nothing useful to draw.
+     *
+     * <p>The player is still connected but none of their remaining quota matches
+     * a drawable board card, so their turn is over. They return to the
+     * <em>first</em> available starting block, exactly like a player who finished
+     * a normal turn, and their leftover quota is cleared. Contrast this with
+     * {@link #skipDisconnectedPlayer(Player)}, which sends a disconnected player
+     * to the <em>last</em> block instead.
+     *
+     * @param player connected player with no useful draw to skip
+     */
     private void skipPlayerWithoutUsefulDraw(Player player) {
         this.board.returnPlayerToStartingTile(player);
         this.playerDraftState.resetForNextPlayer(player);
@@ -403,10 +431,13 @@ public class CardDraftHandler {
     /**
      * Closes the draft turn of a disconnected player.
      *
-     * <p>The player may still be physically on an offer space because they
-     * placed a totem earlier in the round but did not resolve their draft turn.
-     * Returning them to the starting tile keeps the board ready for the next
-     * round and removes their remaining standard draw quota.
+     * <p>The player is typically still standing on an offer space, because they
+     * placed a totem earlier in the round but never resolved their draft turn.
+     * They are moved off that space to the <em>last</em> available starting block,
+     * which both keeps the board ready for the next round and penalizes their
+     * next-round position; their remaining standard draw quota is cleared.
+     * Contrast this with {@link #skipPlayerWithoutUsefulDraw(Player)}, used for a
+     * connected player, which returns them to the <em>first</em> block instead.
      *
      * @param player disconnected player to skip
      */

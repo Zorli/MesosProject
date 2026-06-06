@@ -25,7 +25,7 @@ import java.util.Objects;
  *  <p><strong>Threading &amp; Design:</strong>
  * <ul>
  *   <li>Implements {@link Runnable} and executes inside its own dedicated worker thread (named {@code Lobby-ID-Worker}).</li>
- *   <li>Uses a threat-safe command queue ({@link BlockingQueue}) to receive commands asynchronously.</li>
+ *   <li>Uses a thread-safe command queue ({@link BlockingQueue}) to receive commands asynchronously.</li>
  *   <li>The run loop processes enqueued commands sequentially (FIFO), preventing concurrency conflicts
  *       and race conditions on the underlying {@link Lobby} model without lock overhead.</li>
  * </ul>

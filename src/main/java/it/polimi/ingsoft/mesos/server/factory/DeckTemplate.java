@@ -35,6 +35,7 @@ public final class DeckTemplate {
     /**
      * Wraps a tribe card supplier together with its optional player-count constraint.
      *
+     * @param cardId identifier assigned to the card
      * @param minPlayers minimum player count required for the card, or {@code null} if always available
      * @param factory supplier that creates a fresh tribe card instance
      * @return a tribe card blueprint
@@ -46,6 +47,7 @@ public final class DeckTemplate {
     /**
      * Wraps a building card supplier in a blueprint.
      *
+     * @param cardId identifier assigned to the card
      * @param factory supplier that creates a fresh building card instance
      * @return a building card blueprint
      */
@@ -160,6 +162,7 @@ public final class DeckTemplate {
         /**
          * Creates a blueprint for a tribe card that can later be instantiated on demand.
          *
+         * @param cardId identifier assigned to the card
          * @param minPlayers minimum supported player count, or {@code null} when always available
          * @param factory supplier that creates the concrete card instance
          */
@@ -209,6 +212,7 @@ public final class DeckTemplate {
         /**
          * Creates a blueprint for a building card.
          *
+         * @param cardId identifier assigned to the card
          * @param factory supplier that creates the concrete card instance
          */
         private BuildingCardBlueprint(int cardId, Supplier<? extends BuildingCard> factory) {

@@ -67,7 +67,7 @@
  * <h2>Where to go next</h2>
  * <p>For a step-by-step modification guide (adding a button, adding a page,
  * binding a new payload to the UI, recipes and common pitfalls) see the
- * Markdown document {@code docs/guide-javafx-gui-modification.md} in the
- * project root.
+ * Markdown document {@code assets/guides/guide-javafx-gui-modification.md} in
+ * the project root.
  */
 package it.polimi.ingsoft.mesos.client.view.gui;

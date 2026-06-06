@@ -57,7 +57,7 @@ public final class PreLobbyPayloadMapper {
      *
      * @param event the type of event triggering the lobby update (e.g., creation)
      * @param nickname the nickname of the player associated with the event
-     * @param message an descriptive message associated with the event
+     * @param message a descriptive message associated with the event
      * @param lobby the {@link Lobby} domain model being mapped
      * @return the constructed {@link LobbyUpdatePayload}
      */

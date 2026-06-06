@@ -96,7 +96,7 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
      *               server phase
      * @param out stream used for diagnostic TCP messages
      * @throws NullPointerException if {@code clientSocket},
-     *                              {@code serverController}, or {@code out} is null
+     *                              {@code serverConnectionLifecycle}, or {@code out} is null
      * @throws IllegalStateException if the output writer cannot be opened on the
      *                               client socket
      */
