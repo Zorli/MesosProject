@@ -204,14 +204,11 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.11.2</version>
                 <configuration>
-                    <outputDirectory>${project.basedir}/assets/api</outputDirectory>
+                    <outputDirectory>${project.basedir}/deliverables/javadoc</outputDirectory>
                     <show>public</show>
                     <nohelp>true</nohelp>
                     <author>true</author>
                     <version>true</version>
-                    <links>
-                        <link>https://docs.oracle.com/en/java/javase/21/docs/api/</link>
-                    </links>
                     <javadocDirectory>${project.basedir}/src/main/resources</javadocDirectory>
                     <doclint>none</doclint>
                     <additionalOptions>
