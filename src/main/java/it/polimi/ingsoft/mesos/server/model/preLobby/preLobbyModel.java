@@ -67,7 +67,7 @@ public class preLobbyModel {
     }
 
 
-    // --- METODI DI BUSINESS (Fase PRE-LOBBY) ---
+    // --- BUSINESS METHODS (PRE-LOBBY PHASE) ---
 
     /**
      * Authenticates a client session with a unique nickname.
@@ -176,7 +176,7 @@ public class preLobbyModel {
         }
     }
 
-    // --- CHECK DI DOMINIO PRIVATI ---
+    // --- PRIVATE DOMAIN CHECKS ---
 
     /**
      * Asserts that a session and its associated nickname are not already registered in any lobby.

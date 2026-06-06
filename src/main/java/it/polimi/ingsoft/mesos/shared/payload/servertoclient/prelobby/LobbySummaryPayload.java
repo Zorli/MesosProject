@@ -18,7 +18,7 @@ public class LobbySummaryPayload  implements Serializable {
     /** The maximum capacity/player limit allowed for this lobby. */
     public final int maxPlayers;
 
-    /** The current status of the lobby (e.g. JOINABLE, DISMISSED, RUNNING). */
+    /** The current status of the lobby, as the name of a {@code LobbyStatus} (WAITING, READY, STARTED, or CLOSED). */
     public final String status;
 
     /**

@@ -33,12 +33,14 @@ public class ServerConnectionLifecycle {
     private final PingPongRoutine pingPongRoutine;
 
     /**
-     * Creates a lifecycle service backed by the shared session registry and
-     * server session registry.
+     * Creates a lifecycle service backed by the shared session registry.
+     * <p>
+     * The constructor also builds and starts the {@link PingPongRoutine} that
+     * monitors connection timeouts for the registered sessions.
      *
      * @param sessions registry containing session state, phase, controllers, and
      *                 network connections
-     * @throws NullPointerException if {@code sessions} or {@code serverModel} is null
+     * @throws NullPointerException if {@code sessions} is null
      */
     public ServerConnectionLifecycle(ServerSessionRegistry sessions) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
@@ -49,10 +51,10 @@ public class ServerConnectionLifecycle {
     /**
      * Registers a newly accepted client connection and returns its session id.
      * <p>
-     * The connection is stored in the session registry. If the same object can
-     * also receive server updates through {@link Listener}, it is registered as a
-     * global listener so that pre-lobby errors and responses can be sent back to
-     * the client.
+     * The connection is stored in the session registry under a freshly generated
+     * session id. When the connection also implements {@link Listener}, the
+     * registry can later expose it as the session listener so that pre-lobby
+     * errors and responses can be sent back to the client.
      *
      * @param connection network connection associated with the client
      * @return unique session id assigned by the registry
@@ -78,12 +80,12 @@ public class ServerConnectionLifecycle {
     /**
      * Starts the disconnection flow for a session.
      * <p>
-     * The global listener is removed first, because after this point the session
-     * should no longer receive server messages. The current phase is then read
-     * from the registry. Game and lobby sessions are not removed directly here:
-     * a {@link SystemDisconnectCommand} is enqueued to the controller that owns
-     * that phase, so the phase-specific model can decide how to clean up the
-     * player. Sessions outside lobby and game are unregistered immediately.
+     * The current phase is read from the registry snapshot. Game and lobby
+     * sessions are not removed directly here: a {@link SystemDisconnectCommand}
+     * is enqueued to the controller that owns that phase, so the phase-specific
+     * model can decide how to clean up the player. Sessions outside lobby and
+     * game are unregistered immediately. If no snapshot exists for the session,
+     * the method returns without doing anything.
      *
      * @param sessionId session to disconnect
      */

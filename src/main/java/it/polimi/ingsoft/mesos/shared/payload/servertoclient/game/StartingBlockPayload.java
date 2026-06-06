@@ -7,7 +7,7 @@ import java.io.Serializable;
  * before players begin moving their totems onto the offer spaces.
  */
 public class StartingBlockPayload implements Serializable {
-    /** The index/position of this starting block (1 to 4). */
+    /** The turn-order position of this starting block, starting from 1. */
     public final int position;
 
     /** The food adjustment modifier granted by this starting block. */

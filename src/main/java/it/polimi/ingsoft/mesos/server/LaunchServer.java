@@ -26,8 +26,11 @@ import java.util.Map;
  * Both protocols share the same {@link MessageRouter} and the same {@link ServerSessionRegistry},
  * so players using different protocols still enter the same lobby and game system.</p>
  *
- * <p>Network configuration is read only from {@code server.env}. This keeps one
- * explicit source of truth for the ports and RMI address used by the server.</p>
+ * <p>Network configuration is resolved in layers: an optional {@code server.env} file
+ * provides base {@code KEY=value} settings, which are then overridden by JVM system
+ * properties or process environment variables of the same name
+ * ({@code MESOS_TCP_PORT}, {@code MESOS_RMI_PORT}, {@code MESOS_SERVER_RMI_HOST}).
+ * When a value is set in none of these sources, the built-in defaults apply.</p>
  */
 public final class LaunchServer {
     private static final String SERVER_ENV_FILE = "server.env";
@@ -43,13 +46,13 @@ public final class LaunchServer {
         }
     }
     /*
-    Architettura del server:
-    - Virtualview RMI/TCP: Gestione delle connessioni in entrata ed in uscita, si occupano del relativo protocollo di rete
-      scambiandosi payload. Quello che la interfaces sa fare è ricevere e mandare in uscita payload, sul come instradarli
-      internamente se ne occupa il relativo router
-    - Harness vari protocol dependent delle interfaces : connection acceptor, commandhandler, etc
-    - Command Router: Dato un payload recuper lo snapshot della sessione del player e lo instrada correttamente
-    */
+     * Server architecture:
+     * - RMI/TCP virtual views: handle inbound/outbound connections and the network protocol,
+     *   exchanging payloads. A view only receives and sends payloads; internal routing is the
+     *   MessageRouter's job.
+     * - Protocol-dependent harness around the views: connection acceptor, command handler, etc.
+     * - MessageRouter: given a payload, looks up the sender's session snapshot and routes it accordingly.
+     */
     static int run(Map<String, String> environment, PrintStream out, PrintStream err) {
         try {
 

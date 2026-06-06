@@ -6,7 +6,6 @@
       requires org.controlsfx.controls;
       requires com.google.gson;
       requires java.rmi;
-      //requires it.polimi.ingsoft.mesos;
 
       opens it.polimi.ingsoft.mesos.client.view.gui to javafx.fxml, javafx.graphics;
       opens it.polimi.ingsoft.mesos.server to com.google.gson;

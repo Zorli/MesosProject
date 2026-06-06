@@ -185,22 +185,37 @@ public class TotemPlacementHandler {
     }
 
     /**
-     * Prepares the standard card-drafting phase after all totems are placed.
-     *<p>
-     *     when we are sure that all the active player are on the offer path, and
-     *     it's time to change phases, the player still on the starting tile are shifted
-     *     as described by the method on the board
-     *</p>
-     * <p>Offer space A is special: it resolves immediately and the player on A
-     * returns to the starting tile before card drafting begins. After resolving
-     * A, the board exposes the offer-path resolution order. Only players after a
-     * connected ones are copied into the active order for
-     * {@link RoundPhase#PLAYER_DRAWS}.
+     * Prepares the standard card-drafting phase once every totem has been placed.
      *
-     * <p>This is what allows a player who placed a totem, disconnected, and
-     * reconnected before the draft starts to draw normally. A player who is
-     * still disconnected when the draft order is created stays physically on
-     * the offer path, but does not receive a draft turn, it just gets moved.
+     * <p>First, the players who never left the starting tile (those who never
+     * placed a totem, typically because they were disconnected when their turn
+     * came) are shifted to the bottom of the next-round order through
+     * {@link Board#shiftToLastStartingTile()}, freeing the first starting blocks
+     * for the players that will return from the offer path.
+     *
+     * <p>Offer space A is special: {@link Board#resolveEventA()} resolves it
+     * immediately and returns the player who was on A to the starting tile,
+     * before card drafting begins. The board then exposes the offer-path
+     * resolution order, which contains every player still standing on an offer
+     * space (in resolution order).
+     *
+     * <p>That resolution order is filtered by connection state to build the
+     * active draft order:
+     * <ul>
+     *     <li>a <em>connected</em> player is kept and will receive a draft turn
+     *     during {@link RoundPhase#PLAYER_DRAWS};</li>
+     *     <li>a <em>disconnected</em> player is removed from the order and moved
+     *     off the offer path to the last starting block via
+     *     {@link Board#movePlayerToLastStartingTile(Player)}, so they get no
+     *     draft turn and start the next round in the worst position.</li>
+     * </ul>
+     * This is what lets a player who placed a totem, disconnected, and
+     * reconnected before drafting starts draw normally: by the time the order is
+     * built they are connected again and are kept.
+     *
+     * <p>If the filtering empties the order (no connected player is left on the
+     * offer path), there is no one to draft, so the round skips straight to
+     * {@link RoundPhase#RESETTING_BOARD}.
      */
     private void startPlayerDrawPhase() {
         this.board.shiftToLastStartingTile();

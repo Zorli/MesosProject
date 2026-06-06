@@ -480,11 +480,11 @@ public final class ParserJson {
     }
 
     /**
-     * Ensures that the provided node is a JSON array.
+     * Ensures that the provided element exists and is a JSON array.
      *
-     * @param node node to validate
+     * @param element element to validate
      * @param fieldName logical field name used in validation errors
-     * @return the same node when it is a valid array
+     * @return the same element as a valid array
      */
     private static JsonArray requiredArray(JsonElement element, String fieldName) {
         if (element == null || element.isJsonNull()) {

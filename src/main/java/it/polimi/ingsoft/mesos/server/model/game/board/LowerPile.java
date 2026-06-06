@@ -91,11 +91,16 @@ public class LowerPile {
     }
 
     /**
-     * Resolves all event cards currently present in the lower row.
-     * If multiple regular events of the exact same class are present, they are resolved
-     * in chronological order based on their {Era} (oldest to newest).
-     * Ensures that any Sustenance Event is always resolved strictly after all
-     * regular events, also adhering to the chronological Era order if multiple are present.
+     * Resolves all event cards currently present in the lower row's tribe cards.
+     *
+     * <p>Events are split into two groups and resolved in the following order:
+     * <ol>
+     *   <li>All regular {@link EventCard}s that are not {@link SustenanceEventCard}s, sorted
+     *       by their {@link it.polimi.ingsoft.mesos.server.model.game.enums.Era Era} from
+     *       oldest to newest.</li>
+     *   <li>All {@link SustenanceEventCard}s, likewise sorted by Era from oldest to newest.</li>
+     * </ol>
+     * Every regular event is therefore resolved before any sustenance event, regardless of Era.
      *
      * @param players The list of players affected by the events.
      */

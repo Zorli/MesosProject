@@ -23,16 +23,17 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.io.PrintStream;
 /**
- * Dedicated RMI remote session for a single authenticated client.
+ * Dedicated RMI remote session for a single connected client.
  * <p>
- * Instances of this class are dynamically created by the {@link RmiConnectionEntryPoint}
- * upon successful login. This class acts as a private proxy for the client on the server,
- * maintaining their session id and holding the remote reference to their personal
- * callback receiver ({@link RmiClientService}).
+ * Instances of this class are created by {@link RmiConnectionEntryPoint} when a
+ * client connects, before any authentication takes place. This class acts as a
+ * private proxy for the client on the server, maintaining its session id and
+ * holding the remote reference to its personal callback receiver
+ * ({@link RmiClientService}).
  * <p>
  * It is responsible for intercepting inbound client commands,
  * delegating routing to the central {@link MessageRouter}, and dispatching
- * outbound server updates back to the client via asynchronous RMI callbacks.
+ * outbound server updates back to the client via RMI callbacks.
  */
 public class VirtualViewRMI extends UnicastRemoteObject implements RmiServerService, ClientConnection, Listener {
     private final ServerConnectionLifecycle serverConnectionLifecycle;

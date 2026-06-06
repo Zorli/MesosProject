@@ -10,10 +10,11 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListP
 /**
  * Client-side output contract.
  *
- * <p>The networking layer does not know whether the user is using the text
- * interface or the graphical interface. It(VirtualServers,{@link VirtualServer}) only receives server-to-client
- * payloads and forwards them to a {@code ClientView}. Each implementation then
- * decides how those payloads must be shown to the user.
+ * <p>The networking layer (the {@link VirtualServer} implementations) does not
+ * know whether the user is using the text interface or the graphical interface.
+ * It only receives server-to-client payloads and forwards them to a
+ * {@code ClientView}. Each implementation then decides how those payloads must
+ * be shown to the user.
  *
  * <p>In the current client architecture this interface is used by
  * {@link MessageRouter}: the router reads the payload type and calls the method

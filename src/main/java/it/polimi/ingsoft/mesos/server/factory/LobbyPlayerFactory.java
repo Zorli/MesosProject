@@ -27,6 +27,8 @@ public class LobbyPlayerFactory {
      *
      * @param nicknames lobby users ready to enter the match
      * @return newly created player roster
+     * @throws IllegalArgumentException if {@code nicknames} is null, empty, contains a
+     *                                  null entry, or exceeds the available totem colors
      */
     public List<Player> createPlayers(List<String> nicknames) {
         if (nicknames == null) {

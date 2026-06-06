@@ -12,7 +12,8 @@ import java.util.Objects;
 /**
  * Aggregate root representing the full mutable state of a single pre-match Lobby.
  *
- * <p>The Lobby manages user enrollment, capacity checks, host assignment, and transition to a live game match.
+ * <p>The Lobby tracks user enrollment, capacity checks, host assignment, and the lifecycle status that
+ * gates when the host may start the match; the actual handoff to a game is performed by the controller.
  * It operates using an Observer Pattern (via {@link Listener} registration) to notify connected clients of
  * updates, similar to the pattern found in the main {@code Game} model.
  *
@@ -27,9 +28,12 @@ import java.util.Objects;
  * </ul>
  *
  * <p><strong>Error Handling Pattern:</strong>
- * State-modifying methods are internally validated. Any illegal state or domain rule violation throws a runtime exception
- * which is caught by the central engine {@link #executeLobbyAction(Runnable, Listener)}. This wrapper notifies the client that
- * made the mistake via a unicast error payload or broadcasts it.
+ * State-modifying methods are wrapped by {@link #executeLobbyAction(Runnable, Listener)}, which runs the
+ * domain logic and catches any {@code IllegalArgumentException}/{@code IllegalStateException} it throws.
+ * On failure it emits an {@link ErrorPayload} — unicast to the offending client, or broadcast when no
+ * specific target is given — and returns {@code false}. On success it only returns {@code true}: the
+ * success notification (player joined, player left, match started) is sent by the controller, which
+ * calls the {@code notify*} methods after the action returns.
  */
 public class Lobby {
     /** The minimum number of players allowed in a match. */
@@ -77,7 +81,7 @@ public class Lobby {
         this.payloadMapper = new LobbyPayloadMapper();
     }
 
-    // --- GESTIONE LISTENER (Observer Pattern) ---
+    // --- LISTENER MANAGEMENT (Observer Pattern) ---
 
     /**
      * Adds an active listener (virtual view connection) to be notified of updates.
@@ -249,11 +253,14 @@ public class Lobby {
         }
     }
 
-    // --- CENTRAL EXECUTION ENGINE ---
+    // --- ERROR-HANDLING WRAPPER ---
 
     /**
-     * Standard runner for domain model modifications. Wraps validation actions in try-catch blocks
-     * to safely construct and route {@link ErrorPayload}s.
+     * Runs a state-modifying domain action and handles only its error path.
+     *
+     * <p>Wraps the action in a try-catch that converts a thrown {@code IllegalArgumentException} or
+     * {@code IllegalStateException} into a routed {@link ErrorPayload}. On success it does not notify
+     * anything; the controller sends the success update via the {@code notify*} methods.
      *
      * @param action the domain logic callback to execute
      * @param errorUnicastTarget the specific listener to notify of errors (sends broadcast if null)

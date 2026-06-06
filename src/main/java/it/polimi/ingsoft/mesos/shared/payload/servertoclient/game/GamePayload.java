@@ -2,7 +2,7 @@ package it.polimi.ingsoft.mesos.shared.payload.servertoclient.game;
 
 import java.io.Serializable;
 import java.util.List;
-//Upper class of the payload
+
 /**
  * Represents the complete game state payload broadcasted by the server.
  * <p>
@@ -23,7 +23,7 @@ public class GamePayload implements Serializable, GameServerPayload {
     /** The sequence, current active player, and phase of turns in the round. */
     public final TurnOrderPayload turnOrder;
 
-    /** The detailed sub-phase of the active player's turn. */
+    /** The state of the active player's standard card-drafting turn. */
     public final TurnStatePayload turnState;
 
     /** The list of player state summaries representing everyone in the game. */

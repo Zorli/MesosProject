@@ -146,7 +146,7 @@ final class GamePayloadMapper {
      * Converts all game players into client payloads.
      *
      * @param players model players
-     * @param game
+     * @param game game owning the players, used to resolve each player's connection state
      * @return payload representation of every player
      */
     private static List<PlayerPayload> toPlayerPayloads(List<Player> players, Game game) {
@@ -163,10 +163,11 @@ final class GamePayloadMapper {
      * Converts one model player into a client payload.
      *
      * <p>The payload contains only client-visible data: nickname, resources,
-     * prestige points, totem color, and tribe cards.
+     * prestige points, totem color, tribe cards, and connection status.
      *
      * @param player player to convert
-     * @param game
+     * @param game game owning the player, queried via {@link Game#getConnectedPlayers()}
+     *             to determine whether the player is currently connected
      * @return payload representation of the player
      */
     private static PlayerPayload toPlayerPayload(Player player, Game game) {
@@ -234,7 +235,7 @@ final class GamePayloadMapper {
      * Converts one model card into the minimal card data needed by clients.
      *
      * @param card card to convert
-     * @return payload containing id, runtime card type, and era ordinal
+     * @return payload containing id, runtime card type, and 1-based era number
      */
     private static CardPayload toCardPayload(Card card) {
         int id = card.getId();

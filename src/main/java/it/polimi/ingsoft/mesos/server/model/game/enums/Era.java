@@ -24,6 +24,11 @@ public enum Era {
         };
     }
 
+    /**
+     * Returns the 1-based number of this era ({@code first} = 1, {@code second} = 2, {@code third} = 3).
+     *
+     * @return the era number, from 1 to 3
+     */
     public int getIntegerEra(){
         return this.ordinal()+1;
     }

@@ -8,8 +8,12 @@ import java.util.stream.Collectors;
 
 /**
  * Represents the starting tile of the game board, containing the individual starting blocks.
- * Manages the initialization of these blocks based on the player count and handles
- * the end-of-round resolution of food income and prestige penalties based on the turn order.
+ * Manages the initialization of these blocks based on the player count.
+ *
+ * <p>Each block carries food and prestige modifiers that are applied immediately when a
+ * player is placed on it (see {@link StartingBlock#resolveEffect()}), not at the end of the
+ * round. The block on which a player lands also determines their position in the turn order
+ * for the upcoming round; that order is exposed separately through {@link #getNextRoundOrder()}.
  */
 public class StartingTile {
     private List<StartingBlock> startingBlocks;
@@ -79,6 +83,14 @@ public class StartingTile {
     }
 
 
+    /**
+     * Places the specified player on the last available starting block (scanning the blocks
+     * in reverse order). As with {@link #placePlayerOnNextAvailableBlock(Player)}, the
+     * occupied block's effect (food bonus/cost or prestige penalty) is resolved immediately
+     * upon placement.
+     *
+     * @param player the player to place on the last available starting block
+     */
     public void placePlayerOnLastAvailableBlock(Player player) {
 
         for (StartingBlock block : this.startingBlocks.reversed()) {
@@ -125,8 +137,10 @@ public class StartingTile {
     }
 
     /**
-     * just wrapper to not change name
-     * @return list of player occupying the startingBlock
+     * Returns the players currently on the starting blocks, ordered by their turn order for the
+     * upcoming round. Alias for {@link #getNextRoundOrder()}.
+     *
+     * @return players occupying the starting blocks, in next-round turn order
      */
     public List<Player> getPlayersOrderedByStartingBlock() {
         return this.getNextRoundOrder();
