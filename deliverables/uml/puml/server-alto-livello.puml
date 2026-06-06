@@ -52,61 +52,60 @@ skinparam package {
 hide members
 
 ' ─── NETWORK LAYER ─────────────────────────────────────────────────────────
-package "server.network" as pkg_net {
+package "it.polimi.ingsoft.mesos.server.network" as pkg_net {
   class ConnectionAcceptor <<network>>
-  class MessageRouter <<network>>
   class ClientCommandHandler <<network>>
   class ProtocolErrorMapper <<mapper>>
   class PingPongRoutine <<service>>
   class ServerConnectionLifecycle <<service>>
-
-  ConnectionAcceptor -[hidden]right-> MessageRouter
-  MessageRouter -[hidden]right-> ClientCommandHandler
-  PingPongRoutine -[hidden]right-> ServerConnectionLifecycle
-  PingPongRoutine -[hidden]down-> ClientCommandHandler
-}
-
-' ─── VIRTUAL VIEW LAYER ────────────────────────────────────────────────────
-package "server.virtualview" as pkg_view {
   interface VirtualView
   interface Listener
   class VirtualViewTCP <<virtualview>>
   class VirtualViewRMI <<virtualview>>
   class RmiConnectionEntryPoint <<virtualview>>
 
+  ConnectionAcceptor -[hidden]right-> ClientCommandHandler
+  PingPongRoutine -[hidden]right-> ServerConnectionLifecycle
+  PingPongRoutine -[hidden]down-> ClientCommandHandler
   VirtualView -[hidden]right-> Listener
   VirtualViewTCP -[hidden]right-> RmiConnectionEntryPoint
   VirtualViewRMI -[hidden]right-> VirtualViewTCP
 }
 
+' ─── HELPER LAYER ──────────────────────────────────────────────────────────
+package "it.polimi.ingsoft.mesos.server.helper" as pkg_helper {
+  class MessageRouter <<network>>
+  class ServerSessionRegistry
+  
+  MessageRouter -[hidden]right-> ServerSessionRegistry
+}
+
 ' ─── CONTROLLER LAYER ──────────────────────────────────────────────────────
-package "server.controller" as pkg_ctrl {
-  class ServerController <<controller>>
+package "it.polimi.ingsoft.mesos.server.controller" as pkg_ctrl {
+  class PreLobbyController <<controller>>
   class LobbyController <<controller>>
   class GameController <<controller>>
-  class ServerSessionRegistry
 
-  ServerController -[hidden]right-> LobbyController
+  PreLobbyController -[hidden]right-> LobbyController
   LobbyController -[hidden]right-> GameController
-  GameController -[hidden]right-> ServerSessionRegistry
 }
 
 ' ─── DOMAIN MODEL ──────────────────────────────────────────────────────────
-package "server.model" as pkg_mdl {
-  class ServerModel <<model>>
+package "it.polimi.ingsoft.mesos.server.model" as pkg_mdl {
+  class preLobbyModel <<model>>
   class Lobby <<model>>
   class Game <<model>>
   class Player <<model>>
   class Board <<model>>
 
-  ServerModel -[hidden]right-> Lobby
+  preLobbyModel -[hidden]right-> Lobby
   Lobby -[hidden]right-> Game
   Game -[hidden]right-> Player
   Player -[hidden]right-> Board
 }
 
 ' ─── FACTORY ───────────────────────────────────────────────────────────────
-package "server.factory" as pkg_factory {
+package "it.polimi.ingsoft.mesos.server.factory" as pkg_factory {
   interface GameFactory
   class DefaultGameFactory <<factory>>
   class LobbyPlayerFactory <<factory>>
@@ -116,20 +115,20 @@ package "server.factory" as pkg_factory {
 }
 
 ' ─── PACKAGE LAYOUT ────────────────────────────────────────────────────────
-pkg_net    -[hidden]right-> pkg_view
+pkg_net    -[hidden]right-> pkg_helper
 pkg_net    -[hidden]down->  pkg_ctrl
-pkg_view   -[hidden]down->  pkg_ctrl
+pkg_helper -[hidden]down->  pkg_ctrl
 pkg_ctrl   -[hidden]down->  pkg_mdl
 pkg_mdl    -[hidden]right-> pkg_factory
 
 ' ─── KEY INTER-LAYER FLOWS (read top → bottom) ─────────────────────────────
 VirtualViewTCP     --> MessageRouter       : routes 
 VirtualViewRMI     --> MessageRouter       : routes 
-MessageRouter      --> ServerController    : routes 
+MessageRouter      --> PreLobbyController  : routes 
 MessageRouter      --> LobbyController     : routes 
 MessageRouter      --> GameController      : routes 
 
-ServerController   --> ServerModel         : drives 
+PreLobbyController --> preLobbyModel       : drives 
 LobbyController    --> Lobby               : drives 
 GameController     --> Game                : drives 
 

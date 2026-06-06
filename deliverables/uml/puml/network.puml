@@ -147,111 +147,111 @@ package "Shared (RmiNetworkInterfaces)" {
 }
 
 ' ─── SERVER SIDE ───────────────────────────────────────────────────────────
-package "Server" {
+package "it.polimi.ingsoft.mesos.server" {
+  package "network" {
+    package "interfaces" {
+      interface VirtualView {
+        + handleClientMessage(clientMessage: ClientMessage): void
+        + pong(payload: PongPayload): void
+        + closeSession(): void
+      }
 
-  together {
-    interface VirtualView {
-      + handleClientMessage(clientMessage: ClientMessage): void
-      + pong(payload: PongPayload): void
-      + closeSession(): void
+      interface ClientConnection {
+        + sendPing(): void
+        + close(): void
+      }
+
+      interface Listener {
+        + notifyUpdate(payload: ServerPayload): void
+      }
     }
 
-    interface ClientConnection {
-      + sendPing(): void
-      + close(): void
+    package "tcp" {
+      class VirtualViewTCP <<service>> {
+        - clientSocket: Socket
+        - preLobbyController: PreLobbyController
+        - sessionId: String
+        - router: MessageRouter
+        - commandHandler: ClientCommandHandler
+        + VirtualViewTCP(clientSocket: Socket, preLobbyController: PreLobbyController, router: MessageRouter)
+        + run(): void
+        + handleClientMessage(clientMessage: ClientMessage): void
+        + pong(payload: PongPayload): void
+        + closeSession(): void
+        + sendPing(): void
+        + notifyUpdate(payload: ServerPayload): void
+        + close(): void
+      }
+
+      class ConnectionAcceptor <<service>> {
+        - port: int
+        - preLobbyController: PreLobbyController
+        - router: MessageRouter
+        + ConnectionAcceptor(port: int, preLobbyController: PreLobbyController, router: MessageRouter)
+        + start(): void
+        + run(): void
+      }
+
+      class ClientCommandHandler <<handler>> {
+        - virtualView: VirtualViewTCP
+        + ClientCommandHandler(out: PrintStream, virtualView: VirtualViewTCP)
+        + handle(rawMessage: String): void
+      }
     }
 
-    interface Listener {
-      + notifyUpdate(payload: Object): void
+    package "rmi" {
+      class VirtualViewRMI <<service>> {
+        - preLobbyController: PreLobbyController
+        - clientCallback: RmiClientService
+        - sessionId: String
+        - router: MessageRouter
+        + VirtualViewRMI(preLobbyController: PreLobbyController, clientCallback: RmiClientService, router: MessageRouter)
+        + handleClientMessage(clientMessage: ClientMessage): void
+        + pong(payload: PongPayload): void
+        + closeSession(): void
+        + sendPing(): void
+        + notifyUpdate(payload: ServerPayload): void
+        + close(): void
+      }
+
+      class RmiConnectionEntryPoint <<service>> {
+        - preLobbyController: PreLobbyController
+        - router: MessageRouter
+        + RmiConnectionEntryPoint(preLobbyController: PreLobbyController, router: MessageRouter)
+        + connect(clientCallback: RmiClientService): RmiServerService
+      }
+    }
+
+    package "connectionHandling" {
+      class ProtocolErrorMapper <<mapper>> {
+        + {static} toErrorPayload(exception: RuntimeException): ErrorPayload
+      }
+
+      class ServerConnectionLifecycle <<service>> {
+        - sessions: ServerSessionRegistry
+        + ServerConnectionLifecycle(sessions: ServerSessionRegistry)
+        + registerConnection(connection: ClientConnection): String
+        + recordPong(sessionId: String): void
+        + disconnectSession(sessionId: String): void
+        + handleConnectionTimeout(sessionId: String): void
+      }
+
+      class PingPongRoutine <<service>> {
+        - sessions: ServerSessionRegistry
+        - connectionLifecycle: ServerConnectionLifecycle
+        + PingPongRoutine(sessions: ServerSessionRegistry, connectionLifecycle: ServerConnectionLifecycle)
+        + start(): void
+        + stop(): void
+      }
     }
   }
 
-  together {
-    class VirtualViewTCP <<service>> {
-      - clientSocket: Socket
-      - preLobbyController: ServerController
-      - sessionId: String
-      - router: MessageRouter
-      - commandHandler: ClientCommandHandler
-      + VirtualViewTCP(clientSocket: Socket, preLobbyController: ServerController, router: MessageRouter)
-      + run(): void
-      + handleClientMessage(clientMessage: ClientMessage): void
-      + pong(payload: PongPayload): void
-      + closeSession(): void
-      + sendPing(): void
-      + notifyUpdate(payload: Object): void
-      + close(): void
-    }
-
-    class VirtualViewRMI <<service>> {
-      - preLobbyController: ServerController
-      - clientCallback: RmiClientService
-      - sessionId: String
-      - router: MessageRouter
-      + VirtualViewRMI(preLobbyController: ServerController, clientCallback: RmiClientService, router: MessageRouter)
-      + handleClientMessage(clientMessage: ClientMessage): void
-      + pong(payload: PongPayload): void
-      + closeSession(): void
-      + sendPing(): void
-      + notifyUpdate(payload: Object): void
-      + close(): void
-    }
-  }
-
-  ' Entry points (TCP + RMI)
-  together {
-    class ConnectionAcceptor <<service>> {
-      - port: int
-      - preLobbyController: ServerController
-      - router: MessageRouter
-      + ConnectionAcceptor(port: int, preLobbyController: ServerController, router: MessageRouter)
-      + start(): void
-      + run(): void
-    }
-
-    class RmiConnectionEntryPoint <<service>> {
-      - preLobbyController: ServerController
-      - router: MessageRouter
-      + RmiConnectionEntryPoint(preLobbyController: ServerController, router: MessageRouter)
-      + connect(clientCallback: RmiClientService): RmiServerService
-    }
-  }
-
-  ' Message processing / routing
-  together {
-    class ClientCommandHandler <<handler>> {
-      - virtualView: VirtualViewTCP
-      + ClientCommandHandler(out: PrintStream, virtualView: VirtualViewTCP)
-      + handle(rawMessage: String): void
-    }
-
+  package "helper" {
     class MessageRouter <<service>> {
       - registry: ServerSessionRegistry
-      - preLobbyController: ServerController
-      + MessageRouter(registry: ServerSessionRegistry, preLobbyController: ServerController)
+      - preLobbyController: PreLobbyController
+      + MessageRouter(registry: ServerSessionRegistry, preLobbyController: PreLobbyController)
       + routeMessage(sessionId: String, payload: ClientPayload): void
-    }
-
-    class ProtocolErrorMapper <<mapper>> {
-      + {static} toErrorPayload(exception: RuntimeException): ErrorPayload
-    }
-
-    class ServerConnectionLifecycle <<service>> {
-      - sessions: ServerSessionRegistry
-      - serverModel: ServerModel
-      + ServerConnectionLifecycle(sessions: ServerSessionRegistry, serverModel: ServerModel)
-      + registerConnection(connection: ClientConnection): String
-      + recordPong(sessionId: String): void
-      + disconnectSession(sessionId: String): void
-      + handleConnectionTimeout(sessionId: String): void
-    }
-
-    class PingPongRoutine <<service>> {
-      - sessions: ServerSessionRegistry
-      - connectionLifecycle: ServerConnectionLifecycle
-      + PingPongRoutine(sessions: ServerSessionRegistry, connectionLifecycle: ServerConnectionLifecycle)
-      + start(): void
-      + stop(): void
     }
   }
 }

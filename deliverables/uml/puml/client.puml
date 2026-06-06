@@ -65,6 +65,7 @@ package "serverproxy" {
     + moveTotem(tile: String): void
     + chooseCard(cardId: int): void
     + extraDraw(cardId: int): void
+    + skipExtraDraw(): void
     + close(): void
   }
 
@@ -84,6 +85,7 @@ package "serverproxy" {
     + moveTotem(tile: String): void
     + chooseCard(cardId: int): void
     + extraDraw(cardId: int): void
+    + skipExtraDraw(): void
     + close(): void
   }
 
@@ -102,6 +104,7 @@ package "serverproxy" {
     + moveTotem(tile: String): void
     + chooseCard(cardId: int): void
     + extraDraw(cardId: int): void
+    + skipExtraDraw(): void
     + close(): void
   }
 }
@@ -145,7 +148,7 @@ package "view" {
     + showLobbyUpdate(payload: LobbyUpdatePayload): void
     + showLobbyList(payload: LobbyListPayload): void
     + showGameUpdate(payload: GamePayload): void
-    + {default} showFinalGameResult(payload: GamePayload): void
+    + showFinalGameResult(payload: GamePayload): void
   }
 
   class MessageRouter <<service>> {
@@ -194,6 +197,7 @@ package "view" {
       MOVE_TOTEM
       CHOOSE_CARD
       EXTRA_DRAW
+      SKIP_EXTRA_DRAW
       QUIT
     }
 
@@ -219,13 +223,22 @@ package "view" {
       + showLobbyUpdate(payload: LobbyUpdatePayload): void
       + showLobbyList(payload: LobbyListPayload): void
       + showGameUpdate(payload: GamePayload): void
+      + showFinalGameResult(gamePayload: GamePayload): void
+    }
+
+    class BoardRenderer {
+    }
+
+    class LobbyRenderer {
+    }
+
+    class GameTurnController {
     }
   }
 }
 
 ' ─── NOTES ──────────────────────────────────────────────────────────────────
 note right of VirtualServerRMI : "implements RmiClientService\n(external RMI interface)"
-note right of GUIView          : "Controls FXML-injected UI nodes\nand ~80 private render helpers."
 
 ' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
 
@@ -260,6 +273,11 @@ TuiView *-- TuiCommandParser : owns
 TuiView *-- TuiPayloadRenderer : owns
 TuiCommandParser ..> TuiCommand : <<create>>
 TuiCommand --> TuiCommandType : uses 
+
+' GUI internal
+GUIView *-- BoardRenderer : owns
+GUIView *-- LobbyRenderer : owns
+GUIView *-- GameTurnController : owns 
 
 
 legend right
