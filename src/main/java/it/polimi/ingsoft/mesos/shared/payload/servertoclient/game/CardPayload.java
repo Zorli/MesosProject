@@ -34,6 +34,9 @@ public class CardPayload implements Serializable {
     /** The end-of-game prestige points granted by the builder card (null otherwise). */
     public final Integer finalPrestigePoints;
 
+    /** The prestige points printed on the building card (null otherwise). */
+    public final Integer buildingPrestigePoints;
+
     /** The full name/type of the event card (null otherwise). */
     public final String eventCompleteName;
 
@@ -43,7 +46,8 @@ public class CardPayload implements Serializable {
      */
     private CardPayload(int id, String type, int era, Integer buildingCost,
                        Boolean hunterHasEffect, String inventorPerk,
-                       Integer sciamanStars, Integer discount, Integer finalPrestigePoints,String eventCompleteName) {
+                       Integer sciamanStars, Integer discount, Integer finalPrestigePoints,String eventCompleteName,
+                       Integer buildingPrestigePoints) {
         this.id = id;
         this.type = type;
         this.era = era;
@@ -54,6 +58,7 @@ public class CardPayload implements Serializable {
         this.discount = discount;
         this.finalPrestigePoints = finalPrestigePoints;
         this.eventCompleteName = eventCompleteName;
+        this.buildingPrestigePoints = buildingPrestigePoints;
     }
 
     /**
@@ -65,7 +70,7 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload base(int id, String type, int era) {
-        return new CardPayload(id, type, era, null, null, null, null, null, null,null);
+        return new CardPayload(id, type, era, null, null, null, null, null, null,null, null);
     }
 
     /**
@@ -77,8 +82,9 @@ public class CardPayload implements Serializable {
      * @param buildingCost the construction cost of the building
      * @return the constructed CardPayload
      */
-    public static CardPayload building(int id, String type, int era, int buildingCost) {
-        return new CardPayload(id, type, era, buildingCost, null, null, null, null, null,null);
+    public static CardPayload building(int id, String type, int era, int buildingCost, int buildingPrestigePoints) {
+        return new CardPayload(id, type, era, buildingCost, null, null, null, null, null,null,
+                buildingPrestigePoints);
     }
 
     /**
@@ -91,7 +97,7 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload hunter(int id, String type, int era, boolean hunterHasEffect) {
-        return new CardPayload(id, type, era, null, hunterHasEffect, null, null, null, null,null);
+        return new CardPayload(id, type, era, null, hunterHasEffect, null, null, null, null,null,null);
     }
 
     /**
@@ -104,7 +110,7 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload inventor(int id, String type, int era, String inventorPerk) {
-        return new CardPayload(id, type, era, null, null, inventorPerk, null, null, null,null);
+        return new CardPayload(id, type, era, null, null, inventorPerk, null, null, null,null,null);
     }
 
     /**
@@ -117,7 +123,7 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload shaman(int id, String type, int era, int sciamanStars) {
-        return new CardPayload(id, type, era, null, null, null, sciamanStars, null, null,null);
+        return new CardPayload(id, type, era, null, null, null, sciamanStars, null, null,null,null);
     }
 
     /**
@@ -131,7 +137,7 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload builder(int id, String type, int era, int discount, int finalPrestigePoint) {
-        return new CardPayload(id, type, era, null, null, null, null, discount, finalPrestigePoint,null);
+        return new CardPayload(id, type, era, null, null, null, null, discount, finalPrestigePoint,null,null);
     }
 
     /**
@@ -144,6 +150,6 @@ public class CardPayload implements Serializable {
      * @return the constructed CardPayload
      */
     public static CardPayload event(int id, String type, int era, String eventCompleteName) {
-        return new CardPayload(id, type, era, null, null, eventCompleteName, null, null, null,eventCompleteName);
+        return new CardPayload(id, type, era, null, null, eventCompleteName, null, null, null,eventCompleteName,null);
     }
 }

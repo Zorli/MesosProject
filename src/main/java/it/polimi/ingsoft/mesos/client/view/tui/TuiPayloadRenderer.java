@@ -546,7 +546,8 @@ final class TuiPayloadRenderer {
             }
             case "INVENTOR" -> TuiStyle.BRIGHT_BLUE + "✦ "
                     + truncate(safe(card.inventorPerk), 7) + TuiStyle.RESET;
-            case "BUILDING" -> TuiStyle.YELLOW + "F " + safe(card.buildingCost) + TuiStyle.RESET;
+            case "BUILDING" -> TuiStyle.YELLOW + "F " + safe(card.buildingCost) + TuiStyle.RESET
+                    + " " + TuiStyle.BRIGHT_YELLOW + "★ " + safe(card.buildingPrestigePoints) + TuiStyle.RESET;
             case "EVENT" -> TuiStyle.BRIGHT_WHITE
                     + truncate(safe(card.eventCompleteName), 9) + TuiStyle.RESET;
             case "ARTIST" -> TuiStyle.BRIGHT_CYAN + "✧ art set" + TuiStyle.RESET;
