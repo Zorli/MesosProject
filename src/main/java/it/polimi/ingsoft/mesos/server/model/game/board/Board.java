@@ -380,9 +380,9 @@ public class Board {
 
     /**
      * Resolves all event cards currently present on the board (both upper and lower rows).
-     * Events are resolved in chronological order based on their {@link Era} (oldest to newest).
-     * Ensures that any Sustenance Event is always resolved strictly after all
-     * regular events, also adhering to the chronological Era order if multiple are present.
+     * Events are resolved in two groups: first, all regular events sorted chronologically
+     * by their {@link Era} (oldest to newest), followed by all sustenance events also sorted
+     * chronologically by their {@link Era} (oldest to newest).
      */
     public void resolveAllEvents() {
         List<SustenanceEventCard> sustenanceEvents = new ArrayList<>();

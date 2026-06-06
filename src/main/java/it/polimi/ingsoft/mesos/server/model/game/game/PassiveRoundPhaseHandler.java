@@ -127,14 +127,16 @@ public class PassiveRoundPhaseHandler {
      * a new era was reached.
      *
      * <p>It then reads the next-round turn order from the starting tile and
-     * filters out the players that are still disconnected. Because the order
-     * reflects the starting-block positions, the disconnected players sit at the
-     * front of the list; they are removed from the head one by one and, for each,
+     * removes the disconnected players located at the head of the list. Because
+     * the order reflects the starting-block positions, any disconnected players
+     * at the front are removed one by one and, for each,
      * {@link Board#movePlayerToLastStartingTile(Player)} sends them to the last
      * starting block so they re-enter the order in the worst next-round position.
-     * The loop relies on the invariant that at least one player is connected
-     * (otherwise this passive phase would never have been reached), so it always
-     * stops on the first connected player without running off the list.
+     * The loop stops at the first connected player (any subsequent disconnected
+     * players remain in the order). The loop relies on the invariant that at least
+     * one player is connected (otherwise this passive phase would never have been
+     * reached), so it always stops on the first connected player without running
+     * off the list.
      *
      * <p>Finally the round number increases, all standard draft quotas are
      * cleared, the round returns to totem placement, and the filtered order
@@ -166,9 +168,9 @@ public class PassiveRoundPhaseHandler {
      * Applies final scoring and marks the game as finished.
      *
      * <p>Each building can contribute final prestige points and may also apply a
-     * final effect. After all buildings are resolved, the tribe builder bonus is
-     * added. When all players have been scored, the game status becomes
-     * {@link GameStatus#FINISHED}.
+     * final effect. After all buildings are resolved, the tribe builder, artist,
+     * and inventor bonuses are added. When all players have been scored, the game
+     * status becomes {@link GameStatus#FINISHED}.
      */
     private void calculateFinalScore() {
         for (Player player : this.game.getPlayers()) {
