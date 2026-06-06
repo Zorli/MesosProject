@@ -254,7 +254,7 @@ final class GamePayloadMapper {
             return CardPayload.builder(id, type, era, builder.getPriceDiscount(), builder.getPrestigePoints());
         }
         if (card instanceof BuildingCard buildingCard) {
-            return CardPayload.building(id, type, era, buildingCard.getFoodCost());
+            return CardPayload.building(id, type, era, buildingCard.getFoodCost(), buildingCard.getPrestigePoints());
         }
         if(card instanceof EventCard eventCard){
             return CardPayload.event(id, type, era, eventCard.getCompleteName());
