@@ -77,11 +77,14 @@ Per raggiungere questo obiettivo il sistema introduce due contratti che simulano
 la presenza della controparte remota --- ciascuno finge di essere l'oggetto che il proprio
 lato dovrebbe avere vicino:
 \begin{itemize}
-    \item \texttt{VirtualView} (risiede sul server): per il model è la view del client.
-    Il model la registra come listener tramite l'Observer pattern e chiama
-    \texttt{notifyUpdate()} su di essa esattamente come farebbe con una view locale;
-    è la \texttt{VirtualView} concreta che si occupa di serializzare e trasportare
-    l'aggiornamento attraverso la rete verso il client reale.
+    \item \texttt{VirtualView} (risiede sul server): per il model e per il controller
+    è la view del client. Come una view locale contatta il controller quando riceve un
+    input utente, \texttt{VirtualView} riceve i comandi dal client e li instrada al
+    controller appropriato tramite \texttt{MessageRouter}. Come una view locale viene
+    aggiornata dal model, il model la registra come \texttt{Listener} tramite l'Observer
+    pattern e chiama \texttt{notifyUpdate()} su di essa esattamente come farebbe con una
+    view locale; è la \texttt{VirtualView} concreta che si occupa di serializzare e
+    trasportare l'aggiornamento attraverso la rete verso il client reale.
 
     \item \texttt{VirtualServer} (risiede sul client): per la UI è il lato ricevente
     del server. Riceve i messaggi che arrivano dalla rete e li consegna alla view locale,
@@ -115,9 +118,7 @@ L'allineamento funzionale tra i due livelli è quindi:
     $\rightarrow$ client.
 \end{itemize}
 
-RMI richiede un ulteriore contratto, \texttt{RmiConnectionService}, che non ha un corrispondente
-nel livello applicativo.
-Viene usato dal client per aprire la connessione iniziale, ottenere lo stub della propria sessione
+RMI richiede un ulteriore contratto, \texttt{RmiConnectionService}, viene usato dal client per aprire la connessione iniziale, ottenere lo stub della propria sessione
 server-side e passare al server il proprio callback per le notifiche.
 È il punto di ingresso di tutta la comunicazione RMI, prima che esistano sessioni individuali
 per ogni client.
@@ -127,7 +128,7 @@ per ogni client.
 Nel codice bisogna distinguere tra messaggio e payload.
 Il payload contiene i dati applicativi veri e propri: il nickname scelto dal client,
 l'id della lobby, la carta selezionata, lo stato aggiornato della partita.
-Il messaggio è l'envelope che aggiunge le informazioni necessarie a interpretare quel payload.
+Il messaggio è la busta che aggiunge le informazioni necessarie a interpretare quel payload.
 
 La forma concreta che hanno questi tipi è dettata principalmente dal problema di TCP.
 Sulla socket arriva solo una stringa JSON: il ricevente non sa a priori quale classe
@@ -194,11 +195,10 @@ sullo stesso canale in entrambe le direzioni.
 
 Dal punto di vista dei dati, però, la socket espone uno stream continuo di byte: non esiste
 un confine naturale tra un messaggio e il successivo.
-È quindi responsabilità dell'applicazione definire un protocollo di framing.
 Nel progetto la scelta è semplice: ogni messaggio applicativo viene serializzato in JSON
 e scritto sulla socket come una singola riga di testo.
 Dall'altro lato il messaggio viene letto con \texttt{readLine()}, quindi una riga
-corrisponde a un messaggio applicativo completo.
+corrisponde a un messaggio completo.
 
 La lettura con \texttt{readLine()} è bloccante: il thread rimane sospeso finché non arriva
 una riga completa o la connessione non si chiude.
@@ -324,7 +324,7 @@ RMI è un'astrazione Java per la comunicazione distribuita: permette a una JVM d
 su oggetti che risiedono in un'altra JVM, con la stessa sintassi di una chiamata locale.
 A differenza di TCP, il codice applicativo non apre socket, non serializza righe JSON e non mantiene
 cicli di \texttt{readLine()}: questi aspetti restano presenti a livello di trasporto ma sono
-nascosti dal meccanismo degli stub e delle interfacce remote.
+nascosti dal meccanismo di RMI.
 
 La differenza architetturale rispetto a TCP riguarda soprattutto la direzione server
 $\rightarrow$ client.
@@ -735,15 +735,15 @@ this.messageRouter.routeMessage(message); // -> clientView.showGameUpdate()
 \end{lstlisting}
 
 \bigskip
-\noindent\textbf{Tabella comparativa TCP vs RMI (chooseCard):}
+\noindent\textbf{Tabella differenze TCP vs RMI (per esempio su chooseCard):}
 
 \begin{center}
 \begin{tabular}{|l|l|l|}
 \hline
 \textbf{Aspetto} & \textbf{TCP} & \textbf{RMI} \\
 \hline
-Thread UI dopo invio & libero subito (fire \& forget) & bloccato fino al return \\
-Serializzazione & GSON esplicita (JSON su socket) & Java RMI (trasparente) \\
+Thread UI dopo invio & libero subito & bloccato fino al return \\
+Serializzazione & GSON esplicita (JSON su socket) & RMI Library \\
 \texttt{ClientCommandHandler} & sì (deserializza JSON) & no (oggetto già tipizzato) \\
 Thread di ricezione client & dedicato (\texttt{readLine()} loop) & RMI Library\\
 Callback server$\to$client & \texttt{writer.println()} & \texttt{clientCallback.handleMessage()} \\
