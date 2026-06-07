@@ -37,3 +37,8 @@ data/
 assets/api
 docs/api/
 deliverables/javadoc
+
+# Generated LaTeX files for the network protocol document
+assets/protocollo-di-rete/*
+!assets/protocollo-di-rete/main.tex
+!assets/protocollo-di-rete/main.pdf
