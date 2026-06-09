@@ -20,10 +20,6 @@ import java.util.Scanner;
  * Entry point that lets the user choose UI mode and network technology before launching the client.
  */
 public class LaunchClient {
-    private static final String CLIENT_ENV_FILE = "client.env";
-    private static final String DEFAULT_SERVER_HOST = "localhost";
-    private static final int DEFAULT_TCP_PORT = 12_345;
-    private static final int DEFAULT_RMI_PORT = 1099;
 
     // Architecture overview:
     // - ClientView: UI contract; exposes methods the network layer calls to show errors, lobbies, and game state.
@@ -36,8 +32,20 @@ public class LaunchClient {
     // Data flow: UI controller -> ServerProxy -> server -> VirtualServer -> MessageRouter -> ClientView
 
     public static void main(String[] args) {
-        Map<String, String> environment = loadEnvironmentFile(CLIENT_ENV_FILE);
         Scanner scanner = new Scanner(System.in);
+
+        String serverHost = resolveOrPromptString(scanner, "MESOS_SERVER_HOST", "Enter MESOS_SERVER_HOST: ");
+        int tcpPort = resolveOrPromptInt(scanner, "MESOS_TCP_PORT", "Enter MESOS_TCP_PORT: ");
+        int rmiPort = resolveOrPromptInt(scanner, "MESOS_RMI_PORT", "Enter MESOS_RMI_PORT: ");
+        String clientRmiHost = getSystemOrEnv("MESOS_CLIENT_RMI_HOST");
+
+        Map<String, String> environment = new HashMap<>();
+        environment.put("MESOS_SERVER_HOST", serverHost);
+        environment.put("MESOS_TCP_PORT", String.valueOf(tcpPort));
+        environment.put("MESOS_RMI_PORT", String.valueOf(rmiPort));
+        if (clientRmiHost != null) {
+            environment.put("MESOS_CLIENT_RMI_HOST", clientRmiHost);
+        }
 
         ClientView clientView = chooseClientView(scanner);
         ServerProxy serverProxy = chooseServerProxy(scanner, clientView, environment);
@@ -95,55 +103,19 @@ public class LaunchClient {
     }
 
     private static String resolveServerHost(Map<String, String> environment) {
-        if (environment == null) {
-            return DEFAULT_SERVER_HOST;
-        }
-        String rawHost = environment.get("MESOS_SERVER_HOST");
-        if (rawHost == null || rawHost.isBlank()) {
-            return DEFAULT_SERVER_HOST;
-        }
-        return rawHost.trim();
+        return environment.get("MESOS_SERVER_HOST");
     }
 
     private static int resolveTcpPort(Map<String, String> environment) {
-        if (environment == null) {
-            return DEFAULT_TCP_PORT;
-        }
-        String rawPort = environment.get("MESOS_TCP_PORT");
-        if (rawPort == null || rawPort.isBlank()) {
-            return DEFAULT_TCP_PORT;
-        }
-        try {
-            return Integer.parseInt(rawPort);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("MESOS_TCP_PORT must be an integer", exception);
-        }
+        return Integer.parseInt(environment.get("MESOS_TCP_PORT"));
     }
 
     private static int resolveRmiPort(Map<String, String> environment) {
-        if (environment == null) {
-            return DEFAULT_RMI_PORT;
-        }
-        String rawPort = environment.get("MESOS_RMI_PORT");
-        if (rawPort == null || rawPort.isBlank()) {
-            return DEFAULT_RMI_PORT;
-        }
-        try {
-            return Integer.parseInt(rawPort);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("MESOS_RMI_PORT must be an integer", exception);
-        }
+        return Integer.parseInt(environment.get("MESOS_RMI_PORT"));
     }
 
     private static String resolveClientRmiHost(Map<String, String> environment) {
-        if (environment == null) {
-            return null;
-        }
-        String rawHost = environment.get("MESOS_CLIENT_RMI_HOST");
-        if (rawHost == null || rawHost.isBlank()) {
-            return null;
-        }
-        return rawHost.trim();
+        return environment.get("MESOS_CLIENT_RMI_HOST");
     }
 
     private static void startClient(ClientView clientView, ServerProxy serverProxy) {
@@ -158,49 +130,49 @@ public class LaunchClient {
             guiController.start();
         }
     }
-    private static Map<String, String> loadEnvironmentFile(String environmentFile) {
-        Map<String, String> environment = new HashMap<>();
-        Path environmentPath = Path.of(environmentFile);
-        if (!Files.exists(environmentPath)) {
-            applyRuntimeOverrides(environment);
-            return environment;
-        }
 
-        try {
-            for (String line : Files.readAllLines(environmentPath)) {
-                line = line.trim();
-                if (line.isBlank() || line.startsWith("#")) {
-                    continue;
-                }
-
-                String[] parts = line.split("=", 2);
-                if (parts.length != 2) {
-                    continue;
-                }
-                environment.put(parts[0].trim(), parts[1].trim());
-            }
-        } catch (IOException ignored) {
-            System.err.println("Failed to load environment file: " + environmentFile);
-        }
-
-        applyRuntimeOverrides(environment);
-        return environment;
-    }
-
-    private static void applyRuntimeOverrides(Map<String, String> environment) {
-        applyRuntimeOverride(environment, "MESOS_SERVER_HOST");
-        applyRuntimeOverride(environment, "MESOS_TCP_PORT");
-        applyRuntimeOverride(environment, "MESOS_RMI_PORT");
-        applyRuntimeOverride(environment, "MESOS_CLIENT_RMI_HOST");
-    }
-
-    private static void applyRuntimeOverride(Map<String, String> environment, String key) {
+    private static String getSystemOrEnv(String key) {
         String value = System.getProperty(key);
         if (value == null || value.isBlank()) {
             value = System.getenv(key);
         }
-        if (value != null && !value.isBlank()) {
-            environment.put(key, value.trim());
+        return (value != null && !value.isBlank()) ? value.trim() : null;
+    }
+
+    private static int resolveOrPromptInt(Scanner scanner, String key, String promptMessage) {
+        String value = getSystemOrEnv(key);
+        if (value != null) {
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException exception) {
+                System.out.println("Invalid value for " + key + " in environment/properties. Please enter manually.");
+            }
+        }
+
+        while (true) {
+            System.out.print(promptMessage);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException exception) {
+                System.out.println("Invalid integer. Please try again.");
+            }
+        }
+    }
+
+    private static String resolveOrPromptString(Scanner scanner, String key, String promptMessage) {
+        String value = getSystemOrEnv(key);
+        if (value != null) {
+            return value;
+        }
+
+        while (true) {
+            System.out.print(promptMessage);
+            String input = scanner.nextLine().trim();
+            if (!input.isEmpty()) {
+                return input;
+            }
+            System.out.println("Value cannot be empty. Please try again.");
         }
     }
 }

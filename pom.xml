@@ -36,12 +36,14 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>21.0.6</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
 
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>21.0.6</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
 
         <dependency>
@@ -228,6 +230,68 @@
     </build>
 
     <profiles>
+        <!--
+            Host platform auto-detection for JavaFX natives.
+            These profiles activate automatically based on the build machine's OS/arch and
+            default ${javafx.platform} to the matching OpenJFX classifier, so a plain
+            `./mvnw test` or an IDE run picks the right natives with zero configuration.
+            The explicit client-* cross-build profiles below override this default; they are
+            declared after these so they win when both are active (e.g. building the Windows
+            jar on a Mac). create-jar.sh additionally passes -Djavafx.platform on the command
+            line, which takes precedence over everything and is also honoured by transitive
+            OpenJFX/controlsfx native resolution.
+        -->
+        <profile>
+            <id>detect-mac-aarch64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac-aarch64</javafx.platform>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>detect-mac-x64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac</javafx.platform>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>detect-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>win</javafx.platform>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>detect-linux</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>linux</name>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>linux</javafx.platform>
+            </properties>
+        </profile>
+
         <profile>
             <id>client-jar</id>
             <build>
