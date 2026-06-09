@@ -73,8 +73,8 @@ connessioni in uscita. A seconda di come viene avviato il progetto, il programma
 come `java`, `javaw`, `JavaVM` oppure `IntelliJ IDEA`.
 
 Questo vale su macOS, Windows e Linux:
-- il server deve poter accettare connessioni TCP sulla porta `MESOS_TCP_PORT`;
-- il server deve poter pubblicare e servire RMI sulla porta `MESOS_RMI_PORT`;
+- il server deve poter accettare connessioni TCP sulla porta TCP scelta a runtime;
+- il server deve poter pubblicare e servire RMI sulla porta RMI scelta a runtime;
 - con RMI, anche il client deve poter ricevere la callback del server, quindi può essere necessario autorizzare
   Java o IntelliJ anche sulla macchina client.
 
@@ -82,27 +82,32 @@ Se il firewall chiede se consentire l'accesso alla rete, bisogna permetterlo alm
 per giocare. In caso contrario il client può non riuscire a connettersi, oppure RMI può collegarsi ma non
 riuscire a consegnare le risposte.
 
-### 3. Avvio usando parametri da terminale
-Il codice non legge argomenti posizionali passati al `main`, quindi la configurazione da terminale
-deve essere passata come proprietà Java, cioè con `-D` prima di `-jar`.
-Queste proprietà sovrascrivono i valori presenti nei file `.env`.
+### 3. Avvio interattivo da terminale
+La configurazione di rete viene chiesta interamente a runtime tramite prompt interattivi: il codice
+non legge argomenti posizionali passati al `main`, né proprietà Java (`-D...`), né file `.env`. La
+sola fonte di verità sono le risposte inserite a terminale all'avvio.
 
-Il server avvia sempre sia TCP che RMI, mentre il client chiede da terminale quale interfaccia usare
-e quale protocollo di rete usare.
+Per avviare basta lanciare il JAR e rispondere alle domande. Il server avvia sempre sia TCP che RMI;
+il client chiede anche quale interfaccia (GUI/TUI) e quale protocollo di rete (TCP/RMI) usare.
 
 #### Server
 ```bash
-java \
-  -DMESOS_TCP_PORT=12345 \
-  -DMESOS_RMI_PORT=1099 \
-  -DMESOS_SERVER_RMI_HOST=<IP_SERVER> \
-  -jar deliverables/jar/mesos-server.jar
+java -jar deliverables/jar/mesos-server.jar
 ```
 
-`MESOS_TCP_PORT` è la porta usata per TCP.
-`MESOS_RMI_PORT` è la porta usata dal registry RMI.
-`MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce nello stub del server: se si gioca in locale
-può essere `localhost`, se invece i client sono su altre macchine deve essere l'IP locale del server.
+All'avvio il server chiede (tra parentesi i valori di esempio):
+
+```text
+Enter MESOS_TCP_PORT: 12345
+Enter MESOS_RMI_PORT: 1099
+Enter MESOS_SERVER_RMI_HOST (optional, press Enter to skip): 192.168.1.56
+```
+
+- `MESOS_TCP_PORT` è la porta usata per TCP.
+- `MESOS_RMI_PORT` è la porta usata dal registry RMI.
+- `MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce nello stub del server: se si gioca in
+  locale si può lasciare vuoto premendo Invio, se invece i client sono su altre macchine va inserito
+  l'IP locale del server.
 
 #### Client
 Per il client bisogna usare il JAR adatto al sistema operativo:
@@ -111,68 +116,32 @@ Per il client bisogna usare il JAR adatto al sistema operativo:
 - `mesos-client-linux-x64.jar` per Linux x64
 - `mesos-client-windows-x64.jar` per Windows x64
 
-Esempio:
 ```bash
-java \
-  -DMESOS_SERVER_HOST=<IP_SERVER> \
-  -DMESOS_TCP_PORT=12345 \
-  -DMESOS_RMI_PORT=1099 \
-  -DMESOS_CLIENT_RMI_HOST=<IP_CLIENT> \
-  -jar deliverables/jar/mesos-client-mac-aarch64.jar
+java -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
-`MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
-`MESOS_CLIENT_RMI_HOST` serve solo per RMI, perché in quel caso anche il server deve poter richiamare
-il client tramite callback. Se si sceglie TCP, questo valore viene ignorato.
+All'avvio il client chiede (tra parentesi i valori di esempio):
 
-Ad esempio, se il server ha IP `192.168.1.56` e il client ha IP `192.168.1.74`, si può avviare
-il server con:
-
-```bash
-java -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_SERVER_RMI_HOST=192.168.1.56 -jar deliverables/jar/mesos-server.jar
+```text
+Enter MESOS_SERVER_HOST: 192.168.1.56
+Enter MESOS_TCP_PORT: 12345
+Enter MESOS_RMI_PORT: 1099
+Enter MESOS_CLIENT_RMI_HOST (optional, press Enter to skip): 192.168.1.74
+Select UI mode:
+1) GUI
+2) TUI
+Select network technology:
+1) TCP
+2) RMI
 ```
 
-e il client con:
+- `MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
+- `MESOS_CLIENT_RMI_HOST` serve solo per RMI, perché in quel caso anche il server deve poter
+  richiamare il client tramite callback; se si sceglie TCP si può lasciare vuoto premendo Invio.
 
-```bash
-java -DMESOS_SERVER_HOST=192.168.1.56 -DMESOS_TCP_PORT=12345 -DMESOS_RMI_PORT=1099 -DMESOS_CLIENT_RMI_HOST=192.168.1.74 -jar deliverables/jar/mesos-client-mac-aarch64.jar
-```
-
-
-
-### 4. Configurazione tramite file `.env`
-In alternativa ai parametri da terminale, il server legge `server.env` e il client legge `client.env`.
-I file vengono cercati nella directory da cui viene lanciato il comando, quindi per usare quelli già presenti
-in `deliverables/jar` bisogna prima spostarsi in quella cartella:
-
-```bash
-cd deliverables/jar
-```
-
-#### Server (`server.env`)
-```env
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_SERVER_RMI_HOST=<IP_SERVER>
-```
-
-#### Client (`client.env`)
-```env
-MESOS_SERVER_HOST=<IP_SERVER>
-MESOS_TCP_PORT=12345
-MESOS_RMI_PORT=1099
-MESOS_CLIENT_RMI_HOST=<IP_CLIENT>
-```
-
-Poi si possono avviare i JAR senza passare altre proprietà:
-
-```bash
-java -jar mesos-server.jar
-```
-
-```bash
-java -jar mesos-client-mac-aarch64.jar
-```
+Ad esempio, con il server su IP `192.168.1.56` e il client su IP `192.168.1.74`, al server si
+risponde `12345`, `1099` e `192.168.1.56`; al client `192.168.1.56`, `12345`, `1099` e
+`192.168.1.74`, scegliendo poi interfaccia e protocollo.
 
 ### Compilazione e Creazione dei JAR
 Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.
@@ -182,12 +151,17 @@ Per compilare il progetto ed eseguire i test:
 ./mvnw clean test
 ```
 
-Per generare i FAT JAR finali:
-```
+Per generare i FAT JAR finali, su **macOS / Linux**:
+```bash
 ./assets/scripts/create-jar.sh
 ```
 
-Lo script crea i JAR nella cartella: deliverables/jar
+su **Windows**:
+```bat
+assets\scripts\create-jar.bat
+```
+
+I due script eseguono gli stessi build Maven e creano i JAR nella cartella `deliverables/jar`.
 
 ---
 

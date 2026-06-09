@@ -9,14 +9,12 @@ import it.polimi.ingsoft.mesos.server.network.rmi.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
-import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 
 /**
@@ -26,19 +24,25 @@ import java.util.Map;
  * Both protocols share the same {@link MessageRouter} and the same {@link ServerSessionRegistry},
  * so players using different protocols still enter the same lobby and game system.</p>
  *
- * <p>Network configuration is resolved in layers: an optional {@code server.env} file
- * provides base {@code KEY=value} settings, which are then overridden by JVM system
- * properties or process environment variables of the same name
- * ({@code MESOS_TCP_PORT}, {@code MESOS_RMI_PORT}, {@code MESOS_SERVER_RMI_HOST}).
- * When a value is set in none of these sources, the built-in defaults apply.</p>
+ * <p>Network configuration (TCP/RMI ports and the optional server RMI host) is read
+ * interactively from the console at startup. There is no support for {@code .env} files,
+ * JVM system properties ({@code -DMESOS_*}) or environment variables: the interactive prompts
+ * are the single source of truth for the configuration.</p>
  */
 public final class LaunchServer {
-    private static final String SERVER_ENV_FILE = "server.env";
-    private static final int DEFAULT_TCP_PORT = 12345;
-    private static final int DEFAULT_RMI_PORT = 1099;
 
     public static void main(String[] args) {
-        Map<String, String> environment = loadEnvironmentFile(SERVER_ENV_FILE);
+        Scanner scanner = new Scanner(System.in);
+        int tcpPort = promptInt(scanner, "Enter MESOS_TCP_PORT: ");
+        int rmiPort = promptInt(scanner, "Enter MESOS_RMI_PORT: ");
+        String serverRmiHost = promptOptionalString(scanner, "Enter MESOS_SERVER_RMI_HOST (optional, press Enter to skip): ");
+
+        Map<String, String> environment = new HashMap<>();
+        environment.put("MESOS_TCP_PORT", String.valueOf(tcpPort));
+        environment.put("MESOS_RMI_PORT", String.valueOf(rmiPort));
+        if (serverRmiHost != null) {
+            environment.put("MESOS_SERVER_RMI_HOST", serverRmiHost);
+        }
 
         int exitCode = run(environment, System.out, System.err);
         if (exitCode != 0) {
@@ -123,95 +127,33 @@ public final class LaunchServer {
     }
 
     private static int resolveTcpPort(Map<String, String> environment) {
-        if (environment == null) {
-            return DEFAULT_TCP_PORT;
-        }
-        String rawPort = environment.get("MESOS_TCP_PORT");
-        if (rawPort == null || rawPort.isBlank()) {
-            return DEFAULT_TCP_PORT;
-        }
-        try {
-            return Integer.parseInt(rawPort);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("MESOS_TCP_PORT must be an integer", exception);
-        }
+        return Integer.parseInt(environment.get("MESOS_TCP_PORT"));
     }
 
     private static int resolveRmiPort(Map<String, String> environment) {
-        if (environment == null) {
-            return DEFAULT_RMI_PORT;
-        }
-        String rawPort = environment.get("MESOS_RMI_PORT");
-        if (rawPort == null || rawPort.isBlank()) {
-            return DEFAULT_RMI_PORT;
-        }
-        try {
-            return Integer.parseInt(rawPort);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("MESOS_RMI_PORT must be an integer", exception);
-        }
+        return Integer.parseInt(environment.get("MESOS_RMI_PORT"));
     }
 
     private static String resolveServerRmiHost(Map<String, String> environment) {
-        if (environment == null) {
-            return null;
-        }
-        String rawHost = environment.get("MESOS_SERVER_RMI_HOST");
-        if (rawHost == null || rawHost.isBlank()) {
-            return null;
-        }
-        return rawHost.trim();
+        return environment.get("MESOS_SERVER_RMI_HOST");
     }
 
-    /**
-     * Loads a simple {@code KEY=value} environment file.
-     *
-     * <p>The file is optional. If it is missing, the server keeps its default values.
-     * Empty lines, comment lines starting with {@code #}, and malformed lines are ignored.</p>
-     */
-    private static Map<String, String> loadEnvironmentFile(String environmentFile) {
-        Map<String, String> environment = new HashMap<>();
-        Path environmentPath = Path.of(environmentFile);
-        if (!Files.exists(environmentPath)) {
-            applyRuntimeOverrides(environment);
-            return environment;
-        }
-
-        try {
-            for (String line : Files.readAllLines(environmentPath)) {
-                line = line.trim();
-                if (line.isBlank() || line.startsWith("#")) {
-                    continue;
-                }
-
-                String[] parts = line.split("=", 2);
-                if (parts.length != 2) {
-                    continue;
-                }
-                environment.put(parts[0].trim(), parts[1].trim());
+    private static int promptInt(Scanner scanner, String promptMessage) {
+        while (true) {
+            System.out.print(promptMessage);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException exception) {
+                System.out.println("Invalid integer. Please try again.");
             }
-        } catch (IOException ignored) {
-            System.err.println("Unable to load environment file: " + environmentFile);
         }
-
-        applyRuntimeOverrides(environment);
-        return environment;
     }
 
-    private static void applyRuntimeOverrides(Map<String, String> environment) {
-        applyRuntimeOverride(environment, "MESOS_TCP_PORT");
-        applyRuntimeOverride(environment, "MESOS_RMI_PORT");
-        applyRuntimeOverride(environment, "MESOS_SERVER_RMI_HOST");
-    }
-
-    private static void applyRuntimeOverride(Map<String, String> environment, String key) {
-        String value = System.getProperty(key);
-        if (value == null || value.isBlank()) {
-            value = System.getenv(key);
-        }
-        if (value != null && !value.isBlank()) {
-            environment.put(key, value.trim());
-        }
+    private static String promptOptionalString(Scanner scanner, String promptMessage) {
+        System.out.print(promptMessage);
+        String input = scanner.nextLine().trim();
+        return input.isEmpty() ? null : input;
     }
 
 }
