@@ -8,9 +8,6 @@ import it.polimi.ingsoft.mesos.client.view.gui.GUIView;
 import it.polimi.ingsoft.mesos.client.view.tui.TuiView;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.rmi.Naming;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,6 +15,11 @@ import java.util.Scanner;
 
 /**
  * Entry point that lets the user choose UI mode and network technology before launching the client.
+ *
+ * <p>All network configuration (server host, TCP/RMI ports and the optional client RMI host)
+ * is read interactively from the console at startup. There is no support for {@code .env} files,
+ * JVM system properties ({@code -DMESOS_*}) or environment variables: the interactive prompts are
+ * the single source of truth for the configuration.</p>
  */
 public class LaunchClient {
 
@@ -34,10 +36,10 @@ public class LaunchClient {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        String serverHost = resolveOrPromptString(scanner, "MESOS_SERVER_HOST", "Enter MESOS_SERVER_HOST: ");
-        int tcpPort = resolveOrPromptInt(scanner, "MESOS_TCP_PORT", "Enter MESOS_TCP_PORT: ");
-        int rmiPort = resolveOrPromptInt(scanner, "MESOS_RMI_PORT", "Enter MESOS_RMI_PORT: ");
-        String clientRmiHost = getSystemOrEnv("MESOS_CLIENT_RMI_HOST");
+        String serverHost = promptString(scanner, "Enter MESOS_SERVER_HOST: ");
+        int tcpPort = promptInt(scanner, "Enter MESOS_TCP_PORT: ");
+        int rmiPort = promptInt(scanner, "Enter MESOS_RMI_PORT: ");
+        String clientRmiHost = promptOptionalString(scanner, "Enter MESOS_CLIENT_RMI_HOST (optional, press Enter to skip): ");
 
         Map<String, String> environment = new HashMap<>();
         environment.put("MESOS_SERVER_HOST", serverHost);
@@ -131,24 +133,7 @@ public class LaunchClient {
         }
     }
 
-    private static String getSystemOrEnv(String key) {
-        String value = System.getProperty(key);
-        if (value == null || value.isBlank()) {
-            value = System.getenv(key);
-        }
-        return (value != null && !value.isBlank()) ? value.trim() : null;
-    }
-
-    private static int resolveOrPromptInt(Scanner scanner, String key, String promptMessage) {
-        String value = getSystemOrEnv(key);
-        if (value != null) {
-            try {
-                return Integer.parseInt(value);
-            } catch (NumberFormatException exception) {
-                System.out.println("Invalid value for " + key + " in environment/properties. Please enter manually.");
-            }
-        }
-
+    private static int promptInt(Scanner scanner, String promptMessage) {
         while (true) {
             System.out.print(promptMessage);
             String input = scanner.nextLine().trim();
@@ -160,12 +145,7 @@ public class LaunchClient {
         }
     }
 
-    private static String resolveOrPromptString(Scanner scanner, String key, String promptMessage) {
-        String value = getSystemOrEnv(key);
-        if (value != null) {
-            return value;
-        }
-
+    private static String promptString(Scanner scanner, String promptMessage) {
         while (true) {
             System.out.print(promptMessage);
             String input = scanner.nextLine().trim();
@@ -174,5 +154,11 @@ public class LaunchClient {
             }
             System.out.println("Value cannot be empty. Please try again.");
         }
+    }
+
+    private static String promptOptionalString(Scanner scanner, String promptMessage) {
+        System.out.print(promptMessage);
+        String input = scanner.nextLine().trim();
+        return input.isEmpty() ? null : input;
     }
 }

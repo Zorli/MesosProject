@@ -9,10 +9,7 @@ import it.polimi.ingsoft.mesos.server.network.rmi.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.ServerConnectionLifecycle;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
-import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
@@ -27,19 +24,18 @@ import java.util.Scanner;
  * Both protocols share the same {@link MessageRouter} and the same {@link ServerSessionRegistry},
  * so players using different protocols still enter the same lobby and game system.</p>
  *
- * <p>Network configuration is resolved in layers: an optional {@code server.env} file
- * provides base {@code KEY=value} settings, which are then overridden by JVM system
- * properties or process environment variables of the same name
- * ({@code MESOS_TCP_PORT}, {@code MESOS_RMI_PORT}, {@code MESOS_SERVER_RMI_HOST}).
- * When a value is set in none of these sources, the built-in defaults apply.</p>
+ * <p>Network configuration (TCP/RMI ports and the optional server RMI host) is read
+ * interactively from the console at startup. There is no support for {@code .env} files,
+ * JVM system properties ({@code -DMESOS_*}) or environment variables: the interactive prompts
+ * are the single source of truth for the configuration.</p>
  */
 public final class LaunchServer {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        int tcpPort = resolveOrPromptInt(scanner, "MESOS_TCP_PORT", "Enter MESOS_TCP_PORT: ");
-        int rmiPort = resolveOrPromptInt(scanner, "MESOS_RMI_PORT", "Enter MESOS_RMI_PORT: ");
-        String serverRmiHost = getSystemOrEnv("MESOS_SERVER_RMI_HOST");
+        int tcpPort = promptInt(scanner, "Enter MESOS_TCP_PORT: ");
+        int rmiPort = promptInt(scanner, "Enter MESOS_RMI_PORT: ");
+        String serverRmiHost = promptOptionalString(scanner, "Enter MESOS_SERVER_RMI_HOST (optional, press Enter to skip): ");
 
         Map<String, String> environment = new HashMap<>();
         environment.put("MESOS_TCP_PORT", String.valueOf(tcpPort));
@@ -142,24 +138,7 @@ public final class LaunchServer {
         return environment.get("MESOS_SERVER_RMI_HOST");
     }
 
-    private static String getSystemOrEnv(String key) {
-        String value = System.getProperty(key);
-        if (value == null || value.isBlank()) {
-            value = System.getenv(key);
-        }
-        return (value != null && !value.isBlank()) ? value.trim() : null;
-    }
-
-    private static int resolveOrPromptInt(Scanner scanner, String key, String promptMessage) {
-        String value = getSystemOrEnv(key);
-        if (value != null) {
-            try {
-                return Integer.parseInt(value);
-            } catch (NumberFormatException exception) {
-                System.out.println("Invalid value for " + key + " in environment/properties. Please enter manually.");
-            }
-        }
-
+    private static int promptInt(Scanner scanner, String promptMessage) {
         while (true) {
             System.out.print(promptMessage);
             String input = scanner.nextLine().trim();
@@ -169,6 +148,12 @@ public final class LaunchServer {
                 System.out.println("Invalid integer. Please try again.");
             }
         }
+    }
+
+    private static String promptOptionalString(Scanner scanner, String promptMessage) {
+        System.out.print(promptMessage);
+        String input = scanner.nextLine().trim();
+        return input.isEmpty() ? null : input;
     }
 
 }
