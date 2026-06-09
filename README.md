@@ -151,12 +151,17 @@ Per compilare il progetto ed eseguire i test:
 ./mvnw clean test
 ```
 
-Per generare i FAT JAR finali:
-```
+Per generare i FAT JAR finali, su **macOS / Linux**:
+```bash
 ./assets/scripts/create-jar.sh
 ```
 
-Lo script crea i JAR nella cartella: deliverables/jar
+su **Windows**:
+```bat
+assets\scripts\create-jar.bat
+```
+
+I due script eseguono gli stessi build Maven e creano i JAR nella cartella `deliverables/jar`.
 
 ---
 

@@ -237,9 +237,9 @@
             `./mvnw test` or an IDE run picks the right natives with zero configuration.
             The explicit client-* cross-build profiles below override this default; they are
             declared after these so they win when both are active (e.g. building the Windows
-            jar on a Mac). create-jar.sh additionally passes -Djavafx.platform on the command
-            line, which takes precedence over everything and is also honoured by transitive
-            OpenJFX/controlsfx native resolution.
+            jar on a Mac). The create-jar scripts (create-jar.sh / create-jar.bat) additionally
+            pass -Djavafx.platform on the command line, which takes precedence over everything
+            and is also honoured by transitive OpenJFX/controlsfx native resolution.
         -->
         <profile>
             <id>detect-mac-aarch64</id>
