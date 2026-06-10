@@ -43,7 +43,7 @@ Se server e client vengono eseguiti sulla stessa macchina, si può usare `localh
 Se invece si vuole giocare in rete locale, ad esempio con più computer collegati alla stessa rete Wi-Fi
 o allo stesso hotspot, bisogna recuperare:
 - l'indirizzo IP della macchina su cui viene avviato il server
-- l'indirizzo IP della macchina su cui viene avviato il client, necessario solo se si sceglie RMI
+- l'indirizzo IP della macchina su cui viene avviato il client
 
 Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema operativo:
 
@@ -83,9 +83,7 @@ per giocare. In caso contrario il client può non riuscire a connettersi, oppure
 riuscire a consegnare le risposte.
 
 ### 3. Avvio interattivo da terminale
-La configurazione di rete viene chiesta interamente a runtime tramite prompt interattivi: il codice
-non legge argomenti posizionali passati al `main`, né proprietà Java (`-D...`), né file `.env`. La
-sola fonte di verità sono le risposte inserite a terminale all'avvio.
+La configurazione di rete viene chiesta interamente a runtime tramite prompt interattivi.
 
 Per avviare basta lanciare il JAR e rispondere alle domande. Il server avvia sempre sia TCP che RMI;
 il client chiede anche quale interfaccia (GUI/TUI) e quale protocollo di rete (TCP/RMI) usare.
