@@ -24,7 +24,7 @@ import java.util.Scanner;
  * Both protocols share the same {@link MessageRouter} and the same {@link ServerSessionRegistry},
  * so players using different protocols still enter the same lobby and game system.</p>
  *
- * <p>Network configuration (TCP/RMI ports and the optional server RMI host) is read
+ * <p>Network configuration (TCP/RMI ports and the server IP address) is read
  * interactively from the console at startup. There is no support for {@code .env} files,
  * JVM system properties ({@code -DMESOS_*}) or environment variables: the interactive prompts
  * are the single source of truth for the configuration.</p>
@@ -33,16 +33,15 @@ public final class LaunchServer {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        int tcpPort = promptInt(scanner, "Enter MESOS_TCP_PORT: ");
-        int rmiPort = promptInt(scanner, "Enter MESOS_RMI_PORT: ");
-        String serverRmiHost = promptOptionalString(scanner, "Enter MESOS_SERVER_RMI_HOST (optional, press Enter to skip): ");
+        renderInstruction();
+        int tcpPort = promptPort(scanner, "Enter MESOS_TCP_PORT [default 12345]: ", 12345);
+        int rmiPort = promptPort(scanner, "Enter MESOS_RMI_PORT [default 1099]: ", 1099);
+        String serverIp = promptString(scanner, "Enter MESOS_SERVER_IP_ADDRESS [default localhost]: ", "localhost");
 
         Map<String, String> environment = new HashMap<>();
         environment.put("MESOS_TCP_PORT", String.valueOf(tcpPort));
         environment.put("MESOS_RMI_PORT", String.valueOf(rmiPort));
-        if (serverRmiHost != null) {
-            environment.put("MESOS_SERVER_RMI_HOST", serverRmiHost);
-        }
+        environment.put("MESOS_SERVER_IP_ADDRESS", serverIp);
 
         int exitCode = run(environment, System.out, System.err);
         if (exitCode != 0) {
@@ -61,7 +60,7 @@ public final class LaunchServer {
         try {
 
             // ==========================================
-            // 1. CORE ARCHITECTURE SETUP (The "Big Bang")
+            // 1. CORE ARCHITECTURE SETUP
             // ==========================================
 
             // A. Shared Registry (Yellow Pages)
@@ -90,8 +89,8 @@ public final class LaunchServer {
 
             // Start RMI (Passing the shared router and registry)
             int rmiPort = resolveRmiPort(environment);
-            String serverRmiHost = resolveServerRmiHost(environment);
-            startRmiServer(serverConnectionLifecycle, router, rmiPort, serverRmiHost, out);
+            String serverIp = resolveServerIp(environment);
+            startRmiServer(serverConnectionLifecycle, router, rmiPort, serverIp, out);
 
             // Start TCP (Passing the shared router and registry)
             int tcpPort = resolveTcpPort(environment);
@@ -112,9 +111,9 @@ public final class LaunchServer {
         }
     }
 
-    private static void startRmiServer(ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router, int port, String serverRmiHost, PrintStream out) throws Exception {
-        if (serverRmiHost != null && !serverRmiHost.isBlank()) {
-            System.setProperty("java.rmi.server.hostname", serverRmiHost);
+    private static void startRmiServer(ServerConnectionLifecycle serverConnectionLifecycle, MessageRouter router, int port, String serverIp, PrintStream out) throws Exception {
+        if (serverIp != null && !serverIp.isBlank()) {
+            System.setProperty("java.rmi.server.hostname", serverIp);
         }
 
         // Pass dependencies down to the RMI entry point
@@ -134,26 +133,53 @@ public final class LaunchServer {
         return Integer.parseInt(environment.get("MESOS_RMI_PORT"));
     }
 
-    private static String resolveServerRmiHost(Map<String, String> environment) {
-        return environment.get("MESOS_SERVER_RMI_HOST");
+    private static String resolveServerIp(Map<String, String> environment) {
+        return environment.get("MESOS_SERVER_IP_ADDRESS");
     }
 
-    private static int promptInt(Scanner scanner, String promptMessage) {
+    private static int promptPort(Scanner scanner, String promptMessage, int defaultValue) {
         while (true) {
             System.out.print(promptMessage);
             String input = scanner.nextLine().trim();
-            try {
-                return Integer.parseInt(input);
-            } catch (NumberFormatException exception) {
-                System.out.println("Invalid integer. Please try again.");
+            if (input.isEmpty()) {
+                return defaultValue;
             }
+            try {
+                int port = Integer.parseInt(input);
+                if (port >= 1024 && port <= 65535) {
+                    return port;
+                }
+            } catch (NumberFormatException exception) {
+                // Try again below.
+            }
+            System.out.println("Invalid port. Please enter an integer between 1024 and 65535.");
         }
     }
 
-    private static String promptOptionalString(Scanner scanner, String promptMessage) {
+    private static String promptString(Scanner scanner, String promptMessage, String defaultValue) {
         System.out.print(promptMessage);
         String input = scanner.nextLine().trim();
-        return input.isEmpty() ? null : input;
+        return input.isEmpty() ? defaultValue : input;
     }
 
+
+    private static void renderInstruction() {
+        System.out.println("Server network configuration");
+        System.out.println();
+        System.out.println("The server starts both supported network protocols: TCP and RMI.");
+        System.out.println("You must configure these values:");
+        System.out.println();
+        System.out.println("- MESOS_TCP_PORT: TCP port used by clients that connect with TCP.");
+        System.out.println("  It must be an integer between 1024 and 65535 and it must not already be used.");
+        System.out.println("- MESOS_RMI_PORT: RMI registry port used by clients that connect with RMI during lookup.");
+        System.out.println("  It must be an integer between 1024 and 65535 and it must not already be used.");
+        System.out.println("- MESOS_SERVER_IP_ADDRESS: server IP address published inside the RMI stubs.");
+        System.out.println("  It is needed only by RMI clients to contact the server after the registry lookup.");
+        System.out.println();
+        System.out.println("Press Enter without typing anything to use the default values:");
+        System.out.println("- MESOS_TCP_PORT = 12345");
+        System.out.println("- MESOS_RMI_PORT = 1099");
+        System.out.println("- MESOS_SERVER_IP_ADDRESS = localhost");
+        System.out.println();
+    }
 }

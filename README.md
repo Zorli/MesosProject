@@ -12,7 +12,7 @@ Il progetto è stato svolto dal gruppo GC3, composto dai seguenti membri:
 L’applicazione è stata progettata come sistema distribuito client-server secondo il pattern Model-View-Controller.
 Il server mantiene il modello di gioco, gestisce la logica applicativa e coordina le partite;
 i client permettono ai giocatori di interagire con il gioco attraverso interfaccia testuale
-o interfaccia grafica JavaFX.
+o interfaccia grafica.
 
 ## Requisiti implementati
 
@@ -38,14 +38,17 @@ parte un timer, al termine del quale l'unico giocatore rimasto connesso viene de
 In questa sezione viene spiegato come configurare la rete, e poi come avviare server e client usando
 i JAR già compilati presenti nella cartella `deliverables/jar`.
 
-### 1. Recuperare gli indirizzi IP locali
-Se server e client vengono eseguiti sulla stessa macchina, si può usare `localhost`.
+### 1. Recuperare gli indirizzi IP locali e le porte
+Se server e client vengono eseguiti sulla stessa macchina, si può usare `localhost` per la configurazione degli ip.
 Se invece si vuole giocare in rete locale, ad esempio con più computer collegati alla stessa rete Wi-Fi
 o allo stesso hotspot, bisogna recuperare:
 - l'indirizzo IP della macchina su cui viene avviato il server
-- l'indirizzo IP della macchina su cui viene avviato il client, necessario solo se si sceglie RMI
+- l'indirizzo IP della macchina su cui viene avviato il client
+- la porta tcp del server
+- la porta rmi del server
 
-Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema operativo:
+Di seguito i comandi per recuperare l'indirizzo IP assegnato alla macchina nella rete locale, 
+a seconda del sistema operativo:
 
 * **macOS**:
   ```bash
@@ -63,6 +66,8 @@ Di seguito i comandi per recuperare l'indirizzo IP locale a seconda del sistema 
   ```
   Cercare la voce `Indirizzo IPv4`, ad esempio `192.168.1.56`.
 
+Per quanto riguarda le porte bisogna essere a conoscenza a priori di 
+come il server è stato configurato.
 
 ### 2. Permessi firewall
 Se server e client non sono sulla stessa macchina, il sistema operativo può bloccare le connessioni anche
@@ -70,7 +75,7 @@ quando IP e porte sono corretti.
 
 Sulla macchina che esegue il server bisogna permettere a Java di ricevere connessioni in entrata e di usare
 connessioni in uscita. A seconda di come viene avviato il progetto, il programma da autorizzare può comparire
-come `java`, `javaw`, `JavaVM` oppure `IntelliJ IDEA`.
+come `java`, `JavaVM` oppure `IntelliJ IDEA`.
 
 Questo vale su macOS, Windows e Linux:
 - il server deve poter accettare connessioni TCP sulla porta TCP scelta a runtime;
@@ -79,13 +84,10 @@ Questo vale su macOS, Windows e Linux:
   Java o IntelliJ anche sulla macchina client.
 
 Se il firewall chiede se consentire l'accesso alla rete, bisogna permetterlo almeno per la rete locale usata
-per giocare. In caso contrario il client può non riuscire a connettersi, oppure RMI può collegarsi ma non
-riuscire a consegnare le risposte.
+per giocare.
 
 ### 3. Avvio interattivo da terminale
-La configurazione di rete viene chiesta interamente a runtime tramite prompt interattivi: il codice
-non legge argomenti posizionali passati al `main`, né proprietà Java (`-D...`), né file `.env`. La
-sola fonte di verità sono le risposte inserite a terminale all'avvio.
+La configurazione di rete viene chiesta interamente a runtime tramite prompt interattivi da terminale.
 
 Per avviare basta lanciare il JAR e rispondere alle domande. Il server avvia sempre sia TCP che RMI;
 il client chiede anche quale interfaccia (GUI/TUI) e quale protocollo di rete (TCP/RMI) usare.
@@ -95,19 +97,21 @@ il client chiede anche quale interfaccia (GUI/TUI) e quale protocollo di rete (T
 java -jar deliverables/jar/mesos-server.jar
 ```
 
-All'avvio il server chiede (valori di esempio):
+Per esempio, una volta avviato il server, l'interazione sarà:
 
 ```text
-Enter MESOS_TCP_PORT: 12345
-Enter MESOS_RMI_PORT: 1099
-Enter MESOS_SERVER_RMI_HOST (optional, press Enter to skip): 192.168.1.56
+Enter MESOS_TCP_PORT [default 12345]: 12345
+Enter MESOS_RMI_PORT [default 1099]: 1099
+Enter MESOS_SERVER_IP_ADDRESS [default localhost]: 192.168.1.56
 ```
 
 - `MESOS_TCP_PORT` è la porta usata per TCP.
 - `MESOS_RMI_PORT` è la porta usata dal registry RMI.
-- `MESOS_SERVER_RMI_HOST` è l'indirizzo che RMI inserisce nello stub del server: se si gioca in
-  locale si può lasciare vuoto premendo Invio, se invece i client sono su altre macchine va inserito
-  l'IP locale del server.
+- `MESOS_SERVER_IP_ADDRESS` è l'indirizzo IP che RMI inserisce nello stub del server.
+
+Le porte devono essere numeri interi compresi tra `1024` e `65535`. Se si preme Invio senza inserire
+nulla, il server usa `12345` per TCP, `1099` per RMI e `localhost` come IP del server. Se i client
+sono su altre macchine, in `MESOS_SERVER_IP_ADDRESS` va inserito l'IP locale del server.
 
 #### Client
 Per il client bisogna usare il JAR adatto al sistema operativo:
@@ -120,13 +124,13 @@ Per il client bisogna usare il JAR adatto al sistema operativo:
 java -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
-All'avvio il client chiede (valori di esempio):
+Per esempio, una volta avviato il client, l'interazione sarà:
 
 ```text
-Enter MESOS_SERVER_HOST: 192.168.1.56
-Enter MESOS_TCP_PORT: 12345
-Enter MESOS_RMI_PORT: 1099
-Enter MESOS_CLIENT_RMI_HOST (optional, press Enter to skip): 192.168.1.74
+Enter MESOS_SERVER_IP_ADDRESS [default localhost]: 192.168.1.56
+Enter MESOS_TCP_PORT [default 12345]: 12345
+Enter MESOS_RMI_PORT [default 1099]: 1099
+Enter MESOS_CLIENT_IP_ADDRESS [default localhost]: 192.168.1.74
 Select UI mode:
 1) GUI
 2) TUI
@@ -135,13 +139,18 @@ Select network technology:
 2) RMI
 ```
 
-- `MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
-- `MESOS_CLIENT_RMI_HOST` serve solo per RMI, perché in quel caso anche il server deve poter
-  richiamare il client tramite callback; se si sceglie TCP si può lasciare vuoto premendo Invio.
+- `MESOS_SERVER_IP_ADDRESS` è l'indirizzo IP della macchina su cui gira il server. Serve sia per TCP
+  sia per RMI.
+- `MESOS_TCP_PORT` è la porta TCP esposta dal server.
+- `MESOS_RMI_PORT` è la porta del registry RMI esposta dal server. 
+- `MESOS_CLIENT_IP_ADDRESS` è l'indirizzo IP che RMI inserisce nello stub di callback del client.
 
-Ad esempio, con il server su IP `192.168.1.56` e il client su IP `192.168.1.74`, al server si
-risponde `12345`, `1099` e `192.168.1.56`; al client `192.168.1.56`, `12345`, `1099` e
-`192.168.1.74`, scegliendo poi interfaccia e protocollo.
+Le porte devono essere numeri interi compresi tra `1024` e `65535`. Se si preme Invio senza inserire
+nulla, il client usa `localhost` come IP del server, `12345` per TCP, `1099` per RMI e `localhost`
+come IP del client. Se client e server sono su macchine diverse, in `MESOS_SERVER_IP_ADDRESS` va
+inserito l'IP locale del server e in `MESOS_CLIENT_IP_ADDRESS` l'IP locale del client.
+
+
 
 ### Compilazione e Creazione dei JAR
 Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.
