@@ -97,7 +97,7 @@ il client chiede anche quale interfaccia (GUI/TUI) e quale protocollo di rete (T
 java -jar deliverables/jar/mesos-server.jar
 ```
 
-All'avvio il server chiede (valori di esempio):
+Per esempio, una volta avviato il server, l'interazione sarà:
 
 ```text
 Enter MESOS_TCP_PORT [default 12345]: 12345
@@ -124,13 +124,13 @@ Per il client bisogna usare il JAR adatto al sistema operativo:
 java -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
-All'avvio il client chiede (valori di esempio):
+Per esempio, una volta avviato il client, l'interazione sarà:
 
 ```text
-Enter MESOS_SERVER_HOST: 192.168.1.56
-Enter MESOS_TCP_PORT: 12345
-Enter MESOS_RMI_PORT: 1099
-Enter MESOS_CLIENT_RMI_HOST (optional, press Enter to skip): 192.168.1.74
+Enter MESOS_SERVER_IP_ADDRESS [default localhost]: 192.168.1.56
+Enter MESOS_TCP_PORT [default 12345]: 12345
+Enter MESOS_RMI_PORT [default 1099]: 1099
+Enter MESOS_CLIENT_IP_ADDRESS [default localhost]: 192.168.1.74
 Select UI mode:
 1) GUI
 2) TUI
@@ -139,13 +139,18 @@ Select network technology:
 2) RMI
 ```
 
-- `MESOS_SERVER_HOST` è l'indirizzo della macchina su cui gira il server.
-- `MESOS_CLIENT_RMI_HOST` serve solo per RMI, perché in quel caso anche il server deve poter
-  richiamare il client tramite callback; se si sceglie TCP si può lasciare vuoto premendo Invio.
+- `MESOS_SERVER_IP_ADDRESS` è l'indirizzo IP della macchina su cui gira il server. Serve sia per TCP
+  sia per RMI.
+- `MESOS_TCP_PORT` è la porta TCP esposta dal server.
+- `MESOS_RMI_PORT` è la porta del registry RMI esposta dal server. 
+- `MESOS_CLIENT_IP_ADDRESS` è l'indirizzo IP che RMI inserisce nello stub di callback del client.
 
-Ad esempio, con il server su IP `192.168.1.56` e il client su IP `192.168.1.74`, al server si
-risponde `12345`, `1099` e `192.168.1.56`; al client `192.168.1.56`, `12345`, `1099` e
-`192.168.1.74`, scegliendo poi interfaccia e protocollo.
+Le porte devono essere numeri interi compresi tra `1024` e `65535`. Se si preme Invio senza inserire
+nulla, il client usa `localhost` come IP del server, `12345` per TCP, `1099` per RMI e `localhost`
+come IP del client. Se client e server sono su macchine diverse, in `MESOS_SERVER_IP_ADDRESS` va
+inserito l'IP locale del server e in `MESOS_CLIENT_IP_ADDRESS` l'IP locale del client.
+
+
 
 ### Compilazione e Creazione dei JAR
 Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.

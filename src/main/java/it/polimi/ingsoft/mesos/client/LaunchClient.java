@@ -16,7 +16,7 @@ import java.util.Scanner;
 /**
  * Entry point that lets the user choose UI mode and network technology before launching the client.
  *
- * <p>All network configuration (server host, TCP/RMI ports and the optional client RMI host)
+ * <p>All network configuration (server IP address, TCP/RMI ports and the client IP address)
  * is read interactively from the console at startup. There is no support for {@code .env} files,
  * JVM system properties ({@code -DMESOS_*}) or environment variables: the interactive prompts are
  * the single source of truth for the configuration.</p>
@@ -36,18 +36,17 @@ public class LaunchClient {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        String serverHost = promptString(scanner, "Enter MESOS_SERVER_HOST: ");
-        int tcpPort = promptInt(scanner, "Enter MESOS_TCP_PORT: ");
-        int rmiPort = promptInt(scanner, "Enter MESOS_RMI_PORT: ");
-        String clientRmiHost = promptOptionalString(scanner, "Enter MESOS_CLIENT_RMI_HOST (optional, press Enter to skip): ");
+        renderInstruction();
+        String serverIpAddress = promptString(scanner, "Enter MESOS_SERVER_IP_ADDRESS [default localhost]: ", "localhost");
+        int tcpPort = promptPort(scanner, "Enter MESOS_TCP_PORT [default 12345]: ", 12345);
+        int rmiPort = promptPort(scanner, "Enter MESOS_RMI_PORT [default 1099]: ", 1099);
+        String clientIpAddress = promptString(scanner, "Enter MESOS_CLIENT_IP_ADDRESS [default localhost]: ", "localhost");
 
         Map<String, String> environment = new HashMap<>();
-        environment.put("MESOS_SERVER_HOST", serverHost);
+        environment.put("MESOS_SERVER_IP_ADDRESS", serverIpAddress);
         environment.put("MESOS_TCP_PORT", String.valueOf(tcpPort));
         environment.put("MESOS_RMI_PORT", String.valueOf(rmiPort));
-        if (clientRmiHost != null) {
-            environment.put("MESOS_CLIENT_RMI_HOST", clientRmiHost);
-        }
+        environment.put("MESOS_CLIENT_IP_ADDRESS", clientIpAddress);
 
         ClientView clientView = chooseClientView(scanner);
         ServerProxy serverProxy = chooseServerProxy(scanner, clientView, environment);
@@ -74,10 +73,10 @@ public class LaunchClient {
     }
 
     private static ServerProxy chooseServerProxy(Scanner scanner, ClientView clientView, Map<String, String> environment) {
-        String serverHost = resolveServerHost(environment);
+        String serverIpAddress = resolveServerIpAddress(environment);
         int tcpPort = resolveTcpPort(environment);
         int rmiPort = resolveRmiPort(environment);
-        String clientRmiHost = resolveClientRmiHost(environment);
+        String clientIpAddress = resolveClientIpAddress(environment);
 
         while (true) {
             System.out.println("Select network technology:");
@@ -87,13 +86,13 @@ public class LaunchClient {
             String choice = scanner.nextLine().trim();
             try {
                 if ("1".equals(choice)) {
-                    return new ServerProxyTCP(serverHost, tcpPort, clientView);
+                    return new ServerProxyTCP(serverIpAddress, tcpPort, clientView);
                 }
                 if ("2".equals(choice)) {
-                    if (clientRmiHost != null) {
-                        System.setProperty("java.rmi.server.hostname", clientRmiHost);
+                    if (clientIpAddress != null && !clientIpAddress.isBlank()) {
+                        System.setProperty("java.rmi.server.hostname", clientIpAddress);
                     }
-                    String registryUrl = "rmi://" + serverHost + ":" + rmiPort + "/MesosServer";
+                    String registryUrl = "rmi://" + serverIpAddress + ":" + rmiPort + "/MesosServer";
                     RmiConnectionService connectionService = (RmiConnectionService) Naming.lookup(registryUrl);
                     return new ServerProxyRMI(connectionService, clientView);
                 }
@@ -104,8 +103,8 @@ public class LaunchClient {
         }
     }
 
-    private static String resolveServerHost(Map<String, String> environment) {
-        return environment.get("MESOS_SERVER_HOST");
+    private static String resolveServerIpAddress(Map<String, String> environment) {
+        return environment.get("MESOS_SERVER_IP_ADDRESS");
     }
 
     private static int resolveTcpPort(Map<String, String> environment) {
@@ -116,8 +115,8 @@ public class LaunchClient {
         return Integer.parseInt(environment.get("MESOS_RMI_PORT"));
     }
 
-    private static String resolveClientRmiHost(Map<String, String> environment) {
-        return environment.get("MESOS_CLIENT_RMI_HOST");
+    private static String resolveClientIpAddress(Map<String, String> environment) {
+        return environment.get("MESOS_CLIENT_IP_ADDRESS");
     }
 
     private static void startClient(ClientView clientView, ServerProxy serverProxy) {
@@ -133,32 +132,51 @@ public class LaunchClient {
         }
     }
 
-    private static int promptInt(Scanner scanner, String promptMessage) {
+    private static int promptPort(Scanner scanner, String promptMessage, int defaultValue) {
         while (true) {
             System.out.print(promptMessage);
             String input = scanner.nextLine().trim();
+            if (input.isEmpty()) {
+                return defaultValue;
+            }
             try {
-                return Integer.parseInt(input);
+                int port = Integer.parseInt(input);
+                if (port >= 1024 && port <= 65535) {
+                    return port;
+                }
             } catch (NumberFormatException exception) {
-                System.out.println("Invalid integer. Please try again.");
+                // Try again below.
             }
+            System.out.println("Invalid port. Please enter an integer between 1024 and 65535.");
         }
     }
 
-    private static String promptString(Scanner scanner, String promptMessage) {
-        while (true) {
-            System.out.print(promptMessage);
-            String input = scanner.nextLine().trim();
-            if (!input.isEmpty()) {
-                return input;
-            }
-            System.out.println("Value cannot be empty. Please try again.");
-        }
-    }
-
-    private static String promptOptionalString(Scanner scanner, String promptMessage) {
+    private static String promptString(Scanner scanner, String promptMessage, String defaultValue) {
         System.out.print(promptMessage);
         String input = scanner.nextLine().trim();
-        return input.isEmpty() ? null : input;
+        return input.isEmpty() ? defaultValue : input;
+    }
+
+    private static void renderInstruction() {
+        System.out.println("Client network configuration");
+        System.out.println();
+        System.out.println("The client can connect to the server through TCP or RMI.");
+        System.out.println("You must configure these values:");
+        System.out.println();
+        System.out.println("- MESOS_SERVER_IP_ADDRESS: server IP address used by the client to contact the server.");
+        System.out.println("  It is used by both TCP and RMI.");
+        System.out.println("- MESOS_TCP_PORT: TCP port exposed by the server.");
+        System.out.println("  It is used if you choose TCP and must match the server TCP port.");
+        System.out.println("- MESOS_RMI_PORT: RMI registry port exposed by the server.");
+        System.out.println("  It is used if you choose RMI and must match the server RMI port.");
+        System.out.println("- MESOS_CLIENT_IP_ADDRESS: client IP address published inside the RMI callback stub.");
+        System.out.println("  It is needed only if you choose RMI, so the server can contact the client callback.");
+        System.out.println();
+        System.out.println("Press Enter without typing anything to use the default values:");
+        System.out.println("- MESOS_SERVER_IP_ADDRESS = localhost");
+        System.out.println("- MESOS_TCP_PORT = 12345");
+        System.out.println("- MESOS_RMI_PORT = 1099");
+        System.out.println("- MESOS_CLIENT_IP_ADDRESS = localhost");
+        System.out.println();
     }
 }
