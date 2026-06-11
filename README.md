@@ -95,7 +95,7 @@ il client chiede anche quale interfaccia (GUI/TUI) e quale protocollo di rete (T
 java -jar deliverables/jar/mesos-server.jar
 ```
 
-All'avvio il server chiede (tra parentesi i valori di esempio):
+All'avvio il server chiede (valori di esempio):
 
 ```text
 Enter MESOS_TCP_PORT: 12345
@@ -120,7 +120,7 @@ Per il client bisogna usare il JAR adatto al sistema operativo:
 java -jar deliverables/jar/mesos-client-mac-aarch64.jar
 ```
 
-All'avvio il client chiede (tra parentesi i valori di esempio):
+All'avvio il client chiede (valori di esempio):
 
 ```text
 Enter MESOS_SERVER_HOST: 192.168.1.56
