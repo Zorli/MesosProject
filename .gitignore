@@ -36,7 +36,7 @@ data/
 # Generated Javadocs
 assets/api
 docs/api/
-deliverables/javadoc
+# deliverables/javadoc
 
 # Generated LaTeX files for the network protocol document
 assets/protocollo-di-rete/*
