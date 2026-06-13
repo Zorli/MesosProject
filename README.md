@@ -926,7 +926,7 @@ le sessioni da una fase all'altra.
 La pre-lobby è la fase globale del server, cioè quella in cui si trovano gli utenti appena connessi
 prima di entrare in una lobby o in una partita.
 Per questo motivo esiste un solo `PreLobbyController`, creato all'avvio del server.
-Il controller possiede una queue di comandi e delega la logica applicativa al `preLobbyModel`.
+Il controller possiede una queue di comandi e delega la logica applicativa al `PreLobbyModel`.
 
 I comandi gestiti in questa fase sono quelli definiti da `PreLobbyCommandType`:
 autenticazione, lista lobby, creazione lobby e join lobby.
@@ -953,7 +953,7 @@ Il controller completa la parte architetturale: porta la sessione in fase lobby 
 crea un `LobbyController`, lo registra nel `ServerSessionRegistry` e avvia il thread dedicato alla lobby.
 
 Il join ad una lobby esistente è diviso in due passi.
-Prima il `preLobbyModel` valida che la lobby esista, sia joinable e che l'utente possa entrare.
+Prima il `PreLobbyModel` valida che la lobby esista, sia joinable e che l'utente possa entrare.
 Poi il `PreLobbyController` recupera il `LobbyController` target e gli manda un `SystemJoinCommand`.
 In questo modo la modifica effettiva della lobby non avviene nel thread della pre-lobby,
 ma nel thread del controller che possiede quella lobby.

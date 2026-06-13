@@ -65,7 +65,7 @@ package "pre-lobby" {
 
   class PreLobbyController <<controller>> {
     - sessions: ServerSessionRegistry
-    - preLobbyModel: preLobbyModel
+    - preLobbyModel: PreLobbyModel
     - gameFactory: GameFactory
     + PreLobbyController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
     + getSessionRegistry(): ServerSessionRegistry
@@ -78,10 +78,10 @@ package "pre-lobby" {
     + reportPhaseError(sessionId: String): void
   }
 
-  class preLobbyModel {
+  class PreLobbyModel {
     - sessions: ServerSessionRegistry
     - payloadMapper: PreLobbyPayloadMapper
-    + preLobbyModel(sessions: ServerSessionRegistry)
+    + PreLobbyModel(sessions: ServerSessionRegistry)
     + reportPhaseError(sessionId: String): void
     + reportJoinError(sessionId: String, message: String): void
     + authenticate(sessionId: String, nickname: String): boolean
@@ -118,19 +118,19 @@ package "pre-lobby" {
 ' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
 
 ' Controller owns its components
-PreLobbyController *-- preLobbyModel              : owns
+PreLobbyController *-- PreLobbyModel              : owns
 
 ' Connection Lifecycle owns Ping-Pong Routine
 ServerConnectionLifecycle *-- PingPongRoutine : owns
 
 ' Model owns mapper
-preLobbyModel *-- PreLobbyPayloadMapper : owns
+PreLobbyModel *-- PreLobbyPayloadMapper : owns
 
 ' Controller uses shared registry
 PreLobbyController ..> ServerSessionRegistry : uses 
 
 ' Model uses shared registry
-preLobbyModel ..> ServerSessionRegistry     : uses 
+PreLobbyModel ..> ServerSessionRegistry     : uses
 
 ' Lifecycle and ping uses shared registry
 ServerConnectionLifecycle ..> ServerSessionRegistry : uses 
@@ -141,14 +141,9 @@ PingPongRoutine ..> ServerConnectionLifecycle       : uses
 
 legend right
   <b>Legenda Colori</b>
-  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco (gestione input/comandi) |
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller del pre-lobby (gestione input/comandi) |
   |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
-  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole di gioco o degli eventi interni |
-  |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
   |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
-  |<back:#EBF5FB>      </back> <b>Network</b> | Entrypoint di rete e stubs di comunicazione |
-  |<back:#E8F8F5>      </back> <b>VirtualView</b> | Rappresentazione virtuale del client sul server |
-  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
   |<back:#FFFFFF>      </back> <b>Entity/Model</b> | Classi del modello di dominio (stato e dati) |
   ====
   <b>Visibilità metodi</b>

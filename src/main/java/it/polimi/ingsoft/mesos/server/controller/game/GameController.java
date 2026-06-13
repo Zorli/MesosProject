@@ -229,7 +229,7 @@ public class GameController implements Runnable  {
                         this.extraDrawn(player, p.cardId);
                     }
                     case SKIP_EXTRA_DRAW -> {
-                        this.SkipExtraDrawn(player);
+                        this.skipExtraDrawn(player);
                     }
                 }
 
@@ -328,8 +328,8 @@ public class GameController implements Runnable  {
 
         this.checkGameEndAndCleanup();
     }
-    private void SkipExtraDrawn(Player player) {
-        this.game.SkipExtraDrawn(player);
+    private void skipExtraDrawn(Player player) {
+        this.game.skipExtraDrawn(player);
 
         this.checkGameEndAndCleanup();
     }

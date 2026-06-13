@@ -15,8 +15,8 @@ skinparam interface {
   BorderColor #2980B9
 }
 skinparam enum {
-  BackgroundColor #D5F5E3
-  BorderColor #27AE60
+  BackgroundColor #ECFEFF
+  BorderColor #0891B2
 }
 skinparam packageStyle rectangle
 skinparam package {
@@ -43,6 +43,10 @@ skinparam class<<factory>> {
 skinparam class<<mapper>> {
   BackgroundColor #F4F6F7
   BorderColor #95A5A6
+}
+skinparam class<<view>> {
+  BackgroundColor #EDE9FE
+  BorderColor #7C3AED
 }
 
 skinparam linetype ortho
@@ -282,14 +286,11 @@ GUIView *-- GameTurnController : owns
 
 legend right
   <b>Legenda Colori</b>
-  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco (gestione input/comandi) |
-  |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
-  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole di gioco o degli eventi interni |
-  |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
-  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
-  |<back:#EBF5FB>      </back> <b>Network</b> | Entrypoint di rete e stubs di comunicazione |
-  |<back:#E8F8F5>      </back> <b>VirtualView</b> | Rappresentazione virtuale del client sul server |
+  |<back:#D5F5E3>      </back> <b>Service</b> | Proxy di rete e virtual server (lifecycle/routing) |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Parser e renderer dei payload |
+  |<back:#EDE9FE>      </back> <b>View</b> | Viste utente (TUI/GUI) |
   |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#ECFEFF>      </back> <b>Enum</b> | Classi enum di tipologia o stato |
   |<back:#FFFFFF>      </back> <b>Entity/Model</b> | Classi di dati e value objects |
   ====
   <b>Visibilità metodi</b>

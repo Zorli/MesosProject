@@ -392,10 +392,10 @@ public class Game {
         });
     }
 
-    public void SkipExtraDrawn(Player player) {
+    public void skipExtraDrawn(Player player) {
         this.actionExecutor.execute(() -> {
             this.onlyOneConnected();
-            this.cardDraftHandler.SkipExtraDrawn(player);
+            this.cardDraftHandler.skipExtraDrawn(player);
             this.passiveRoundPhaseHandler.advancePassivePhases();
         });
     }

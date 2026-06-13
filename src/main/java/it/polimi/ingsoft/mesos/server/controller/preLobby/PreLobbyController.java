@@ -8,7 +8,7 @@ import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.preLobby.enums.PreLobbyCommandType;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
-import it.polimi.ingsoft.mesos.server.model.preLobby.preLobbyModel;
+import it.polimi.ingsoft.mesos.server.model.preLobby.PreLobbyModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
@@ -36,7 +36,7 @@ public class PreLobbyController implements Runnable {
     /**
      * The business model for the pre-lobby actions.
      */
-    private final preLobbyModel preLobbyModel;
+    private final PreLobbyModel preLobbyModel;
 
     /**
      * The factory responsible for constructing game engine instances.
@@ -59,7 +59,7 @@ public class PreLobbyController implements Runnable {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
 
-        this.preLobbyModel = new preLobbyModel(this.sessions);
+        this.preLobbyModel = new PreLobbyModel(this.sessions);
     }
 
     /**

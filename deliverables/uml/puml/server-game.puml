@@ -132,7 +132,7 @@ class GameController <<controller>> {
   - startLastPlayerTimer(): void
   - cancelLastPlayerTimer(): void
   - extraDrawn(player: Player, cardId: int): void
-  - SkipExtraDrawn(player: Player): void
+  - skipExtraDrawn(player: Player): void
   - resolvePlayer(nickname: String): Player
   - resolvePlayerBySession(sessionId: String): Player
   - disconnectedPlayer(command: SystemDisconnectCommand): void
@@ -160,7 +160,7 @@ package "game-core" {
     - totemPlacementHandler: TotemPlacementHandler
     - cardDraftHandler: CardDraftHandler
     - passiveRoundPhaseHandler: PassiveRoundPhaseHandler
-    + Game(id: String, players: List<Player>, hostListener: Listener)
+    + Game(id: int, players: List<Player>, board: Board)
     + disconnectedPlayer(player: Player): void
     + reconnectedPlayer(player: Player): void
     + getId(): int
@@ -180,8 +180,8 @@ package "game-core" {
     + moveTotem(player: Player, tileCode: String): void
     + chooseCard(player: Player, cardId: int): void
     + extraDrawn(player: Player, cardId: int): void
-    + SkipExtraDrawn(player: Player): void
-    + buildPayload(): Object
+    + skipExtraDrawn(player: Player): void
+    + buildPayload(): ServerPayload
     ~ markStateChanged(): void
     ~ advanceEra(): void
     ~ finishGame(): void
@@ -203,7 +203,7 @@ package "game-core" {
     + CardDraftHandler(game: Game, board: Board, roundFlow: RoundFlow, playerDraftState: PlayerDraftState)
     + chooseCard(player: Player, cardId: int): void
     + extraDrawn(player: Player, cardId: int): void
-    + SkipExtraDrawn(player: Player): void
+    + skipExtraDrawn(player: Player): void
     + handlePlayerDisconnection(player: Player): void
     + handleExtraDrawPlayerDisconnection(player: Player): void
   }
@@ -871,15 +871,13 @@ Deck <|-- TribeDeck
 
 legend right
   <b>Legenda Colori</b>
-  |<back:#EFF6FF>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco (gestione input/comandi) |
-  |<back:#F5F3FF>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
-  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole di gioco o degli eventi interni |
-  |<back:#FDF2F8>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
-  |<back:#FAF5FF>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
-  |<back:#F0FDF4>      </back> <b>Interface</b> | Interfacce di sistema o callback |
-  |<back:#FFF7ED>      </back> <b>Enum</b> | Classi enum di tipologia o stato |
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller di gioco (gestione input/comandi) |
+  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole/fasi di gioco |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
   |<back:#D6F5F5>      </back> <b>Model</b> | Entità del dominio (dati e stato di gioco) |
-  |<back:#F1F5F9>      </back> <b>Dependency</b> | Dipendenze esterne (solo nome classe) |
+  |<back:#ECFEFF>      </back> <b>Enum</b> | Classi enum di tipologia o stato |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#F0F0F0>      </back> <b>Dependency</b> | Dipendenze esterne (solo nome classe) |
   ====
   <b>Visibilità metodi</b>
   ====

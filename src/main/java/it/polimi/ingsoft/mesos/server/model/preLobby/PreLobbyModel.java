@@ -18,17 +18,17 @@ import java.util.List;
  * registry {@link ServerSessionRegistry} and directly pushing updates or unicast errors
  * to the connected client {@link Listener} interfaces.
  */
-public class preLobbyModel {
+public class PreLobbyModel {
     /** Registry containing all session-scoped routing data, active users, and matches. */
     private final ServerSessionRegistry sessions;
     /** Data mapper to convert internal models/events into serializable network payloads. */
     private final PreLobbyPayloadMapper payloadMapper;
     /**
-     * Constructs a new preLobbyModel.
+     * Constructs a new PreLobbyModel.
      *
      * @param sessions the centralized server session registry
      */
-    public preLobbyModel(ServerSessionRegistry sessions) {
+    public PreLobbyModel(ServerSessionRegistry sessions) {
         this.sessions = sessions;
         this.payloadMapper = new PreLobbyPayloadMapper();
     }

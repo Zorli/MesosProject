@@ -151,7 +151,7 @@ public class CardDraftHandler {
         this.goToResolvingEffects();
         this.game.markStateChanged();
     }
-    public void SkipExtraDrawn(Player player) {
+    public void skipExtraDrawn(Player player) {
 
         this.validateExtraDrawRequest(player);
         this.goToResolvingEffects();

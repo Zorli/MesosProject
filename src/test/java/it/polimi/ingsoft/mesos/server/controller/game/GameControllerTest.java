@@ -115,7 +115,7 @@ class GameControllerTest {
         await(() -> game.actions.size() == 4);
         stop(worker);
 
-        assertEquals(List.of("moveTotem:Alice:B", "chooseCard:Alice:7", "extraDrawn:Alice:9", "SkipExtraDrawn:Alice"), game.actions);
+        assertEquals(List.of("moveTotem:Alice:B", "chooseCard:Alice:7", "extraDrawn:Alice:9", "skipExtraDrawn:Alice"), game.actions);
     }
 
     /**
@@ -399,8 +399,8 @@ class GameControllerTest {
         }
 
         @Override
-        public void SkipExtraDrawn(Player player){
-            this.actions.add("SkipExtraDrawn:" + player.getNickname());
+        public void skipExtraDrawn(Player player){
+            this.actions.add("skipExtraDrawn:" + player.getNickname());
         }
 
         /**

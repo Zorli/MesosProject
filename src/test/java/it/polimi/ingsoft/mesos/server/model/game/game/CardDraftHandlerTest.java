@@ -237,7 +237,7 @@ class CardDraftHandlerTest {
         context.roundFlow().setCurrentPhaseOrder(List.of(alice));
         context.roundFlow().setCurrentRoundPhase(RoundPhase.EXTRA_DRAWS);
 
-        context.handler().SkipExtraDrawn(alice);
+        context.handler().skipExtraDrawn(alice);
 
         assertTrue(context.board().upperCards.contains(hunter));
         assertEquals(0, alice.getTribe().getCharactersSize());

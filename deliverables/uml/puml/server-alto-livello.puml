@@ -92,13 +92,13 @@ package "it.polimi.ingsoft.mesos.server.controller" as pkg_ctrl {
 
 ' ─── DOMAIN MODEL ──────────────────────────────────────────────────────────
 package "it.polimi.ingsoft.mesos.server.model" as pkg_mdl {
-  class preLobbyModel <<model>>
+  class PreLobbyModel <<model>>
   class Lobby <<model>>
   class Game <<model>>
   class Player <<model>>
   class Board <<model>>
 
-  preLobbyModel -[hidden]right-> Lobby
+  PreLobbyModel -[hidden]right-> Lobby
   Lobby -[hidden]right-> Game
   Game -[hidden]right-> Player
   Player -[hidden]right-> Board
@@ -128,7 +128,7 @@ MessageRouter      --> PreLobbyController  : routes
 MessageRouter      --> LobbyController     : routes 
 MessageRouter      --> GameController      : routes 
 
-PreLobbyController --> preLobbyModel       : drives 
+PreLobbyController --> PreLobbyModel       : drives 
 LobbyController    --> Lobby               : drives 
 GameController     --> Game                : drives 
 

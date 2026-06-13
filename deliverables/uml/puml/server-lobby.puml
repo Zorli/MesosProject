@@ -167,15 +167,12 @@ Lobby --> LobbyStatus : has
 
 legend right
   <b>Legenda Colori</b>
-  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco (gestione input/comandi) |
-  |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
-  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole di gioco o degli eventi interni |
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller della lobby (gestione input/comandi) |
   |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
   |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
-  |<back:#EBF5FB>      </back> <b>Network</b> | Entrypoint di rete e stubs di comunicazione |
-  |<back:#E8F8F5>      </back> <b>VirtualView</b> | Rappresentazione virtuale del client sul server |
-  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
   |<back:#D6F5F5>      </back> <b>Model</b> | Entità del dominio (dati e stato) |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#ECFEFF>      </back> <b>Enum</b> | Classi enum di tipologia o stato |
   ====
   <b>Visibilità metodi</b>
   ====
