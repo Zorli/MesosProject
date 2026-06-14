@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Client" type="Application" factoryName="Application" singleton="false">
+    <option name="MAIN_CLASS_NAME" value="it.polimi.ingsoft.mesos.client.LaunchClient" />
+    <module name="mesos" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

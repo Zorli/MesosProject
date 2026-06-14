@@ -1,0 +1,156 @@
+@startuml server-prelobby
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam enum {
+  BackgroundColor #ECFEFF
+  BorderColor #0891B2
+}
+skinparam class<<dep>> {
+  BackgroundColor #F0F0F0
+  BorderColor #999
+  FontStyle italic
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+
+skinparam linetype ortho
+
+' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
+package "shared" <<dep>> {
+  class MessageRouter <<dep>>
+  class ServerSessionRegistry <<dep>>
+  hide MessageRouter members
+  hide ServerSessionRegistry members
+}
+
+' ─── PRE-LOBBY DOMAIN ──────────────────────────────────────────────────────
+package "pre-lobby" {
+
+  class PreLobbyController <<controller>> {
+    - sessions: ServerSessionRegistry
+    - preLobbyModel: PreLobbyModel
+    - gameFactory: GameFactory
+    + PreLobbyController(gameFactory: GameFactory, sessions: ServerSessionRegistry)
+    + getSessionRegistry(): ServerSessionRegistry
+    + enqueueMessage(cmd: QueuedCommand): void
+    + run(): void
+    - authenticate(sessionId: String, nickname: String): void
+    - listOpenLobbies(sessionId: String): void
+    - createLobby(sessionId: String, chosenCapacity: int): void
+    - joinLobby(sessionId: String, lobbyId: int): void
+    + reportPhaseError(sessionId: String): void
+  }
+
+  class PreLobbyModel {
+    - sessions: ServerSessionRegistry
+    - payloadMapper: PreLobbyPayloadMapper
+    + PreLobbyModel(sessions: ServerSessionRegistry)
+    + reportPhaseError(sessionId: String): void
+    + reportJoinError(sessionId: String, message: String): void
+    + authenticate(sessionId: String, nickname: String): boolean
+    + listOpenLobbies(sessionId: String): void
+    + createLobby(sessionId: String, chosenCapacity: int): Lobby
+    + joinLobbyValidation(sessionId: String, lobbyId: int): boolean
+  }
+
+  class PreLobbyPayloadMapper <<mapper>> {
+    + authenticated(nickname: String): AuthenticationResultPayload
+    + lobbyCreated(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    + lobbyList(lobbies: List<Lobby>): LobbyListPayload
+  }
+
+  class ServerConnectionLifecycle <<service>> {
+    - sessions: ServerSessionRegistry
+    - pingPongRoutine: PingPongRoutine
+    + ServerConnectionLifecycle(sessions: ServerSessionRegistry)
+    + registerConnection(connection: ClientConnection): String
+    + recordPong(sessionId: String): void
+    + disconnectSession(sessionId: String): void
+    + handleConnectionTimeout(sessionId: String): void
+  }
+
+  class PingPongRoutine <<service>> {
+    - sessions: ServerSessionRegistry
+    - connectionLifecycle: ServerConnectionLifecycle
+    + PingPongRoutine(sessions: ServerSessionRegistry, connectionLifecycle: ServerConnectionLifecycle)
+    + start(): void
+    + stop(): void
+  }
+}
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Controller owns its components
+PreLobbyController *-- PreLobbyModel              : owns
+
+' Connection Lifecycle owns Ping-Pong Routine
+ServerConnectionLifecycle *-- PingPongRoutine : owns
+
+' Model owns mapper
+PreLobbyModel *-- PreLobbyPayloadMapper : owns
+
+' Controller uses shared registry
+PreLobbyController ..> ServerSessionRegistry : uses 
+
+' Model uses shared registry
+PreLobbyModel ..> ServerSessionRegistry     : uses
+
+' Lifecycle and ping uses shared registry
+ServerConnectionLifecycle ..> ServerSessionRegistry : uses 
+PingPongRoutine ..> ServerSessionRegistry           : uses 
+
+' Internal dependencies within pre-lobby package
+PingPongRoutine ..> ServerConnectionLifecycle       : uses 
+
+legend right
+  <b>Legenda Colori</b>
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller del pre-lobby (gestione input/comandi) |
+  |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background, lifecycle o proxy di rete |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
+  |<back:#FFFFFF>      </back> <b>Entity/Model</b> | Classi del modello di dominio (stato e dati) |
+  ====
+  <b>Visibilità metodi</b>
+  ====
+  + public
+  - private
+  # protected
+  ~ package-private
+endlegend
+@enduml

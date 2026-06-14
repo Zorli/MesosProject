@@ -1,0 +1,184 @@
+@startuml server-lobby
+!theme plain
+top to bottom direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam enum {
+  BackgroundColor #ECFEFF
+  BorderColor #0891B2
+}
+skinparam class<<dep>> {
+  BackgroundColor #F0F0F0
+  BorderColor #999
+  FontStyle italic
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+skinparam class<<model>> {
+  BackgroundColor #D6F5F5
+  BorderColor #1A9999
+}
+
+skinparam linetype ortho
+
+' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
+package "shared" <<dep>> {
+  class MessageRouter <<dep>>
+  class ServerSessionRegistry <<dep>>
+  hide MessageRouter members
+  hide ServerSessionRegistry members
+}
+
+' ─── LOBBY DOMAIN ──────────────────────────────────────────────────────────
+package "lobby" {
+
+  class LobbyController <<controller>> {
+    - lobby: Lobby
+    - sessions: ServerSessionRegistry
+    - gameFactory: GameFactory
+    - lobbyPlayerFactory: LobbyPlayerFactory
+    - commandQueue: BlockingQueue<QueuedCommand>
+    + LobbyController(lobby: Lobby, sessions: ServerSessionRegistry, gameFactory: GameFactory)
+    + enqueueMessage(cmd: QueuedCommand): void
+    + run(): void
+    - joinUser(sessionId: String): void
+    - exitLobby(sessionId: String): void
+    - disconnectUser(sessionId: String): void
+    - shouldDisposeEmptyLobby(): boolean
+    - startLobby(sessionId: String): void
+    - startNewMatch(): GameController
+    - startGameWorker(orchestrator: GameController): void
+    - attachLobbySessionsToGame(orchestrator: GameController): void
+    - completeLobbyTransition(orchestrator: GameController): void
+    - startMatchCountdown(orchestrator: GameController): void
+    - reportPhaseError(sessionId: String): void
+  }
+
+  class Lobby <<model>> {
+    + {static} MIN_PLAYERS: int
+    + {static} MAX_PLAYERS: int
+    - id: int
+    - capacity: int
+    - players: List<String>
+    - hostNickname: String
+    - status: LobbyStatus
+    - listeners: List<Listener>
+    - payloadMapper: LobbyPayloadMapper
+    + Lobby(id: int, hostNickname: String, capacity: int)
+    + addListener(listener: Listener): void
+    + removeListener(listener: Listener): void
+    + startMatch(nickname: String): boolean
+    + addPlayer(nickname: String, requesterView: Listener): boolean
+    + removePlayer(nickname: String, requesterView: Listener): boolean
+    + reportPhaseError(target: Listener): void
+    + notifyPlayerJoined(nickname: String): void
+    + notifyPlayerLeft(nickname: String, leavingListener: Listener): void
+    + notifyMatchStarted(nickname: String, target: Listener): void
+    + clearListeners(): void
+    + getId(): int
+    + getHostNickname(): String
+    + getPlayers(): List<String>
+    + getChosenCapacity(): int
+    + getStatus(): LobbyStatus
+    + hasPlayer(nickname: String): boolean
+    + canBeJoinedBy(nickname: String): boolean
+    + isHost(nickname: String): boolean
+    + canStart(): boolean
+    + isFull(): boolean
+    + isEmpty(): boolean
+  }
+
+  class LobbyPayloadMapper <<mapper>> {
+    + lobbyJoined(nickname: String, lobby: Lobby): LobbyUpdatePayload
+    + lobbyLeft(nickname: String, lobby: Lobby, lobbyId: int): LobbyUpdatePayload
+    + lobbyStarted(nickname: String, lobby: Lobby): LobbyUpdatePayload
+  }
+
+  class LobbyPlayerFactory <<factory>> {
+    - {static} AVAILABLE_TOTEMS: List<TotemColor>
+    + createPlayers(nicknames: List<String>): List<Player>
+  }
+
+  enum LobbyStatus {
+    WAITING
+    READY
+    STARTED
+    CLOSED
+  }
+}
+
+package "factory" {
+  interface GameFactory {
+    + createGame(players: List<Player>): Game
+    + createGame(gameId: int, players: List<Player>): Game
+  }
+}
+
+' ─── RELATIONSHIPS ─────────────────────────────────────────────────────────
+
+' Controller owns components
+LobbyController *-- Lobby              : owns
+LobbyController *-- LobbyPlayerFactory : owns
+
+' Controller uses shared dependencies
+LobbyController ..> ServerSessionRegistry : uses 
+LobbyController ..> GameFactory           : uses 
+
+' Lobby owns mapper
+Lobby *-- LobbyPayloadMapper : owns
+
+' Lobby has status
+Lobby --> LobbyStatus : has 
+
+legend right
+  <b>Legenda Colori</b>
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller della lobby (gestione input/comandi) |
+  |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
+  |<back:#D6F5F5>      </back> <b>Model</b> | Entità del dominio (dati e stato) |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#ECFEFF>      </back> <b>Enum</b> | Classi enum di tipologia o stato |
+  ====
+  <b>Visibilità metodi</b>
+  ====
+  + public
+  - private
+  # protected
+  ~ package-private
+endlegend
+@enduml

@@ -1,0 +1,37 @@
+package it.polimi.ingsoft.mesos.server.model.game.cards;
+
+import java.util.ArrayList;
+
+/**
+ * Concrete deck that stores tribe cards, including both characters and events.
+ */
+public class TribeDeck extends Deck {
+    /**
+     * Creates a tribe deck from the provided card list.
+     *
+     * @param cards tribe cards to store in the deck
+     */
+    public TribeDeck(ArrayList<Card> cards) {
+        super(cards);
+    }
+
+    /**
+     * Creates a tribe deck preserving the provided card order.
+     *
+     * @param orderedCards tribe cards already ordered as the remaining draw pile
+     * @return deck preserving the supplied order
+     */
+    public static TribeDeck fromOrderedCards(ArrayList<Card> orderedCards) {
+        return new TribeDeck(orderedCards, false);
+    }
+
+    /**
+     * Creates a tribe deck optionally preserving the supplied order.
+     *
+     * @param cards cards that make up the draw pile
+     * @param shuffleOnCreate whether the deck should be shuffled during construction
+     */
+    private TribeDeck(ArrayList<Card> cards, boolean shuffleOnCreate) {
+        super(cards, shuffleOnCreate);
+    }
+}

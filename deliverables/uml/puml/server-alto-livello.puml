@@ -1,0 +1,149 @@
+@startuml server-alto-livello
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #444
+  FontSize 11
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam class<<network>> {
+  BackgroundColor #EBF5FB
+  BorderColor #2980B9
+}
+skinparam class<<virtualview>> {
+  BackgroundColor #E8F8F5
+  BorderColor #117A65
+}
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+skinparam class<<model>> {
+  BackgroundColor #D6F5F5
+  BorderColor #1A9999
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+}
+
+hide members
+
+' ─── NETWORK LAYER ─────────────────────────────────────────────────────────
+package "it.polimi.ingsoft.mesos.server.network" as pkg_net {
+  class ConnectionAcceptor <<network>>
+  class ClientCommandHandler <<network>>
+  class ProtocolErrorMapper <<mapper>>
+  class PingPongRoutine <<service>>
+  class ServerConnectionLifecycle <<service>>
+  interface VirtualView
+  interface Listener
+  class VirtualViewTCP <<virtualview>>
+  class VirtualViewRMI <<virtualview>>
+  class RmiConnectionEntryPoint <<virtualview>>
+
+  ConnectionAcceptor -[hidden]right-> ClientCommandHandler
+  PingPongRoutine -[hidden]right-> ServerConnectionLifecycle
+  PingPongRoutine -[hidden]down-> ClientCommandHandler
+  VirtualView -[hidden]right-> Listener
+  VirtualViewTCP -[hidden]right-> RmiConnectionEntryPoint
+  VirtualViewRMI -[hidden]right-> VirtualViewTCP
+}
+
+' ─── HELPER LAYER ──────────────────────────────────────────────────────────
+package "it.polimi.ingsoft.mesos.server.helper" as pkg_helper {
+  class MessageRouter <<network>>
+  class ServerSessionRegistry
+  
+  MessageRouter -[hidden]right-> ServerSessionRegistry
+}
+
+' ─── CONTROLLER LAYER ──────────────────────────────────────────────────────
+package "it.polimi.ingsoft.mesos.server.controller" as pkg_ctrl {
+  class PreLobbyController <<controller>>
+  class LobbyController <<controller>>
+  class GameController <<controller>>
+
+  PreLobbyController -[hidden]right-> LobbyController
+  LobbyController -[hidden]right-> GameController
+}
+
+' ─── DOMAIN MODEL ──────────────────────────────────────────────────────────
+package "it.polimi.ingsoft.mesos.server.model" as pkg_mdl {
+  class PreLobbyModel <<model>>
+  class Lobby <<model>>
+  class Game <<model>>
+  class Player <<model>>
+  class Board <<model>>
+
+  PreLobbyModel -[hidden]right-> Lobby
+  Lobby -[hidden]right-> Game
+  Game -[hidden]right-> Player
+  Player -[hidden]right-> Board
+}
+
+' ─── FACTORY ───────────────────────────────────────────────────────────────
+package "it.polimi.ingsoft.mesos.server.factory" as pkg_factory {
+  interface GameFactory
+  class DefaultGameFactory <<factory>>
+  class LobbyPlayerFactory <<factory>>
+
+  LobbyPlayerFactory -[hidden]right-> DefaultGameFactory
+  DefaultGameFactory -[hidden]right-> GameFactory
+}
+
+' ─── PACKAGE LAYOUT ────────────────────────────────────────────────────────
+pkg_net    -[hidden]right-> pkg_helper
+pkg_net    -[hidden]down->  pkg_ctrl
+pkg_helper -[hidden]down->  pkg_ctrl
+pkg_ctrl   -[hidden]down->  pkg_mdl
+pkg_mdl    -[hidden]right-> pkg_factory
+
+' ─── KEY INTER-LAYER FLOWS (read top → bottom) ─────────────────────────────
+VirtualViewTCP     --> MessageRouter       : routes 
+VirtualViewRMI     --> MessageRouter       : routes 
+MessageRouter      --> PreLobbyController  : routes 
+MessageRouter      --> LobbyController     : routes 
+MessageRouter      --> GameController      : routes 
+
+PreLobbyController --> PreLobbyModel       : drives 
+LobbyController    --> Lobby               : drives 
+GameController     --> Game                : drives 
+
+LobbyController    ..> GameFactory         : uses 
+DefaultGameFactory ..|> GameFactory
+
+legend right
+  <b>Legenda Colori</b>
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller delle sessioni, lobby o gioco |
+  |<back:#D5F5E3>      </back> <b>Service</b> | Routine di background e lifecycle |
+  |<back:#E8DAEF>      </back> <b>Factory</b> | Classi factory per la creazione di entità |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
+  |<back:#EBF5FB>      </back> <b>Network</b> | Entrypoint e routing di rete |
+  |<back:#E8F8F5>      </back> <b>VirtualView</b> | Rappresentazione virtuale del client |
+  |<back:#D6F5F5>      </back> <b>Model</b> | Entità del dominio (dati e stato) |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+endlegend
+@enduml

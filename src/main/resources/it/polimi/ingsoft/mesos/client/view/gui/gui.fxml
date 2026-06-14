@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane styleClass="app-shell"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1">
+    <!-- Top bar: application title and current session nickname. -->
+    <top>
+        <HBox fx:id="topBar" alignment="CENTER_LEFT" spacing="18" styleClass="top-bar">
+            <padding>
+                <Insets top="16" right="28" bottom="16" left="28"/>
+            </padding>
+            <VBox spacing="0">
+                <Label text="MESOS" styleClass="brand-title"/>
+                <Label text="desktop command table" styleClass="brand-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="nickname:" styleClass="muted"/>
+            <Label fx:id="sessionNicknameLabel" text="Guest" styleClass="session-pill"/>
+        </HBox>
+    </top>
+
+    <center>
+        <!-- Page stack: only one direct child is visible at a time. -->
+        <StackPane fx:id="pages" styleClass="page-stack">
+            <!-- Login page: first screen used to authenticate the nickname. -->
+            <StackPane fx:id="loginPage" styleClass="login-page">
+                <HBox alignment="CENTER" spacing="34" styleClass="login-overlay">
+                    <VBox alignment="CENTER" spacing="16" minWidth="410" maxWidth="450" minHeight="0" maxHeight="310" styleClass="login-panel">
+                        <VBox alignment="CENTER" spacing="6">
+                            <Label text="User Login" styleClass="panel-title-large"/>
+
+                        </VBox>
+                        <Region maxWidth="92" minHeight="2" prefHeight="2" styleClass="login-divider"/>
+                        <Label text="Nickname" maxWidth="Infinity" styleClass="field-label"/>
+                        <TextField fx:id="nicknameField"
+                                   promptText="es. Tartufo"
+                                   onAction="#handleLogin"
+                                   styleClass="text-input"/>
+                        <Button fx:id="loginButton" text="Log in" maxWidth="Infinity" onAction="#handleLogin" styleClass="primary-button"/>
+                        <Label fx:id="loginStatusLabel" text="" wrapText="true" styleClass="status-text"/>
+                    </VBox>
+                </HBox>
+            </StackPane>
+
+            <!-- Lobby list page: shows available tables and opens the creation/join flow. -->
+            <VBox fx:id="lobbyPage" spacing="18" styleClass="page lobby-page">
+                <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
+                    <VBox spacing="2">
+                        <Label text="Active lobbies" styleClass="section-title"/>
+                        <Label fx:id="lobbyStatusLabel" text="Choose an open table or create your own lobby." styleClass="section-subtitle"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lobbyCountLabel" text="0 tables" styleClass="session-pill"/>
+                </HBox>
+
+                <VBox spacing="14" styleClass="surface-panel list-panel" VBox.vgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <Label text="Available tables" styleClass="panel-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="openCreateTableButton"
+                                text="Create table"
+                                onAction="#handleOpenCreateTable"
+                                styleClass="primary-button"/>
+                    </HBox>
+                    <ScrollPane fx:id="lobbyScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="clean-scroll">
+                        <VBox fx:id="lobbyListContainer" spacing="12"/>
+                    </ScrollPane>
+                </VBox>
+            </VBox>
+
+            <!-- Lobby command page: creates a new lobby or controls the current one. -->
+            <VBox fx:id="lobbyFormPage" alignment="TOP_CENTER" spacing="18" styleClass="page lobby-page">
+                <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
+                    <VBox spacing="2">
+                        <Label fx:id="lobbyActionTitleLabel" text="Create table" styleClass="section-title"/>
+                        <Label fx:id="lobbyActionSubtitleLabel" text="Pick a table size from 2 to 5 players and become the host." wrapText="true" styleClass="section-subtitle"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="backToLobbyListButton"
+                            text="Back"
+                            onAction="#handleBackToLobbyList"
+                            styleClass="ghost-button"/>
+                </HBox>
+
+                <VBox spacing="16" maxWidth="520" styleClass="surface-panel command-panel">
+                    <VBox spacing="8" styleClass="current-lobby-panel">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label fx:id="currentLobbyTitleLabel" text="No lobby selected" styleClass="current-lobby-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="currentLobbyStateLabel" text="Waiting" styleClass="status-pill"/>
+                        </HBox>
+                        <Label fx:id="currentLobbyHostLabel" text="Host: -" styleClass="muted"/>
+                        <Label fx:id="currentLobbyPlayersLabel" text="Players: -" styleClass="muted"/>
+                        <Label fx:id="playersInLobby" text="Players: -" styleClass="muted"/>
+                    </VBox>
+                    <Label fx:id="capacityLabel" text="Players" styleClass="field-label"/>
+                    <ComboBox fx:id="capacityComboBox" maxWidth="Infinity"/>
+                    <Button fx:id="createLobbyButton" text="Create lobby" onAction="#handleCreateLobby" maxWidth="Infinity" styleClass="primary-button"/>
+                    <Button fx:id="startLobbyButton"
+                            text="Start match"
+                            disable="true"
+                            onAction="#handleStartLobby"
+                            maxWidth="Infinity"
+                            styleClass="secondary-button"/>
+                    <Button fx:id="exitLobbyButton"
+                            text="Exit lobby"
+                            disable="true"
+                            onAction="#handleExitLobby"
+                            maxWidth="Infinity"
+                            styleClass="danger-button"/>
+                </VBox>
+            </VBox>
+
+            <!-- Game page: match header, market rows, offer path, players, and tribes. -->
+            <ScrollPane fx:id="gamePage" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="game-scroll">
+                <VBox spacing="14" styleClass="page game-page game-content">
+                    <HBox alignment="CENTER_LEFT" spacing="16" styleClass="screen-header">
+                        <VBox spacing="2">
+                            <Label fx:id="matchTitleLabel" text="Match" styleClass="section-title"/>
+                            <Label fx:id="matchMetaLabel" text="Era - / status -" styleClass="section-subtitle"/>
+                        </VBox>
+                        <Button fx:id="SkipExtraDrawButton" text="Skip Extra Draw" visible="false" onAction="#skipExtraDraw" styleClass="danger-button"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <HBox alignment="CENTER" spacing="8">
+                            <Label text="General info:" styleClass="muted"/>
+                            <Label fx:id="turnLabel" text="Waiting for turn" styleClass="turn-pill"/>
+                            <Label text="Your info:" styleClass="muted"/>
+                            <Label fx:id="selectedCardLabel" text="Waiting for match data." wrapText="true" styleClass="action-hint-pill"/>
+                        </HBox>
+                        <Region HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <!-- Board area: upper market, offer path, and lower market. -->
+                    <VBox spacing="14" styleClass="board-panel" VBox.vgrow="ALWAYS">
+                        <VBox spacing="8" styleClass="market-band">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Upper market" styleClass="panel-title"/>
+                            </HBox>
+                            <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
+                                <HBox fx:id="upperRowContainer" spacing="12" styleClass="card-row"/>
+                            </ScrollPane>
+                        </VBox>
+                        <VBox spacing="8" styleClass="offer-band">
+                            <Label text="Offer path" styleClass="panel-title"/>
+                            <HBox fx:id="offerPathContainer" spacing="10"/>
+                        </VBox>
+                        <VBox spacing="8" styleClass="market-band">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Lower market" styleClass="panel-title"/>
+                            </HBox>
+                            <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" styleClass="row-scroll">
+                                <HBox fx:id="lowerRowContainer" spacing="12" styleClass="card-row"/>
+                            </ScrollPane>
+                        </VBox>
+                    </VBox>
+
+                    <!-- Player summary area: dynamically filled by GUIView. -->
+                    <VBox spacing="10" styleClass="surface-panel players-band">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Players info" styleClass="panel-title"/>
+                        </HBox>
+                        <VBox fx:id="playerListContainer" spacing="8"/>
+                    </VBox>
+
+                    <!-- Tribe area: personal cards grouped by player. -->
+                    <VBox spacing="10" styleClass="surface-panel tribe-panel">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Tribes" styleClass="panel-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="personal cards by player" styleClass="micro-pill"/>
+                        </HBox>
+                        <VBox fx:id="tribeCardsContainer" spacing="12"/>
+                    </VBox>
+                </VBox>
+            </ScrollPane>
+
+            <!-- End page: final ranking and navigation back to the lobby list. -->
+            <VBox fx:id="endPage" alignment="CENTER" spacing="22" styleClass="page end-page">
+                <VBox alignment="CENTER" spacing="4">
+                    <Label text="Match complete" styleClass="hero-title"/>
+                    <Label text="Final match result." styleClass="hero-copy"/>
+                </VBox>
+                <VBox fx:id="finalRankingContainer" spacing="10" maxWidth="560" styleClass="surface-panel final-panel"/>
+                <Button text="Back to lobbies" onAction="#handleBackToLobby" styleClass="primary-button"/>
+            </VBox>
+        </StackPane>
+    </center>
+</BorderPane>

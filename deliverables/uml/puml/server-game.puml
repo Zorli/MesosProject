@@ -1,0 +1,889 @@
+@startuml server-game
+!theme plain
+left to right direction
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam class {
+  BackgroundColor White
+  BorderColor #475569
+  ArrowColor #444
+  FontSize 10
+}
+skinparam abstract {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+}
+skinparam interface {
+  BackgroundColor #D6EAF8
+  BorderColor #2980B9
+}
+skinparam enum {
+  BackgroundColor #ECFEFF
+  BorderColor #0891B2
+}
+skinparam class<<dep>> {
+  BackgroundColor #F0F0F0
+  BorderColor #999
+  FontStyle italic
+}
+skinparam class<<internal>> {
+  BackgroundColor #F8FAFC
+  BorderColor #CBD5E1
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #888
+  FontSize 11
+}
+
+skinparam class<<controller>> {
+  BackgroundColor #FDEBD0
+  BorderColor #E67E22
+}
+skinparam class<<handler>> {
+  BackgroundColor #FEF9E7
+  BorderColor #F0A500
+}
+skinparam class<<service>> {
+  BackgroundColor #D5F5E3
+  BorderColor #27AE60
+}
+skinparam class<<factory>> {
+  BackgroundColor #E8DAEF
+  BorderColor #8E44AD
+}
+skinparam class<<mapper>> {
+  BackgroundColor #F4F6F7
+  BorderColor #95A5A6
+}
+skinparam class<<model>> {
+  BackgroundColor #D6F5F5
+  BorderColor #1A9999
+}
+skinparam abstract<<model>> {
+  BackgroundColor #D6F5F5
+  BorderColor #1A9999
+}
+
+skinparam linetype ortho
+
+' ─── SHARED DEPENDENCIES (name only) ───────────────────────────────────────
+package "shared" <<dep>> {
+  class MessageRouter <<dep>>
+  class ServerSessionRegistry <<dep>>
+  hide MessageRouter members
+  hide ServerSessionRegistry members
+}
+
+' ─── QUEUED COMMANDS ───────────────────────────────────────────────────────
+package it.polimi.ingsoft.mesos.server.controller.command {
+  interface QueuedCommand {
+    + getSessionId(): String
+  }
+  class ClientPayloadCommand {
+    - sessionId: String
+    - payload: ClientPayload
+    + ClientPayloadCommand(sessionId: String, payload: ClientPayload)
+    + getSessionId(): String
+    + getPayload(): ClientPayload
+  }
+  class SystemDisconnectCommand {
+    - sessionId: String
+    + SystemDisconnectCommand(sessionId: String)
+    + getSessionId(): String
+  }
+  class SystemJoinCommand {
+    - sessionId: String
+    + SystemJoinCommand(sessionId: String)
+    + getSessionId(): String
+  }
+  class SystemCloseGameCommand {
+    + getSessionId(): String
+  }
+  class SystemSetupMatchCommand {
+    + getSessionId(): String
+  }
+}
+
+' ─── CONTROLLER ────────────────────────────────────────────────────────────
+class GameController <<controller>> {
+  - game: Game
+  - players: List<Player>
+  - hostNickname: String
+  - sessions: ServerSessionRegistry
+  - commandQueue: BlockingQueue<QueuedCommand>
+  - lastPlayerTimer: Timer
+  - lastPlayerTimerTask: TimerTask
+  - {static} LAST_PLAYER_TIMEOUT_MILLIS: long
+  - closingLock: Object
+  - closing: boolean
+  + GameController(game: Game, hostNickname: String, sessions: ServerSessionRegistry)
+  + getGame(): Game
+  + getPlayers(): List<Player>
+  + isClosing(): boolean
+  + enqueueMessage(cmd: QueuedCommand): void
+  + run(): void
+  + setupMatch(): void
+  - closeGame(): void
+  - moveTotem(player: Player, tile: String): void
+  - chooseCard(player: Player, cardId: int): void
+  - startLastPlayerTimer(): void
+  - cancelLastPlayerTimer(): void
+  - extraDrawn(player: Player, cardId: int): void
+  - skipExtraDrawn(player: Player): void
+  - resolvePlayer(nickname: String): Player
+  - resolvePlayerBySession(sessionId: String): Player
+  - disconnectedPlayer(command: SystemDisconnectCommand): void
+  - reConnectedPlayer(sessionId: String): void
+  - checkGameEndAndCleanup(): void
+  - teardownGame(): void
+  - reportPhaseError(sessionId: String): void
+}
+
+' ─── GAME CORE ─────────────────────────────────────────────────────────────
+package "game-core" {
+
+  class Game <<model>> {
+    - id: int
+    - players: List<Player>
+    - currentEra: Era
+    - status: GameStatus
+    - stateVersion: long
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    - listeners: List<Listener>
+    - connectedPlayers: Map<Player, Boolean>
+    - actionExecutor: GameActionExecutor
+    - totemPlacementHandler: TotemPlacementHandler
+    - cardDraftHandler: CardDraftHandler
+    - passiveRoundPhaseHandler: PassiveRoundPhaseHandler
+    + Game(id: int, players: List<Player>, board: Board)
+    + disconnectedPlayer(player: Player): void
+    + reconnectedPlayer(player: Player): void
+    + getId(): int
+    + getConnectedPlayers(): Map<Player, Boolean>
+    + getPlayers(): List<Player>
+    + getCurrentEra(): Era
+    + getStatus(): GameStatus
+    + getStateVersion(): long
+    + getBoard(): Board
+    + getRoundFlow(): RoundFlow
+    + getPlayerDraftState(): PlayerDraftState
+    + addListener(listener: Listener): void
+    + removeListener(listener: Listener): void
+    + notifyError(code: String, message: String): void
+    + reportPhaseError(target: Listener): void
+    + setup(): void
+    + moveTotem(player: Player, tileCode: String): void
+    + chooseCard(player: Player, cardId: int): void
+    + extraDrawn(player: Player, cardId: int): void
+    + skipExtraDrawn(player: Player): void
+    + buildPayload(): ServerPayload
+    ~ markStateChanged(): void
+    ~ advanceEra(): void
+    ~ finishGame(): void
+    + closeGame(): void
+    + getStartTimer(): Boolean
+  }
+
+  class GameActionExecutor <<handler>> {
+    - game: Game
+    + GameActionExecutor(game: Game)
+    + execute(action: Runnable): void
+  }
+
+  class CardDraftHandler <<handler>> {
+    - game: Game
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    + CardDraftHandler(game: Game, board: Board, roundFlow: RoundFlow, playerDraftState: PlayerDraftState)
+    + chooseCard(player: Player, cardId: int): void
+    + extraDrawn(player: Player, cardId: int): void
+    + skipExtraDrawn(player: Player): void
+    + handlePlayerDisconnection(player: Player): void
+    + handleExtraDrawPlayerDisconnection(player: Player): void
+  }
+
+  class TotemPlacementHandler <<handler>> {
+    - game: Game
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    + TotemPlacementHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
+    + moveTotem(player: Player, tileCode: String): void
+    + handlePlayerDisconnection(player: Player): void
+  }
+
+  class PassiveRoundPhaseHandler <<handler>> {
+    - game: Game
+    - board: Board
+    - roundFlow: RoundFlow
+    - playerDraftState: PlayerDraftState
+    + PassiveRoundPhaseHandler(game: Game, board: Board, roundFlow: RoundFlow, state: PlayerDraftState)
+    + advancePassivePhases(): void
+  }
+
+  class RoundFlow <<model>> {
+    - currentPhaseOrder: List<Player>
+    - currentPlayerIndex: int
+    - roundNumber: int
+    - currentRoundPhase: RoundPhase
+    + RoundFlow()
+    + getCurrentPlayer(): Player
+    + getRoundNumber(): int
+    + getCurrentRoundPhase(): RoundPhase
+    + getCurrentPhaseOrder(): List<Player>
+    + getCurrentPlayerIndex(): int
+    + setCurrentPhaseOrder(newOrder: List<Player>): void
+    + setCurrentRoundPhase(currentRoundPhase: RoundPhase): void
+    + advanceToNextPlayer(): void
+    + isLastPlayer(): boolean
+    + advanceRoundNumber(): void
+  }
+
+  class PlayerDraftState <<model>> {
+    - phase: DraftTurnState
+    - remainingUpperChoicesByPlayer: Map<Player, Integer>
+    - remainingLowerChoicesByPlayer: Map<Player, Integer>
+    + PlayerDraftState()
+    + getPhase(): DraftTurnState
+    + getRemainingUpperChoices(player: Player): int
+    + getRemainingLowerChoices(player: Player): int
+    + getRemainingUpperChoicesByPlayer(): Map<Player, Integer>
+    + getRemainingLowerChoicesByPlayer(): Map<Player, Integer>
+    + registerDrawQuota(player: Player, upperChoices: int, lowerChoices: int): void
+    + startCardSelection(player: Player): void
+    + isWaitingForCardSelection(): boolean
+    + isTurnCompleted(): boolean
+    + hasRemainingChoices(player: Player): boolean
+    + canChooseFromUpperRow(player: Player): boolean
+    + canChooseFromLowerRow(player: Player): boolean
+    + consumeChoice(player: Player, cardRow: CardRow): void
+    + resetForNewRound(): void
+    + resetForNextPlayer(player: Player): void
+  }
+
+  class GamePayloadMapper <<mapper>> {
+    ~ {static} from(game: Game): GamePayload
+    ~ {static} toErrorPayload(code: String, message: String): ErrorPayload
+  }
+}
+note right of GamePayloadMapper : "package-private final class.\nAll methods are static."
+
+' ─── PLAYER ────────────────────────────────────────────────────────────────
+package "player" {
+  class Player <<model>> {
+    - nickname: String
+    - food: int
+    - prestigePoints: int
+    - totem: TotemColor
+    - tribe: Tribe
+    + Player(nickname: String, food: int, prestigePoints: int, totemColor: TotemColor)
+    + Player(nickname: String, food: int, prestigePoints: int, totemColor: TotemColor, tribe: Tribe)
+    + getNickname(): String
+    + gainFood(amount: int): void
+    + payFood(amount: int): void
+    + gainPrestigePoints(amount: int): void
+    + payPrestigePoints(amount: int): void
+    + getFood(): int
+    + getPrestigePoints(): int
+    + getTotem(): TotemColor
+    + getTribe(): Tribe
+    + initializeGameAttributes(): void
+    + getBuildingFoodDiscount(): int
+  }
+
+  class Tribe <<model>> {
+    - characters: ArrayList<CharacterCard>
+    - buildings: ArrayList<BuildingCard>
+    + Tribe()
+    + Tribe(characters: List<CharacterCard>, buildings: List<BuildingCard>)
+    + addCharacter(c: CharacterCard): void
+    + addCharacter(c: CharacterCard, player: Player): void
+    + addBuilding(b: BuildingCard): void
+    + countHunters(): int
+    + countArtists(): int
+    + getPrestigePointsForArtistsInFinalPhase(): int
+    + getPrestigePointsForInventorsInFinalPhase(): int
+    + countGatherers(): int
+    + getShamansStars(): int
+    + getCharactersSize(): int
+    + hasBuildingForShamanRitualProtection(): boolean
+    + hasBuildingForEndOfTurnFood(): boolean
+    + getBuildings(): List<BuildingCard>
+    + getCharacters(): List<CharacterCard>
+    + hasWinMultiplier(): boolean
+    + hasEndRoundExtraCardBuilding(): boolean
+    + getTotalFoodDiscountFromBuilders(): int
+    + getPrestigePointsForBuilderInFinalPhase(): int
+  }
+}
+
+' ─── BOARD ─────────────────────────────────────────────────────────────────
+package "board" {
+  class Board <<model>> {
+    - upperPile: UpperPile
+    - lowerPile: LowerPile
+    - offerPath: OfferPath
+    - tribeDeck: TribeDeck
+    - buildingDeck: BuildingDeck
+    - players: List<Player>
+    - numPlayer: int
+    + Board(tribeDeck: TribeDeck, buildingDeck: BuildingDeck, players: List<Player>)
+    + setupInitialRows(): void
+    + buildOfferPath(): void
+    - shiftUpperToLower(): void
+    - moveUpperBuildingCardsToLowerRow(): void
+    + resolveLowerEvents(): void
+    + returnPlayerToStartingTile(player: Player): void
+    + movePlayerToLastStartingTile(player: Player): void
+    + resetBoardAfterRound(era: Era): boolean
+    - refillUpperTribeCards(currentEra: Era): boolean
+    - refillUpperBuildingCards(newEra: Era): void
+    - getBuildingCountForEra(era: Era): int
+    + isSpaceAvailable(code: String): boolean
+    + placePlayerOnOfferSpace(player: Player, code: String): void
+    + getResolutionOrder(): List<Player>
+    + shiftToLastStartingTile(): void
+    + getNextRoundTurnOrder(): List<Player>
+    + resolveEventA(): void
+    + returnNumberDrawableCard(player: Player): int[]
+    + getDraftableUpperCards(player: Player): List<Card>
+    + getDraftableLowerCards(player: Player): List<Card>
+    + getCardRow(card: Card): CardRow
+    + canPlayerDrawCard(player: Player, card: Card): boolean
+    + resolveAllEvents(): void
+    + removeUpperCard(card: Card): void
+    + removeLowerCard(card: Card): void
+    + getUpperRowCards(): List<Card>
+    + getLowerRowCards(): List<Card>
+    + getAvailableOfferSpaces(): List<OfferSpace>
+    + getOfferSpaces(): List<OfferSpace>
+    + getRemainingTribeDeckCards(): List<Card>
+    + getRemainingBuildingDeckCards(): List<Card>
+    + getStartingBlocks(): List<StartingBlock>
+    + findCardById(cardId: int): Card
+  }
+
+  class UpperPile <<model>> {
+    - tribeCards: List<TribeCard>
+    - buildingCards: List<BuildingCard>
+    + UpperPile()
+    + addCard(card: Card): void
+    + removeAndReturnAllTribeCards(): List<TribeCard>
+    + removeAndReturnAllBuildingCards(): List<BuildingCard>
+    + removeCard(card: Card): void
+    + getTribeCardsSize(): int
+    + getAllCards(): List<Card>
+    + getTribeCards(): List<TribeCard>
+    + getBuildingCards(): List<BuildingCard>
+  }
+
+  class LowerPile <<model>> {
+    - tribeCards: List<TribeCard>
+    - buildingCards: List<BuildingCard>
+    + LowerPile()
+    + addCard(card: Card): void
+    + addTribeCards(cards: List<TribeCard>): void
+    + addBuildingCards(cards: List<BuildingCard>): void
+    + removeCard(card: Card): void
+    + discardLowerRow(): void
+    + discardLowerBuildings(): void
+    + resolveLowerRowEvents(players: ArrayList<Player>): void
+    + getTribeCardsSize(): int
+    + getAllCards(): List<Card>
+    + getTribeCards(): List<TribeCard>
+    + getBuildingCards(): List<BuildingCard>
+  }
+
+  enum CardRow {
+    UPPER
+    LOWER
+    NOT_PRESENT
+  }
+
+  package "offerpath" {
+    class OfferPath <<model>> {
+      - startingTile: StartingTile
+      - offerSpaces: List<OfferSpace>
+      + OfferPath()
+      + setup(players: List<Player>): void
+      - setupOfferSpaces(numPlayer: int): void
+      + returnPlayerToStartingTile(player: Player): void
+      + movePlayerToLastStartingTile(player: Player, from: int): void
+      + getPlayersInOrder(): List<Player>
+      + getNextRoundTurnOrder(): List<Player>
+      + resolveEventA(): void
+      + checkOfferSpace(code: String): boolean
+      + placePlayer(player: Player, code: String): void
+      + resolveActionForPlayer(player: Player): int[]
+      + getAvailableOfferSpaces(): List<OfferSpace>
+      + getOfferSpaces(): List<OfferSpace>
+      + getStartingTile(): StartingTile
+    }
+
+    class OfferSpace <<model>> {
+      - positionIndex: int
+      - code: String
+      - minPlayers: int
+      - foodBonus: int
+      - topRowCardsToTake: int
+      - bottomRowCardsToTake: int
+      - occupiedBy: Player
+      + OfferSpace(posIdx: int, code: String, min: int, food: int, top: int, bottom: int)
+      + isAvailable(): boolean
+      + occupy(player: Player): void
+      + clear(): void
+      + resolveImmediateAction(player: Player): void
+      + getPositionIndex(): int
+      + getCode(): String
+      + getMinPlayers(): int
+      + getFoodBonus(): int
+      + getTopRowCardsToTake(): int
+      + getBottomRowCardsToTake(): int
+      + getOccupiedBy(): Player
+    }
+
+    class StartingTile <<model>> {
+      - startingBlocks: List<StartingBlock>
+      + StartingTile()
+      + setup(players: List<Player>): void
+      + placePlayerOnNextAvailableBlock(player: Player): void
+      + placePlayerOnLastAvailableBlock(player: Player): void
+      + removePlayer(player: Player): void
+      + getNextRoundOrder(): List<Player>
+      + getStartingBlocks(): List<StartingBlock>
+      + getPlayersOrderedByStartingBlock(): List<Player>
+    }
+
+    class StartingBlock <<model>> {
+      - position: int
+      - foodModifier: int
+      - prestigeModifier: int
+      - occupiedBy: Player
+      + StartingBlock(pos: int, food: int, prestige: int, player: Player)
+      + occupy(player: Player): void
+      + clear(): void
+      + getOccupiedBy(): Player
+      + getFoodModifier(): int
+      + getPrestigeModifier(): int
+      + getPosition(): int
+      + resolveEffect(): void
+    }
+  }
+}
+
+' ─── CARDS ─────────────────────────────────────────────────────────────────
+package "cards" {
+
+  interface CardAction {
+    + getEra(): Era
+    + isDrawable(player: Player): boolean
+  }
+
+  abstract class Card <<model>> {
+    - id: int
+    - era: Era
+    + Card(id: int, era: Era)
+    + getId(): int
+    + getEra(): Era
+    + getCardType(): String
+    + setEra(era: Era): void
+  }
+
+  abstract class TribeCard <<model>> {
+    - type: TribeCardType
+    + TribeCard(id: int, era: Era, type: TribeCardType)
+    + getType(): TribeCardType
+    + getCardType(): String
+  }
+
+  class BuildingCard <<model>> {
+    - foodCost: int
+    - prestigePoints: int
+    - benefitType: BenefitType
+    + BuildingCard(id: int, era: Era, fc: int, pp: int, type: BenefitType)
+    + isDrawable(player: Player): boolean
+    + applyEffect(player: Player): void
+    + getEffectiveFoodCost(player: Player): int
+    + payEffectiveCost(player: Player): void
+    + increaseFinalPrestigePoints(player: Player): void
+  }
+
+  abstract class Deck <<model>> {
+    - cards: ArrayList<Card>
+    + Deck(cards: ArrayList<Card>)
+    # Deck(cards: ArrayList<Card>, shuffle: boolean)
+    + draw(): Card
+    + isEmpty(): boolean
+    + shuffle(): void
+  }
+
+  class BuildingDeck <<model>> {
+    + BuildingDeck(cards: ArrayList<Card>)
+    + {static} fromOrderedCards(cards: ArrayList<Card>): BuildingDeck
+  }
+
+  class TribeDeck <<model>> {
+    + TribeDeck(cards: ArrayList<Card>)
+    + {static} fromOrderedCards(cards: ArrayList<Card>): TribeDeck
+  }
+
+  package "characters" {
+    abstract class CharacterCard <<model>> {
+      + CharacterCard(id: int, era: Era, type: TribeCardType)
+      + isDrawable(player: Player): boolean
+    }
+
+    class Artist <<model>> {
+      + Artist(id: int, era: Era, type: TribeCardType)
+    }
+    class Builder <<model>> {
+      - priceDiscount: int
+      - prestigePoints: int
+      + Builder(id: int, era: Era, type: TribeCardType, pd: int, pp: int)
+      + getPriceDiscount(): int
+      + getPrestigePoints(): int
+    }
+    class Gatherer <<model>> {
+      + Gatherer(id: int, era: Era, type: TribeCardType)
+    }
+    class Hunter <<model>> {
+      - hasEffect: boolean
+      + Hunter(id: int, era: Era, hasEffect: boolean, type: TribeCardType)
+      + getHasEffect(): boolean
+      + applyEffect(player: Player): void
+    }
+    class Inventor <<model>> {
+      - inventionType: InventionType
+      + Inventor(id: int, era: Era, type: TribeCardType, inventionType: InventionType)
+      + getInventionType(): InventionType
+    }
+    class Shaman <<model>> {
+      - stars: int
+      + Shaman(id: int, era: Era, stars: int, type: TribeCardType)
+      + getStars(): int
+    }
+  }
+
+  package "buildings" {
+    class BigPpReward <<model>> {
+      - ppReward: int
+      + BigPpReward(id: int, era: Era, fc: int, pp: int, type: BenefitType, ppReward: int)
+      + applyEffect(player: Player): void
+    }
+    class CavePaintingBonus <<model>> {
+      - bonusFoodPerArtist: int
+      + CavePaintingBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType, bonusFoodPerArtist: int)
+      + applyBonusCavePaintingEvent(player: Player): void
+      + getBonusFoodPerArtist(): int
+    }
+    class HunterBonus <<model>> {
+      - bonusFoodPerHunter: int
+      - bonusPrestigePointsPerHunter: int
+      + HunterBonus(id: int, era: Era, fc: int, pp: int, type: BenefitType, bonusFoodPerHunter: int, bonusPrestigePointsPerHunter: int)
+      + applyBonusHunterEvent(player: Player): void
+      + getBonusFoodPerHunter(): int
+      + getBonusPrestigePointsPerHunter(): int
+    }
+    class MultiplierForType <<model>> {
+      - multiplier: int
+      - applicableTribeCardType: TribeCardType
+      + MultiplierForType(id: int, era: Era, fc: int, pp: int, type: BenefitType, multiplier: int, applicableTribeCardType: TribeCardType)
+      + applyEffect(player: Player): void
+    }
+    class PairOfInventor <<model>> {
+      - rewardFood: int
+      - inventionTypeIntegerMap: Map<InventionType, Integer>
+      + PairOfInventor(id: int, era: Era, fc: int, pp: int, typeOfBenefit: BenefitType, rewardFood: int)
+      + addInventionTypeAndApplyEffect(type: InventionType, player: Player): void
+      + getRewardFood(): int
+    }
+    class PrestigePointsForSet <<model>> {
+      - pointsPerSet: int
+      + PrestigePointsForSet(id: int, era: Era, fc: int, pp: int, type: BenefitType, pointsPerSet: int)
+      + applyEffect(player: Player): void
+    }
+    class SetForFood <<model>> {
+      - rewardFood: int
+      - characterTypeCountMap: Map<TribeCardType, Integer>
+      + SetForFood(id: int, era: Era, fc: int, pp: int, typeOfBenefit: BenefitType, rewardFood: int)
+      + addCharacterTypeAndApplyEffect(type: TribeCardType, player: Player): void
+      + hasBonus(): boolean
+      + decrementCharacterType(type: TribeCardType): void
+      + decrementAllCharacterTypes(): void
+    }
+    class ShamanStarsBonus <<model>> {
+      - starsBonus: int
+      + ShamanStarsBonus(id: int, era: Era, fc: int, pp: int, benefitType: BenefitType, starsBonus: int)
+      + getStarsBonus(): int
+    }
+    class SustenanceDiscount <<model>> {
+      - discountAmount: int
+      - applicableTribeCardType: TribeCardType
+      + SustenanceDiscount(id: int, era: Era, fc: int, pp: int, typeOfBenefit: BenefitType, discountAmount: int, applicableTribeCardType: TribeCardType)
+      + getDiscountAmount(chars: List<CharacterCard>): int
+      + getDiscountAmount(): int
+      + getApplicableTribeCardType(): TribeCardType
+    }
+  }
+
+  package "events" {
+    interface EventAction {
+      + applyEffect(players: ArrayList<Player>): void
+    }
+
+    abstract class EventCard <<model>> {
+      + EventCard(id: int, era: Era, type: TribeCardType)
+      + isDrawable(player: Player): boolean
+      + getCompleteName(): String
+    }
+
+    class CavePaintingEventCard <<model>> {
+      - limitForPositive: int
+      - prestigePointsForPositive: int
+      - prestigePointsForNegative: int
+      + CavePaintingEventCard(id: int, era: Era, limitForPositive: int, type: TribeCardType, prestigePointsForPositive: int, prestigePointsForNegative: int)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
+      + getLimitForPositive(): int
+      + getPrestigePointsForPositive(): int
+      + getPrestigePointsForNegative(): int
+    }
+    class HuntEventCard <<model>> {
+      - foodReward: int
+      - prestigePointsReward: int
+      + HuntEventCard(id: int, era: Era, type: TribeCardType, foodReward: int, prestigePointsReward: int)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
+      + getFoodReward(): int
+      + getPrestigePointsReward(): int
+    }
+    class ShamanRitualEventCard <<model>> {
+      - prestigePointsForHigher: int
+      - prestigePointsForLower: int
+      + ShamanRitualEventCard(id: int, era: Era, type: TribeCardType, prestigePointsForHigher: int, prestigePointsForLower: int)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
+      + getPrestigePointsForHigher(): int
+      + getPrestigePointsForLower(): int
+    }
+    class SustenanceEventCard <<model>> {
+      - prestigePointsToRemovePerCharacter: int
+      + SustenanceEventCard(id: int, era: Era, type: TribeCardType, prestigePointsToRemovePerCharacter: int)
+      + getCompleteName(): String
+      + applyEffect(players: ArrayList<Player>): void
+      + getPrestigePointsToRemovePerCharacter(): int
+    }
+  }
+}
+
+' ─── ENUMS ─────────────────────────────────────────────────────────────────
+package it.polimi.ingsoft.mesos.server.model.game.enums {
+  enum Era {
+    first
+    second
+    third
+    --
+    + getIntegerEra(): int
+    + next(): Era
+  }
+  enum GameStatus {
+    SETUP
+    IN_PROGRESS
+    FINISHED
+  }
+  enum BenefitType {
+    POST_DRAW_SET_FOR_FOOD
+    POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION
+    END_ROUND_EXTRA_CARD
+    END_ROUND_TOTEM_POSITION
+    EVENT_BONUS_SUSTENANCE_DISCOUNT_FOR_TYPE
+    EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT
+    EVENT_BONUS_SHAMAN_WIN_MULTIPLIER
+    EVENT_BONUS_STARS_SHAMAN
+    EVENT_BONUS_HUNTER
+    EVENT_BONUS_CAVE_PAINTING
+    FINAL_PRESTIGE_POINTS_FOR_SET
+    BUILDER_TOTAL_PP_MULTIPLIER
+    FINAL_BONUS_MULTIPLIER_FOR_TYPE
+    FINAL_BONUS_BIG_PP_REWARD
+  }
+  enum InventionType {
+    BOW
+    FIRE
+    WHEEL
+    KNIFE
+    RAFT
+    BASKET
+    SPEAR
+    TENT
+    NECKLACE
+    PAINTING
+  }
+  enum TotemColor {
+    RED
+    BLUE
+    WHITE
+    YELLOW
+    BLACK
+  }
+  enum TribeCardType {
+    HUNTER
+    SHAMAN
+    ARTIST
+    BUILDER
+    INVENTOR
+    GATHERER
+    EVENT
+  }
+}
+
+package it.polimi.ingsoft.mesos.server.model.game.game.enums {
+  enum DraftTurnState {
+    TURN_COMPLETED
+    WAITING_FOR_CARD_SELECTION
+  }
+  enum RoundPhase {
+    PLACING_TOTEMS
+    PLAYER_DRAWS
+    EXTRA_DRAWS
+    RESOLVING_EFFECTS
+    RESETTING_BOARD
+    FINAL_SCORING
+  }
+}
+
+package it.polimi.ingsoft.mesos.server.controller.game.enums {
+  enum GameCommandType {
+    CHOOSE_CARD
+    EXTRA_DRAW
+    MOVE_TOTEM
+    SKIP_EXTRA_DRAW
+  }
+}
+
+' ─── EXCEPTIONS ────────────────────────────────────────────────────────────
+package it.polimi.ingsoft.mesos.server.model.game.game.exception {
+  class CardNotDrawableException <<dep>>
+  class CardNotPresentException <<dep>>
+  class CardRowSelectionNotAllowedException <<dep>>
+  class InvalidConnectionState <<dep>>
+  class InvalidGamePhaseException <<dep>>
+  class InvalidGameStatusException <<dep>>
+  class InvalidTurnPhaseException <<dep>>
+  class NotPlayersTurnException <<dep>>
+  class TileNotAvailableException <<dep>>
+  hide <<dep>> members
+}
+
+package it.polimi.ingsoft.mesos.server.controller.game.exceptions {
+  class MatchFrozenException <<dep>>
+  hide <<dep>> members
+}
+
+' ═══ RELATIONSHIPS ══════════════════════════════════════════════════════════
+
+' ─── Controller ─────────────────────────────────────────────────────────────
+GameController *-- Game             : owns
+MessageRouter -right..> GameController    : uses 
+GameController -left..> ServerSessionRegistry : uses 
+
+' ─── Queued Commands ────────────────────────────────────────────────────────
+QueuedCommand <|.. ClientPayloadCommand
+QueuedCommand <|.. SystemDisconnectCommand
+QueuedCommand <|.. SystemJoinCommand
+QueuedCommand <|.. SystemCloseGameCommand
+QueuedCommand <|.. SystemSetupMatchCommand
+GameController ..> QueuedCommand : uses
+
+' ─── Game → handlers (composition) ─────────────────────────────────────────
+Game *-- GameActionExecutor          : owns
+Game *-- CardDraftHandler            : owns
+Game *-- TotemPlacementHandler       : owns
+Game *-- PassiveRoundPhaseHandler    : owns
+Game *-- Board                       : owns
+Game *-- RoundFlow                   : owns
+Game *-- PlayerDraftState            : owns
+Game ..> GamePayloadMapper           : uses 
+Game o-- "1..*" Player               : contains
+
+' ─── Player → Tribe ──────────────────────────────────────────────────────────
+Player *-- Tribe                     : owns
+
+' ─── Tribe → cards ───────────────────────────────────────────────────────────
+Tribe o-- "1..*" CharacterCard       : has
+Tribe o-- "*" BuildingCard           : has
+
+' ─── Board → piles / offerpath ───────────────────────────────────────────────
+Board *-- UpperPile                  : owns
+Board *-- LowerPile                  : owns
+Board *-- OfferPath                  : owns
+
+' ─── OfferPath → sub-components ─────────────────────────────────────────────
+OfferPath *-- StartingTile           : owns
+OfferPath o-- "1..*" OfferSpace      : contains
+
+' ─── StartingTile → StartingBlock ────────────────────────────────────────────
+StartingTile o-- "1..*" StartingBlock : contains
+
+' ─── Card hierarchy ──────────────────────────────────────────────────────────
+CardAction <|.. Card
+Card <|-- BuildingCard
+Card <|-- TribeCard
+TribeCard <|-- CharacterCard
+TribeCard <|-- EventCard
+EventAction <|.. EventCard
+
+' Character subclasses
+CharacterCard <|-- Artist
+CharacterCard <|-- Builder
+CharacterCard <|-- Gatherer
+CharacterCard <|-- Hunter
+CharacterCard <|-- Inventor
+CharacterCard <|-- Shaman
+
+' Building subclasses
+BuildingCard <|-- BigPpReward
+BuildingCard <|-- CavePaintingBonus
+BuildingCard <|-- HunterBonus
+BuildingCard <|-- MultiplierForType
+BuildingCard <|-- PairOfInventor
+BuildingCard <|-- PrestigePointsForSet
+BuildingCard <|-- SetForFood
+BuildingCard <|-- ShamanStarsBonus
+BuildingCard <|-- SustenanceDiscount
+
+' Event subclasses
+EventCard <|-- CavePaintingEventCard
+EventCard <|-- HuntEventCard
+EventCard <|-- ShamanRitualEventCard
+EventCard <|-- SustenanceEventCard
+
+' Deck hierarchy
+Deck <|-- BuildingDeck
+Deck <|-- TribeDeck
+
+
+legend right
+  <b>Legenda Colori</b>
+  |<back:#FDEBD0>      </back> <b>Controller</b> | Controller di gioco (gestione input/comandi) |
+  |<back:#FEF9E7>      </back> <b>Handler</b> | Gestori specifici delle regole/fasi di gioco |
+  |<back:#F4F6F7>      </back> <b>Mapper</b> | Classi di mapping e traduzione payload |
+  |<back:#D6F5F5>      </back> <b>Model</b> | Entità del dominio (dati e stato di gioco) |
+  |<back:#ECFEFF>      </back> <b>Enum</b> | Classi enum di tipologia o stato |
+  |<back:#D6EAF8>      </back> <b>Interface</b> | Interfacce di sistema o callback |
+  |<back:#F0F0F0>      </back> <b>Dependency</b> | Dipendenze esterne (solo nome classe) |
+  ====
+  <b>Visibilità metodi</b>
+  ====
+  + public
+  - private
+  # protected
+  ~ package-private
+endlegend
+@enduml

@@ -1,0 +1,3 @@
+# Keep platform scripts in their native line endings regardless of host OS.
+*.sh  text eol=lf
+*.bat text eol=crlf

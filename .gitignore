@@ -27,3 +27,18 @@ dist/
 # System files
 .DS_Store
 Thumbs.db
+myversion.puml
+
+
+# Game checkpoint files (runtime persistence, not for version control)
+data/
+
+# Generated Javadocs
+assets/api
+docs/api/
+# deliverables/javadoc
+
+# Generated LaTeX files for the network protocol document
+assets/protocollo-di-rete/*
+!assets/protocollo-di-rete/main.tex
+!assets/protocollo-di-rete/main.pdf
