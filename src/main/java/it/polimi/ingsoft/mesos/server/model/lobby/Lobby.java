@@ -177,7 +177,7 @@ public class Lobby {
     public void notifyPlayerLeft(String nickname, Listener leavingListener) {
         ServerPayload payload = this.payloadMapper.lobbyLeft(nickname, this, this.id);
         if (leavingListener != null) {
-            leavingListener.notifyUpdate(payload);
+            leavingListener.notifyUpdate(this.payloadMapper.lobbyLeftConfirmation(nickname, this.id));
         }
         this.notifyListeners(payload);
     }

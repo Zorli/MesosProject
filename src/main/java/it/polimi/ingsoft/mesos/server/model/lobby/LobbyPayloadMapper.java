@@ -46,7 +46,19 @@ public final class LobbyPayloadMapper {
             );
         }
 
-        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Lobby left successfully", lobby);
+        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Players "+nickname+" left the lobby successfully", lobby);
+    }
+
+    public LobbyUpdatePayload lobbyLeftConfirmation(String nickname, int lobbyId) {
+        return new LobbyUpdatePayload(
+                LobbyEventType.LOBBY_LEFT,
+                nickname,
+                "Lobby left successfully",
+                lobbyId,
+                List.of(),
+                null,
+                null
+        );
     }
 
     /**
