@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.server.helper;
 
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
@@ -126,13 +127,17 @@ public class ServerSessionRegistry {
     /**
      * Creates a new Lobby model, registers it in the registry, and increments the lobby ID counter.
      *
+     * <p>The provided totem color is the host's initial selection. It is forwarded to the
+     * {@link Lobby} constructor so the lobby model owns the player-to-color association from creation.
+     *
      * @param hostNickname the nickname of the player creating and hosting the lobby
      * @param capacity     the maximum player capacity of the lobby
+     * @param totemColor   the totem color selected by the host
      * @return the created Lobby instance
      */
-    public synchronized Lobby createLobbyModel(String hostNickname, int capacity) {
+    public synchronized Lobby createLobbyModel(String hostNickname, int capacity, TotemColor totemColor) {
         int lobbyId = this.nextLobbyId++;
-        Lobby lobby = new Lobby(lobbyId, hostNickname, capacity);
+        Lobby lobby = new Lobby(lobbyId, hostNickname, capacity, totemColor);
         this.lobbyModels.put(lobby.getId(), lobby);
         return lobby;
     }

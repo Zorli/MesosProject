@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
@@ -30,7 +31,7 @@ class LobbyTest {
     void setUp() {
         hostListener = new MockListener();
         secondListener = new MockListener();
-        lobby = new Lobby(1, "Alice", 3);
+        lobby = new Lobby(1, "Alice", 3, TotemColor.RED);
         lobby.addListener(hostListener);
     }
 
@@ -61,10 +62,10 @@ class LobbyTest {
      */
     @Test
     void constructorValidatesCapacityBounds() {
-        assertThrows(IllegalArgumentException.class, () -> new Lobby(2, "Alice", 1));
-        assertThrows(IllegalArgumentException.class, () -> new Lobby(3, "Alice", 6));
-        assertDoesNotThrow(() -> new Lobby(4, "Alice", 2));
-        assertDoesNotThrow(() -> new Lobby(5, "Alice", 5));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(2, "Alice", 1, TotemColor.RED));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(3, "Alice", 6, TotemColor.RED));
+        assertDoesNotThrow(() -> new Lobby(4, "Alice", 2, TotemColor.RED));
+        assertDoesNotThrow(() -> new Lobby(5, "Alice", 5, TotemColor.RED));
     }
 
     /**
@@ -74,9 +75,23 @@ class LobbyTest {
      */
     @Test
     void constructorValidatesNickname() {
-        assertThrows(IllegalArgumentException.class, () -> new Lobby(2, null, 3));
-        assertThrows(IllegalArgumentException.class, () -> new Lobby(3, "", 3));
-        assertThrows(IllegalArgumentException.class, () -> new Lobby(4, "   ", 3));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(2, null, 3, TotemColor.RED));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(3, "", 3, TotemColor.RED));
+        assertThrows(IllegalArgumentException.class, () -> new Lobby(4, "   ", 3, TotemColor.RED));
+    }
+
+    /**
+     * Test name: constructorValidatesHostTotemColor
+     * 1. This test verifies that the Lobby constructor rejects a missing host totem color.
+     * 2. It asserts that the exception message explains that the totem color must be selected.
+     */
+    @Test
+    void constructorValidatesHostTotemColor() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> new Lobby(5, "Alice", 3, null)
+        );
+        assertEquals("Totem color must be selected", exception.getMessage());
     }
 
     /**
@@ -87,7 +102,7 @@ class LobbyTest {
     @Test
     void addPlayerSuccessfully() {
         assertTrue(lobby.canBeJoinedBy("Bob"));
-        boolean successBob = lobby.addPlayer("Bob", secondListener);
+        boolean successBob = lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
         assertTrue(successBob);
         assertEquals(2, lobby.getPlayers().size());
         assertTrue(lobby.hasPlayer("Bob"));
@@ -96,7 +111,7 @@ class LobbyTest {
         // Join 3rd player to reach capacity (3)
         MockListener thirdListener = new MockListener();
         assertTrue(lobby.canBeJoinedBy("Charlie"));
-        boolean successCharlie = lobby.addPlayer("Charlie", thirdListener);
+        boolean successCharlie = lobby.addPlayer("Charlie", thirdListener, TotemColor.WHITE);
         assertTrue(successCharlie);
         assertEquals(3, lobby.getPlayers().size());
         assertTrue(lobby.isFull());
@@ -112,7 +127,7 @@ class LobbyTest {
      */
     @Test
     void addPlayerRejectsDuplicateNickname() {
-        boolean success = lobby.addPlayer("Alice", secondListener);
+        boolean success = lobby.addPlayer("Alice", secondListener, TotemColor.BLUE);
         assertFalse(success);
         assertEquals(1, lobby.getPlayers().size());
         assertEquals(1, secondListener.receivedPayloads.size());
@@ -129,14 +144,14 @@ class LobbyTest {
      */
     @Test
     void addPlayerRejectsWhenFull() {
-        lobby.addPlayer("Bob", secondListener);
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
         MockListener thirdListener = new MockListener();
-        lobby.addPlayer("Charlie", thirdListener);
+        lobby.addPlayer("Charlie", thirdListener, TotemColor.WHITE);
         assertTrue(lobby.isFull());
 
         MockListener fourthListener = new MockListener();
         assertFalse(lobby.canBeJoinedBy("David"));
-        boolean success = lobby.addPlayer("David", fourthListener);
+        boolean success = lobby.addPlayer("David", fourthListener, TotemColor.YELLOW);
         assertFalse(success);
         assertEquals(3, lobby.getPlayers().size());
         assertEquals(1, fourthListener.receivedPayloads.size());
@@ -153,14 +168,14 @@ class LobbyTest {
     @Test
     void addPlayerRejectsWhenInvalidStatus() {
         // Start the lobby to change status to STARTED
-        lobby.addPlayer("Bob", secondListener);
-        lobby.addPlayer("Charlie", new MockListener());
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
+        lobby.addPlayer("Charlie", new MockListener(), TotemColor.WHITE);
         lobby.startMatch("Alice");
         assertEquals(LobbyStatus.STARTED, lobby.getStatus());
 
         MockListener fourthListener = new MockListener();
         assertFalse(lobby.canBeJoinedBy("David"));
-        boolean success = lobby.addPlayer("David", fourthListener);
+        boolean success = lobby.addPlayer("David", fourthListener, TotemColor.YELLOW);
         assertFalse(success);
         assertEquals(1, fourthListener.receivedPayloads.size());
         ErrorPayload error = (ErrorPayload) fourthListener.receivedPayloads.get(0);
@@ -175,7 +190,7 @@ class LobbyTest {
      */
     @Test
     void removePlayerSuccessfully() {
-        lobby.addPlayer("Bob", secondListener);
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
         
         // Remove Bob (non-host)
         boolean successRemoveBob = lobby.removePlayer("Bob", secondListener);
@@ -188,7 +203,7 @@ class LobbyTest {
         assertEquals(0, secondListener.receivedPayloads.size()); // Bob left, so he gets no updates
         
         // Add Bob again to test host delegation
-        lobby.addPlayer("Bob", secondListener);
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
         assertEquals("Alice", lobby.getHostNickname());
         
         // Remove Alice (current host)
@@ -218,9 +233,9 @@ class LobbyTest {
      */
     @Test
     void removePlayerRevertsStatusToWaiting() {
-        lobby.addPlayer("Bob", secondListener);
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
         MockListener thirdListener = new MockListener();
-        lobby.addPlayer("Charlie", thirdListener);
+        lobby.addPlayer("Charlie", thirdListener, TotemColor.WHITE);
         assertEquals(LobbyStatus.READY, lobby.getStatus());
 
         boolean success = lobby.removePlayer("Charlie", thirdListener);
@@ -250,8 +265,8 @@ class LobbyTest {
      */
     @Test
     void startMatchSuccessfully() {
-        lobby.addPlayer("Bob", secondListener);
-        lobby.addPlayer("Charlie", new MockListener());
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
+        lobby.addPlayer("Charlie", new MockListener(), TotemColor.WHITE);
         assertEquals(LobbyStatus.READY, lobby.getStatus());
 
         boolean success = lobby.startMatch("Alice");
@@ -266,8 +281,8 @@ class LobbyTest {
      */
     @Test
     void startMatchRejectsNonHost() {
-        lobby.addPlayer("Bob", secondListener);
-        lobby.addPlayer("Charlie", new MockListener());
+        lobby.addPlayer("Bob", secondListener, TotemColor.BLUE);
+        lobby.addPlayer("Charlie", new MockListener(), TotemColor.WHITE);
 
         boolean success = lobby.startMatch("Bob");
         assertFalse(success);

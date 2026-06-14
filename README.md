@@ -170,7 +170,20 @@ su **Windows**:
 assets\scripts\create-jar.bat
 ```
 
-I due script eseguono gli stessi build Maven e creano i JAR nella cartella `deliverables/jar`.
+I due script eseguono gli stessi build Maven e creano solo i JAR nella cartella `deliverables/jar`.
+La generazione dei Javadoc è separata dai JAR.
+
+Per rigenerare i Javadoc HTML, su **macOS / Linux**:
+```bash
+./assets/scripts/create-javadoc.sh
+```
+
+su **Windows**:
+```bat
+assets\scripts\create-javadoc.bat
+```
+
+I Javadoc vengono generati nella cartella `deliverables/javadoc/apidocs`.
 
 ---
 

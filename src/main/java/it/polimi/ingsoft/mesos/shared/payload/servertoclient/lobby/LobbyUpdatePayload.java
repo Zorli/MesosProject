@@ -1,13 +1,17 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Payload sent by the server to notify players in a lobby of any state changes.
  * <p>
- * This contains the event type, target nicknames, message alerts, updated member list,
- * lobby capacity, and current host details.
+ * This contains the event type, target nickname, message alerts, updated member list,
+ * lobby capacity, current host details, and the totem color chosen by each player
+ * currently seated in the lobby.
  */
 public class LobbyUpdatePayload implements Serializable, LobbyServerPayload {
     /** The classification of the lobby event. */
@@ -31,8 +35,14 @@ public class LobbyUpdatePayload implements Serializable, LobbyServerPayload {
     /** The maximum player limit allowed for this lobby. */
     public final Integer maxPlayers;
 
+    /** Current association between lobby player nicknames and their selected totem colors. */
+    public final Map<String, TotemColor> playerTotemColors;
+
     /**
-     * Constructs a new LobbyUpdatePayload.
+     * Constructs a new LobbyUpdatePayload including the player-to-totem association.
+     *
+     * <p>When the update is a direct confirmation to the player who left the lobby, the lobby
+     * state may be intentionally empty. In that case a null color map is normalized to an empty map.
      *
      * @param event the type of the lobby event
      * @param nickname the player nickname involved
@@ -41,6 +51,7 @@ public class LobbyUpdatePayload implements Serializable, LobbyServerPayload {
      * @param players the list of current lobby members
      * @param hostNickname the nickname of the current host
      * @param maxPlayers the maximum capacity of the lobby
+     * @param playerTotemColors map from player nickname to selected totem color
      */
     public LobbyUpdatePayload(
             LobbyEventType event,
@@ -49,7 +60,8 @@ public class LobbyUpdatePayload implements Serializable, LobbyServerPayload {
             Integer lobbyId,
             List<String> players,
             String hostNickname,
-            Integer maxPlayers
+            Integer maxPlayers,
+            Map<String, TotemColor> playerTotemColors
     ) {
         this.event = event;
         this.nickname = nickname;
@@ -58,5 +70,6 @@ public class LobbyUpdatePayload implements Serializable, LobbyServerPayload {
         this.players = players;
         this.hostNickname = hostNickname;
         this.maxPlayers = maxPlayers;
+        this.playerTotemColors = playerTotemColors == null ? Map.of() : Map.copyOf(playerTotemColors);
     }
 }
