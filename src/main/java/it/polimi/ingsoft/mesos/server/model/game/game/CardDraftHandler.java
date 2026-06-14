@@ -164,17 +164,17 @@ public class CardDraftHandler {
      * <p>This method does not inspect the selected card yet. It only answers
      * the question: "Is this player allowed to perform any standard draw now?".
      * The card-specific validation is done later by
-     * {@link #validateAndRemoveChosenCard(Player, Card)}.
+     * {@link #validateAndRemoveChosenCard(Player, Card, int)}.
      *
      * @param player player asking to draw a standard card
      */
     private void validateChooseCardRequest(Player player) {
         if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("chooseCard", this.game.getStatus());
+            throw new InvalidGameStatusException("chooseCard", this.game.getStatus(), player.getNickname());
         }
 
         if (this.roundFlow.getCurrentRoundPhase() != RoundPhase.PLAYER_DRAWS) {
-            throw new InvalidGamePhaseException("chooseCard", this.roundFlow.getCurrentRoundPhase());
+            throw new InvalidGamePhaseException("chooseCard", this.roundFlow.getCurrentRoundPhase(),player.getNickname());
         }
 
         Player currentPlayer = this.roundFlow.getCurrentPlayer();
@@ -194,11 +194,11 @@ public class CardDraftHandler {
      */
     private void validateExtraDrawRequest(Player player) {
         if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("extraDrawn", this.game.getStatus());
+            throw new InvalidGameStatusException("extraDrawn", this.game.getStatus(),player.getNickname());
         }
 
         if (this.roundFlow.getCurrentRoundPhase() != RoundPhase.EXTRA_DRAWS) {
-            throw new InvalidGamePhaseException("extraDrawn", this.roundFlow.getCurrentRoundPhase());
+            throw new InvalidGamePhaseException("extraDrawn", this.roundFlow.getCurrentRoundPhase(),player.getNickname());
         }
 
         Player currentPlayer = this.roundFlow.getCurrentPlayer();
@@ -250,7 +250,7 @@ public class CardDraftHandler {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow == CardRow.NOT_PRESENT) {
-            throw new CardNotPresentException(cardId);
+            throw new CardNotPresentException(cardId, player.getNickname());
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
@@ -283,7 +283,7 @@ public class CardDraftHandler {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow != CardRow.UPPER) {
-            throw new CardNotPresentException(cardId);
+            throw new CardNotPresentException(cardId,player.getNickname());
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
@@ -301,7 +301,7 @@ public class CardDraftHandler {
      */
     private void validateUpperRowChoice(Player player, CardRow cardRow) {
         if (!this.playerDraftState.canChooseFromUpperRow(player)) {
-            throw new CardRowSelectionNotAllowedException(cardRow);
+            throw new CardRowSelectionNotAllowedException(cardRow, player.getNickname());
         }
     }
 
@@ -313,7 +313,7 @@ public class CardDraftHandler {
      */
     private void validateLowerRowChoice(Player player, CardRow cardRow) {
         if (!this.playerDraftState.canChooseFromLowerRow(player)) {
-            throw new CardRowSelectionNotAllowedException(cardRow);
+            throw new CardRowSelectionNotAllowedException(cardRow,player.getNickname());
         }
     }
 

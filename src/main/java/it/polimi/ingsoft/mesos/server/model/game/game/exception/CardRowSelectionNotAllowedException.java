@@ -11,8 +11,8 @@ public class CardRowSelectionNotAllowedException extends IllegalStateException {
      *
      * @param cardRow row the player attempted to draw from
      */
-    public CardRowSelectionNotAllowedException(CardRow cardRow) {
-        super(buildMessage(cardRow));
+    public CardRowSelectionNotAllowedException(CardRow cardRow, String nickname) {
+        super(buildMessage(cardRow,nickname));
     }
 
     /**
@@ -21,7 +21,7 @@ public class CardRowSelectionNotAllowedException extends IllegalStateException {
      * @param cardRow row the player attempted to use
      * @return formatted exception message
      */
-    private static String buildMessage(CardRow cardRow) {
-        return "Card selection is not allowed from row: " + cardRow;
+    private static String buildMessage(CardRow cardRow, String nickname) {
+        return "Card selection for " + nickname + " is not allowed from row: " + cardRow;
     }
 }

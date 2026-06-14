@@ -40,11 +40,11 @@ class GameExceptionMessagesTest {
         Player alice = player("Alice");
         Hunter hunter = new Hunter(7, Era.first, false, TribeCardType.HUNTER);
 
-        assertEquals("Requested card is not present on the board: 7", new CardNotPresentException(7).getMessage());
-        assertEquals("Requested card is not present on the board: null", new CardNotPresentException(null).getMessage());
+        assertEquals("Requested card : 7 by Alice is not present on the board", new CardNotPresentException(7, "Alice").getMessage());
+        assertEquals("Requested card : null by Alice is not present on the board", new CardNotPresentException(null,"Alice").getMessage());
         assertEquals("Card 7 is not drawable by player Alice", new CardNotDrawableException(alice, hunter).getMessage());
         assertEquals("Card null is not drawable by player unknown", new CardNotDrawableException(null, null).getMessage());
-        assertEquals("Card selection is not allowed from row: LOWER", new CardRowSelectionNotAllowedException(CardRow.LOWER).getMessage());
+        assertEquals("Card selection for Alice is not allowed from row: LOWER", new CardRowSelectionNotAllowedException(CardRow.LOWER,"Alice").getMessage());
     }
 
     /**
@@ -54,12 +54,12 @@ class GameExceptionMessagesTest {
     @Test
     void phaseAndStatusErrorsDescribeTheInvalidActionContext() {
         assertEquals(
-                "Action setup is not allowed when game status is IN_PROGRESS",
-                new InvalidGameStatusException("setup", GameStatus.IN_PROGRESS).getMessage()
+                "Carlo tried action: setup, but is not allowed when game status is IN_PROGRESS",
+                new InvalidGameStatusException("setup", GameStatus.IN_PROGRESS, "Carlo").getMessage()
         );
         assertEquals(
-                "Action moveTotem is not allowed during round phase PLAYER_DRAWS",
-                new InvalidGamePhaseException("moveTotem", RoundPhase.PLAYER_DRAWS).getMessage()
+                "Carlo tried action: moveTotem, but is not allowed during round phase PLAYER_DRAWS",
+                new InvalidGamePhaseException("moveTotem", RoundPhase.PLAYER_DRAWS, "Carlo").getMessage()
         );
         assertEquals(
                 "Action chooseCard is not allowed during phase TURN_COMPLETED",
@@ -84,7 +84,7 @@ class GameExceptionMessagesTest {
                 "It is not the turn of player unknown. Current player: unknown",
                 new NotPlayersTurnException(null, null).getMessage()
         );
-        assertEquals("Selected tile is not available: B", new TileNotAvailableException("B").getMessage());
+        assertEquals("Selected tile: B by Alice is not available", new TileNotAvailableException("B","Alice").getMessage());
         assertEquals("Selected tile is not available: 3", new TileNotAvailableException(3).getMessage());
         assertEquals("Invalid connection state: only one connected", new InvalidConnectionState("only one connected").getMessage());
     }

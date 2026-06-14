@@ -489,7 +489,7 @@ public class Game {
      */
     private void setupInternal() {
         if (this.status != GameStatus.SETUP) {
-            throw new InvalidGameStatusException("setup", this.status);
+            throw new InvalidGameStatusException("setup", this.status, "HOST");
         }
 
         this.board.buildOfferPath();

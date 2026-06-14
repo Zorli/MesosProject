@@ -22,7 +22,7 @@ public final class LobbyPayloadMapper {
      * @return the player join update payload
      */
     public LobbyUpdatePayload lobbyJoined(String nickname, Lobby lobby) {
-        return this.fromLobby(LobbyEventType.LOBBY_JOINED, nickname, "Lobby joined successfully", lobby);
+        return this.fromLobby(LobbyEventType.LOBBY_JOINED, nickname, "Player " +nickname+ " joined the Lobby successfully", lobby);
     }
 
     /**
@@ -46,7 +46,7 @@ public final class LobbyPayloadMapper {
             );
         }
 
-        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Players "+nickname+" left the lobby successfully", lobby);
+        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Player "+nickname+" left the lobby successfully", lobby);
     }
 
     public LobbyUpdatePayload lobbyLeftConfirmation(String nickname, int lobbyId) {

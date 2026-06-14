@@ -13,7 +13,7 @@ public class InvalidGamePhaseException extends IllegalStateException {
      * @param actionName attempted action name
      * @param currentPhase current round or game phase
      */
-    public InvalidGamePhaseException(String actionName, RoundPhase currentPhase) {
-        super("Action " + actionName + " is not allowed during round phase " + currentPhase);
+    public InvalidGamePhaseException(String actionName, RoundPhase currentPhase, String nickname) {
+        super(nickname + " tried action: " + actionName + ", but is not allowed during round phase " + currentPhase);
     }
 }

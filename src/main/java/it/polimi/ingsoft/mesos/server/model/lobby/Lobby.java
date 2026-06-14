@@ -201,7 +201,7 @@ public class Lobby {
      */
     private void startMatchInternal(String nickname) {
         if (!this.isHost(nickname)) {
-            throw new IllegalStateException("Only the lobby host can start the match");
+            throw new IllegalStateException(nickname + " tried to start the match. Only the lobby host can start the match");
         }
         if (this.status != LobbyStatus.READY) {
             throw new IllegalStateException("Cannot start lobby with status: " + this.status);
