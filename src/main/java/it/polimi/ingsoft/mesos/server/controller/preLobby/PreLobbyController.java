@@ -12,6 +12,7 @@ import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
 import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.preLobby.PreLobbyModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 
@@ -46,6 +47,11 @@ public class PreLobbyController implements Runnable {
     private final GameFactory gameFactory;
 
     /**
+     * The repository forwarded to every lobby so finished games can be persisted.
+     */
+    private final GameResultRepository gameResultRepository;
+
+    /**
      * Thread-safe blocking queue holding commands to be processed sequentially.
      */
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
@@ -55,11 +61,15 @@ public class PreLobbyController implements Runnable {
      *
      * @param gameFactory the factory to build game instances
      * @param sessions    the registry containing all active session states
+     * @param gameResultRepository the repository used by started games to persist
+     *                             their results and read the all-time ranking
      */
     public PreLobbyController(GameFactory gameFactory,
-                              ServerSessionRegistry sessions) {
+                              ServerSessionRegistry sessions,
+                              GameResultRepository gameResultRepository) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
+        this.gameResultRepository = gameResultRepository;
 
         this.preLobbyModel = new PreLobbyModel(this.sessions);
     }
@@ -178,7 +188,8 @@ public class PreLobbyController implements Runnable {
             LobbyController lobbyController = new LobbyController(
                     lobby,
                     this.sessions,
-                    this.gameFactory
+                    this.gameFactory,
+                    this.gameResultRepository
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);
             Thread lobbyWorker = new Thread(lobbyController, "Lobby-" + lobby.getId() + "-Worker");

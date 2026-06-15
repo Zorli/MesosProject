@@ -12,6 +12,7 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 
 import java.util.List;
@@ -55,6 +56,9 @@ public class LobbyController implements Runnable {
     /** The factory used to map lobby users to game players. */
     private final LobbyPlayerFactory lobbyPlayerFactory;
 
+    /** The repository forwarded to the game so it can persist its result on completion. */
+    private final GameResultRepository gameResultRepository;
+
     /** Command queue for receiving incoming user or system actions asynchronously. */
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
 
@@ -64,15 +68,19 @@ public class LobbyController implements Runnable {
      * @param lobby the {@link Lobby} model to manage
      * @param sessions the central {@link ServerSessionRegistry}
      * @param gameFactory the {@link GameFactory} used to boot the match
+     * @param gameResultRepository the repository the started game uses to persist
+     *                             its result and read the all-time ranking
      */
     public LobbyController(
             Lobby lobby,
             ServerSessionRegistry sessions,
-            GameFactory gameFactory) {
+            GameFactory gameFactory,
+            GameResultRepository gameResultRepository) {
 
         this.lobby = lobby;
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
+        this.gameResultRepository = gameResultRepository;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
     }
 
@@ -240,7 +248,8 @@ public class LobbyController implements Runnable {
         GameController orchestrator = new GameController(
                 game,
                 this.lobby.getHostNickname(),
-                this.sessions
+                this.sessions,
+                this.gameResultRepository
         );
 
         this.attachLobbySessionsToGame(orchestrator);

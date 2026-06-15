@@ -9,6 +9,7 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.enums.RoundPhase;
 import it.polimi.ingsoft.mesos.server.model.game.game.exception.InvalidGameStatusException;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.persistence.RankingResult;
 
 import java.util.*;
 
@@ -56,6 +57,7 @@ public class Game {
 
 
     private GameStatus status;
+    private boolean completedNaturally;
     private long stateVersion;
     private final Board board;
     private final RoundFlow roundFlow;
@@ -150,7 +152,7 @@ public class Game {
             this.connectedPlayers.put(player, false);
             if(!connectedPlayers.values().stream().anyMatch(Boolean::booleanValue)){
                 this.markStateChanged();
-                this.finishGame();
+                this.finishGame(false);
                 return;
 
             }
@@ -413,6 +415,19 @@ public class Game {
     }
 
     /**
+     * Builds the all-time ranking payload from persistence data and broadcasts it to
+     * all listeners.
+     *
+     * <p>Kept here so that, as for every other update, it is the model that notifies
+     * its listeners; the controller only supplies the data read from the database.
+     *
+     * @param result ranking data read by the persistence layer
+     */
+    public void notifyRanking(RankingResult result) {
+        this.notifyListeners(GamePayloadMapper.toRankingPayload(result));
+    }
+
+    /**
      * Notifies all currently registered listeners.
      *
      * <p>The listener list is copied before iteration so a listener can safely
@@ -454,10 +469,25 @@ public class Game {
     /**
      * Marks the game as finished.
      *
-     * <p>This method is called after final scoring has been applied.
+     * @param completedNaturally {@code true} when the match reached its natural end
+     *                           through final scoring; {@code false} when it ended
+     *                           because of an abandonment or a forced close. Only
+     *                           naturally completed matches are persisted in the
+     *                           ranking.
      */
-    void finishGame() {
+    void finishGame(boolean completedNaturally) {
         this.status = GameStatus.FINISHED;
+        this.completedNaturally = completedNaturally;
+    }
+
+    /**
+     * Tells whether the match reached its natural end through final scoring, as
+     * opposed to ending by abandonment or forced close.
+     *
+     * @return {@code true} if the match completed naturally
+     */
+    public boolean isCompletedNaturally() {
+        return this.completedNaturally;
     }
 
     /**
@@ -469,7 +499,7 @@ public class Game {
      */
     public void closeGame() {
         this.actionExecutor.execute(() -> {
-            this.finishGame();
+            this.finishGame(false);
             this.markStateChanged();
         });
     }

@@ -150,7 +150,20 @@ nulla, il client usa `localhost` come IP del server, `12345` per TCP, `1099` per
 come IP del client. Se client e server sono su macchine diverse, in `MESOS_SERVER_IP_ADDRESS` va
 inserito l'IP locale del server e in `MESOS_CLIENT_IP_ADDRESS` l'IP locale del client.
 
+### Avvio del Database (Docker)
+Per la funzionalità avanzata di salvataggio della classifica partite su database (MySQL), è necessario avviare il container prima del server.
 
+Nella root del progetto è presente un file `docker-compose.yml` pronto all'uso. Per avviarlo, esegui:
+```bash
+docker compose up -d
+```
+
+Questo avvierà il database MySQL sulla porta `3306` con le credenziali predefinite, che corrispondono ai valori proposti per default all'avvio interattivo del server.
+
+Per arrestare il database:
+```bash
+docker compose down
+```
 
 ### Compilazione e Creazione dei JAR
 Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.

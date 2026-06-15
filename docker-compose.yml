@@ -1,0 +1,24 @@
+# MySQL database backing the "Classifica partite su DB" feature.
+#
+# Start it before the server with:  docker compose up -d
+# The server only connects to this database over JDBC; it never controls Docker.
+# The credentials below match the default prompts of LaunchServer, so accepting the
+# defaults at server startup connects to this container out of the box.
+
+services:
+  mesos-db:
+    image: mysql:8.4
+    container_name: mesos-db
+    environment:
+      MYSQL_DATABASE: mesos
+      MYSQL_USER: mesos
+      MYSQL_PASSWORD: mesos
+      MYSQL_ROOT_PASSWORD: mesos
+    ports:
+      - "3306:3306"
+    volumes:
+      - mesos-db-data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  mesos-db-data:

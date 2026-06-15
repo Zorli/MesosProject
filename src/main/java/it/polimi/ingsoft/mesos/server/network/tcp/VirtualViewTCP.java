@@ -18,6 +18,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -252,6 +253,10 @@ public class VirtualViewTCP implements VirtualView, ClientConnection, Runnable, 
         }
         if (payload instanceof LobbyUpdatePayload lobbyUpdatePayload) {
             this.sendServerMessage(new ServerMessage(ServerMessageType.LOBBY_UPDATE, lobbyUpdatePayload));
+            return;
+        }
+        if (payload instanceof RankingPayload rankingPayload) {
+            this.sendServerMessage(new ServerMessage(ServerMessageType.RANKING_UPDATE, rankingPayload));
         }
     }
 

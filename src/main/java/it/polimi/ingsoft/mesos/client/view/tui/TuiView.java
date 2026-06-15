@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
@@ -275,6 +276,20 @@ public class TuiView implements ClientView {
     public synchronized void showFinalGameResult(GamePayload payload) {
         this.lastGamePayload = null;
         this.render(this.payloadRenderer.renderFinalGameResult(payload));
+    }
+
+    /**
+     * Prints the all-time ranking received once a match has finished.
+     *
+     * <p>This arrives right after {@link #showFinalGameResult(GamePayload)}, so the
+     * player sees the final standings of the match just played followed by the
+     * all-time ranking for that number of players.
+     *
+     * @param payload all-time ranking to show
+     */
+    @Override
+    public synchronized void showRanking(RankingPayload payload) {
+        this.render(this.payloadRenderer.renderRanking(payload, this.localNickname));
     }
 
     private void renderHelp() {

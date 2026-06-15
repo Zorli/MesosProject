@@ -119,14 +119,14 @@ class ServerSessionRegistryTest {
         assertNull(registry.getLobbyController(9));
         assertNull(registry.getGameOrchestrator(9));
 
-        LobbyController dummyLobbyCtrl = new LobbyController(new Lobby(1, "H", 2, TotemColor.RED), registry, (gameId, players) -> null);
+        LobbyController dummyLobbyCtrl = new LobbyController(new Lobby(1, "H", 2, TotemColor.RED), registry, (gameId, players) -> null, null);
         registry.registerLobbyController(1, dummyLobbyCtrl);
         assertEquals(dummyLobbyCtrl, registry.getLobbyController(1));
 
         registry.removeLobbyController(1);
         assertNull(registry.getLobbyController(1));
 
-        GameController dummyGameCtrl = new GameController(createMockGame(1), "Alice", registry);
+        GameController dummyGameCtrl = new GameController(createMockGame(1), "Alice", registry, null);
         registry.registerGameOrchestrator(1, dummyGameCtrl);
         assertEquals(dummyGameCtrl, registry.getGameOrchestrator(1));
 

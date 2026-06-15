@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TribePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
@@ -350,6 +351,62 @@ final class TuiPayloadRenderer {
 
         out.append(TuiBox.frame(TuiStyle.BRIGHT_GREEN + "LEADERBOARD" + TuiStyle.RESET, body));
         return out.toString();
+    }
+
+    /**
+     * Renders the all-time ranking of matches played with the same number of
+     * players as the match that just finished.
+     *
+     * <p>Rows produced by the just-finished match are highlighted, and the local
+     * player's own placement is shown on top.
+     *
+     * @param payload all-time ranking to render
+     * @param localNickname nickname of the player using this client, used to point
+     *                      out its placement; may be {@code null}
+     * @return the framed, colored ranking block
+     */
+    String renderRanking(RankingPayload payload, String localNickname) {
+        StringBuilder out = new StringBuilder();
+
+        if (payload.rows == null || payload.rows.isEmpty()) {
+            out.append(TuiStyle.DIM).append("No ranking data available yet.").append(TuiStyle.RESET);
+            return TuiBox.frame(rankingTitle(payload), List.of(out.toString()));
+        }
+
+        List<String> body = new ArrayList<>();
+        for (RankingPayload.RankingRow row : payload.rows) {
+            if (row.currentGame && localNickname != null && localNickname.equals(row.nickname)) {
+                body.add(TuiStyle.BRIGHT_YELLOW + "You placed #" + row.rank
+                        + " of " + payload.rows.size() + TuiStyle.RESET);
+            }
+        }
+        if (!body.isEmpty()) {
+            body.add("");
+        }
+        body.add(TuiStyle.bold("RANK  PLAYER               SCORE      DATE"));
+        for (RankingPayload.RankingRow row : payload.rows) {
+            String rankCol = TuiBox.padRight("#" + row.rank, 5);
+            String nameCol = TuiBox.padRight(row.nickname, 20);
+            String scoreCol = TuiBox.padRight(TuiStyle.BRIGHT_YELLOW + "★ " + row.score + TuiStyle.RESET, 10);
+            String line = rankCol + " " + nameCol + " " + scoreCol + " "
+                    + TuiStyle.DIM + shortDate(row.datePlayed) + TuiStyle.RESET;
+            body.add(row.currentGame ? TuiStyle.BRIGHT_GREEN + "➤ " + TuiStyle.RESET + line : "  " + line);
+        }
+
+        out.append(TuiBox.frame(rankingTitle(payload), body));
+        return out.toString();
+    }
+
+    private static String rankingTitle(RankingPayload payload) {
+        return TuiStyle.BRIGHT_CYAN + "ALL-TIME RANKING  (" + payload.numPlayers + " players)" + TuiStyle.RESET;
+    }
+
+    private static String shortDate(String isoDateTime) {
+        if (isoDateTime == null) {
+            return "";
+        }
+        String trimmed = isoDateTime.length() >= 16 ? isoDateTime.substring(0, 16) : isoDateTime;
+        return trimmed.replace('T', ' ');
     }
 
     // ─────────────────────────────────────────────────────────────────────────

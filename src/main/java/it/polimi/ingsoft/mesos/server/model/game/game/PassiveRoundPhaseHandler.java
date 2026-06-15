@@ -180,7 +180,7 @@ public class PassiveRoundPhaseHandler {
             this.applyFinalInventorBonus(player);
         }
 
-        this.game.finishGame();
+        this.game.finishGame(true);
         this.game.markStateChanged();
     }
 

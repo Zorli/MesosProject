@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
@@ -179,6 +180,9 @@ public class GUIView implements ClientView {
     @FXML private VBox tribeCardsContainer;
     /** Vertical container hosting final ranking slots. */
     @FXML private VBox finalRankingContainer;
+
+    /** Container for the all-time ranking shown on the end page. */
+    @FXML private VBox allTimeRankingContainer;
     /** ScrollPane wrapper around the lobby list. */
     @FXML private ScrollPane lobbyScrollPane;
 
@@ -258,6 +262,7 @@ public class GUIView implements ClientView {
         this.boardRenderer = new BoardRenderer(
                 this.upperRowContainer, this.lowerRowContainer, this.offerPathContainer,
                 this.playerListContainer, this.tribeCardsContainer, this.finalRankingContainer,
+                this.allTimeRankingContainer,
                 () -> this.lastGamePayload,
                 () -> this.nickname
         );
@@ -516,6 +521,14 @@ public class GUIView implements ClientView {
     public void showFinalGameResult(GamePayload gamePayload) {
         this.runOnFx(() -> {
             this.boardRenderer.renderFinalRanking(gamePayload);
+            this.showPage(this.endPage);
+        });
+    }
+
+    @Override
+    public void showRanking(RankingPayload payload) {
+        this.runOnFx(() -> {
+            this.boardRenderer.renderAllTimeRanking(payload);
             this.showPage(this.endPage);
         });
     }
