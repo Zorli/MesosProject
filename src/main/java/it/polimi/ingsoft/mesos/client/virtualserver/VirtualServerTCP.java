@@ -11,6 +11,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
@@ -194,6 +195,9 @@ public class VirtualServerTCP implements VirtualServer, Runnable {
             case GAME_UPDATE:
                 GamePayload gamePayload = GSON.fromJson(payload, GamePayload.class);
                 return new ServerMessage(type, gamePayload);
+            case RANKING_UPDATE:
+                RankingPayload rankingPayload = GSON.fromJson(payload, RankingPayload.class);
+                return new ServerMessage(type, rankingPayload);
             default:
                 throw new IllegalArgumentException("Unsupported server message type: " + type);
         }

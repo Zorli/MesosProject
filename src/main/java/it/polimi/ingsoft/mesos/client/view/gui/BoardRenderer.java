@@ -5,6 +5,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -58,6 +59,7 @@ final class BoardRenderer {
     private final VBox playerListContainer;
     private final VBox tribeCardsContainer;
     private final VBox finalRankingContainer;
+    private final VBox allTimeRankingContainer;
 
     private final Supplier<GamePayload> gameSupplier;
     private final Supplier<String> nicknameSupplier;
@@ -79,6 +81,7 @@ final class BoardRenderer {
             VBox playerListContainer,
             VBox tribeCardsContainer,
             VBox finalRankingContainer,
+            VBox allTimeRankingContainer,
             Supplier<GamePayload> gameSupplier,
             Supplier<String> nicknameSupplier
     ) {
@@ -88,6 +91,7 @@ final class BoardRenderer {
         this.playerListContainer = playerListContainer;
         this.tribeCardsContainer = tribeCardsContainer;
         this.finalRankingContainer = finalRankingContainer;
+        this.allTimeRankingContainer = allTimeRankingContainer;
         this.gameSupplier = gameSupplier;
         this.nicknameSupplier = nicknameSupplier;
     }
@@ -500,6 +504,52 @@ final class BoardRenderer {
             row.getChildren().add(name);
             this.finalRankingContainer.getChildren().add(row);
         }
+    }
+
+    /**
+     * Renders the all-time ranking for the player count of the match just played.
+     *
+     * <p>Rows produced by the match that just finished are highlighted, and the
+     * local player's own row is emphasized so it can read its placement.
+     *
+     * @param payload all-time ranking received from the server
+     */
+    void renderAllTimeRanking(RankingPayload payload) {
+        this.allTimeRankingContainer.getChildren().clear();
+        if (payload == null || payload.rows == null || payload.rows.isEmpty()) {
+            this.allTimeRankingContainer.getChildren().add(
+                    emptyState("Ranking unavailable", "No completed games stored yet for this player count."));
+            return;
+        }
+        String localNickname = this.nicknameSupplier.get();
+        for (RankingPayload.RankingRow entry : payload.rows) {
+            HBox row = new HBox(16);
+            row.getStyleClass().add("ranking-row");
+            if (entry.currentGame) {
+                row.getStyleClass().add("winner-row");
+            }
+            if (entry.currentGame && entry.nickname.equals(localNickname)) {
+                row.getStyleClass().add("current-user-row");
+            }
+            Label position = new Label(String.valueOf(entry.rank));
+            position.getStyleClass().add("rank-number");
+            Label name = new Label(entry.nickname);
+            name.getStyleClass().add("player-name");
+            Label score = new Label(entry.score + " pp");
+            score.getStyleClass().add("score-pill");
+            Label date = new Label(shortDate(entry.datePlayed));
+            date.getStyleClass().add("muted");
+            row.getChildren().addAll(position, name, score, date);
+            this.allTimeRankingContainer.getChildren().add(row);
+        }
+    }
+
+    private static String shortDate(String isoDateTime) {
+        if (isoDateTime == null) {
+            return "";
+        }
+        String trimmed = isoDateTime.length() >= 16 ? isoDateTime.substring(0, 16) : isoDateTime;
+        return trimmed.replace('T', ' ');
     }
 
     // ---------------------------------------------------------------------

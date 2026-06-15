@@ -55,9 +55,9 @@ class GameControllerTest {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
 
-        assertThrows(NullPointerException.class, () -> new GameController(null, "Alice", sessions));
-        assertThrows(IllegalArgumentException.class, () -> new GameController(new RecordingGame(List.of()), "Alice", sessions));
-        assertThrows(IllegalArgumentException.class, () -> new GameController(game, " ", sessions));
+        assertThrows(NullPointerException.class, () -> new GameController(null, "Alice", sessions, null));
+        assertThrows(IllegalArgumentException.class, () -> new GameController(new RecordingGame(List.of()), "Alice", sessions, null));
+        assertThrows(IllegalArgumentException.class, () -> new GameController(game, " ", sessions, null));
     }
 
     /**
@@ -68,7 +68,7 @@ class GameControllerTest {
     @Test
     void exposesAnImmutableSnapshotOfGamePlayers() {
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", new ServerSessionRegistry());
+        GameController controller = new GameController(game, "Alice", new ServerSessionRegistry(), null);
 
         assertEquals(game, controller.getGame());
         assertEquals(List.of("Alice", "Bob"), controller.getPlayers().stream().map(Player::getNickname).toList());
@@ -82,7 +82,7 @@ class GameControllerTest {
     @Test
     void setupCommandDelegatesSetupToTheGameModel() throws Exception {
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", new ServerSessionRegistry());
+        GameController controller = new GameController(game, "Alice", new ServerSessionRegistry(), null);
 
         Thread worker = start(controller);
         controller.enqueueMessage(new SystemSetupMatchCommand());
@@ -103,7 +103,7 @@ class GameControllerTest {
     void routesKnownClientPayloadsToTheGameModel() throws Exception {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
+        GameController controller = new GameController(game, "Alice", sessions, null);
         String sessionId = authenticatedGameSession(sessions, "Alice", game.getId(), new DummyConnection());
 
         Thread worker = start(controller);
@@ -125,7 +125,7 @@ class GameControllerTest {
     @Test
     void gameplayCommandFromUnknownSessionIsIgnored() throws Exception {
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", new ServerSessionRegistry());
+        GameController controller = new GameController(game, "Alice", new ServerSessionRegistry(), null);
 
         Thread worker = start(controller);
         controller.enqueueMessage(new ClientPayloadCommand("missing-session", new MoveTotemPayload("B")));
@@ -145,7 +145,7 @@ class GameControllerTest {
     void unexpectedClientPayloadReportsPhaseErrorToTheSessionListener() throws Exception {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
+        GameController controller = new GameController(game, "Alice", sessions, null);
         DummyConnection connection = new DummyConnection();
         String sessionId = authenticatedGameSession(sessions, "Alice", game.getId(), connection);
 
@@ -168,7 +168,7 @@ class GameControllerTest {
     void realDisconnectUpdatesGameAndRegistry() throws Exception {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
+        GameController controller = new GameController(game, "Alice", sessions, null);
         DummyConnection connection = new DummyConnection();
         String sessionId = authenticatedGameSession(sessions, "Alice", game.getId(), connection);
 
@@ -193,7 +193,7 @@ class GameControllerTest {
     void lastPlayerTimerTaskEnqueuesCloseCommand() throws Exception {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
+        GameController controller = new GameController(game, "Alice", sessions, null);
         String bobSessionId = authenticatedGameSession(sessions, "Bob", game.getId(), new DummyConnection());
 
         Thread worker = start(controller);
@@ -216,7 +216,7 @@ class GameControllerTest {
     void reconnectCommandAddsListenerAndReconnectsPlayer() throws Exception {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
+        GameController controller = new GameController(game, "Alice", sessions, null);
         String oldSessionId = sessions.registerConnection(new DummyConnection());
         sessions.authenticate(oldSessionId, "Alice");
         sessions.recordGameDisconnection(oldSessionId, game.getId());
@@ -245,7 +245,7 @@ class GameControllerTest {
     void closeCommandFinishesTheGameAndCleansRegistryRouting() throws Exception {
         ServerSessionRegistry sessions = new ServerSessionRegistry();
         RecordingGame game = new RecordingGame(players());
-        GameController controller = new GameController(game, "Alice", sessions);
+        GameController controller = new GameController(game, "Alice", sessions, null);
         authenticatedGameSession(sessions, "Alice", game.getId(), new DummyConnection());
         sessions.registerGameOrchestrator(game.getId(), controller);
         String bobSessionId = sessions.registerConnection(new DummyConnection());

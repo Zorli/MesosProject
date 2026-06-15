@@ -199,6 +199,8 @@
                     <Label text="Final match result." styleClass="hero-copy"/>
                 </VBox>
                 <VBox fx:id="finalRankingContainer" spacing="10" maxWidth="560" styleClass="surface-panel final-panel"/>
+                <Label text="All-time ranking" styleClass="hero-copy"/>
+                <VBox fx:id="allTimeRankingContainer" spacing="10" maxWidth="560" styleClass="surface-panel final-panel"/>
                 <Button text="Back to lobbies" onAction="#handleBackToLobby" styleClass="primary-button"/>
             </VBox>
         </StackPane>

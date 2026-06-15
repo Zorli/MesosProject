@@ -58,7 +58,7 @@ class PreLobbyControllerTest {
     void setUp() {
         registry = new ServerSessionRegistry();
         gameFactory = new MockGameFactory();
-        controller = new PreLobbyController(gameFactory, registry);
+        controller = new PreLobbyController(gameFactory, registry, null);
         connectionLifecycle = new ServerConnectionLifecycle(registry);
         controllerThread = new Thread(controller, "PreLobbyController-TestThread");
         controllerThread.start();
@@ -290,7 +290,7 @@ class PreLobbyControllerTest {
         final List<QueuedCommand> receivedCommands = new ArrayList<>();
 
         public MockGameController(int gameId, ServerSessionRegistry registry) {
-            super(createMockGame(gameId), "Alice", registry);
+            super(createMockGame(gameId), "Alice", registry, null);
         }
 
         @Override

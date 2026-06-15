@@ -7,11 +7,13 @@ import it.polimi.ingsoft.mesos.server.network.tcp.ConnectionAcceptor;
 import it.polimi.ingsoft.mesos.server.helper.MessageRouter;
 import it.polimi.ingsoft.mesos.server.network.rmi.RmiConnectionEntryPoint;
 import it.polimi.ingsoft.mesos.server.network.connectionHandling.ServerConnectionLifecycle;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 
 import java.io.PrintStream;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -37,11 +39,21 @@ public final class LaunchServer {
         int tcpPort = promptPort(scanner, "Enter MESOS_TCP_PORT [default 12345]: ", 12345);
         int rmiPort = promptPort(scanner, "Enter MESOS_RMI_PORT [default 1099]: ", 1099);
         String serverIp = promptString(scanner, "Enter MESOS_SERVER_IP_ADDRESS [default localhost]: ", "localhost");
+        String dbHost = promptString(scanner, "Enter MESOS_DB_HOST [default localhost]: ", "localhost");
+        int dbPort = promptPort(scanner, "Enter MESOS_DB_PORT [default 3306]: ", 3306);
+        String dbName = promptString(scanner, "Enter MESOS_DB_NAME [default mesos]: ", "mesos");
+        String dbUser = promptString(scanner, "Enter MESOS_DB_USER [default mesos]: ", "mesos");
+        String dbPassword = promptString(scanner, "Enter MESOS_DB_PASSWORD [default mesos]: ", "mesos");
 
         Map<String, String> environment = new HashMap<>();
         environment.put("MESOS_TCP_PORT", String.valueOf(tcpPort));
         environment.put("MESOS_RMI_PORT", String.valueOf(rmiPort));
         environment.put("MESOS_SERVER_IP_ADDRESS", serverIp);
+        environment.put("MESOS_DB_HOST", dbHost);
+        environment.put("MESOS_DB_PORT", String.valueOf(dbPort));
+        environment.put("MESOS_DB_NAME", dbName);
+        environment.put("MESOS_DB_USER", dbUser);
+        environment.put("MESOS_DB_PASSWORD", dbPassword);
 
         int exitCode = run(environment, System.out, System.err);
         if (exitCode != 0) {
@@ -66,10 +78,27 @@ public final class LaunchServer {
             // A. Shared Registry (Yellow Pages)
             ServerSessionRegistry sessions = new ServerSessionRegistry();
 
+            // A bis. Ranking database. A failure here is non-fatal: the server keeps
+            // running and matches stay playable, the ranking is simply unavailable
+            // until the database becomes reachable again.
+            GameResultRepository gameResultRepository = new GameResultRepository(
+                    buildJdbcUrl(environment),
+                    resolveDbUser(environment),
+                    resolveDbPassword(environment)
+            );
+            try {
+                gameResultRepository.ensureSchema();
+                out.println("Ranking database ready.");
+            } catch (SQLException exception) {
+                out.println("Warning: ranking database unavailable (" + exception.getMessage()
+                        + "). The server continues without persisting rankings.");
+            }
+
             // B. Core Controller
             PreLobbyController preLobbyController = new PreLobbyController(
                     DefaultGameFactory.getInstance(),
-                    sessions
+                    sessions,
+                    gameResultRepository
             );
 
             Thread serverWorker = new Thread(preLobbyController, "PreLobbyController-Worker");
@@ -137,6 +166,33 @@ public final class LaunchServer {
         return environment.get("MESOS_SERVER_IP_ADDRESS");
     }
 
+    private static String resolveDbUser(Map<String, String> environment) {
+        return environment.get("MESOS_DB_USER");
+    }
+
+    private static String resolveDbPassword(Map<String, String> environment) {
+        return environment.get("MESOS_DB_PASSWORD");
+    }
+
+    /**
+     * Builds the MySQL JDBC URL from the resolved database configuration.
+     *
+     * @param environment configuration map holding the {@code MESOS_DB_*} values
+     * @return the JDBC URL used to connect to the ranking database
+     */
+    private static String buildJdbcUrl(Map<String, String> environment) {
+        // connectTimeout/socketTimeout bound how long a JDBC call can block. They matter
+        // because the end-of-game write runs on the game worker thread right before
+        // teardown: if the database becomes unreachable mid-session, the call fails fast
+        // instead of hanging the worker.
+        return String.format(
+                "jdbc:mysql://%s:%s/%s?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+                        + "&connectTimeout=3000&socketTimeout=5000",
+                environment.get("MESOS_DB_HOST"),
+                environment.get("MESOS_DB_PORT"),
+                environment.get("MESOS_DB_NAME"));
+    }
+
     private static int promptPort(Scanner scanner, String promptMessage, int defaultValue) {
         while (true) {
             System.out.print(promptMessage);
@@ -175,11 +231,20 @@ public final class LaunchServer {
         System.out.println("  It must be an integer between 1024 and 65535 and it must not already be used.");
         System.out.println("- MESOS_SERVER_IP_ADDRESS: server IP address published inside the RMI stubs.");
         System.out.println("  It is needed only by RMI clients to contact the server after the registry lookup.");
+        System.out.println("- MESOS_DB_HOST / MESOS_DB_PORT / MESOS_DB_NAME / MESOS_DB_USER / MESOS_DB_PASSWORD:");
+        System.out.println("  connection details of the MySQL database that stores the ranking of finished games.");
+        System.out.println("  The defaults match the bundled docker-compose.yml (run 'docker compose up' first).");
+        System.out.println("  If the database is unreachable the server still runs, only the ranking is unavailable.");
         System.out.println();
         System.out.println("Press Enter without typing anything to use the default values:");
         System.out.println("- MESOS_TCP_PORT = 12345");
         System.out.println("- MESOS_RMI_PORT = 1099");
         System.out.println("- MESOS_SERVER_IP_ADDRESS = localhost");
+        System.out.println("- MESOS_DB_HOST = localhost");
+        System.out.println("- MESOS_DB_PORT = 3306");
+        System.out.println("- MESOS_DB_NAME = mesos");
+        System.out.println("- MESOS_DB_USER = mesos");
+        System.out.println("- MESOS_DB_PASSWORD = mesos");
         System.out.println();
     }
 }

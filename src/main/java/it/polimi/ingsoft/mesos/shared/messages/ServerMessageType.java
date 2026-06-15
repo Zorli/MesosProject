@@ -17,6 +17,8 @@ public enum ServerMessageType {
     LOBBY_LIST,
     /** An update describing changes to the active game board or state. */
     GAME_UPDATE,
+    /** The all-time ranking broadcast once a match has finished. */
+    RANKING_UPDATE,
     /** Keep-alive ping query sent to the client to verify connection health. */
     PING
 }

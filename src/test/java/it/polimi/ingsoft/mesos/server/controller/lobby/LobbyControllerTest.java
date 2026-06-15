@@ -51,7 +51,7 @@ class LobbyControllerTest {
     void setUp() {
         sessions = new ServerSessionRegistry();
         lobby = new Lobby(1, "Alice", 2, TotemColor.RED);
-        controller = new LobbyController(lobby, sessions, DefaultGameFactory.getInstance());
+        controller = new LobbyController(lobby, sessions, DefaultGameFactory.getInstance(), null);
 
         // Register lobby model and controller in registry, matching production setup
         sessions.registerLobbyModel(lobby);

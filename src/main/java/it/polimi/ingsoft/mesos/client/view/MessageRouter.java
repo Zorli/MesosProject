@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.shared.messages.ServerMessage;
 import it.polimi.ingsoft.mesos.shared.messages.ServerMessageType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
@@ -64,6 +65,9 @@ public class MessageRouter {
                 break;
             case GAME_UPDATE:
                 this.routeGameUpdate((GamePayload) message.payload);
+                break;
+            case RANKING_UPDATE:
+                this.clientView.showRanking((RankingPayload) message.payload);
                 break;
             case PING:
                 throw new IllegalArgumentException("PING must be handled by the virtual server");

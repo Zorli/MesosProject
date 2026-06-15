@@ -8,10 +8,13 @@ import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -71,6 +74,7 @@ public class GameController implements Runnable  {
     private final List<Player> players;
     private final String hostNickname;
     private final ServerSessionRegistry sessions;
+    private final GameResultRepository gameResultRepository;
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
     private final Timer lastPlayerTimer = new Timer("last-player-timer", true);
     private TimerTask lastPlayerTimerTask;
@@ -97,10 +101,13 @@ public class GameController implements Runnable  {
      * @param game game aggregate controlled by this instance
      * @param hostNickname nickname of the player who started the match
      * @param sessions shared server session registry
+     * @param gameResultRepository repository used to persist the match result and
+     *                             read the all-time ranking when the match ends
      */
     public GameController(Game game,
                           String hostNickname,
-                          ServerSessionRegistry sessions) {
+                          ServerSessionRegistry sessions,
+                          GameResultRepository gameResultRepository) {
         Objects.requireNonNull(game, "Game cannot be null");
         if (game.getPlayers() == null || game.getPlayers().isEmpty()) {
             throw new IllegalArgumentException("Players cannot be null or empty");
@@ -110,6 +117,7 @@ public class GameController implements Runnable  {
         this.players = List.copyOf(game.getPlayers());
         this.hostNickname = requireHostNickname(hostNickname);
         this.sessions = sessions != null ? sessions : new ServerSessionRegistry();
+        this.gameResultRepository = gameResultRepository;
         this.closing = false;
     }
 
@@ -470,8 +478,54 @@ public class GameController implements Runnable  {
         this.setClosing(true);
 
         log.info("Game " + this.game.getId() + " finished.");
+
+        // Persist the result and broadcast the all-time ranking only for matches that
+        // reached their natural end through final scoring. Abandoned (everyone left)
+        // or force-closed (timeout) matches have incomplete scores and are not
+        // recorded, but a normally finished match is recorded even if a player had
+        // disconnected before the end.
+        if (this.gameResultRepository != null && this.game.isCompletedNaturally()) {
+            this.recordResultAndBroadcastRanking();
+        }
+
         this.teardownGame();
         Thread.currentThread().interrupt();
+    }
+
+    /**
+     * Persists the final result of the just-finished match and broadcasts the
+     * resulting all-time ranking to every player.
+     *
+     * <p>The whole database interaction is guarded: a database failure must never
+     * prevent the match teardown, so any error is logged and swallowed. When this
+     * happens the clients simply do not receive the all-time ranking; the final
+     * standings of the match they just played are still shown, because those are
+     * broadcast independently as part of the normal {@code FINISHED} game update.
+     */
+    private void recordResultAndBroadcastRanking() {
+        try {
+            // Persist only the players still connected at the end: a player who
+            // disconnected is excluded from the database, consistent with the final
+            // standings shown locally (which also leave disconnected players unranked).
+            Map<Player, Boolean> connected = this.game.getConnectedPlayers();
+            List<GameResultRepository.PlayerResult> results = new ArrayList<>();
+            for (Player player : this.players) {
+                if (Boolean.TRUE.equals(connected.get(player))) {
+                    results.add(new GameResultRepository.PlayerResult(
+                            player.getNickname(), player.getPrestigePoints()));
+                }
+            }
+            if (results.isEmpty()) {
+                return;
+            }
+            // The player count is the match's original size, since the score depends on
+            // how many players the match was played with.
+            this.game.notifyRanking(
+                    this.gameResultRepository.recordResultAndFindRanking(this.players.size(), results));
+        } catch (Exception exception) {
+            log.warning("Could not record or broadcast the ranking for game "
+                    + this.game.getId() + ": " + exception.getMessage());
+        }
     }
 
     /**
