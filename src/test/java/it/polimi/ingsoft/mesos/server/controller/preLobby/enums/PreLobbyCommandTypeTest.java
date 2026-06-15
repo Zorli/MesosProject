@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.controller.preLobby.enums;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class PreLobbyCommandTypeTest {
      */
     @Test
     void testJoinLobbyPayloadMapping() {
-        JoinLobbyPayload payload = new JoinLobbyPayload(1);
+        JoinLobbyPayload payload = new JoinLobbyPayload(1, TotemColor.BLUE);
         assertEquals(PreLobbyCommandType.JOIN_LOBBY, PreLobbyCommandType.fromPayload(payload));
     }
 
@@ -39,7 +40,7 @@ class PreLobbyCommandTypeTest {
      */
     @Test
     void testCreateLobbyPayloadMapping() {
-        CreateLobbyPayload payload = new CreateLobbyPayload(4);
+        CreateLobbyPayload payload = new CreateLobbyPayload(4, TotemColor.RED);
         assertEquals(PreLobbyCommandType.CREATE_LOBBY, PreLobbyCommandType.fromPayload(payload));
     }
 

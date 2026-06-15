@@ -45,7 +45,7 @@
                         <Region maxWidth="92" minHeight="2" prefHeight="2" styleClass="login-divider"/>
                         <Label text="Nickname" maxWidth="Infinity" styleClass="field-label"/>
                         <TextField fx:id="nicknameField"
-                                   promptText="es. Tartufo"
+                                   promptText="MesosKing"
                                    onAction="#handleLogin"
                                    styleClass="text-input"/>
                         <Button fx:id="loginButton" text="Log in" maxWidth="Infinity" onAction="#handleLogin" styleClass="primary-button"/>
@@ -73,6 +73,10 @@
                                 text="Create table"
                                 onAction="#handleOpenCreateTable"
                                 styleClass="primary-button"/>
+                    </HBox>
+                    <HBox alignment="CENTER" spacing="10">
+                        <Label text="Your lobby totem" styleClass="field-label"/>
+                        <ComboBox fx:id="joinTotemColorComboBox"/>
                     </HBox>
                     <ScrollPane fx:id="lobbyScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="clean-scroll">
                         <VBox fx:id="lobbyListContainer" spacing="12"/>
@@ -107,6 +111,8 @@
                     </VBox>
                     <Label fx:id="capacityLabel" text="Players" styleClass="field-label"/>
                     <ComboBox fx:id="capacityComboBox" maxWidth="Infinity"/>
+                    <Label fx:id="totemColorLabel" text="Totem color" styleClass="field-label"/>
+                    <ComboBox fx:id="totemColorComboBox" maxWidth="Infinity"/>
                     <Button fx:id="createLobbyButton" text="Create lobby" onAction="#handleCreateLobby" maxWidth="Infinity" styleClass="primary-button"/>
                     <Button fx:id="startLobbyButton"
                             text="Start match"

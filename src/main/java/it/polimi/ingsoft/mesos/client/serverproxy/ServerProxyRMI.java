@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.client.serverproxy;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServerRMI;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiConnectionService;
 import it.polimi.ingsoft.mesos.shared.RmiNetworkInterfaces.RmiServerService;
 import it.polimi.ingsoft.mesos.shared.messages.ClientMessage;
@@ -128,10 +129,11 @@ public class ServerProxyRMI implements ServerProxy {
      * Requests the creation of a new lobby with the selected capacity.
      *
      * @param chosenCapacity number of players expected in the new lobby
+     * @param totemColor totem color requested by the host
      */
     @Override
-    public void createLobby(int chosenCapacity) {
-        CreateLobbyPayload payload = new CreateLobbyPayload(chosenCapacity);
+    public void createLobby(int chosenCapacity, TotemColor totemColor) {
+        CreateLobbyPayload payload = new CreateLobbyPayload(chosenCapacity, totemColor);
         ClientMessage message = new ClientMessage(ClientMessageType.CREATE_LOBBY, payload);
         this.send(message);
     }
@@ -140,10 +142,11 @@ public class ServerProxyRMI implements ServerProxy {
      * Requests to join an existing lobby.
      *
      * @param lobbyId identifier of the lobby to join
+     * @param totemColor totem color requested by the joining player
      */
     @Override
-    public void joinLobby(int lobbyId) {
-        JoinLobbyPayload payload = new JoinLobbyPayload(lobbyId);
+    public void joinLobby(int lobbyId, TotemColor totemColor) {
+        JoinLobbyPayload payload = new JoinLobbyPayload(lobbyId, totemColor);
         ClientMessage message = new ClientMessage(ClientMessageType.JOIN_LOBBY, payload);
         this.send(message);
     }

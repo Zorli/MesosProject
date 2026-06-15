@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventTyp
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Mapper responsible for converting internal domain models (like {@link Lobby}) or action results
@@ -42,7 +43,8 @@ public final class LobbyPayloadMapper {
                     lobbyId,
                     List.of(),
                     null,
-                    null
+                    null,
+                    Map.of()
             );
         }
 
@@ -57,7 +59,8 @@ public final class LobbyPayloadMapper {
                 lobbyId,
                 List.of(),
                 null,
-                null
+                null,
+                Map.of()
         );
     }
 
@@ -88,7 +91,8 @@ public final class LobbyPayloadMapper {
                 lobby.getId(),
                 lobby.getPlayers(),
                 lobby.getHostNickname(),
-                lobby.getChosenCapacity()
+                lobby.getChosenCapacity(),
+                lobby.getPlayerTotemColors()
         );
     }
 }

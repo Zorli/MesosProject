@@ -6,6 +6,7 @@ import it.polimi.ingsoft.mesos.server.factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.enums.LobbyCommandType;
 import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
@@ -34,7 +35,7 @@ import java.util.Objects;
  * When the host triggers the match start:
  * <ol>
  *   <li>Validates state via {@link Lobby#startMatch(String)}.</li>
- *   <li>Builds player instances using {@link LobbyPlayerFactory} (assigning totem colors and shuffling order).</li>
+ *   <li>Builds player instances using {@link LobbyPlayerFactory}, preserving lobby order and applying the selected totem colors.</li>
  *   <li>Instantiates a {@link Game} and a corresponding {@link GameController}.</li>
  *   <li>Moves connected sessions in {@link ServerSessionRegistry} from Lobby phase to Game phase.</li>
  *   <li>Migrates listeners from the Lobby observer list to the Game observer list.</li>
@@ -97,8 +98,9 @@ public class LobbyController implements Runnable {
                 String sessionId = cmd.getSessionId();
 
                 // Dispatch system command notifications first
-                if (cmd instanceof SystemJoinCommand) {
-                    this.joinUser(sessionId);
+                if (cmd instanceof SystemJoinLobbyCommand) {
+                    TotemColor totemColor = ((SystemJoinLobbyCommand) cmd).getTotemColor();
+                    this.joinUser(sessionId, totemColor);
                     continue;
                 } else if (cmd instanceof SystemDisconnectCommand) {
                     this.disconnectUser(sessionId);
@@ -131,13 +133,17 @@ public class LobbyController implements Runnable {
     /**
      * Handles adding an authenticated user connection to the lobby state.
      *
+     * <p>The totem color comes from the pre-lobby join payload and is passed to the lobby model,
+     * which performs the authoritative availability validation before mutating state.
+     *
      * @param sessionId the session identifier of the client joining
+     * @param totemColor the totem color selected by the joining client
      */
-    private void joinUser(String sessionId) {
+    private void joinUser(String sessionId, TotemColor totemColor) {
         String nickname = this.sessions.nicknameOf(sessionId);
         Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
         // Delegate validation and model modifications to Lobby model
-        boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView);
+        boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView, totemColor);
 
         // Update central registry and notify all clients if join succeeded
         if (joinedSuccessfully) {
@@ -223,7 +229,10 @@ public class LobbyController implements Runnable {
      */
     private GameController startNewMatch() {
         Objects.requireNonNull(this.gameFactory, "gameFactory is null — cannot start a new match");
-        List<Player> players = this.lobbyPlayerFactory.createPlayers(this.lobby.getPlayers());
+        List<Player> players = this.lobbyPlayerFactory.createPlayers(
+                this.lobby.getPlayers(),
+                this.lobby.getPlayerTotemColors()
+        );
         Game game = this.gameFactory.createGame(
                 this.lobby.getId(),
                 players

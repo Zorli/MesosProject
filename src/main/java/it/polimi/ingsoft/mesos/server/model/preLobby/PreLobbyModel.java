@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.server.model.preLobby;
 
 import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
@@ -110,22 +111,26 @@ public class PreLobbyModel {
     }
 
     /**
-     * Creates a new lobby with the requested player capacity and registers the host.
+     * Creates a new lobby with the requested player capacity, registers the host,
+     * and reserves the host's selected totem color.
      *
      * <p>This method ensures the requesting session is eligible to enter a lobby, resolves
      * its authenticated nickname, creates the lobby domain aggregate in the session registry,
      * registers the creator's listener as an observer on the lobby, and returns the new lobby instance.
+     * The totem color is passed to the lobby constructor so the host is already associated with a
+     * color before any lobby update payload is emitted.
      *
      * @param sessionId the unique identifier of the client session requesting creation
      * @param chosenCapacity the maximum player capacity of the new lobby
+     * @param totemColor the totem color selected by the host while creating the lobby
      * @return the newly created {@link Lobby} instance, or {@code null} if creation failed
      */
-    public Lobby createLobby(String sessionId, int chosenCapacity) {
+    public Lobby createLobby(String sessionId, int chosenCapacity, TotemColor totemColor) {
         Listener listener = this.sessions.getListenerOf(sessionId);
         try {
             this.ensureSessionCanEnterLobby(sessionId);
             String nickname = this.requireNickname(sessionId);
-            Lobby lobby = this.sessions.createLobbyModel(nickname, chosenCapacity);
+            Lobby lobby = this.sessions.createLobbyModel(nickname, chosenCapacity, totemColor);
 
             lobby.addListener(listener);
             listener.notifyUpdate(this.payloadMapper.lobbyCreated(nickname, lobby));

@@ -8,43 +8,39 @@ package it.polimi.ingsoft.mesos.client.view.tui;
  * by the parser:
  * <ul>
  *     <li>the usage string printed when the user writes the command incorrectly;</li>
- *     <li>whether the command requires an argument;</li>
- *     <li>whether that argument must be an integer.</li>
+ *     <li>the exact number of arguments accepted by the command.</li>
  * </ul>
  *
  * <p>Aliases such as {@code h}, {@code ll}, or {@code q} are not stored here.
  * They are mapped to these command types by {@link TuiCommandParser}.
  */
 enum TuiCommandType {
-    SKIP_EXTRA_DRAW("skip-extra-draw",false,false),
-    HELP("help", false, false),
-    AUTH("auth <nickname>", true, false),
-    LIST_LOBBIES("list-lobbies", false, false),
-    CREATE_LOBBY("create-lobby <capacity>", true, true),
-    JOIN_LOBBY("join-lobby <lobby-id>", true, true),
-    QUIT_LOBBY("quit-lobby", false, false),
-    START_LOBBY("start-lobby", false, false),
-    MOVE_TOTEM("move-totem <tile>", true, false),
-    CHOOSE_CARD("choose-card <card-id>", true, true),
-    EXTRA_DRAW("extra-draw <card-id>", true, true),
-    QUIT("quit", false, false);
+    SKIP_EXTRA_DRAW("skip-extra-draw", 0),
+    HELP("help", 0),
+    AUTH("auth <nickname>", 1),
+    LIST_LOBBIES("list-lobbies", 0),
+    CREATE_LOBBY("create-lobby <capacity> <totem-color>", 2),
+    JOIN_LOBBY("join-lobby <lobby-id> <totem-color>", 2),
+    QUIT_LOBBY("quit-lobby", 0),
+    START_LOBBY("start-lobby", 0),
+    MOVE_TOTEM("move-totem <tile>", 1),
+    CHOOSE_CARD("choose-card <card-id>", 1),
+    EXTRA_DRAW("extra-draw <card-id>", 1),
+    QUIT("quit", 0);
 
 
     private final String usage;
-    private final boolean argumentRequired;
-    private final boolean integerArgument;
+    private final int argumentCount;
 
     /**
      * Creates one command type description.
      *
      * @param usage text that explains how the command must be written
-     * @param argumentRequired {@code true} if the command needs one argument
-     * @param integerArgument {@code true} if the argument must be parsed as an integer
+     * @param argumentCount exact number of arguments accepted by the command
      */
-    TuiCommandType(String usage, boolean argumentRequired, boolean integerArgument) {
+    TuiCommandType(String usage, int argumentCount) {
         this.usage = usage;
-        this.argumentRequired = argumentRequired;
-        this.integerArgument = integerArgument;
+        this.argumentCount = argumentCount;
     }
 
     /**
@@ -57,23 +53,14 @@ enum TuiCommandType {
     }
 
     /**
-     * Tells whether this command requires exactly one argument.
+     * Returns how many words must appear after the command keyword.
      *
-     * @return {@code true} when the command needs an argument
+     * <p>For example, {@code help} expects {@code 0} arguments, while
+     * {@code join-lobby <lobby-id> <totem-color>} expects {@code 2}.
+     *
+     * @return exact number of arguments accepted by this command type
      */
-    boolean argumentRequired() {
-        return this.argumentRequired;
-    }
-
-    /**
-     * Tells whether the command argument must be an integer.
-     *
-     * <p>This is meaningful only when {@link #argumentRequired()} returns
-     * {@code true}.
-     *
-     * @return {@code true} when the parser must validate the argument as an integer
-     */
-    boolean integerArgument() {
-        return this.integerArgument;
+    int argumentCount() {
+        return this.argumentCount;
     }
 }

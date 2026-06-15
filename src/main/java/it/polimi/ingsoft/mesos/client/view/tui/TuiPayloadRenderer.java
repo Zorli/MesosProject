@@ -10,6 +10,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockP
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TribePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbySummaryPayload;
@@ -76,8 +77,8 @@ final class TuiPayloadRenderer {
 
         List<String> lobby = new ArrayList<>();
         lobby.add(commandLine("list-lobbies", null, "show open lobbies"));
-        lobby.add(commandLine("create-lobby", "<capacity>", "create a new lobby (2-5)"));
-        lobby.add(commandLine("join-lobby", "<lobby-id>", "join an existing lobby"));
+        lobby.add(commandLine("create-lobby", "<capacity> <color>", "create a new lobby (2-5)"));
+        lobby.add(commandLine("join-lobby", "<lobby-id> <color>", "join an existing lobby"));
         lobby.add(commandLine("quit-lobby", null, "leave the current lobby"));
         lobby.add(commandLine("start-lobby", null, "start the match (host only)"));
 
@@ -167,7 +168,7 @@ final class TuiPayloadRenderer {
         }
         if (payload.players != null && !payload.players.isEmpty()) {
             out.append('\n').append(TuiStyle.DIM).append("Players: ").append(TuiStyle.RESET);
-            out.append(String.join(", ", payload.players));
+            out.append(formatLobbyPlayers(payload.players, payload.playerTotemColors));
         }
         return out.toString();
     }
@@ -179,16 +180,46 @@ final class TuiPayloadRenderer {
         }
 
         List<String> lines = new ArrayList<>();
-        lines.add(TuiStyle.BOLD + "ID    HOST              PLAYERS   STATUS" + TuiStyle.RESET);
+        lines.add(TuiStyle.BOLD + "ID    HOST              PLAYERS   STATUS      AVAILABLE COLORS" + TuiStyle.RESET);
         for (LobbySummaryPayload lobby : payload.lobbies) {
             String id = TuiBox.padRight("#" + lobby.lobbyId, 5);
             String host = TuiBox.padRight(safe(lobby.hostNickname), 17);
             String players = TuiBox.padRight(lobby.currentPlayers + "/" + lobby.maxPlayers, 9);
-            String status = TuiStyle.paint(TuiStyle.forStatus(lobby.status), safe(lobby.status));
-            lines.add(id + " " + host + " " + players + " " + status);
+            String status = TuiBox.padRight(TuiStyle.paint(TuiStyle.forStatus(lobby.status), safe(lobby.status)), 11);
+            String colors = formatTotemColors(lobby.availableTotemColors);
+            lines.add(id + " " + host + " " + players + " " + status + " " + colors);
         }
         return TuiStyle.CLEAR_SCREEN
                 + TuiBox.frame(TuiStyle.BRIGHT_CYAN + "OPEN LOBBIES" + TuiStyle.RESET, lines);
+    }
+
+    private static String formatLobbyPlayers(List<String> players, Map<String, TotemColor> playerTotemColors) {
+        if (playerTotemColors == null || playerTotemColors.isEmpty()) {
+            return String.join(", ", players);
+        }
+
+        List<String> renderedPlayers = new ArrayList<>(players.size());
+        for (String player : players) {
+            TotemColor color = playerTotemColors.get(player);
+            if (color == null) {
+                renderedPlayers.add(player);
+            } else {
+                renderedPlayers.add(player + " (" + color.name().toLowerCase() + ")");
+            }
+        }
+        return String.join(", ", renderedPlayers);
+    }
+
+    private static String formatTotemColors(List<TotemColor> colors) {
+        if (colors == null || colors.isEmpty()) {
+            return "-";
+        }
+
+        return colors.stream()
+                .map(color -> color.name().toLowerCase())
+                .sorted()
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("-");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

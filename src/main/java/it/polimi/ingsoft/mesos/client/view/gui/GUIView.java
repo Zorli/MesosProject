@@ -2,6 +2,7 @@ package it.polimi.ingsoft.mesos.client.view.gui;
 
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
 import it.polimi.ingsoft.mesos.client.view.ClientView;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
@@ -9,7 +10,6 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePa
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import javafx.animation.KeyFrame;
-import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -82,8 +82,6 @@ public class GUIView implements ClientView {
     private String nickname = "Guest";
     /** Last game payload received from the server. */
     private GamePayload lastGamePayload;
-    /** Transition timer used to delay redirection after a successful login. */
-    private PauseTransition authRedirectDelay;
     /** Timeline timer used to periodically auto-refresh the lobby list. */
     private Timeline lobbyRefreshTimer;
 
@@ -141,8 +139,14 @@ public class GUIView implements ClientView {
     @FXML private Label playersInLobby;
     /** Capacity selector label. */
     @FXML private Label capacityLabel;
+    /** Totem color selector label. */
+    @FXML private Label totemColorLabel;
     /** Capacity selector ComboBox. */
     @FXML private ComboBox<Integer> capacityComboBox;
+    /** Totem color selector used by the host while creating a lobby. */
+    @FXML private ComboBox<TotemColor> totemColorComboBox;
+    /** Totem color selector used when joining any lobby from the lobby list. */
+    @FXML private ComboBox<TotemColor> joinTotemColorComboBox;
     /** Vertical container hosting cards of available lobbies. */
     @FXML private VBox lobbyListContainer;
     /** Button that opens the create lobby screen. */
@@ -231,6 +235,10 @@ public class GUIView implements ClientView {
     private void initialize() {
         this.capacityComboBox.getItems().setAll(2, 3, 4, 5);
         this.capacityComboBox.getSelectionModel().select(Integer.valueOf(4));
+        this.totemColorComboBox.getItems().setAll(TotemColor.values());
+        this.totemColorComboBox.getSelectionModel().select(TotemColor.RED);
+        this.joinTotemColorComboBox.getItems().setAll(TotemColor.values());
+        this.joinTotemColorComboBox.getSelectionModel().select(TotemColor.RED);
         this.lobbyScrollPane.setFitToWidth(true);
 
         this.lobbyRenderer = new LobbyRenderer(
@@ -238,7 +246,8 @@ public class GUIView implements ClientView {
                 this.lobbyActionTitleLabel, this.lobbyActionSubtitleLabel,
                 this.currentLobbyTitleLabel, this.currentLobbyHostLabel,
                 this.currentLobbyPlayersLabel, this.currentLobbyStateLabel,
-                this.playersInLobby, this.capacityLabel, this.capacityComboBox,
+                this.playersInLobby, this.capacityLabel, this.totemColorLabel,
+                this.capacityComboBox, this.totemColorComboBox, this.joinTotemColorComboBox,
                 this.lobbyListContainer,
                 this.openCreateTableButton, this.backToLobbyListButton,
                 this.createLobbyButton, this.startLobbyButton, this.exitLobbyButton,
@@ -364,7 +373,8 @@ public class GUIView implements ClientView {
     @FXML
     private void handleCreateLobby() {
         int capacity = this.capacityComboBox.getValue() == null ? 4 : this.capacityComboBox.getValue();
-        this.callServer(() -> this.serverProxy.createLobby(capacity));
+        TotemColor totemColor = this.totemColorComboBox.getValue();
+        this.callServer(() -> this.serverProxy.createLobby(capacity, totemColor));
     }
 
     @FXML
@@ -399,7 +409,6 @@ public class GUIView implements ClientView {
         this.runOnFx(() -> {
             String message = payload == null ? "Unknown error." : payload.message;
             if (this.isConnectionClosed(payload)) {
-                this.cancelAuthenticatedRedirect();
                 if (this.lobbyRefreshTimer != null) {
                     this.lobbyRefreshTimer.stop();
                 }
@@ -431,7 +440,8 @@ public class GUIView implements ClientView {
             }
             String message = payload.message == null ? "Login successful." : payload.message;
             this.loginStatusLabel.setText(message + "\nLoading lobby...");
-            this.scheduleAuthenticatedRedirect();
+            this.showPage(this.lobbyPage);
+            this.requestLobbyList();
         });
     }
 
@@ -453,7 +463,6 @@ public class GUIView implements ClientView {
                 }
             }
             if (payload.event == LobbyEventType.LOBBY_STARTED) {
-                this.cancelAuthenticatedRedirect();
                 this.showPage(this.gamePage);
             }
         });
@@ -475,7 +484,6 @@ public class GUIView implements ClientView {
     @Override
     public void showGameUpdate(GamePayload payload) {
         this.runOnFx(() -> {
-            this.cancelAuthenticatedRedirect();
             this.lastGamePayload = payload;
             if (payload == null) {
                 this.matchTitleLabel.setText("Match");
@@ -515,39 +523,6 @@ public class GUIView implements ClientView {
     // ---------------------------------------------------------------------
     // Authentication and lobby navigation flow
     // ---------------------------------------------------------------------
-
-    /** Starts the short post-login delay before showing the lobby list. */
-    private void scheduleAuthenticatedRedirect() {
-        if (this.authRedirectDelay != null) {
-            this.authRedirectDelay.stop();
-        }
-        this.authRedirectDelay = new PauseTransition(Duration.seconds(3));
-        this.authRedirectDelay.setOnFinished(event -> {
-            this.authRedirectDelay = null;
-            if (!this.shouldOpenLobbyAfterAuthentication()) {
-                return;
-            }
-            this.showPage(this.lobbyPage);
-            this.requestLobbyList();
-        });
-        this.authRedirectDelay.play();
-    }
-
-    /** Cancels the pending post-login transition. */
-    private void cancelAuthenticatedRedirect() {
-        if (this.authRedirectDelay == null) {
-            return;
-        }
-        this.authRedirectDelay.stop();
-        this.authRedirectDelay = null;
-    }
-
-    private boolean shouldOpenLobbyAfterAuthentication() {
-        return this.loginPage.isVisible()
-                && !this.gamePage.isVisible()
-                && !this.endPage.isVisible()
-                && !this.lobbyRenderer.isInLobby();
-    }
 
     /** Creates the timer that refreshes the lobby list while the list page is open. */
     private void configureLobbyAutoRefresh() {

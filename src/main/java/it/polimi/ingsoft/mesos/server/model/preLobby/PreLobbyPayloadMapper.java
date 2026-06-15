@@ -74,7 +74,8 @@ public final class PreLobbyPayloadMapper {
                 lobby.getId(),
                 lobby.getPlayers(),
                 lobby.getHostNickname(),
-                lobby.getChosenCapacity()
+                lobby.getChosenCapacity(),
+                lobby.getPlayerTotemColors()
         );
     }
 
@@ -93,7 +94,8 @@ public final class PreLobbyPayloadMapper {
                 lobby.getHostNickname(),
                 lobby.getPlayers().size(),
                 lobby.getChosenCapacity(),
-                lobby.getStatus().name()
+                lobby.getStatus().name(),
+                lobby.getAvailableTotemColors()
         );
     }
 
