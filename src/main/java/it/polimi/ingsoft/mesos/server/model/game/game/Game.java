@@ -353,6 +353,14 @@ public class Game {
     }
 
     /**
+     * Pre-skips the first player in {@link RoundPhase#PLAYER_DRAWS} when they have no useful draw.
+     * Called by {@link TotemPlacementHandler} immediately after the draft order is set.
+     */
+    void skipInitialDraftPlayerIfNeeded() {
+        this.cardDraftHandler.skipCurrentPlayerIfNoUsefulDraw();
+    }
+
+    /**
      * Places the current player's totem on an offer space.
      *
      * @param player player placing the totem

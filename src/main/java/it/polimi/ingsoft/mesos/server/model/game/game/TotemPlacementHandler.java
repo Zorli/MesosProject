@@ -227,6 +227,7 @@ public class TotemPlacementHandler {
             this.board.movePlayerToLastStartingTile(draftOrder.get(i));
             draftOrder.remove(i);
         }
+
         if (draftOrder.isEmpty()) {
             this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
             this.game.markStateChanged();
@@ -234,6 +235,7 @@ public class TotemPlacementHandler {
         }
         this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
+        this.game.skipInitialDraftPlayerIfNeeded();
     }
 
 
