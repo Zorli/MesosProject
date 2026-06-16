@@ -554,6 +554,26 @@ public class CardDraftHandler {
     }
 
     /**
+     * Skips the current player at the start of {@link RoundPhase#PLAYER_DRAWS} if they have no
+     * useful standard draw. Called once by the game after the draft order is established, before
+     * the first {@code chooseCard} command arrives.
+     *
+     * <p>Without this pre-check, a connected player whose only remaining quota maps to a row that
+     * contains only event cards (which are never drawable) would become the current player with no
+     * clickable card, and the game would wait forever for a {@code chooseCard} that can never come.
+     */
+    void skipCurrentPlayerIfNoUsefulDraw() {
+        Player currentPlayer = this.roundFlow.getCurrentPlayer();
+        if (Boolean.FALSE.equals(this.game.getConnectedPlayers().get(currentPlayer))) {
+            this.skipDisconnectedPlayer(currentPlayer);
+            this.advanceToNextDrawablePlayerOrEndStandardDraft();
+        } else if (!this.hasAnyAvailableDraw(currentPlayer)) {
+            this.skipPlayerWithoutUsefulDraw(currentPlayer);
+            this.advanceToNextDrawablePlayerOrEndStandardDraft();
+        }
+    }
+
+    /**
      * Handles a disconnection during the standard draft phase.
      *
      * <p>If the disconnected player is the current player, their draft turn is
