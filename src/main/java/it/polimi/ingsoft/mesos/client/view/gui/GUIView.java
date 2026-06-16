@@ -182,7 +182,7 @@ public class GUIView implements ClientView {
     @FXML private VBox finalRankingContainer;
 
     /** Container for the all-time ranking shown on the end page. */
-    @FXML private VBox allTimeRankingContainer;
+    @FXML private ScrollPane allTimeRankingContainer;
     /** ScrollPane wrapper around the lobby list. */
     @FXML private ScrollPane lobbyScrollPane;
 

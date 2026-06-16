@@ -78,15 +78,15 @@ final class GamePayloadMapper {
      */
     static RankingPayload toRankingPayload(RankingResult result) {
         List<RankingPayload.RankingRow> rows = new ArrayList<>();
-        for (RankingResult.RankingEntry entry : result.entries()) {
+        for (RankingResult.RankingEntry entry : result.getEntries()) {
             rows.add(new RankingPayload.RankingRow(
-                    entry.rank(),
-                    entry.nickname(),
-                    entry.score(),
-                    entry.datePlayed(),
-                    entry.currentGame()));
+                    entry.getRank(),
+                    entry.getNickname(),
+                    entry.getScore(),
+                    entry.getDatePlayed(),
+                    entry.isCurrentGame()));
         }
-        return new RankingPayload(result.numPlayers(), rows);
+        return new RankingPayload(result.getNumPlayers(), rows);
     }
 
     /**

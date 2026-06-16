@@ -45,7 +45,7 @@ public class RoundFlow {
     public RoundFlow() {
         this.currentPhaseOrder = new ArrayList<>();
         this.currentPlayerIndex = 0;
-        this.roundNumber = 0;
+        this.roundNumber = 9;
         this.currentRoundPhase = RoundPhase.PLACING_TOTEMS;
     }
 

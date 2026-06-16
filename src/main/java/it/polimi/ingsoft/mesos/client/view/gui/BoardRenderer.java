@@ -59,7 +59,8 @@ final class BoardRenderer {
     private final VBox playerListContainer;
     private final VBox tribeCardsContainer;
     private final VBox finalRankingContainer;
-    private final VBox allTimeRankingContainer;
+    private final ScrollPane allTimeRankingContainer;
+    private final VBox allTimeRankingContent;
 
     private final Supplier<GamePayload> gameSupplier;
     private final Supplier<String> nicknameSupplier;
@@ -81,7 +82,7 @@ final class BoardRenderer {
             VBox playerListContainer,
             VBox tribeCardsContainer,
             VBox finalRankingContainer,
-            VBox allTimeRankingContainer,
+            ScrollPane allTimeRankingContainer,
             Supplier<GamePayload> gameSupplier,
             Supplier<String> nicknameSupplier
     ) {
@@ -92,6 +93,9 @@ final class BoardRenderer {
         this.tribeCardsContainer = tribeCardsContainer;
         this.finalRankingContainer = finalRankingContainer;
         this.allTimeRankingContainer = allTimeRankingContainer;
+        this.allTimeRankingContent = new VBox(10);
+        this.allTimeRankingContainer.setContent(this.allTimeRankingContent);
+        this.allTimeRankingContainer.setFitToWidth(true);
         this.gameSupplier = gameSupplier;
         this.nicknameSupplier = nicknameSupplier;
     }
@@ -515,9 +519,9 @@ final class BoardRenderer {
      * @param payload all-time ranking received from the server
      */
     void renderAllTimeRanking(RankingPayload payload) {
-        this.allTimeRankingContainer.getChildren().clear();
+        this.allTimeRankingContent.getChildren().clear();
         if (payload == null || payload.rows == null || payload.rows.isEmpty()) {
-            this.allTimeRankingContainer.getChildren().add(
+            this.allTimeRankingContent.getChildren().add(
                     emptyState("Ranking unavailable", "No completed games stored yet for this player count."));
             return;
         }
@@ -540,7 +544,7 @@ final class BoardRenderer {
             Label date = new Label(shortDate(entry.datePlayed));
             date.getStyleClass().add("muted");
             row.getChildren().addAll(position, name, score, date);
-            this.allTimeRankingContainer.getChildren().add(row);
+            this.allTimeRankingContent.getChildren().add(row);
         }
     }
 
