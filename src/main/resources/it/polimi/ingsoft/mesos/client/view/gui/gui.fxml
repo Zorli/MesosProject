@@ -201,7 +201,14 @@
                 <VBox fx:id="finalRankingContainer" spacing="10" maxWidth="560" styleClass="surface-panel final-panel"/>
                 <Label text="All-time ranking" styleClass="hero-copy"/>
 
-                <ScrollPane fx:id="allTimeRankingContainer" maxWidth="560" styleClass="surface-panel final-panel"/>
+                <ScrollPane fx:id="allTimeRankingContainer"
+                            maxWidth="560"
+                            prefHeight="260"
+                            maxHeight="260"
+                            fitToWidth="true"
+                            hbarPolicy="NEVER"
+                            vbarPolicy="AS_NEEDED"
+                            styleClass="surface-panel final-panel"/>
                 <Button text="Back to lobbies" onAction="#handleBackToLobby" styleClass="primary-button"/>
             </VBox>
         </StackPane>
