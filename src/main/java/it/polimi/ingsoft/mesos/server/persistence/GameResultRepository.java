@@ -115,7 +115,7 @@ public final class GameResultRepository {
      * @param numPlayers number of players of the match
      * @param results final result of each participant
      * @return the all-time ranking for {@code numPlayers}, with the just-finished
-     *         match flagged in {@link RankingResult.RankingEntry#currentGame()}
+     *         match flagged in {@link RankingResult.RankingEntry#isCurrentGame()}
      * @throws SQLException if the database cannot be reached or a statement fails
      */
     public RankingResult recordResultAndFindRanking(int numPlayers, List<PlayerResult> results)
