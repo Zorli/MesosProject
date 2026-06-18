@@ -3,6 +3,7 @@ package it.polimi.ingsoft.mesos.client.view;
 import it.polimi.ingsoft.mesos.client.virtualserver.VirtualServer;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
@@ -64,4 +65,12 @@ public interface ClientView {
      * @param payload complete final game state, including winner information
      */
     void showFinalGameResult(GamePayload payload);
+
+    /**
+     * Shows the all-time ranking of matches played with the same number of players
+     * as the match that just finished.
+     *
+     * @param payload all-time ranking, with the just-finished results flagged
+     */
+    void showRanking(RankingPayload payload);
 }

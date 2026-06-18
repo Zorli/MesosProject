@@ -1,6 +1,7 @@
 package it.polimi.ingsoft.mesos.client.view.gui;
 
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
@@ -16,8 +17,10 @@ import javafx.scene.shape.Circle;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Renders the lobby pages and owns the local snapshot of the lobby the client
@@ -43,7 +46,10 @@ final class LobbyRenderer {
     private final Label currentLobbyStateLabel;
     private final Label playersInLobby;
     private final Label capacityLabel;
+    private final Label totemColorLabel;
     private final ComboBox<Integer> capacityComboBox;
+    private final ComboBox<TotemColor> totemColorComboBox;
+    private final ComboBox<TotemColor> joinTotemColorComboBox;
     private final VBox lobbyListContainer;
     private final Button openCreateTableButton;
     private final Button backToLobbyListButton;
@@ -72,7 +78,10 @@ final class LobbyRenderer {
             Label currentLobbyStateLabel,
             Label playersInLobby,
             Label capacityLabel,
+            Label totemColorLabel,
             ComboBox<Integer> capacityComboBox,
+            ComboBox<TotemColor> totemColorComboBox,
+            ComboBox<TotemColor> joinTotemColorComboBox,
             VBox lobbyListContainer,
             Button openCreateTableButton,
             Button backToLobbyListButton,
@@ -93,7 +102,10 @@ final class LobbyRenderer {
         this.currentLobbyStateLabel = currentLobbyStateLabel;
         this.playersInLobby = playersInLobby;
         this.capacityLabel = capacityLabel;
+        this.totemColorLabel = totemColorLabel;
         this.capacityComboBox = capacityComboBox;
+        this.totemColorComboBox = totemColorComboBox;
+        this.joinTotemColorComboBox = joinTotemColorComboBox;
         this.lobbyListContainer = lobbyListContainer;
         this.openCreateTableButton = openCreateTableButton;
         this.backToLobbyListButton = backToLobbyListButton;
@@ -233,11 +245,17 @@ final class LobbyRenderer {
                 : "Pick a table size from 2 to 5 players and become the host.");
         this.capacityLabel.setVisible(!inLobby);
         this.capacityLabel.setManaged(!inLobby);
+        this.totemColorLabel.setVisible(!inLobby);
+        this.totemColorLabel.setManaged(!inLobby);
         this.capacityComboBox.setVisible(!inLobby);
         this.capacityComboBox.setManaged(!inLobby);
+        this.totemColorComboBox.setVisible(!inLobby);
+        this.totemColorComboBox.setManaged(!inLobby);
         this.createLobbyButton.setVisible(!inLobby);
         this.createLobbyButton.setManaged(!inLobby);
         this.capacityComboBox.setDisable(inLobby);
+        this.totemColorComboBox.setDisable(inLobby);
+        this.joinTotemColorComboBox.setDisable(inLobby);
         this.createLobbyButton.setDisable(inLobby);
         this.startLobbyButton.setDisable(!isHost || !isReady);
         this.exitLobbyButton.setDisable(!inLobby);
@@ -294,7 +312,8 @@ final class LobbyRenderer {
         this.currentLobbyStateLabel.setText(this.displayLobbyStatus(this.currentLobbyStatus));
 
         List<String> lobbyPlayers = payload.players == null ? List.of() : payload.players;
-        this.playersInLobby.setText("Players in lobby:\n" + String.join("\n", lobbyPlayers));
+        this.playersInLobby.setText("Players in lobby:\n"
+                + String.join("\n", this.formatLobbyPlayers(lobbyPlayers, payload.playerTotemColors)));
     }
 
     /** Builds one lobby row for the lobby list. */
@@ -311,8 +330,10 @@ final class LobbyRenderer {
         Label subtitle = new Label("Host " + lobby.hostNickname
                 + "  |  " + lobby.currentPlayers + "/" + lobby.maxPlayers + " players");
         subtitle.getStyleClass().add("muted");
+        Label availableColors = new Label("Available colors: " + this.formatTotemColors(lobby.availableTotemColors));
+        availableColors.getStyleClass().add("muted");
         HBox seats = seatTrack(lobby.currentPlayers, lobby.maxPlayers);
-        details.getChildren().addAll(title, subtitle, seats);
+        details.getChildren().addAll(title, subtitle, availableColors, seats);
 
         Label status = new Label(lobby.status);
         status.getStyleClass().add("status-pill");
@@ -326,7 +347,10 @@ final class LobbyRenderer {
             joinButton.getStyleClass().add("secondary-button");
             joinButton.setDisable(this.isInLobby() || isReadyLobby(lobby));
             joinButton.setOnAction(event ->
-                    this.serverDispatcher.accept(() -> this.serverProxy.joinLobby(lobby.lobbyId))
+                    this.serverDispatcher.accept(() -> this.serverProxy.joinLobby(
+                            lobby.lobbyId,
+                            this.joinTotemColorComboBox.getValue()
+                    ))
             );
             card.getChildren().addAll(details, status, joinButton);
         }
@@ -368,6 +392,34 @@ final class LobbyRenderer {
 
     private static boolean isReadyLobby(LobbySummaryPayload lobby) {
         return lobby.status != null && "READY".equalsIgnoreCase(lobby.status);
+    }
+
+    private List<String> formatLobbyPlayers(List<String> players, Map<String, TotemColor> playerTotemColors) {
+        if (playerTotemColors == null || playerTotemColors.isEmpty()) {
+            return players;
+        }
+
+        return players.stream()
+                .map(player -> this.formatLobbyPlayer(player, playerTotemColors))
+                .toList();
+    }
+
+    private String formatLobbyPlayer(String player, Map<String, TotemColor> playerTotemColors) {
+        TotemColor color = playerTotemColors.get(player);
+        if (color == null) {
+            return player;
+        }
+        return player + " (" + color.name().toLowerCase() + ")";
+    }
+
+    private String formatTotemColors(List<TotemColor> colors) {
+        if (colors == null || colors.isEmpty()) {
+            return "-";
+        }
+        return colors.stream()
+                .map(color -> color.name().toLowerCase())
+                .sorted()
+                .collect(Collectors.joining(", "));
     }
 
     private boolean isCurrentLobby(int lobbyId) {

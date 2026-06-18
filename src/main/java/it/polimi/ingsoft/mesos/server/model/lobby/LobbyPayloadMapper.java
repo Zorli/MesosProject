@@ -4,6 +4,7 @@ import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventTyp
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Mapper responsible for converting internal domain models (like {@link Lobby}) or action results
@@ -22,7 +23,7 @@ public final class LobbyPayloadMapper {
      * @return the player join update payload
      */
     public LobbyUpdatePayload lobbyJoined(String nickname, Lobby lobby) {
-        return this.fromLobby(LobbyEventType.LOBBY_JOINED, nickname, "Lobby joined successfully", lobby);
+        return this.fromLobby(LobbyEventType.LOBBY_JOINED, nickname, "Player " +nickname+ " joined the Lobby successfully", lobby);
     }
 
     /**
@@ -42,11 +43,25 @@ public final class LobbyPayloadMapper {
                     lobbyId,
                     List.of(),
                     null,
-                    null
+                    null,
+                    Map.of()
             );
         }
 
-        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Lobby left successfully", lobby);
+        return this.fromLobby(LobbyEventType.LOBBY_LEFT, nickname, "Player "+nickname+" left the lobby successfully", lobby);
+    }
+
+    public LobbyUpdatePayload lobbyLeftConfirmation(String nickname, int lobbyId) {
+        return new LobbyUpdatePayload(
+                LobbyEventType.LOBBY_LEFT,
+                nickname,
+                "Lobby left successfully",
+                lobbyId,
+                List.of(),
+                null,
+                null,
+                Map.of()
+        );
     }
 
     /**
@@ -76,7 +91,8 @@ public final class LobbyPayloadMapper {
                 lobby.getId(),
                 lobby.getPlayers(),
                 lobby.getHostNickname(),
-                lobby.getChosenCapacity()
+                lobby.getChosenCapacity(),
+                lobby.getPlayerTotemColors()
         );
     }
 }

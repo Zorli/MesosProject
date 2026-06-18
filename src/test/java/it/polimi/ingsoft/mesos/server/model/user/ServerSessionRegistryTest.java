@@ -46,7 +46,7 @@ class ServerSessionRegistryTest {
     @Test
     void testLobbyModelLifecycle() {
         ServerSessionRegistry registry = new ServerSessionRegistry();
-        Lobby lobby = registry.createLobbyModel("Alice", 4);
+        Lobby lobby = registry.createLobbyModel("Alice", 4, TotemColor.RED);
 
         assertNotNull(lobby);
         assertEquals(1, lobby.getId());
@@ -71,7 +71,7 @@ class ServerSessionRegistryTest {
     @Test
     void testDuplicateLobbyRegistration() {
         ServerSessionRegistry registry = new ServerSessionRegistry();
-        Lobby lobby = new Lobby(10, "Host", 3);
+        Lobby lobby = new Lobby(10, "Host", 3, TotemColor.RED);
         registry.registerLobbyModel(lobby);
 
         assertThrows(IllegalArgumentException.class, () -> registry.registerLobbyModel(lobby));
@@ -84,8 +84,8 @@ class ServerSessionRegistryTest {
     @Test
     void testOpenLobbiesAndPlayerPresenceQueries() {
         ServerSessionRegistry registry = new ServerSessionRegistry();
-        Lobby lobby1 = registry.createLobbyModel("Alice", 3);
-        Lobby lobby2 = registry.createLobbyModel("Bob", 4);
+        Lobby lobby1 = registry.createLobbyModel("Alice", 3, TotemColor.RED);
+        Lobby lobby2 = registry.createLobbyModel("Bob", 4, TotemColor.BLUE);
 
         // Host is automatically in lobby1
         assertTrue(registry.isPlayerInAnyLobby("Alice"));
@@ -95,8 +95,8 @@ class ServerSessionRegistryTest {
         assertEquals(2, openLobbies.size());
 
         // Fill lobby1 to capacity to start it
-        lobby1.addPlayer("Charlie", new DummyListener());
-        lobby1.addPlayer("Dave", new DummyListener());
+        lobby1.addPlayer("Charlie", new DummyListener(), TotemColor.WHITE);
+        lobby1.addPlayer("Dave", new DummyListener(), TotemColor.YELLOW);
         assertTrue(lobby1.startMatch("Alice"));
 
         openLobbies = registry.getOpenLobbies();
@@ -119,14 +119,14 @@ class ServerSessionRegistryTest {
         assertNull(registry.getLobbyController(9));
         assertNull(registry.getGameOrchestrator(9));
 
-        LobbyController dummyLobbyCtrl = new LobbyController(new Lobby(1, "H", 2), registry, (gameId, players) -> null);
+        LobbyController dummyLobbyCtrl = new LobbyController(new Lobby(1, "H", 2, TotemColor.RED), registry, (gameId, players) -> null, null);
         registry.registerLobbyController(1, dummyLobbyCtrl);
         assertEquals(dummyLobbyCtrl, registry.getLobbyController(1));
 
         registry.removeLobbyController(1);
         assertNull(registry.getLobbyController(1));
 
-        GameController dummyGameCtrl = new GameController(createMockGame(1), "Alice", registry);
+        GameController dummyGameCtrl = new GameController(createMockGame(1), "Alice", registry, null);
         registry.registerGameOrchestrator(1, dummyGameCtrl);
         assertEquals(dummyGameCtrl, registry.getGameOrchestrator(1));
 

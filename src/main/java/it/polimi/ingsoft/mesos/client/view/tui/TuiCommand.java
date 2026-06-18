@@ -1,5 +1,7 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
+import java.util.List;
+
 /**
  * Parsed representation of one command typed in the text user interface.
  *
@@ -8,25 +10,24 @@ package it.polimi.ingsoft.mesos.client.view.tui;
  * and {@link TuiView} reads it to decide which method must be called on
  * the server proxy.
  *
- * <p>The class does not validate the command. Validation belongs to
- * {@link TuiCommandParser}. For this reason, a {@code TuiCommand} should be
- * created only after the parser has already checked that the command type and
- * the argument are coherent.
+ * <p>The parser validates only the command keyword and the number of arguments
+ * before creating this object. This class stores those already separated
+ * arguments and provides small typed accessors, such as {@link #intArgument(int)},
+ * for the command execution code.
  */
 final class TuiCommand {
     private final TuiCommandType type;
-    private final String argument;
+    private final List<String> arguments;
 
     /**
      * Creates a parsed command.
      *
      * @param type command selected by the parser
-     * @param argument command argument, or {@code null} when the command does not
-     *                 need an argument
+     * @param arguments command arguments
      */
-    TuiCommand(TuiCommandType type, String argument) {
+    TuiCommand(TuiCommandType type, List<String> arguments) {
         this.type = type;
-        this.argument = argument;
+        this.arguments = List.copyOf(arguments);
     }
 
     /**
@@ -39,25 +40,32 @@ final class TuiCommand {
     }
 
     /**
-     * Returns the parsed argument as text.
+     * Returns one parsed argument as text.
      *
-     * @return argument text, or {@code null} when the command has no argument
+     * @param index zero-based argument index
+     * @return argument text
      */
-    String argument() {
-        return this.argument;
+    String argument(int index) {
+        return this.arguments.get(index);
     }
 
     /**
-     * Returns the parsed argument as an integer.
+     * Returns one parsed argument as an integer.
      *
-     * <p>This method is intended only for command types whose argument was already
-     * validated as an integer by {@link TuiCommandParser}.
+     * <p>This method is intended only for command positions that the command
+     * execution expects to be integers.
      *
+     * @param index zero-based argument index
      * @return argument converted to an integer
-     * @throws NumberFormatException if the stored argument is missing or is not a
-     *                               valid integer
+     * @throws IllegalArgumentException if the stored argument is not a valid integer;
+     *                                  the message uses the command usage string so
+     *                                  the TUI can show the user the correct syntax
      */
-    int intArgument() {
-        return Integer.parseInt(this.argument);
+    int intArgument(int index) {
+        try {
+            return Integer.parseInt(this.argument(index));
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Usage: " + this.type.usage());
+        }
     }
 }

@@ -18,7 +18,7 @@ o interfaccia grafica.
 
 Rispetto alla tabella di valutazione fornita insieme alla specifica, il progetto implementa:
 
-**Regole Complete + TUI + GUI + RMI + Socket + 2 Funzionalità Avanzate**
+**Regole Complete + TUI + GUI + RMI + Socket + 3 Funzionalità Avanzate**
 
 In particolare sono stati implementati:
 
@@ -31,6 +31,7 @@ In particolare sono stati implementati:
 - **Funzionalità Avanzata — Resilienza alle disconnessioni**: un client disconnesso può riconnettersi e
 continuare la partita. Se un player si disconnette il suo turno viene saltato. Se rimane un solo player connesso
 parte un timer, al termine del quale l'unico giocatore rimasto connesso viene decretato vincitore.
+- **Funzionalità Avanzata - DataBase** 
 
 
 ## Configurazione, Compilazione e Avvio
@@ -150,7 +151,20 @@ nulla, il client usa `localhost` come IP del server, `12345` per TCP, `1099` per
 come IP del client. Se client e server sono su macchine diverse, in `MESOS_SERVER_IP_ADDRESS` va
 inserito l'IP locale del server e in `MESOS_CLIENT_IP_ADDRESS` l'IP locale del client.
 
+### Avvio del Database (Docker)
+Per la funzionalità avanzata di salvataggio della classifica partite su database (MySQL), è necessario avviare il container prima del server.
 
+Nella root del progetto è presente un file `docker-compose.yml` pronto all'uso. Per avviarlo, esegui:
+```bash
+docker compose up -d
+```
+
+Questo avvierà il database MySQL sulla porta `3306` con le credenziali predefinite, che corrispondono ai valori proposti per default all'avvio interattivo del server.
+
+Per arrestare il database:
+```bash
+docker compose down
+```
 
 ### Compilazione e Creazione dei JAR
 Il progetto è gestito tramite Maven, usato per compilare il codice, eseguire i test e gestire le dipendenze.
@@ -170,7 +184,20 @@ su **Windows**:
 assets\scripts\create-jar.bat
 ```
 
-I due script eseguono gli stessi build Maven e creano i JAR nella cartella `deliverables/jar`.
+I due script eseguono gli stessi build Maven e creano solo i JAR nella cartella `deliverables/jar`.
+La generazione dei Javadoc è separata dai JAR.
+
+Per rigenerare i Javadoc HTML, su **macOS / Linux**:
+```bash
+./assets/scripts/create-javadoc.sh
+```
+
+su **Windows**:
+```bat
+assets\scripts\create-javadoc.bat
+```
+
+I Javadoc vengono generati nella cartella `deliverables/javadoc/apidocs`.
 
 ---
 

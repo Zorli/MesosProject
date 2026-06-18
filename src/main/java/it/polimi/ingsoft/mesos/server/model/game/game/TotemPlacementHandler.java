@@ -118,11 +118,11 @@ public class TotemPlacementHandler {
      */
     private void validateMoveTotemRequest(Player player, String tileCode) {
         if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("moveTotem", this.game.getStatus());
+            throw new InvalidGameStatusException("moveTotem", this.game.getStatus(), player.getNickname());
         }
 
         if (this.roundFlow.getCurrentRoundPhase() != RoundPhase.PLACING_TOTEMS) {
-            throw new InvalidGamePhaseException("moveTotem", this.roundFlow.getCurrentRoundPhase());
+            throw new InvalidGamePhaseException("moveTotem", this.roundFlow.getCurrentRoundPhase(), player.getNickname());
         }
 
         Player currentPlayer = this.roundFlow.getCurrentPlayer();
@@ -131,7 +131,7 @@ public class TotemPlacementHandler {
         }
 
         if (tileCode == null || !this.board.isSpaceAvailable(tileCode)) {
-            throw new TileNotAvailableException(tileCode);
+            throw new TileNotAvailableException(tileCode,player.getNickname());
         }
     }
 
@@ -227,6 +227,7 @@ public class TotemPlacementHandler {
             this.board.movePlayerToLastStartingTile(draftOrder.get(i));
             draftOrder.remove(i);
         }
+
         if (draftOrder.isEmpty()) {
             this.roundFlow.setCurrentRoundPhase(RoundPhase.RESETTING_BOARD);
             this.game.markStateChanged();
@@ -234,6 +235,7 @@ public class TotemPlacementHandler {
         }
         this.roundFlow.setCurrentPhaseOrder(draftOrder);
         this.roundFlow.setCurrentRoundPhase(RoundPhase.PLAYER_DRAWS);
+        this.game.skipInitialDraftPlayerIfNeeded();
     }
 
 

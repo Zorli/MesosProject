@@ -19,7 +19,7 @@ public class TileNotAvailableException extends IllegalStateException {
      *
      * @param tileCode code of the unavailable tile
      */
-    public TileNotAvailableException(String tileCode) {
-        super("Selected tile is not available: " + tileCode);
+    public TileNotAvailableException(String tileCode,String playerNickname) {
+        super("Selected tile: " + tileCode +" by " + playerNickname + " is not available");
     }
 }

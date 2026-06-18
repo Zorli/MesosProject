@@ -6,11 +6,13 @@ import it.polimi.ingsoft.mesos.server.factory.LobbyPlayerFactory;
 import it.polimi.ingsoft.mesos.server.controller.game.GameController;
 import it.polimi.ingsoft.mesos.server.controller.lobby.enums.LobbyCommandType;
 import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
 import it.polimi.ingsoft.mesos.server.model.game.game.Game;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
 
 import java.util.List;
@@ -34,7 +36,7 @@ import java.util.Objects;
  * When the host triggers the match start:
  * <ol>
  *   <li>Validates state via {@link Lobby#startMatch(String)}.</li>
- *   <li>Builds player instances using {@link LobbyPlayerFactory} (assigning totem colors and shuffling order).</li>
+ *   <li>Builds player instances using {@link LobbyPlayerFactory}, preserving lobby order and applying the selected totem colors.</li>
  *   <li>Instantiates a {@link Game} and a corresponding {@link GameController}.</li>
  *   <li>Moves connected sessions in {@link ServerSessionRegistry} from Lobby phase to Game phase.</li>
  *   <li>Migrates listeners from the Lobby observer list to the Game observer list.</li>
@@ -54,6 +56,9 @@ public class LobbyController implements Runnable {
     /** The factory used to map lobby users to game players. */
     private final LobbyPlayerFactory lobbyPlayerFactory;
 
+    /** The repository forwarded to the game so it can persist its result on completion. */
+    private final GameResultRepository gameResultRepository;
+
     /** Command queue for receiving incoming user or system actions asynchronously. */
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
 
@@ -63,15 +68,19 @@ public class LobbyController implements Runnable {
      * @param lobby the {@link Lobby} model to manage
      * @param sessions the central {@link ServerSessionRegistry}
      * @param gameFactory the {@link GameFactory} used to boot the match
+     * @param gameResultRepository the repository the started game uses to persist
+     *                             its result and read the all-time ranking
      */
     public LobbyController(
             Lobby lobby,
             ServerSessionRegistry sessions,
-            GameFactory gameFactory) {
+            GameFactory gameFactory,
+            GameResultRepository gameResultRepository) {
 
         this.lobby = lobby;
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
+        this.gameResultRepository = gameResultRepository;
         this.lobbyPlayerFactory = new LobbyPlayerFactory();
     }
 
@@ -97,8 +106,9 @@ public class LobbyController implements Runnable {
                 String sessionId = cmd.getSessionId();
 
                 // Dispatch system command notifications first
-                if (cmd instanceof SystemJoinCommand) {
-                    this.joinUser(sessionId);
+                if (cmd instanceof SystemJoinLobbyCommand) {
+                    TotemColor totemColor = ((SystemJoinLobbyCommand) cmd).getTotemColor();
+                    this.joinUser(sessionId, totemColor);
                     continue;
                 } else if (cmd instanceof SystemDisconnectCommand) {
                     this.disconnectUser(sessionId);
@@ -131,13 +141,17 @@ public class LobbyController implements Runnable {
     /**
      * Handles adding an authenticated user connection to the lobby state.
      *
+     * <p>The totem color comes from the pre-lobby join payload and is passed to the lobby model,
+     * which performs the authoritative availability validation before mutating state.
+     *
      * @param sessionId the session identifier of the client joining
+     * @param totemColor the totem color selected by the joining client
      */
-    private void joinUser(String sessionId) {
+    private void joinUser(String sessionId, TotemColor totemColor) {
         String nickname = this.sessions.nicknameOf(sessionId);
         Listener clientView = (Listener) this.sessions.connectionOf(sessionId);
         // Delegate validation and model modifications to Lobby model
-        boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView);
+        boolean joinedSuccessfully = this.lobby.addPlayer(nickname, clientView, totemColor);
 
         // Update central registry and notify all clients if join succeeded
         if (joinedSuccessfully) {
@@ -223,7 +237,10 @@ public class LobbyController implements Runnable {
      */
     private GameController startNewMatch() {
         Objects.requireNonNull(this.gameFactory, "gameFactory is null — cannot start a new match");
-        List<Player> players = this.lobbyPlayerFactory.createPlayers(this.lobby.getPlayers());
+        List<Player> players = this.lobbyPlayerFactory.createPlayers(
+                this.lobby.getPlayers(),
+                this.lobby.getPlayerTotemColors()
+        );
         Game game = this.gameFactory.createGame(
                 this.lobby.getId(),
                 players
@@ -231,7 +248,8 @@ public class LobbyController implements Runnable {
         GameController orchestrator = new GameController(
                 game,
                 this.lobby.getHostNickname(),
-                this.sessions
+                this.sessions,
+                this.gameResultRepository
         );
 
         this.attachLobbySessionsToGame(orchestrator);

@@ -164,17 +164,17 @@ public class CardDraftHandler {
      * <p>This method does not inspect the selected card yet. It only answers
      * the question: "Is this player allowed to perform any standard draw now?".
      * The card-specific validation is done later by
-     * {@link #validateAndRemoveChosenCard(Player, Card)}.
+     * {@link #validateAndRemoveChosenCard(Player, Card, int)}.
      *
      * @param player player asking to draw a standard card
      */
     private void validateChooseCardRequest(Player player) {
         if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("chooseCard", this.game.getStatus());
+            throw new InvalidGameStatusException("chooseCard", this.game.getStatus(), player.getNickname());
         }
 
         if (this.roundFlow.getCurrentRoundPhase() != RoundPhase.PLAYER_DRAWS) {
-            throw new InvalidGamePhaseException("chooseCard", this.roundFlow.getCurrentRoundPhase());
+            throw new InvalidGamePhaseException("chooseCard", this.roundFlow.getCurrentRoundPhase(),player.getNickname());
         }
 
         Player currentPlayer = this.roundFlow.getCurrentPlayer();
@@ -194,11 +194,11 @@ public class CardDraftHandler {
      */
     private void validateExtraDrawRequest(Player player) {
         if (this.game.getStatus() != GameStatus.IN_PROGRESS) {
-            throw new InvalidGameStatusException("extraDrawn", this.game.getStatus());
+            throw new InvalidGameStatusException("extraDrawn", this.game.getStatus(),player.getNickname());
         }
 
         if (this.roundFlow.getCurrentRoundPhase() != RoundPhase.EXTRA_DRAWS) {
-            throw new InvalidGamePhaseException("extraDrawn", this.roundFlow.getCurrentRoundPhase());
+            throw new InvalidGamePhaseException("extraDrawn", this.roundFlow.getCurrentRoundPhase(),player.getNickname());
         }
 
         Player currentPlayer = this.roundFlow.getCurrentPlayer();
@@ -250,7 +250,7 @@ public class CardDraftHandler {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow == CardRow.NOT_PRESENT) {
-            throw new CardNotPresentException(cardId);
+            throw new CardNotPresentException(cardId, player.getNickname());
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
@@ -283,7 +283,7 @@ public class CardDraftHandler {
         CardRow cardRow = this.board.getCardRow(card);
 
         if (cardRow != CardRow.UPPER) {
-            throw new CardNotPresentException(cardId);
+            throw new CardNotPresentException(cardId,player.getNickname());
         }
 
         if (!this.board.canPlayerDrawCard(player, card)) {
@@ -301,7 +301,7 @@ public class CardDraftHandler {
      */
     private void validateUpperRowChoice(Player player, CardRow cardRow) {
         if (!this.playerDraftState.canChooseFromUpperRow(player)) {
-            throw new CardRowSelectionNotAllowedException(cardRow);
+            throw new CardRowSelectionNotAllowedException(cardRow, player.getNickname());
         }
     }
 
@@ -313,7 +313,7 @@ public class CardDraftHandler {
      */
     private void validateLowerRowChoice(Player player, CardRow cardRow) {
         if (!this.playerDraftState.canChooseFromLowerRow(player)) {
-            throw new CardRowSelectionNotAllowedException(cardRow);
+            throw new CardRowSelectionNotAllowedException(cardRow,player.getNickname());
         }
     }
 
@@ -551,6 +551,26 @@ public class CardDraftHandler {
      */
     private boolean hasAnyDraftableUpperCard(Player player) {
         return !this.board.getDraftableUpperCards(player).isEmpty();
+    }
+
+    /**
+     * Skips the current player at the start of {@link RoundPhase#PLAYER_DRAWS} if they have no
+     * useful standard draw. Called once by the game after the draft order is established, before
+     * the first {@code chooseCard} command arrives.
+     *
+     * <p>Without this pre-check, a connected player whose only remaining quota maps to a row that
+     * contains only event cards (which are never drawable) would become the current player with no
+     * clickable card, and the game would wait forever for a {@code chooseCard} that can never come.
+     */
+    void skipCurrentPlayerIfNoUsefulDraw() {
+        Player currentPlayer = this.roundFlow.getCurrentPlayer();
+        if (Boolean.FALSE.equals(this.game.getConnectedPlayers().get(currentPlayer))) {
+            this.skipDisconnectedPlayer(currentPlayer);
+            this.advanceToNextDrawablePlayerOrEndStandardDraft();
+        } else if (!this.hasAnyAvailableDraw(currentPlayer)) {
+            this.skipPlayerWithoutUsefulDraw(currentPlayer);
+            this.advanceToNextDrawablePlayerOrEndStandardDraft();
+        }
     }
 
     /**

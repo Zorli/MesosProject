@@ -58,7 +58,7 @@ class PreLobbyControllerTest {
     void setUp() {
         registry = new ServerSessionRegistry();
         gameFactory = new MockGameFactory();
-        controller = new PreLobbyController(gameFactory, registry);
+        controller = new PreLobbyController(gameFactory, registry, null);
         connectionLifecycle = new ServerConnectionLifecycle(registry);
         controllerThread = new Thread(controller, "PreLobbyController-TestThread");
         controllerThread.start();
@@ -120,7 +120,7 @@ class PreLobbyControllerTest {
         TimeUnit.MILLISECONDS.sleep(100);
 
         // Alice creates lobby
-        controller.enqueueMessage(new ClientPayloadCommand(aliceSid, new CreateLobbyPayload(3)));
+        controller.enqueueMessage(new ClientPayloadCommand(aliceSid, new CreateLobbyPayload(3, TotemColor.RED)));
         TimeUnit.MILLISECONDS.sleep(150);
 
         // Check registry has lobby and controller
@@ -136,7 +136,7 @@ class PreLobbyControllerTest {
         TimeUnit.MILLISECONDS.sleep(100);
 
         // Bob joins the lobby
-        controller.enqueueMessage(new ClientPayloadCommand(bobSid, new JoinLobbyPayload(lobbyId)));
+        controller.enqueueMessage(new ClientPayloadCommand(bobSid, new JoinLobbyPayload(lobbyId, TotemColor.BLUE)));
         TimeUnit.MILLISECONDS.sleep(150);
 
         // Verify Bob is added to the lobby (this would happen after LobbyController dequeues it)
@@ -199,7 +199,7 @@ class PreLobbyControllerTest {
         controller.enqueueMessage(new ClientPayloadCommand(sid, new AuthenticationPayload("Charlie")));
         TimeUnit.MILLISECONDS.sleep(50);
 
-        controller.enqueueMessage(new ClientPayloadCommand(sid, new JoinLobbyPayload(999))); // lobby 999 does not exist
+        controller.enqueueMessage(new ClientPayloadCommand(sid, new JoinLobbyPayload(999, TotemColor.BLUE))); // lobby 999 does not exist
         TimeUnit.MILLISECONDS.sleep(100);
 
         // Last message should be validation error
@@ -290,7 +290,7 @@ class PreLobbyControllerTest {
         final List<QueuedCommand> receivedCommands = new ArrayList<>();
 
         public MockGameController(int gameId, ServerSessionRegistry registry) {
-            super(createMockGame(gameId), "Alice", registry);
+            super(createMockGame(gameId), "Alice", registry, null);
         }
 
         @Override

@@ -13,7 +13,7 @@ public class InvalidGameStatusException extends IllegalStateException {
      * @param actionName attempted action name
      * @param currentStatus current game lifecycle status
      */
-    public InvalidGameStatusException(String actionName, GameStatus currentStatus) {
-        super("Action " + actionName + " is not allowed when game status is " + currentStatus);
+    public InvalidGameStatusException(String actionName, GameStatus currentStatus, String nickname) {
+        super(nickname + " tried action: " + actionName + ", but is not allowed when game status is " + currentStatus);
     }
 }

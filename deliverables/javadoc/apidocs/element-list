@@ -16,7 +16,6 @@ it.polimi.ingsoft.mesos.server.controller.lobby.enums
 it.polimi.ingsoft.mesos.server.controller.preLobby
 it.polimi.ingsoft.mesos.server.controller.preLobby.enums
 it.polimi.ingsoft.mesos.server.factory
-it.polimi.ingsoft.mesos.server.Factory
 it.polimi.ingsoft.mesos.server.helper
 it.polimi.ingsoft.mesos.server.model
 it.polimi.ingsoft.mesos.server.model.game.board
@@ -38,6 +37,7 @@ it.polimi.ingsoft.mesos.server.network.exceptions
 it.polimi.ingsoft.mesos.server.network.interfaces
 it.polimi.ingsoft.mesos.server.network.rmi
 it.polimi.ingsoft.mesos.server.network.tcp
+it.polimi.ingsoft.mesos.server.persistence
 it.polimi.ingsoft.mesos.shared.messages
 it.polimi.ingsoft.mesos.shared.payload.clienttoserver
 it.polimi.ingsoft.mesos.shared.payload.clienttoserver.connection

@@ -1,11 +1,18 @@
 package it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby;
+
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+
 import java.io.Serializable;
+import java.util.List;
+
 /**
  * Represents a simplified snapshot/summary of a single lobby room on the server.
  * <p>
  * This is used to display the list of joinable rooms to players in the pre-lobby.
+ * The payload also exposes the totem colors still available for a player who wants
+ * to join that lobby.
  */
-public class LobbySummaryPayload  implements Serializable {
+public class LobbySummaryPayload implements Serializable {
     /** The unique identifier of the lobby room. */
     public final int lobbyId;
 
@@ -21,20 +28,33 @@ public class LobbySummaryPayload  implements Serializable {
     /** The current status of the lobby, as the name of a {@code LobbyStatus} (WAITING, READY, STARTED, or CLOSED). */
     public final String status;
 
+    /** Totem colors that are still available for players joining this lobby. */
+    public final List<TotemColor> availableTotemColors;
+
     /**
-     * Constructs a new LobbySummaryPayload with the specified lobby parameters.
+     * Constructs a new LobbySummaryPayload with the specified lobby parameters and
+     * the current totem colors available to joining players.
      *
      * @param lobbyId the identifier of the lobby
      * @param hostNickname the nickname of the lobby host
      * @param currentPlayers the current number of players in the lobby
      * @param maxPlayers the maximum capacity of the lobby
      * @param status the current status string of the lobby
+     * @param availableTotemColors totem colors still available in the lobby
      */
-    public LobbySummaryPayload(int lobbyId, String hostNickname, int currentPlayers, int maxPlayers, String status) {
+    public LobbySummaryPayload(
+            int lobbyId,
+            String hostNickname,
+            int currentPlayers,
+            int maxPlayers,
+            String status,
+            List<TotemColor> availableTotemColors
+    ) {
         this.lobbyId = lobbyId;
         this.hostNickname = hostNickname;
         this.currentPlayers = currentPlayers;
         this.maxPlayers = maxPlayers;
         this.status = status;
+        this.availableTotemColors = availableTotemColors == null ? List.of() : List.copyOf(availableTotemColors);
     }
 }

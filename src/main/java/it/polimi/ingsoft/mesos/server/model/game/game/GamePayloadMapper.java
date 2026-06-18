@@ -11,12 +11,14 @@ import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Inventor;
 import it.polimi.ingsoft.mesos.server.model.game.cards.characters.Shaman;
 import it.polimi.ingsoft.mesos.server.model.game.cards.events.EventCard;
 import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.persistence.RankingResult;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.BoardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.CardPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.OfferSpacePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.PlayerPayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.StartingBlockPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TribePayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.TurnOrderPayload;
@@ -65,6 +67,26 @@ final class GamePayloadMapper {
      */
     static ErrorPayload toErrorPayload(String code, String message) {
         return new ErrorPayload(code, message);
+    }
+
+    /**
+     * Builds the all-time ranking payload from the data read by the persistence
+     * layer.
+     *
+     * @param result ranking data returned by the repository
+     * @return serializable ranking payload sent to clients
+     */
+    static RankingPayload toRankingPayload(RankingResult result) {
+        List<RankingPayload.RankingRow> rows = new ArrayList<>();
+        for (RankingResult.RankingEntry entry : result.getEntries()) {
+            rows.add(new RankingPayload.RankingRow(
+                    entry.getRank(),
+                    entry.getNickname(),
+                    entry.getScore(),
+                    entry.getDatePlayed(),
+                    entry.isCurrentGame()));
+        }
+        return new RankingPayload(result.getNumPlayers(), rows);
     }
 
     /**

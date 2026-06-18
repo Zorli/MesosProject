@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.controller.preLobby;
 
+import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinLobbyCommand;
 import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.QueuedCommand;
@@ -8,8 +9,10 @@ import it.polimi.ingsoft.mesos.server.factory.GameFactory;
 import it.polimi.ingsoft.mesos.server.controller.lobby.LobbyController;
 import it.polimi.ingsoft.mesos.server.controller.preLobby.enums.PreLobbyCommandType;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.preLobby.PreLobbyModel;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.*;
 import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.prelobby.*;
 
@@ -44,6 +47,11 @@ public class PreLobbyController implements Runnable {
     private final GameFactory gameFactory;
 
     /**
+     * The repository forwarded to every lobby so finished games can be persisted.
+     */
+    private final GameResultRepository gameResultRepository;
+
+    /**
      * Thread-safe blocking queue holding commands to be processed sequentially.
      */
     private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
@@ -53,11 +61,15 @@ public class PreLobbyController implements Runnable {
      *
      * @param gameFactory the factory to build game instances
      * @param sessions    the registry containing all active session states
+     * @param gameResultRepository the repository used by started games to persist
+     *                             their results and read the all-time ranking
      */
     public PreLobbyController(GameFactory gameFactory,
-                              ServerSessionRegistry sessions) {
+                              ServerSessionRegistry sessions,
+                              GameResultRepository gameResultRepository) {
         this.sessions = Objects.requireNonNull(sessions, "sessions cannot be null");
         this.gameFactory = Objects.requireNonNull(gameFactory, "gameFactory cannot be null");
+        this.gameResultRepository = gameResultRepository;
 
         this.preLobbyModel = new PreLobbyModel(this.sessions);
     }
@@ -105,11 +117,12 @@ public class PreLobbyController implements Runnable {
                         }
                         case JOIN_LOBBY -> {
                             JoinLobbyPayload p = (JoinLobbyPayload) payload;
-                            this.joinLobby(sessionId, p.lobbyId);
+                            TotemColor totemColor = p.totemColor;
+                            this.joinLobby(sessionId, p.lobbyId, totemColor);
                         }
                         case CREATE_LOBBY -> {
                             CreateLobbyPayload p = (CreateLobbyPayload) payload;
-                            this.createLobby(sessionId, p.chosenCapacity);
+                            this.createLobby(sessionId, p.chosenCapacity, p.totemColor);
                         }
                         case LIST_LOBBIES -> this.listOpenLobbies(sessionId);
                     }
@@ -160,21 +173,23 @@ public class PreLobbyController implements Runnable {
     }
 
     /**
-     * Creates a new game lobby with the specified capacity, transitions the host
-     * session to the LOBBY phase, and starts a dedicated lobby worker thread.
+     * Creates a new game lobby with the specified capacity and host totem color,
+     * transitions the host session to the LOBBY phase, and starts a dedicated lobby worker thread.
      *
      * @param sessionId      the session ID of the client hosting the lobby
      * @param chosenCapacity the maximum player capacity of the lobby
+     * @param totemColor     the totem color selected by the host while creating the lobby
      */
-    private void createLobby(String sessionId, int chosenCapacity) {
-        Lobby lobby = this.preLobbyModel.createLobby(sessionId, chosenCapacity);
+    private void createLobby(String sessionId, int chosenCapacity, TotemColor totemColor) {
+        Lobby lobby = this.preLobbyModel.createLobby(sessionId, chosenCapacity, totemColor);
         if (lobby != null) {
             this.sessions.enterLobby(sessionId, lobby.getId());
 
             LobbyController lobbyController = new LobbyController(
                     lobby,
                     this.sessions,
-                    this.gameFactory
+                    this.gameFactory,
+                    this.gameResultRepository
             );
             this.sessions.registerLobbyController(lobby.getId(), lobbyController);
             Thread lobbyWorker = new Thread(lobbyController, "Lobby-" + lobby.getId() + "-Worker");
@@ -183,13 +198,17 @@ public class PreLobbyController implements Runnable {
     }
 
     /**
-     * Joins an existing lobby after performing validations. If validation succeeds,
-     * a system join command is enqueued to the target lobby controller.
+     * Joins an existing lobby after performing pre-lobby validations.
+     *
+     * <p>If the target lobby exists and the session is allowed to enter it, this method
+     * enqueues a {@link SystemJoinLobbyCommand} to the lobby worker. The actual reservation
+     * of the selected totem color is performed by the lobby model on that worker thread.
      *
      * @param sessionId the session ID of the client attempting to join
      * @param lobbyId   the ID of the target lobby
+     * @param totemColor the totem color selected by the joining player
      */
-    private void joinLobby(String sessionId, int lobbyId) {
+    private void joinLobby(String sessionId, int lobbyId, TotemColor totemColor) {
         if (!this.preLobbyModel.joinLobbyValidation(sessionId, lobbyId)) {
             return;
         }
@@ -198,7 +217,7 @@ public class PreLobbyController implements Runnable {
             this.preLobbyModel.reportJoinError(sessionId, "Lobby controller not found: " + lobbyId);
             return;
         }
-        target.enqueueMessage(new SystemJoinCommand(sessionId));
+        target.enqueueMessage(new SystemJoinLobbyCommand(sessionId, totemColor));
     }
 
 

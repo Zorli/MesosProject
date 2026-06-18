@@ -1,5 +1,6 @@
 package it.polimi.ingsoft.mesos.server.model.preLobby;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyEventType;
@@ -29,11 +30,11 @@ class PreLobbyPayloadMapperTest {
     @BeforeEach
     void setUp() {
         mapper = new PreLobbyPayloadMapper();
-        lobby = new Lobby(1, "Alice", 3);
+        lobby = new Lobby(1, "Alice", 3, TotemColor.RED);
         lobby.addPlayer("Bob", new Listener() {
             @Override
             public void notifyUpdate(ServerPayload payload) {}
-        });
+        }, TotemColor.BLUE);
     }
 
     /**

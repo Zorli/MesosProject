@@ -3,9 +3,10 @@ package it.polimi.ingsoft.mesos.server.controller.lobby;
 import it.polimi.ingsoft.mesos.server.controller.command.ClientPayloadCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.QueuedCommand;
 import it.polimi.ingsoft.mesos.server.controller.command.SystemDisconnectCommand;
-import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinCommand;
+import it.polimi.ingsoft.mesos.server.controller.command.SystemJoinLobbyCommand;
 import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
 import it.polimi.ingsoft.mesos.server.factory.DefaultGameFactory;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.model.lobby.Lobby;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.server.network.interfaces.ClientConnection;
@@ -49,8 +50,8 @@ class LobbyControllerTest {
     @BeforeEach
     void setUp() {
         sessions = new ServerSessionRegistry();
-        lobby = new Lobby(1, "Alice", 2);
-        controller = new LobbyController(lobby, sessions, DefaultGameFactory.getInstance());
+        lobby = new Lobby(1, "Alice", 2, TotemColor.RED);
+        controller = new LobbyController(lobby, sessions, DefaultGameFactory.getInstance(), null);
 
         // Register lobby model and controller in registry, matching production setup
         sessions.registerLobbyModel(lobby);
@@ -83,12 +84,12 @@ class LobbyControllerTest {
 
     /**
      * Test name: testJoinUserCommand
-     * 1. This test verifies that processing a SystemJoinCommand correctly enrolls a player (Bob) in the lobby.
+     * 1. This test verifies that processing a SystemJoinLobbyCommand correctly enrolls a player (Bob) in the lobby.
      * 2. It asserts that Bob appears in both the Lobby model list and is registered under the lobby in the session registry.
      */
     @Test
     void testJoinUserCommand() throws Exception {
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
+        controller.enqueueMessage(new SystemJoinLobbyCommand(bobSessionId, TotemColor.BLUE));
 
         awaitCondition(() -> lobby.hasPlayer("Bob"));
         assertEquals(2, lobby.getPlayers().size());
@@ -97,12 +98,12 @@ class LobbyControllerTest {
 
     /**
      * Test name: testMultipleJoinsAndLobbyReady
-     * 1. This test verifies that processing a SystemJoinCommand transitions the lobby to READY when capacity is reached.
+     * 1. This test verifies that processing a SystemJoinLobbyCommand transitions the lobby to READY when capacity is reached.
      * 2. It asserts that Bob is successfully enrolled, and the lobby status transitions from WAITING to READY.
      */
     @Test
     void testMultipleJoinsAndLobbyReady() throws Exception {
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
+        controller.enqueueMessage(new SystemJoinLobbyCommand(bobSessionId, TotemColor.BLUE));
 
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
         assertTrue(lobby.isFull());
@@ -116,7 +117,7 @@ class LobbyControllerTest {
      */
     @Test
     void testExitLobbyClientCommand() throws Exception {
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
+        controller.enqueueMessage(new SystemJoinLobbyCommand(bobSessionId, TotemColor.BLUE));
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
 
         controller.enqueueMessage(new ClientPayloadCommand(bobSessionId, new ExitLobbyPayload()));
@@ -133,7 +134,7 @@ class LobbyControllerTest {
      */
     @Test
     void testDisconnectUserCommand() throws Exception {
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
+        controller.enqueueMessage(new SystemJoinLobbyCommand(bobSessionId, TotemColor.BLUE));
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
 
         controller.enqueueMessage(new SystemDisconnectCommand(bobSessionId));
@@ -150,7 +151,7 @@ class LobbyControllerTest {
      */
     @Test
     void testStartLobbyMatchSuccessfully() throws Exception {
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
+        controller.enqueueMessage(new SystemJoinLobbyCommand(bobSessionId, TotemColor.BLUE));
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
 
         controller.enqueueMessage(new ClientPayloadCommand(aliceSessionId, new StartLobbyPayload()));
@@ -268,7 +269,7 @@ class LobbyControllerTest {
      */
     @Test
     void testCountdownThreadInterrupted() throws Exception {
-        controller.enqueueMessage(new SystemJoinCommand(bobSessionId));
+        controller.enqueueMessage(new SystemJoinLobbyCommand(bobSessionId, TotemColor.BLUE));
         awaitCondition(() -> lobby.getStatus() == LobbyStatus.READY);
 
         controller.enqueueMessage(new ClientPayloadCommand(aliceSessionId, new StartLobbyPayload()));

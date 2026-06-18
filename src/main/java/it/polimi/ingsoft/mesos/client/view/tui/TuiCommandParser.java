@@ -1,16 +1,21 @@
 package it.polimi.ingsoft.mesos.client.view.tui;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Parses one textual command entered in the TUI.
  *
  * <p>The parser accepts commands with this shape:
  * <pre>
  * command
- * command argument
+ * command argument...
  * </pre>
  *
- * <p>The first word is always the command keyword. The optional second word is the
- * command argument. More than one argument is rejected.
+ * <p>The first word is always the command keyword. The remaining words are command
+ * arguments separated by whitespace. The parser checks only the command type and
+ * the number of arguments. Type-specific meanings, such as integer conversion or
+ * totem color validation, are handled later by the command execution code.
  */
 final class TuiCommandParser {
     /**
@@ -20,54 +25,40 @@ final class TuiCommandParser {
      * <ul>
      *     <li>{@code help} becomes a command with no argument.</li>
      *     <li>{@code auth ada} becomes command {@code auth} with argument {@code ada}.</li>
-     *     <li>{@code create-lobby 2} becomes command {@code create-lobby} with argument {@code 2}.</li>
+     *     <li>{@code create-lobby 2 red} becomes command {@code create-lobby} with two arguments.</li>
      * </ul>
      *
      * @param line the raw line typed by the user
-     * @return the parsed command type and its optional argument
-     * @throws IllegalArgumentException if the command is unknown, has the wrong number of arguments,
-     *                                  or requires an integer argument but receives a non-integer one
+     * @return the parsed command type and its arguments
+     * @throws IllegalArgumentException if the command is unknown or has the wrong number of arguments
      */
     TuiCommand parse(String line) {
         String[] parts = splitLineIntoWords(line);
         TuiCommandType type = parseType(parts[0]);
 
         int argumentCount = parts.length - 1;
-
-        boolean hasArgument = argumentCount == 1;
-        boolean tooManyArguments = argumentCount > 1;
-        boolean missingRequiredArgument = type.argumentRequired() && !hasArgument;
-        boolean unexpectedArgument = !type.argumentRequired() && hasArgument;
-
-        if (tooManyArguments || missingRequiredArgument || unexpectedArgument) {
+        if (argumentCount != type.argumentCount()) {
             throw new IllegalArgumentException("Usage: " + type.usage());
         }
 
-        String argument = null;
-        if (hasArgument) {
-            argument = parts[1];
+        List<String> arguments = new ArrayList<>(argumentCount);
+        for (int index = 1; index < parts.length; index++) {
+            arguments.add(parts[index]);
         }
 
-        if (type.integerArgument()) {
-            try {
-                Integer.parseInt(argument);
-            } catch (NumberFormatException exception) {
-                throw new IllegalArgumentException("Usage: " + type.usage());
-            }
-        }
-
-        return new TuiCommand(type, argument);
+        return new TuiCommand(type, arguments);
     }
 
     /**
-     * Splits a command line into words.
+     * Splits a command line into command words.
      *
      * <p>{@code trim()} removes spaces before the first word and after the last word.
      *
      * <p>{@code split("\\s+")} separates the line every time it finds one or more
      * whitespace characters. In practice, whitespace means spaces, tabs, or similar
      * separators. The {@code +} means that many consecutive spaces are treated as one
-     * separator.
+     * separator. This is why {@code join-lobby 3 red} becomes three words:
+     * command keyword, lobby id, and totem color.
      *
      * <p>Example:
      * <pre>

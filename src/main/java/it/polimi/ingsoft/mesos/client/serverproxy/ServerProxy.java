@@ -1,5 +1,7 @@
 package it.polimi.ingsoft.mesos.client.serverproxy;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
+
 import java.io.IOException;
 
 /**
@@ -42,15 +44,17 @@ public interface ServerProxy extends AutoCloseable {
      * Requests the creation of a new lobby with the given capacity.
      *
      * @param chosenCapacity number of players expected in the lobby
+     * @param totemColor totem color requested by the host
      */
-    void createLobby(int chosenCapacity);
+    void createLobby(int chosenCapacity, TotemColor totemColor);
 
     /**
      * Requests to join an existing lobby.
      *
      * @param lobbyId identifier of the lobby to join
+     * @param totemColor totem color requested by the joining player
      */
-    void joinLobby(int lobbyId);
+    void joinLobby(int lobbyId, TotemColor totemColor);
 
     /**
      * Requests to leave the current lobby.

@@ -1,12 +1,15 @@
 package it.polimi.ingsoft.mesos.server.model.lobby;
 
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
 import it.polimi.ingsoft.mesos.server.model.lobby.enums.LobbyStatus;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.ServerPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -45,8 +48,8 @@ public class Lobby {
     private final int id;
     /** The maximum number of players chosen for this lobby. */
     private final int capacity;
-    /** Ordered list of nicknames representing current players in the lobby. */
-    private final List<String> players;
+    /** Current lobby players, keyed by nickname and ordered by join time. */
+    private final Map<String, TotemColor> totemColorByNickname;
     /** Nickname of the host player who has privileges to start the game match. */
     private String hostNickname;
     /** Current status of the lobby lifecycle. */
@@ -58,25 +61,31 @@ public class Lobby {
     private final transient LobbyPayloadMapper payloadMapper;
 
     /**
-     * Constructs a new Lobby with a specific ID, hosting player, and capacity limit.
+     * Constructs a new Lobby with a specific ID, hosting player, capacity limit, and host totem color.
+     *
+     * <p>The creating player is immediately inserted as the first lobby member and the selected
+     * totem color is reserved for that host. Because the lobby later builds game players from this
+     * association, the host color is mandatory and must not be {@code null}.
      *
      * @param id the unique ID of the lobby
      * @param hostNickname the nickname of the host (first player to join)
      * @param capacity the maximum player capacity (must be between {@link #MIN_PLAYERS} and {@link #MAX_PLAYERS})
-     * @throws IllegalArgumentException if the capacity is out of bounds or nickname is invalid
+     * @param totemColor the totem color selected by the host while creating the lobby
+     * @throws IllegalArgumentException if the capacity is out of bounds, the nickname is invalid,
+     *                                  or the host totem color is missing
      */
-    public Lobby(int id, String hostNickname, int capacity) {
+    public Lobby(int id, String hostNickname, int capacity, TotemColor totemColor) {
         if (capacity < MIN_PLAYERS || capacity > MAX_PLAYERS) {
             throw new IllegalArgumentException("Capacity must be between " + MIN_PLAYERS + " and " + MAX_PLAYERS);
         }
 
         this.id = id;
         this.capacity = capacity;
-        this.players = new ArrayList<>();
+        this.totemColorByNickname = new LinkedHashMap<>();
         this.hostNickname = validateNickname(hostNickname);
         this.status = LobbyStatus.WAITING;
-        this.players.add(this.hostNickname);
-
+        this.validateTotemColorSelection(totemColor);
+        this.totemColorByNickname.put(this.hostNickname, totemColor);
         this.listeners = new ArrayList<>();
         this.payloadMapper = new LobbyPayloadMapper();
     }
@@ -119,16 +128,21 @@ public class Lobby {
     }
 
     /**
-     * Attempts to add a new player to the lobby.
+     * Attempts to add a new player to the lobby with the totem color selected before joining.
+     *
+     * <p>The color is validated together with the other lobby join rules. If the color is missing
+     * or already assigned to another lobby member, the method sends an error payload to the requester
+     * and returns {@code false}.
      *
      * @param nickname the nickname of the joining player
      * @param requesterView the client's listener interface to receive updates and error alerts
+     * @param totemColor the totem color selected by the joining player
      * @return {@code true} if the player joined successfully, {@code false} otherwise
      */
-    public boolean addPlayer(String nickname, Listener requesterView) {
+    public boolean addPlayer(String nickname, Listener requesterView, TotemColor totemColor) {
         // We pass the requesterView as target to unicast any joining error directly to the offender
         return this.executeLobbyAction(() -> {
-            this.addPlayerInternal(nickname);
+            this.addPlayerInternal(nickname, totemColor);
             this.addListener(requesterView);
         }, requesterView);
     }
@@ -177,7 +191,7 @@ public class Lobby {
     public void notifyPlayerLeft(String nickname, Listener leavingListener) {
         ServerPayload payload = this.payloadMapper.lobbyLeft(nickname, this, this.id);
         if (leavingListener != null) {
-            leavingListener.notifyUpdate(payload);
+            leavingListener.notifyUpdate(this.payloadMapper.lobbyLeftConfirmation(nickname, this.id));
         }
         this.notifyListeners(payload);
     }
@@ -201,7 +215,7 @@ public class Lobby {
      */
     private void startMatchInternal(String nickname) {
         if (!this.isHost(nickname)) {
-            throw new IllegalStateException("Only the lobby host can start the match");
+            throw new IllegalStateException(nickname + " tried to start the match. Only the lobby host can start the match");
         }
         if (this.status != LobbyStatus.READY) {
             throw new IllegalStateException("Cannot start lobby with status: " + this.status);
@@ -210,21 +224,24 @@ public class Lobby {
     }
 
     /**
-     * Domain logic to add a new player. Validates capacity, duplicates, and status constraints.
+     * Domain logic to add a new player.
+     *
+     * <p>Validates nickname, lobby status, capacity, duplicate membership, and totem color
+     * availability before mutating the player list and color association.
      */
-    private void addPlayerInternal(String nickname) {
+    private void addPlayerInternal(String nickname, TotemColor totemColor) {
         String validatedNickname = validateNickname(nickname);
         if (this.status == LobbyStatus.CLOSED || this.status == LobbyStatus.STARTED) {
             throw new IllegalStateException("Cannot join lobby with status: " + this.status);
         }
-        if (this.players.contains(validatedNickname)) {
+        if (this.totemColorByNickname.containsKey(validatedNickname)) {
             throw new IllegalStateException("User already present in lobby: " + validatedNickname);
         }
         if (this.isFull()) {
             throw new IllegalStateException("Lobby is full");
         }
-
-        this.players.add(validatedNickname);
+        this.validateTotemColorSelection(totemColor);
+        this.totemColorByNickname.put(validatedNickname, totemColor);
         if (this.canStart()) {
             this.status = LobbyStatus.READY;
         }
@@ -235,17 +252,18 @@ public class Lobby {
      */
     private void removePlayerInternal(String nickname) {
         String validatedNickname = validateNickname(nickname);
-        boolean removed = this.players.remove(validatedNickname);
-        if (!removed) {
+        TotemColor removedColor = this.totemColorByNickname.remove(validatedNickname);
+        if (removedColor == null) {
             throw new IllegalStateException("User not present in lobby: " + validatedNickname);
         }
 
         // Re-assign host role if the previous host left
         if (validatedNickname.equals(this.hostNickname)) {
-            this.hostNickname = this.players.isEmpty() ? null : this.players.get(0);
+            this.hostNickname = this.totemColorByNickname.isEmpty()
+                    ? null
+                    : this.totemColorByNickname.keySet().iterator().next();
         }
 
-        // Update status based on remaining players
         if (this.isEmpty()) {
             this.status = LobbyStatus.CLOSED;
         } else if (!this.canStart() && this.status == LobbyStatus.READY) {
@@ -313,6 +331,37 @@ public class Lobby {
         return nickname;
     }
 
+    /**
+     * Validates that a requested totem color is present and not already reserved.
+     *
+     * <p>The lobby stores one nickname-to-color association for each seated player.
+     * When the requested color is already assigned, the exception message also
+     * includes the colors that can still be selected by the client.
+     *
+     * @param totemColor the requested totem color
+     * @throws IllegalArgumentException if the color is {@code null} or already assigned
+     */
+    private void validateTotemColorSelection(TotemColor totemColor) {
+        if (totemColor == null) {
+            throw new IllegalArgumentException("Totem color must be selected");
+        }
+
+        if (this.totemColorByNickname.containsValue(totemColor)) {
+            List<TotemColor> availableTotemColors = new ArrayList<>();
+            for (TotemColor color : TotemColor.values()) {
+                if (!this.totemColorByNickname.containsValue(color)) {
+                    availableTotemColors.add(color);
+                }
+            }
+
+            throw new IllegalArgumentException(
+                    "Totem color " + totemColor
+                            + " is already taken. Available colors: "
+                            + availableTotemColors
+            );
+        }
+    }
+
     /** @return the unique numeric identifier of the lobby */
     public int getId() { return this.id; }
 
@@ -320,7 +369,34 @@ public class Lobby {
     public String getHostNickname() { return this.hostNickname; }
 
     /** @return a read-only snapshot list of current players in the lobby */
-    public List<String> getPlayers() { return List.copyOf(this.players); }
+    public List<String> getPlayers() { return List.copyOf(this.totemColorByNickname.keySet()); }
+
+    /**
+     * Returns the lobby totem selections keyed by player nickname.
+     *
+     * <p>This is the lobby's single source of truth for player enrollment and
+     * color selection. The map preserves lobby join order.
+     *
+     * @return map from player nickname to selected totem color
+     */
+    public Map<String, TotemColor> getPlayerTotemColors() {
+        return Map.copyOf(this.totemColorByNickname);
+    }
+
+    /**
+     * Returns the totem colors that are not currently selected by any lobby player.
+     *
+     * @return list of available totem colors
+     */
+    public List<TotemColor> getAvailableTotemColors() {
+        List<TotemColor> availableTotemColors = new ArrayList<>();
+        for (TotemColor color : TotemColor.values()) {
+            if (!this.totemColorByNickname.containsValue(color)) {
+                availableTotemColors.add(color);
+            }
+        }
+        return List.copyOf(availableTotemColors);
+    }
 
     /** @return the chosen capacity configuration for the lobby */
     public int getChosenCapacity() { return this.capacity; }
@@ -329,7 +405,7 @@ public class Lobby {
     public LobbyStatus getStatus() { return this.status; }
 
     /** @return {@code true} if the player is currently in the lobby, {@code false} otherwise */
-    public boolean hasPlayer(String nickname) { return this.players.contains(validateNickname(nickname)); }
+    public boolean hasPlayer(String nickname) { return this.totemColorByNickname.containsKey(validateNickname(nickname)); }
     /**
      * Checks if a player is permitted to join this lobby based on its status and limits.
      *
@@ -340,7 +416,7 @@ public class Lobby {
         String validatedNickname = validateNickname(nickname);
         return this.status != LobbyStatus.CLOSED
                 && this.status != LobbyStatus.STARTED
-                && !this.players.contains(validatedNickname)
+                && !this.totemColorByNickname.containsKey(validatedNickname)
                 && !this.isFull();
     }
 
@@ -348,11 +424,11 @@ public class Lobby {
     public boolean isHost(String nickname) { return this.hostNickname != null && this.hostNickname.equals(nickname); }
 
     /** @return {@code true} if player count has reached the capacity limit */
-    public boolean canStart() { return this.players.size() == this.capacity; }
+    public boolean canStart() { return this.totemColorByNickname.size() == this.capacity; }
 
     /** @return {@code true} if lobby is at capacity */
-    public boolean isFull() { return this.players.size() >= this.capacity; }
+    public boolean isFull() { return this.totemColorByNickname.size() >= this.capacity; }
 
     /** @return {@code true} if lobby has no players remaining */
-    public boolean isEmpty() { return this.players.isEmpty(); }
+    public boolean isEmpty() { return this.totemColorByNickname.isEmpty(); }
 }

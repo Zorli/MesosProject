@@ -2,8 +2,10 @@ package it.polimi.ingsoft.mesos.client.view.tui;
 
 import it.polimi.ingsoft.mesos.client.view.ClientView;
 import it.polimi.ingsoft.mesos.client.serverproxy.ServerProxy;
+import it.polimi.ingsoft.mesos.server.model.game.enums.TotemColor;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.error.ErrorPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.GamePayload;
+import it.polimi.ingsoft.mesos.shared.payload.servertoclient.game.RankingPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.AuthenticationResultPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.prelobby.LobbyListPayload;
 import it.polimi.ingsoft.mesos.shared.payload.servertoclient.lobby.LobbyUpdatePayload;
@@ -142,16 +144,16 @@ public class TuiView implements ClientView {
                 return false;
             }
             case AUTH -> {
-                this.serverProxy.authenticate(command.argument());
+                this.serverProxy.authenticate(command.argument(0));
             }
             case LIST_LOBBIES -> {
                 this.serverProxy.listLobbies();
             }
             case CREATE_LOBBY -> {
-                this.serverProxy.createLobby(command.intArgument());
+                this.serverProxy.createLobby(command.intArgument(0), parseTotemColor(command.argument(1)));
             }
             case JOIN_LOBBY -> {
-                this.serverProxy.joinLobby(command.intArgument());
+                this.serverProxy.joinLobby(command.intArgument(0), parseTotemColor(command.argument(1)));
             }
             case QUIT_LOBBY -> {
                 this.serverProxy.exitLobby();
@@ -160,13 +162,13 @@ public class TuiView implements ClientView {
                 this.serverProxy.startLobby();
             }
             case MOVE_TOTEM -> {
-                this.serverProxy.moveTotem(command.argument());
+                this.serverProxy.moveTotem(command.argument(0));
             }
             case CHOOSE_CARD -> {
-                this.serverProxy.chooseCard(command.intArgument());
+                this.serverProxy.chooseCard(command.intArgument(0));
             }
             case EXTRA_DRAW -> {
-                this.serverProxy.extraDraw(command.intArgument());
+                this.serverProxy.extraDraw(command.intArgument(0));
             }
             case SKIP_EXTRA_DRAW -> {
                 this.serverProxy.skipExtraDraw();
@@ -179,6 +181,17 @@ public class TuiView implements ClientView {
         }
 
         return false;
+    }
+
+    private static TotemColor parseTotemColor(String value) {
+        return switch (value.toLowerCase()) {
+            case "red", "r", "rosso" -> TotemColor.RED;
+            case "blue", "b", "blu" -> TotemColor.BLUE;
+            case "white", "w", "bianco" -> TotemColor.WHITE;
+            case "yellow", "y", "giallo" -> TotemColor.YELLOW;
+            case "black", "k", "nero" -> TotemColor.BLACK;
+            default -> throw new IllegalArgumentException("Unknown totem color. Use red, blue, white, yellow or black.");
+        };
     }
 
     private void closeServerProxy() {
@@ -263,6 +276,20 @@ public class TuiView implements ClientView {
     public synchronized void showFinalGameResult(GamePayload payload) {
         this.lastGamePayload = null;
         this.render(this.payloadRenderer.renderFinalGameResult(payload));
+    }
+
+    /**
+     * Prints the all-time ranking received once a match has finished.
+     *
+     * <p>This arrives right after {@link #showFinalGameResult(GamePayload)}, so the
+     * player sees the final standings of the match just played followed by the
+     * all-time ranking for that number of players.
+     *
+     * @param payload all-time ranking to show
+     */
+    @Override
+    public synchronized void showRanking(RankingPayload payload) {
+        this.render(this.payloadRenderer.renderRanking(payload, this.localNickname));
     }
 
     private void renderHelp() {
