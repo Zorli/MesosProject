@@ -31,7 +31,7 @@ In particolare sono stati implementati:
 - **Funzionalità Avanzata — Resilienza alle disconnessioni**: un client disconnesso può riconnettersi e
 continuare la partita. Se un player si disconnette il suo turno viene saltato. Se rimane un solo player connesso
 parte un timer, al termine del quale l'unico giocatore rimasto connesso viene decretato vincitore.
-- **Funzionalità Avanzata - DataBase** 
+- **Funzionalità Avanzata - DataBase con raking dei player** 
 
 
 ## Configurazione, Compilazione e Avvio
