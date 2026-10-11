@@ -1,0 +1,3087 @@
+{
+  "schemaVersion": 2,
+  "source": {
+    "frontPdf": "docs/gamecard/Cards_total_front_NO PROMO.pdf",
+    "backPdf": "docs/gamecard/Cards_total_back_NO PROMO.pdf",
+    "includedCardCount": 117,
+    "excludedAssetIds": [
+      118,
+      119,
+      120,
+      121,
+      122
+    ],
+    "notes": [
+      "Character cards, event cards, and building cards are currently included.",
+      "Pages 118 to 122 are duplicated event reference cards and are intentionally excluded from the deck."
+    ]
+  },
+  "cards": {
+    "characters": {
+      "HUNTER": [
+        {
+          "id": 1,
+          "era": "first",
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 2,
+          "era": "first",
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 3,
+          "era": "first",
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 4,
+          "era": "first",
+          "minPlayers": 3,
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "era": "first",
+          "minPlayers": 3,
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 30,
+          "era": "second",
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 31,
+          "era": "second",
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 32,
+          "era": "second",
+          "minPlayers": 3,
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 33,
+          "era": "second",
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 34,
+          "era": "second",
+          "minPlayers": 4,
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 35,
+          "era": "second",
+          "minPlayers": 5,
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 58,
+          "era": "third",
+          "minPlayers": 5,
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 59,
+          "era": "third",
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 60,
+          "era": "third",
+          "model": {
+            "hasEffect": false
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 61,
+          "era": "third",
+          "model": {
+            "hasEffect": true
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BOW"
+                },
+                {
+                  "icon": "MEAT"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "IMMEDIATE_EFFECT"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "BUILDER": [
+        {
+          "id": 6,
+          "era": "first",
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 7,
+          "era": "first",
+          "model": {
+            "priceDiscount": 2,
+            "prestigePoints": 0
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 0
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "era": "first",
+          "minPlayers": 5,
+          "model": {
+            "priceDiscount": 2,
+            "prestigePoints": 1
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 1
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "era": "first",
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 36,
+          "era": "second",
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 4
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 37,
+          "era": "second",
+          "model": {
+            "priceDiscount": 2,
+            "prestigePoints": 1
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 1
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 38,
+          "era": "second",
+          "minPlayers": 3,
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 39,
+          "era": "second",
+          "model": {
+            "priceDiscount": 2,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 62,
+          "era": "third",
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 5
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 5
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 63,
+          "era": "third",
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 64,
+          "era": "third",
+          "minPlayers": 5,
+          "model": {
+            "priceDiscount": 1,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 4
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 65,
+          "era": "third",
+          "model": {
+            "priceDiscount": 2,
+            "prestigePoints": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "AXE"
+                },
+                {
+                  "icon": "BUILD_COST_DISCOUNT",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "GATHERER": [
+        {
+          "id": 10,
+          "era": "first",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 11,
+          "era": "first",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 12,
+          "era": "first",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 13,
+          "era": "first",
+          "minPlayers": 5,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 40,
+          "era": "second",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 41,
+          "era": "second",
+          "minPlayers": 3,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 42,
+          "era": "second",
+          "minPlayers": 4,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 43,
+          "era": "second",
+          "minPlayers": 5,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 66,
+          "era": "third",
+          "minPlayers": 5,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 67,
+          "era": "third",
+          "minPlayers": 4,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 68,
+          "era": "third",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "BASKET"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "ARTIST": [
+        {
+          "id": 14,
+          "era": "first",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 15,
+          "era": "first",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 16,
+          "era": "first",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 17,
+          "era": "first",
+          "minPlayers": 3,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 18,
+          "era": "first",
+          "minPlayers": 4,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 44,
+          "era": "second",
+          "minPlayers": 3,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 45,
+          "era": "second",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 46,
+          "era": "second",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 47,
+          "era": "second",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 69,
+          "era": "third",
+          "minPlayers": 5,
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 70,
+          "era": "third",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 71,
+          "era": "third",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 72,
+          "era": "third",
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "CAVE_PAINTING"
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "ARTIST_PAIR_PRESTIGE",
+                  "groupSize": 2,
+                  "value": 10
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "INVENTOR": [
+        {
+          "id": 19,
+          "era": "first",
+          "model": {
+            "inventionType": "TENT"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "TENT"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 20,
+          "era": "first",
+          "model": {
+            "inventionType": "RAFT"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "RAFT"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 21,
+          "era": "first",
+          "model": {
+            "inventionType": "SPEAR"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "SPEAR"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 22,
+          "era": "first",
+          "model": {
+            "inventionType": "BASKET"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "BASKET"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 23,
+          "era": "first",
+          "minPlayers": 4,
+          "model": {
+            "inventionType": "WHEEL"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "WHEEL"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 24,
+          "era": "first",
+          "minPlayers": 4,
+          "model": {
+            "inventionType": "BOW"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "BOW"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 25,
+          "era": "first",
+          "minPlayers": 4,
+          "model": {
+            "inventionType": "FIRE"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "FIRE"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 48,
+          "era": "second",
+          "model": {
+            "inventionType": "PAINTING"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "PAINTING"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 49,
+          "era": "second",
+          "minPlayers": 4,
+          "model": {
+            "inventionType": "KNIFE"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "KNIFE"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 50,
+          "era": "second",
+          "model": {
+            "inventionType": "WHEEL"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "WHEEL"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 51,
+          "era": "second",
+          "model": {
+            "inventionType": "BOW"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "BOW"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 52,
+          "era": "second",
+          "model": {
+            "inventionType": "FIRE"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "FIRE"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 53,
+          "era": "second",
+          "model": {
+            "inventionType": "TENT"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "TENT"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 73,
+          "era": "third",
+          "minPlayers": 4,
+          "model": {
+            "inventionType": "NECKLACE"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "NECKLACE"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 74,
+          "era": "third",
+          "minPlayers": 3,
+          "model": {
+            "inventionType": "RAFT"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "RAFT"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 75,
+          "era": "third",
+          "minPlayers": 3,
+          "model": {
+            "inventionType": "SPEAR"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "SPEAR"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 76,
+          "era": "third",
+          "model": {
+            "inventionType": "PAINTING"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "PAINTING"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 77,
+          "era": "third",
+          "model": {
+            "inventionType": "KNIFE"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "KNIFE"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 78,
+          "era": "third",
+          "model": {
+            "inventionType": "NECKLACE"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "NECKLACE"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 79,
+          "era": "third",
+          "model": {
+            "inventionType": "BASKET"
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "HAND"
+                },
+                {
+                  "icon": "INVENTION",
+                  "value": "BASKET"
+                }
+              ],
+              "bottomLeft": []
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "SHAMAN": [
+        {
+          "id": 26,
+          "era": "first",
+          "minPlayers": 5,
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 27,
+          "era": "first",
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 28,
+          "era": "first",
+          "model": {
+            "stars": 1
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 29,
+          "era": "first",
+          "minPlayers": 4,
+          "model": {
+            "stars": 1
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 54,
+          "era": "second",
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 55,
+          "era": "second",
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 56,
+          "era": "second",
+          "minPlayers": 5,
+          "model": {
+            "stars": 1
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 1
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 57,
+          "era": "second",
+          "minPlayers": 5,
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 80,
+          "era": "third",
+          "minPlayers": 3,
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 81,
+          "era": "third",
+          "model": {
+            "stars": 3
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 3
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 82,
+          "era": "third",
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 83,
+          "era": "third",
+          "model": {
+            "stars": 3
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 3
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 84,
+          "era": "third",
+          "minPlayers": 4,
+          "model": {
+            "stars": 2
+          },
+          "presentation": {
+            "front": {
+              "topRight": [
+                {
+                  "icon": "SHAMAN_SPIRAL"
+                },
+                {
+                  "icon": "STARS",
+                  "value": 2
+                }
+              ],
+              "bottomLeft": [
+                {
+                  "icon": "SHAMAN_RITUAL"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ]
+    },
+    "events": {
+      "HUNT": [
+        {
+          "id": 85,
+          "era": "first",
+          "model": {
+            "foodReward": 1,
+            "prestigePointsReward": 1
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "HUNT_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "foodReward": 1,
+                  "prestigePointsReward": 1,
+                  "per": "HUNTER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 89,
+          "era": "second",
+          "model": {
+            "foodReward": 1,
+            "prestigePointsReward": 2
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "HUNT_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "foodReward": 1,
+                  "prestigePointsReward": 2,
+                  "per": "HUNTER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 93,
+          "era": "third",
+          "model": {
+            "foodReward": 1,
+            "prestigePointsReward": 3
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "HUNT_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "foodReward": 1,
+                  "prestigePointsReward": 3,
+                  "per": "HUNTER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "SUSTENANCE": [
+        {
+          "id": 86,
+          "era": "first",
+          "model": {
+            "prestigePointsToRemovePerCharacter": 1
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "SUSTENANCE_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "prestigePointsPenaltyPerMissingFood": 1
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 90,
+          "era": "second",
+          "model": {
+            "prestigePointsToRemovePerCharacter": 2
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "SUSTENANCE_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "prestigePointsPenaltyPerMissingFood": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 95,
+          "era": "third",
+          "model": {
+            "prestigePointsToRemovePerCharacter": 3
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "SUSTENANCE_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "prestigePointsPenaltyPerMissingFood": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "SHAMAN_RITUAL": [
+        {
+          "id": 87,
+          "era": "first",
+          "model": {
+            "prestigePointsForHigher": 5,
+            "prestigePointsForLower": 3
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "SHAMAN_RITUAL_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "comparison": "HIGHER_STARS",
+                  "prestigePoints": 5
+                },
+                {
+                  "comparison": "LOWER_STARS",
+                  "prestigePoints": -3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 91,
+          "era": "second",
+          "model": {
+            "prestigePointsForHigher": 10,
+            "prestigePointsForLower": 5
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "SHAMAN_RITUAL_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "comparison": "HIGHER_STARS",
+                  "prestigePoints": 10
+                },
+                {
+                  "comparison": "LOWER_STARS",
+                  "prestigePoints": -5
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 96,
+          "era": "third",
+          "model": {
+            "prestigePointsForHigher": 15,
+            "prestigePointsForLower": 7
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "SHAMAN_RITUAL_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "comparison": "HIGHER_STARS",
+                  "prestigePoints": 15
+                },
+                {
+                  "comparison": "LOWER_STARS",
+                  "prestigePoints": -7
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "CAVE_PAINTING": [
+        {
+          "id": 88,
+          "era": "first",
+          "model": {
+            "limitForPositive": 1,
+            "prestigePointsForPositive": 1,
+            "prestigePointsForNegative": 2
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "CAVE_PAINTING_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "artistsRange": "0",
+                  "prestigePoints": -2
+                },
+                {
+                  "artistsRange": "1+",
+                  "prestigePointsPerArtist": 1
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 92,
+          "era": "second",
+          "model": {
+            "limitForPositive": 2,
+            "prestigePointsForPositive": 2,
+            "prestigePointsForNegative": 2
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "CAVE_PAINTING_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "artistsRange": "0-1",
+                  "prestigePoints": -2
+                },
+                {
+                  "artistsRange": "2+",
+                  "prestigePointsPerArtist": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        },
+        {
+          "id": 94,
+          "era": "third",
+          "model": {
+            "limitForPositive": 3,
+            "prestigePointsForPositive": 3,
+            "prestigePointsForNegative": 2
+          },
+          "presentation": {
+            "front": {
+              "badge": [
+                {
+                  "icon": "CAVE_PAINTING_EVENT"
+                }
+              ],
+              "rows": [
+                {
+                  "artistsRange": "0-2",
+                  "prestigePoints": -2
+                },
+                {
+                  "artistsRange": "3+",
+                  "prestigePointsPerArtist": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ]
+    },
+    "buildings": {
+      "POST_DRAW_SET_FOR_FOOD": [
+        {
+          "id": 97,
+          "era": "first",
+          "model": {
+            "timing": "POST_DRAW",
+            "requiredDistinctTypes": 6,
+            "rewardFood": 5,
+            "foodCost": 4,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "DISTINCT_CHARACTER_SET",
+                  "value": 6
+                },
+                {
+                  "icon": "FOOD",
+                  "value": 5
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        }
+      ],
+      "EVENT_BONUS_SUSTENANCE_DISCOUNT_FOR_TYPE": [
+        {
+          "id": 98,
+          "era": "first",
+          "model": {
+            "timing": "EVENT",
+            "discountAmount": 1,
+            "applicableTribeCardType": "GATHERER",
+            "foodCost": 4,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 1,
+                  "applicableTribeCardType": "GATHERER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 99,
+          "era": "first",
+          "model": {
+            "timing": "EVENT",
+            "discountAmount": 1,
+            "applicableTribeCardType": "ARTIST",
+            "foodCost": 5,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 1,
+                  "applicableTribeCardType": "ARTIST"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        },
+        {
+          "id": 105,
+          "era": "second",
+          "model": {
+            "timing": "EVENT",
+            "discountAmount": 1,
+            "applicableTribeCardType": "INVENTOR",
+            "foodCost": 7,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "SUSTENANCE_DISCOUNT",
+                  "value": 1,
+                  "applicableTribeCardType": "INVENTOR"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "EVENT_BONUS_LOSS_FROM_SHAMAN_EVENT": [
+        {
+          "id": 100,
+          "era": "first",
+          "model": {
+            "timing": "EVENT",
+            "preventsLoss": true,
+            "foodCost": 5,
+            "prestigePoints": 2
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "SHAMAN_EVENT_LOSS_PROTECTION"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        }
+      ],
+      "END_ROUND_TOTEM_POSITION": [
+        {
+          "id": 101,
+          "era": "first",
+          "model": {
+            "timing": "END_ROUND",
+            "rewardFood": 1,
+            "foodCost": 3,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TOTEM_POSITION_REWARD"
+                },
+                {
+                  "icon": "FOOD",
+                  "value": 1
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        }
+      ],
+      "POST_DRAW_PAIR_OF_INVENTOR_WITH_SAME_INVENTION": [
+        {
+          "id": 102,
+          "era": "first",
+          "model": {
+            "timing": "POST_DRAW",
+            "requiredPairSize": 2,
+            "rewardFood": 3,
+            "foodCost": 3,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "INVENTOR_PAIR"
+                },
+                {
+                  "icon": "FOOD",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "I"
+            }
+          }
+        }
+      ],
+      "EVENT_BONUS_SHAMAN_WIN_MULTIPLIER": [
+        {
+          "id": 103,
+          "era": "second",
+          "model": {
+            "timing": "EVENT",
+            "multiplier": 2,
+            "foodCost": 7,
+            "prestigePoints": 0
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "SHAMAN_WIN_MULTIPLIER",
+                  "value": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "EVENT_BONUS_STARS_SHAMAN": [
+        {
+          "id": 104,
+          "era": "second",
+          "model": {
+            "timing": "EVENT",
+            "starsBonus": 3,
+            "foodCost": 6,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "STARS",
+                  "value": 3
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "EVENT_BONUS_HUNTER": [
+        {
+          "id": 106,
+          "era": "second",
+          "model": {
+            "timing": "EVENT",
+            "bonusFoodPerHunter": 1,
+            "bonusPrestigePointsPerHunter": 1,
+            "foodCost": 7,
+            "prestigePoints": 2
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "HUNTER_EVENT_BONUS",
+                  "foodReward": 1,
+                  "prestigePointsReward": 1
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "BUILDER_TOTAL_PP_MULTIPLIER": [
+        {
+          "id": 107,
+          "era": "second",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 2,
+            "foodCost": 6,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "BUILDER_TOTAL_PP_MULTIPLIER",
+                  "value": 2
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "EVENT_BONUS_CAVE_PAINTING": [
+        {
+          "id": 108,
+          "era": "second",
+          "model": {
+            "timing": "EVENT",
+            "bonusFoodPerArtist": 1,
+            "foodCost": 5,
+            "prestigePoints": 6
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "CAVE_PAINTING_BONUS",
+                  "value": 1,
+                  "applicableTribeCardType": "ARTIST"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "FINAL_PRESTIGE_POINTS_FOR_SET": [
+        {
+          "id": 109,
+          "era": "second",
+          "model": {
+            "timing": "END_GAME",
+            "requiredDistinctTypes": 6,
+            "rewardPrestigePoints": 6,
+            "foodCost": 5,
+            "prestigePoints": 6
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "DISTINCT_CHARACTER_SET",
+                  "value": 6
+                },
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 6
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "II"
+            }
+          }
+        }
+      ],
+      "FINAL_BONUS_MULTIPLIER_FOR_TYPE": [
+        {
+          "id": 110,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 3,
+            "applicableTribeCardType": "HUNTER",
+            "foodCost": 8,
+            "prestigePoints": 8
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TYPE_MULTIPLIER",
+                  "value": 3,
+                  "applicableTribeCardType": "HUNTER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 111,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 4,
+            "applicableTribeCardType": "GATHERER",
+            "foodCost": 7,
+            "prestigePoints": 6
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TYPE_MULTIPLIER",
+                  "value": 4,
+                  "applicableTribeCardType": "GATHERER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 112,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 4,
+            "applicableTribeCardType": "SHAMAN",
+            "foodCost": 7,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TYPE_MULTIPLIER",
+                  "value": 4,
+                  "applicableTribeCardType": "SHAMAN"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 113,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 4,
+            "applicableTribeCardType": "BUILDER",
+            "foodCost": 6,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TYPE_MULTIPLIER",
+                  "value": 4,
+                  "applicableTribeCardType": "BUILDER"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 114,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 4,
+            "applicableTribeCardType": "ARTIST",
+            "foodCost": 7,
+            "prestigePoints": 4
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TYPE_MULTIPLIER",
+                  "value": 4,
+                  "applicableTribeCardType": "ARTIST"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        },
+        {
+          "id": 115,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "multiplier": 2,
+            "applicableTribeCardType": "INVENTOR",
+            "foodCost": 6,
+            "prestigePoints": 6
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "TYPE_MULTIPLIER",
+                  "value": 2,
+                  "applicableTribeCardType": "INVENTOR"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "END_ROUND_EXTRA_CARD": [
+        {
+          "id": 116,
+          "era": "third",
+          "model": {
+            "timing": "END_ROUND",
+            "foodCost": 9,
+            "prestigePoints": 3
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "EXTRA_CARD"
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ],
+      "FINAL_BONUS_BIG_PP_REWARD": [
+        {
+          "id": 117,
+          "era": "third",
+          "model": {
+            "timing": "END_GAME",
+            "rewardPrestigePoints": 25,
+            "foodCost": 10,
+            "prestigePoints": 0
+          },
+          "presentation": {
+            "front": {
+              "effect": [
+                {
+                  "icon": "PRESTIGE_POINTS",
+                  "value": 25
+                }
+              ]
+            },
+            "back": {
+              "eraSymbol": "III"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

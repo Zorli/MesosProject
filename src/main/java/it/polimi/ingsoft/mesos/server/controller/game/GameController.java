@@ -1,0 +1,580 @@
+package it.polimi.ingsoft.mesos.server.controller.game;
+
+
+import it.polimi.ingsoft.mesos.server.controller.command.*;
+import it.polimi.ingsoft.mesos.server.controller.game.enums.GameCommandType;
+import it.polimi.ingsoft.mesos.server.helper.ServerSessionRegistry;
+import it.polimi.ingsoft.mesos.server.model.game.enums.GameStatus;
+import it.polimi.ingsoft.mesos.server.model.game.game.Game;
+import it.polimi.ingsoft.mesos.server.model.game.player.Player;
+import it.polimi.ingsoft.mesos.server.network.interfaces.Listener;
+import it.polimi.ingsoft.mesos.server.persistence.GameResultRepository;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.ClientPayload;
+import it.polimi.ingsoft.mesos.shared.payload.clienttoserver.game.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Logger;
+
+/**
+ * Single-threaded controller of one running match.
+ *
+ * <p>{@code GameController} is the boundary between the server networking layer
+ * and the {@link Game} domain aggregate. The network layer can receive messages
+ * from multiple client connections and from timeout routines, but the game model
+ * must be modified in one deterministic order. For this reason every game
+ * command is first wrapped in a {@link QueuedCommand} and then processed by this
+ * controller through its internal queue.
+ *
+ * <p>The controller owns orchestration responsibilities, not game rules:
+ * <ul>
+ *     <li>serializes client commands, setup commands, disconnects, reconnects,
+ *     and close commands;</li>
+ *     <li>resolves a session id to the corresponding {@link Player};</li>
+ *     <li>attaches and removes the correct {@link Listener};</li>
+ *     <li>keeps the {@link ServerSessionRegistry} aligned with the game phase;</li>
+ *     <li>starts or cancels the timeout used when only one player remains
+ *     connected;</li>
+ *     <li>tears down routing when the match finishes.</li>
+ * </ul>
+ *
+ * <p>The {@link Game} still owns the rules. This class only decides which domain
+ * command must be executed and when it is safe to execute it.
+ *
+ * <p>Game disconnection follows a simple ownership rule. The network lifecycle
+ * detects that a connection is gone and enqueues a disconnect command, but it
+ * does not remove the game session and does not open a reconnect slot. The old
+ * session stays in the registry until this controller consumes the command.
+ * Therefore, while applying the disconnect, this controller can still resolve
+ * the listener, nickname, game id, and phase from the session id.
+ *
+ * <p>Only after {@link Game#disconnectedPlayer(Player)} has accepted the
+ * disconnect does this controller update the registry: the session leaves the
+ * game, a reconnect slot is recorded for the nickname, and the old session is
+ * unregistered. A player can authenticate again with the same nickname only
+ * after that point. If the reconnect arrives earlier, authentication fails
+ * because the old session still owns the nickname.
+ *
+ * <p>If the disconnect leaves no connected players, the model finishes the
+ * match immediately and no reconnect slot is kept for that game. If exactly one
+ * player remains connected, the controller starts the last-player timeout. A
+ * later reconnect cancels that timeout only when at least two players are
+ * connected again.
+ */
+public class GameController implements Runnable  {
+    private static final Logger log = Logger.getLogger(GameController.class.getName());
+
+    private final Game game;
+    private final List<Player> players;
+    private final String hostNickname;
+    private final ServerSessionRegistry sessions;
+    private final GameResultRepository gameResultRepository;
+    private final BlockingQueue<QueuedCommand> commandQueue = new LinkedBlockingQueue<>();
+    private final Timer lastPlayerTimer = new Timer("last-player-timer", true);
+    private TimerTask lastPlayerTimerTask;
+    private static final long LAST_PLAYER_TIMEOUT_MILLIS = 30000;
+
+    /**
+     * Protects the closing flag read by routing code while teardown is running.
+     *
+     * <p>Once this flag is set, external dispatchers can stop sending new
+     * commands to this controller and late reconnects are no longer accepted for
+     * this game.
+     */
+    private final Object closingLock = new Object();
+    private boolean closing;
+
+    /**
+     * Creates the controller responsible for one game.
+     *
+     * <p>The controller stores a stable copy of the match players because later
+     * commands are resolved from session id to nickname and then from nickname to
+     * the corresponding {@link Player}. The provided registry remains the source
+     * of truth for sessions, phases, listeners, and reconnect slots.
+     *
+     * @param game game aggregate controlled by this instance
+     * @param hostNickname nickname of the player who started the match
+     * @param sessions shared server session registry
+     * @param gameResultRepository repository used to persist the match result and
+     *                             read the all-time ranking when the match ends
+     */
+    public GameController(Game game,
+                          String hostNickname,
+                          ServerSessionRegistry sessions,
+                          GameResultRepository gameResultRepository) {
+        Objects.requireNonNull(game, "Game cannot be null");
+        if (game.getPlayers() == null || game.getPlayers().isEmpty()) {
+            throw new IllegalArgumentException("Players cannot be null or empty");
+        }
+
+        this.game = game;
+        this.players = List.copyOf(game.getPlayers());
+        this.hostNickname = requireHostNickname(hostNickname);
+        this.sessions = sessions != null ? sessions : new ServerSessionRegistry();
+        this.gameResultRepository = gameResultRepository;
+        this.closing = false;
+    }
+
+    // Getters
+
+    /**
+     * Returns the game aggregate coordinated by this orchestrator.
+     *
+     * @return coordinated game
+     */
+    public Game getGame() {
+        return this.game;
+    }
+
+    /**
+     * Returns the players participating in the coordinated match.
+     *
+     * @return match players
+     */
+    public List<Player> getPlayers() {
+        return this.players;
+    }
+
+    private void setClosing(boolean closing) {
+        synchronized (this.closingLock) {
+            this.closing = closing;
+        }
+    }
+
+    /**
+     * Returns whether this controller is tearing down its match.
+     *
+     * @return {@code true} when the game is closing and should no longer receive commands
+     */
+    public boolean isClosing() {
+        synchronized (this.closingLock) {
+            return this.closing;
+        }
+    }
+
+
+    /**
+     * Adds a command to the game queue.
+     *
+     * <p>This method can be called by networking threads, timeout routines, and
+     * server lifecycle code. The command is not executed by the caller thread:
+     * it will be executed later by the controller thread running {@link #run()}.
+     *
+     * @param command command to process in game order
+     */
+    public void enqueueMessage(QueuedCommand command) {
+        this.commandQueue.add(command);
+    }
+
+    /**
+     * Processes queued game commands until the controller thread is interrupted.
+     *
+     * <p>This method is the serialization point of the match. All mutations of
+     * the {@link Game} caused by client actions, setup, disconnects, reconnects,
+     * or forced close commands pass through this loop. This avoids concurrent
+     * writes to the domain model even when many network callbacks happen at the
+     * same time.
+     */
+    @Override
+    public void run() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                QueuedCommand cmd = this.commandQueue.take();
+
+                if (cmd instanceof SystemCloseGameCommand) {
+                    this.closeGame();
+                    continue;
+                }
+
+                if(cmd instanceof SystemSetupMatchCommand){
+                    this.setupMatch();
+                    continue;
+                }
+
+                String sessionId = cmd.getSessionId();
+                if (cmd instanceof SystemDisconnectCommand disconnectCommand){
+                    this.disconnectedPlayer(disconnectCommand);
+                    continue;
+                }else if(cmd instanceof SystemJoinCommand){
+                    this.reConnectedPlayer(sessionId);
+                    continue;
+                }
+
+                ClientPayloadCommand clientCommand = (ClientPayloadCommand) cmd ;
+                ClientPayload payload = clientCommand.getPayload();
+                GameCommandType commandType;
+                try {
+                    commandType = GameCommandType.fromPayload(payload);
+                }catch(IllegalArgumentException e){
+                    this.reportPhaseError(sessionId);
+                    continue;
+                }
+
+                Player player;
+                try {
+                    player = this.resolvePlayerBySession(sessionId);
+                } catch (RuntimeException ignored) {
+                    continue;
+                }
+
+                switch (commandType) {
+                    case CHOOSE_CARD -> {
+                        ChooseCardPayload p = (ChooseCardPayload) payload;
+                        this.chooseCard(player, p.cardId);
+                    }
+                    case MOVE_TOTEM -> {
+                        MoveTotemPayload p = (MoveTotemPayload) payload;
+                        this.moveTotem(player, p.tile);
+                    }
+                    case EXTRA_DRAW -> {
+                        ExtraDrawPayload p = (ExtraDrawPayload) payload;
+                        this.extraDrawn(player, p.cardId);
+                    }
+                    case SKIP_EXTRA_DRAW -> {
+                        this.skipExtraDrawn(player);
+                    }
+                }
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+    /**
+     * Performs match setup.
+     *
+     * <p>Setup is enqueued by the server lifecycle when a lobby becomes a game.
+     * The controller delegates the actual setup rules to {@link Game#setup()} and
+     * then checks whether the match immediately reached a terminal state.
+     */
+    public void setupMatch() {
+        this.game.setup();
+        this.checkGameEndAndCleanup();
+    }
+
+    /**
+     * Closes the match because of a server-side lifecycle decision.
+     *
+     * <p>This is used for forced closure, not for a normal player command.
+     */
+    private void closeGame() {
+       this.game.closeGame();
+       this.checkGameEndAndCleanup();
+    }
+    /**
+     * Places a player's totem.
+     *
+     * @param player acting player
+     * @param tile target offer-space code
+     */
+    private void moveTotem(Player player, String tile) {
+        this.game.moveTotem(player, tile);
+
+        this.checkGameEndAndCleanup();
+    }
+
+    /**
+     * Delegates one standard card draw.
+     *
+     * @param player acting player
+     * @param cardId of the chosen card
+     */
+    private void chooseCard(Player player, int cardId) {
+        this.game.chooseCard(player, cardId);
+
+        this.checkGameEndAndCleanup();
+    }
+
+    /**
+     * Starts the timeout used when exactly one player remains connected.
+     *
+     * <p>The timeout does not close the game directly from the timer thread.
+     * Instead it enqueues a {@link SystemCloseGameCommand}, so even forced close
+     * is processed in the same ordered game queue.
+     */
+    private void startLastPlayerTimer() {
+        if (this.lastPlayerTimerTask != null) {
+            return;
+        }
+
+        this.lastPlayerTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                enqueueMessage(new SystemCloseGameCommand());
+            }
+        };
+
+        this.lastPlayerTimer.schedule(this.lastPlayerTimerTask, LAST_PLAYER_TIMEOUT_MILLIS);
+    }
+
+    /**
+     * Cancels the last-player timeout after a reconnection or during teardown.
+     */
+    private void cancelLastPlayerTimer() {
+        if (this.lastPlayerTimerTask != null) {
+            this.lastPlayerTimerTask.cancel();
+            this.lastPlayerTimerTask = null;
+            this.lastPlayerTimer.purge();
+        }
+    }
+
+    /**
+     * Delegates one extra draw.
+     *
+     * @param player acting player
+     * @param cardId chosen extra-draw card
+     */
+    private void extraDrawn(Player player, int cardId) {
+        this.game.extraDrawn(player, cardId);
+
+        this.checkGameEndAndCleanup();
+    }
+    private void skipExtraDrawn(Player player) {
+        this.game.skipExtraDrawn(player);
+
+        this.checkGameEndAndCleanup();
+    }
+
+
+    // Private methods
+
+    /**
+     * Resolves a nickname to the player object owned by this match.
+     *
+     * @param nickname player nickname
+     * @return player in this game
+     */
+    private Player resolvePlayer(String nickname) {
+        return this.players.stream()
+                .filter(p -> p.getNickname().equals(nickname))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Player not in this match: " + nickname));
+    }
+
+    /**
+     * Resolves a session id to the player object owned by this match.
+     *
+     * <p>The registry owns session authentication data. The controller uses that
+     * data to map a network session to a domain player before invoking the model.
+     *
+     * @param sessionId session that is executing the command
+     * @return player associated with the session nickname
+     */
+    private Player resolvePlayerBySession(String sessionId) {
+        return this.resolvePlayer(this.sessions.nicknameOf(sessionId));
+    }
+
+    /**
+     * Applies a queued game disconnect command.
+     *
+     * <p>A game disconnect is different from a normal client payload. It is
+     * produced by server lifecycle code, but the old game session remains
+     * registered until this method runs. This is the invariant that lets the
+     * command carry only the session id: listener and player are still resolved
+     * from the registry at the moment the disconnect is applied.
+     *
+     * <p>If the command is valid, this method first removes the session listener
+     * from the model and then delegates the domain change to
+     * {@link Game#disconnectedPlayer(Player)}. Only after the model has accepted
+     * the disconnection does the registry open a reconnect slot and unregister
+     * the old session.
+     *
+     * <p>If no player remains connected, the model finishes the match and
+     * teardown removes game routing and reconnect slots. If exactly one player
+     * remains connected, the last-player timer is started.
+     *
+     * @param command queued disconnect command
+     */
+    private void disconnectedPlayer(SystemDisconnectCommand command) {
+        String sessionId = command.getSessionId();
+        Listener playerListener;
+        Player player;
+
+        try {
+            playerListener = this.sessions.getListenerOf(sessionId);
+            player = this.resolvePlayerBySession(sessionId);
+        } catch (RuntimeException ignored) {
+            return;
+        }
+
+        this.game.removeListener(playerListener);
+
+        this.game.disconnectedPlayer(player);
+
+        this.checkGameEndAndCleanup();
+
+        if (this.game.getStatus() == GameStatus.FINISHED) {
+            try {
+                this.sessions.unregister(sessionId);
+            } catch (RuntimeException ignored) {
+            }
+            return;
+        }
+
+        Boolean needToStartTimer;
+        needToStartTimer = this.game.getStartTimer();
+        if(needToStartTimer){
+            this.startLastPlayerTimer();
+        }
+
+        try {
+            this.sessions.leaveGame(sessionId);
+            this.sessions.recordGameDisconnection(sessionId,this.game.getId());
+            this.sessions.unregister(sessionId);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    /**
+     * Applies a queued reconnect command.
+     *
+     * <p>The new session is already authenticated when this command reaches the
+     * queue. Authentication can succeed only after the old disconnect has opened
+     * a reconnect slot, because before that the old session still owns the
+     * nickname. This method consumes the reconnect slot, moves the new session
+     * into the recorded game, attaches its listener, and marks the existing
+     * domain player as connected again.
+     *
+     * @param sessionId new authenticated session
+     */
+    private void reConnectedPlayer(String sessionId) {
+        this.sessions.consumeReconnectSlot(sessionId);
+        Listener playerListener = this.sessions.getListenerOf(sessionId);
+        this.game.addListener(playerListener);
+        Player player = this.resolvePlayerBySession(sessionId);
+
+
+        this.game.reconnectedPlayer(player);
+
+        // If at least two players are connected again, the last-player timeout is no longer needed.
+        if (!this.game.getStartTimer()) {
+            this.cancelLastPlayerTimer();
+        }
+        this.checkGameEndAndCleanup();
+    }
+
+
+    /**
+     * Finalizes completed matches by tearing down session routing.
+     *
+     * <p>When the domain model reaches {@link GameStatus#FINISHED}, the
+     * controller marks itself as closing, removes registry references, clears
+     * reconnect slots for this game, and interrupts its worker
+     * loop. After this point the game must no longer receive commands.
+     */
+    private void checkGameEndAndCleanup() {
+
+        if (this.game.getStatus() != GameStatus.FINISHED) {
+            return;
+        }
+        // Routing code can reject late commands and reconnects while teardown is running.
+        this.setClosing(true);
+
+        log.info("Game " + this.game.getId() + " finished.");
+
+        // Persist the result and broadcast the all-time ranking only for matches that
+        // reached their natural end through final scoring. Abandoned (everyone left)
+        // or force-closed (timeout) matches have incomplete scores and are not
+        // recorded, but a normally finished match is recorded even if a player had
+        // disconnected before the end.
+        if (this.gameResultRepository != null && this.game.isCompletedNaturally()) {
+            this.recordResultAndBroadcastRanking();
+        }
+
+        this.teardownGame();
+        Thread.currentThread().interrupt();
+    }
+
+    /**
+     * Persists the final result of the just-finished match and broadcasts the
+     * resulting all-time ranking to every player.
+     *
+     * <p>The whole database interaction is guarded: a database failure must never
+     * prevent the match teardown, so any error is logged and swallowed. When this
+     * happens the clients simply do not receive the all-time ranking; the final
+     * standings of the match they just played are still shown, because those are
+     * broadcast independently as part of the normal {@code FINISHED} game update.
+     */
+    private void recordResultAndBroadcastRanking() {
+        try {
+            // Persist only the players still connected at the end: a player who
+            // disconnected is excluded from the database, consistent with the final
+            // standings shown locally (which also leave disconnected players unranked).
+            Map<Player, Boolean> connected = this.game.getConnectedPlayers();
+            List<GameResultRepository.PlayerResult> results = new ArrayList<>();
+            for (Player player : this.players) {
+                if (Boolean.TRUE.equals(connected.get(player))) {
+                    results.add(new GameResultRepository.PlayerResult(
+                            player.getNickname(), player.getPrestigePoints()));
+                }
+            }
+            if (results.isEmpty()) {
+                return;
+            }
+            // The player count is the match's original size, since the score depends on
+            // how many players the match was played with.
+            this.game.notifyRanking(
+                    this.gameResultRepository.recordResultAndFindRanking(this.players.size(), results));
+        } catch (Exception exception) {
+            log.warning("Could not record or broadcast the ranking for game "
+                    + this.game.getId() + ": " + exception.getMessage());
+        }
+    }
+
+    /**
+     * Removes this finished game from the server routing structures.
+     *
+     * <p>The method leaves every still-registered session from this game, removes
+     * the game controller from the registry, and deletes reconnect slots for this
+     * game so no later reconnect can target a finished match.
+     */
+    private void teardownGame() {
+        this.cancelLastPlayerTimer();
+        this.lastPlayerTimer.cancel();
+
+        List<ServerSessionRegistry.SessionSnapshot> playersInGame =
+                this.sessions.sessionsInGame(this.game.getId());
+
+        for (ServerSessionRegistry.SessionSnapshot snapshot : playersInGame) {
+            this.sessions.leaveGame(snapshot.sessionId());
+        }
+        this.sessions.removeGameOrchestrator(this.game.getId());
+        this.sessions.removeReconnectSlotsForGame(this.game.getId());
+    }
+
+    // Helper methods
+
+    /**
+     * Validates the nickname of the match host.
+     *
+     * @param hostNickname nickname supplied when the game controller is created
+     * @return validated host nickname
+     */
+    private static String requireHostNickname(String hostNickname) {
+        if (hostNickname == null || hostNickname.isBlank()) {
+            throw new IllegalArgumentException("Match host nickname cannot be null or blank");
+        }
+        return hostNickname;
+    }
+
+    /**
+     * Notifies the acting session that the received command is not valid for the
+     * current game phase.
+     *
+     * @param sessionId session that sent the invalid command
+     */
+    private void reportPhaseError(String sessionId) {
+        try {
+            this.game.reportPhaseError(this.sessions.getListenerOf(sessionId));
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+}
